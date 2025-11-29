@@ -1,6 +1,9 @@
 const { exec } = require('child_process');
 const axios = require('axios');
 
+// Store conversation history
+let conversationHistory = [];
+
 const APPS = {
     shici: 'https://wealth.want.biz/shici/index.html',
     dict: 'https://wealth.want.biz/pages/dict.html',
@@ -17,9 +20,39 @@ function openUrl(url) {
     exec(command);
 }
 
-async function getAIAnswer(question, model) {
+// Function to add a message to the conversation history
+function addToConversationHistory(role, content) {
+    conversationHistory.push({ role, content });
+
+    // Keep only the last 20 messages to prevent history from growing too large
+    if (conversationHistory.length > 20) {
+        conversationHistory = conversationHistory.slice(-20);
+    }
+}
+
+// Function to clear conversation history
+function clearConversationHistory() {
+    conversationHistory = [];
+}
+
+// Function to get conversation history
+function getConversationHistory() {
+    return conversationHistory;
+}
+
+async function getAIAnswer(question, model, includeHistory = true) {
     const url = 'https://aiproxy.want.biz/ai/explain';
-    const prompt = question;
+
+    // Prepare the prompt with conversation history if enabled
+    let prompt = question;
+    if (includeHistory && conversationHistory.length > 0) {
+        // Create a context with the current question added to history
+        const contextWithHistory = [...conversationHistory, { role: 'user', content: question }];
+        prompt = contextWithHistory.map(msg => `${msg.role}: ${msg.content}`).join('\n\n');
+    } else {
+        // If not including history, just use the question directly
+        prompt = question;
+    }
 
     const headers = {
         'Referer': 'https://wealth.want.biz/',
@@ -35,7 +68,17 @@ async function getAIAnswer(question, model) {
 
     try {
         const response = await axios.post(url, data, { headers });
-        return response.data;
+        const answer = response.data;
+
+        // Add the user's question to the conversation history
+        addToConversationHistory('user', question);
+
+        // Add the AI response to the conversation history
+        if (answer && answer.explanation) {
+            addToConversationHistory('assistant', answer.explanation);
+        }
+
+        return answer;
     } catch (error) {
         console.error('AI 请求失败:', error.response?.data?.message || error.message || '未知错误');
         return null;
@@ -51,5 +94,8 @@ module.exports = {
         console.log('--- YGS Apps ---');
         Object.entries(APPS).forEach(([key, url]) => console.log(`${key}: ${url}`));
     },
-    getAIAnswer
+    getAIAnswer,
+    addToConversationHistory,
+    clearConversationHistory,
+    getConversationHistory
 };

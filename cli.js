@@ -20,6 +20,9 @@ function printHelp() {
     console.log(`  ${chalk.green('ai')} "<问题>"      向 AI 提问（不写问题进入交互模式）`);
     console.log(`    ${chalk.gray('--model, -m <模型名称>')}  指定 AI 模型 (可选)`);
     console.log(`  ${chalk.green('help')}              显示帮助信息\n`);
+    console.log(chalk.bold('AI 交互模式命令:'));
+    console.log(`    ${chalk.gray('/clear')}           清空对话历史`);
+    console.log(`    ${chalk.gray('/history')}         查看对话历史\n`);
     console.log(chalk.gray('AI 示例: yuangs ai "你好" --model gemini-pro-latest'));
     console.log(chalk.gray('普通示例: yuangs shici\n'));
 }
@@ -35,14 +38,23 @@ async function askOnce(question, model) {
     const spinner = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
     const interval = setInterval(() => {
         const elapsedTime = Math.floor((Date.now() - startTime) / 1000); // Calculate elapsed time in seconds
-        process.stdout.write(chalk.cyan(`\r${spinner[i++ % spinner.length]} 正在请求 AI，请稍候... (${elapsedTime}s)`));
+        process.stdout.write(chalk.cyan(`\r${spinner[i++ % spinner.length]} 正在请求 AI，请稍候... (${elapsedTime}s}`));
     }, 100);
 
     try {
-        const answer = await yuangs.getAIAnswer(question, model);
+        // For single requests (non-interactive mode), we may want to include history
+        // For now, use history for all requests, but we could make this configurable
+        const answer = await yuangs.getAIAnswer(question, model, true);
         clearInterval(interval);
-        process.stdout.clearLine(0);
-        process.stdout.cursorTo(0);
+
+        // Clear the spinner line if possible
+        if (process.stdout.clearLine) {
+            process.stdout.clearLine(0);
+            process.stdout.cursorTo(0);
+        } else {
+            process.stdout.write('\r'); // Fallback to just carriage return
+        }
+
         const totalElapsedTime = (Date.now() - startTime) / 1000; // Calculate total elapsed time
         if (answer && answer.explanation) {
             console.log(chalk.bold.green('🤖 AI 回答:\n'));
@@ -53,8 +65,15 @@ async function askOnce(question, model) {
         console.log(chalk.gray(`\n请求耗时: ${totalElapsedTime.toFixed(2)}s\n`)); // Display total elapsed time
     } catch (error) {
         clearInterval(interval);
-        process.stdout.clearLine(0);
-        process.stdout.cursorTo(0);
+
+        // Clear the spinner line if possible
+        if (process.stdout.clearLine) {
+            process.stdout.clearLine(0);
+            process.stdout.cursorTo(0);
+        } else {
+            process.stdout.write('\r'); // Fallback to just carriage return
+        }
+
         const totalElapsedTime = (Date.now() - startTime) / 1000; // Calculate total elapsed time on error
         console.error(chalk.red('处理 AI 请求时出错:'), error.message || error);
         console.log(chalk.gray(`\n请求耗时: ${totalElapsedTime.toFixed(2)}s\n`)); // Display total elapsed time on error
@@ -84,6 +103,9 @@ async function handleAICommand() {
     if (!question) {
         console.log(chalk.bold.cyan('\n🤖 进入 AI 交互模式 (输入 exit 退出)\n'));
         console.log(chalk.gray('直接输入你的问题，每回车一次提一个问题。\n'));
+        console.log(chalk.gray('支持的命令:'));
+        console.log(chalk.gray('  /clear - 清空对话历史'));
+        console.log(chalk.gray('  /history - 查看对话历史\n'));
 
         const readline = require('readline');
         const rl = readline.createInterface({
@@ -103,10 +125,32 @@ async function handleAICommand() {
                     process.exit(0);
                 }
 
+                // Handle special commands
+                if (trimmed === '/clear') {
+                    yuangs.clearConversationHistory();
+                    console.log(chalk.yellow('✓ 对话历史已清空\n'));
+                    return askLoop();
+                }
+
+                if (trimmed === '/history') {
+                    const history = yuangs.getConversationHistory();
+                    if (history.length === 0) {
+                        console.log(chalk.gray('暂无对话历史\n'));
+                    } else {
+                        console.log(chalk.bold('📋 对话历史:\n'));
+                        history.forEach((msg, index) => {
+                            const prefix = msg.role === 'user' ? chalk.green('你: ') : chalk.blue('AI: ');
+                            console.log(prefix + msg.content);
+                        });
+                        console.log('');
+                    }
+                    return askLoop();
+                }
+
                 if (!trimmed) {
                     return askLoop(); // 空输入则重新询问
                 }
-                
+
                 // 等待回答完成后，再开启下一轮询问
                 await askOnce(trimmed, model);
                 askLoop();
