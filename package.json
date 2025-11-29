@@ -20,6 +20,9 @@
     "type": "git",
     "url": "git+https://github.com/yuanguangshan/npm_yuangs.git"
   },
+  "bugs": {
+    "url": "https://github.com/yuanguangshan/npm_yuangs/issues"
+  },
   "author": "yuanguangshan",
   "license": "ISC",
   "dependencies": {

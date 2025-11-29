@@ -69,3 +69,15 @@ Pong 游戏: https://wealth.want.biz/pages/pong.html
 ## 维护者
 
 @yuanguangshan
+
+
+## 自动发布（CI/CD）
+
+本项目使用 GitHub Actions 实现了自动发布流程：
+
+- 每次向 `main` 分支 `git push`：
+  - 自动执行 `npm version patch`，提升补丁版本号（例如 `1.1.5 -> 1.1.6`）；
+  - 自动生成对应的 Git tag（如 `v1.1.6`）并推送回仓库；
+  - 自动运行 `npm publish --provenance` 发布到 npm。
+
+这样日常开发只需要专注写代码和推送到 `main`，发布和版本管理都由 CI 自动完成。

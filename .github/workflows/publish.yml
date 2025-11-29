@@ -3,49 +3,51 @@ name: Auto Bump & Publish
 on:
   push:
     branches:
-      - main  # 监听 main 分支的提交
+      - main  # 如果你的默认分支不是 main，记得改成对应名字
 
 jobs:
   publish:
     runs-on: ubuntu-latest
-    # 关键权限：允许 Action 修改你的仓库代码（为了回写版本号）
+
+    # 权限：允许 Action 修改仓库代码 + 生成 provenance
     permissions:
       contents: write
       id-token: write
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }} # 使用 GitHub 默认令牌
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0  # 完整历史，方便推 tag
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
           registry-url: 'https://registry.npmjs.org/'
 
-      # 1. 配置 Git 身份（机器人身份）
       - name: Configure Git
         run: |
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
 
-      # 2. 自动增加版本号 (Patch 级别：1.0.0 -> 1.0.1)
-      # [skip ci] 是为了防止无限循环触发
+      # 自动 bump patch 版本：1.1.5 -> 1.1.6
+      # [skip ci] 防止这个 commit 再次触发 workflow 形成死循环
       - name: Bump version
         run: |
-          npm version patch -m "苑广山注：自动发布，bump version to %s [skip ci]"
+          npm version patch -m "苑广山注：自动发布，升版本号：bump version to %s [skip ci]"
 
-      # 3. 把新的版本号推送到 GitHub 仓库
+      # 推送 commit + tag 回 GitHub
       - name: Push changes
-        run: git push
+        run: |
+          git push --follow-tags
 
-      # 4. 安装依赖
+      # 安装依赖
       - name: Install dependencies
         run: npm ci
 
-      # 5. 发布到 npm
+      # 发布到 npm
       - name: Publish to npm
         run: npm publish --provenance
         env:
