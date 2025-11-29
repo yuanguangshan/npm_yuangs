@@ -1,0 +1,27 @@
+{
+  "name": "yuangs",
+  "version": "1.2.5",
+  "description": "苑广山的个人应用集合 CLI（彩色版）",
+  "main": "index.js",
+  "bin": {
+    "yuangs": "cli.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "yuangs",
+    "cli",
+    "tools",
+    "colorful"
+  ],
+  "author": "yuanguangshan",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.13.2",
+    "chalk": "^4.1.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
