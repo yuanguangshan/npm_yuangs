@@ -66,9 +66,6 @@ Pong 游戏: https://wealth.want.biz/pages/pong.html
 *   **新增** `help` 命令显示当前版本号：方便用户了解工具版本。
 *   **优化** AI 请求加载动画：在请求过程中显示加载动画和已耗时秒数，并在请求结束后显示总耗时。
 
-## 维护者
-
-@yuanguangshan
 
 
 ## 自动发布（CI/CD）
@@ -81,3 +78,7 @@ Pong 游戏: https://wealth.want.biz/pages/pong.html
   - 自动运行 `npm publish --provenance` 发布到 npm。
 
 这样日常开发只需要专注写代码和推送到 `main`，发布和版本管理都由 CI 自动完成。
+
+## 维护者
+
+@yuanguangshan
