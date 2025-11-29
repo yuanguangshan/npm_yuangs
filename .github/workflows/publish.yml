@@ -35,7 +35,7 @@ jobs:
       # [skip ci] 是为了防止无限循环触发
       - name: Bump version
         run: |
-          npm version patch -m "chore(release): bump version to %s [skip ci]"
+          npm version patch -m "苑广山注：自动发布，bump version to %s [skip ci]"
 
       # 3. 把新的版本号推送到 GitHub 仓库
       - name: Push changes
