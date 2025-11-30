@@ -92,7 +92,7 @@ async function handleAICommand() {
     const liteIndex = commandArgs.indexOf('-l');
 
     if (proIndex !== -1) {
-        model = 'gemini-pro';
+        model = 'gemini-pro-latest';
         questionParts = commandArgs.filter((_, index) => index !== proIndex);
     } else if (flashIndex !== -1) {
         model = 'gemini-flash-latest';
