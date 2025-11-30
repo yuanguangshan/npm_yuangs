@@ -29,8 +29,14 @@ yuangs ai "李白是谁？"
 
 指定模型：
 
+支持使用 `--model` 或 `-m` 指定模型，也支持以下简写：
+- `-p`: `gemini-pro-latest` (Pro 版)
+- `-f`: `gemini-flash-latest` (Flash 版)
+- `-l`: `gemini-flash-lite-latest` (Lite 版)
+
 ```bash
-yuangs ai "用 Python 写个 Hello World" --model gemini-pro-latest
+yuangs ai "用 Python 写个 Hello World" -p
+# 等同于 --model gemini-pro-latest
 ```
 
 ### 交互模式（v1.1.x）
@@ -39,8 +45,13 @@ yuangs ai "用 Python 写个 Hello World" --model gemini-pro-latest
 
 ```bash
 yuangs ai
-# 进入后直接输入问题，每次回车提问一次，按 Ctrl+C 退出
 ```
+
+在交互模式中，你可以：
+- 直接输入问题进行对话
+- 输入 `/clear` 清空对话历史
+- 输入 `/history` 查看对话历史
+- 输入 `exit`、`quit` 或 `bye` 退出
 
 ## 应用列表
 
