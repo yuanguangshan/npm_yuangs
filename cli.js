@@ -19,6 +19,7 @@ function printHelp() {
     console.log(`  ${chalk.green('list')}              列出所有应用链接`);
     console.log(`  ${chalk.green('ai')} "<问题>"      向 AI 提问（不写问题进入交互模式）`);
     console.log(`    ${chalk.gray('--model, -m <模型名称>')}  指定 AI 模型 (可选)`);
+    console.log(`    ${chalk.gray('-p -f -l')}  指定 pro,flash,lite 模型 (可选)`);
     console.log(`  ${chalk.green('help')}              显示帮助信息\n`);
     console.log(chalk.bold('AI 交互模式命令:'));
     console.log(`    ${chalk.gray('/clear')}           清空对话历史`);
