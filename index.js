@@ -59,7 +59,7 @@ async function getAIAnswer(question, model, includeHistory = true) {
     }
 
     const headers = {
-        'Referer': 'https://clifornpm.want.biz/',
+        'Referer': 'https://cli.want.biz/',
         'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1',
         'Accept': 'application/json',
         'Content-Type': 'application/json'
