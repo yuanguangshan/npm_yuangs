@@ -3,7 +3,7 @@ name: Auto Bump & Publish
 on:
   push:
     branches:
-      - main  # 如果你的默认分支不是 main，记得改成对应名字
+      - main # 如果你的默认分支不是 main，记得改成对应名字
 
 jobs:
   publish:
@@ -19,13 +19,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0  # 完整历史，方便推 tag
+          fetch-depth: 0 # 完整历史，方便推 tag
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          registry-url: 'https://registry.npmjs.org/'
+          node-version: "18"
+          registry-url: "https://registry.npmjs.org/"
 
       - name: Configure Git
         run: |
@@ -36,7 +36,7 @@ jobs:
       # [skip ci] 防止这个 commit 再次触发 workflow 形成死循环
       - name: Bump version
         run: |
-          npm version patch -m "苑广山注：自动发布，升版本号：bump version to %s [skip ci]"
+          npm version patch -m "苑广山注：自动升版本号%s[skip ci]"
 
       # 推送 commit + tag 回 GitHub
       - name: Push changes
