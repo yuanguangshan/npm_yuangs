@@ -44,14 +44,18 @@ async function getAIAnswer(question, model, includeHistory = true) {
     const url = 'https://aiproxy.want.biz/ai/explain';
 
     // Prepare the prompt with conversation history if enabled
-    let prompt = question;
-    if (includeHistory && conversationHistory.length > 0) {
-        // Create a context with the current question added to history
-        const contextWithHistory = [...conversationHistory, { role: 'user', content: question }];
-        prompt = contextWithHistory.map(msg => `${msg.role}: ${msg.content}`).join('\n\n');
+    let prompt;
+    if (includeHistory) {
+        prompt = JSON.stringify({
+            history: conversationHistory,
+            query: question
+        }, null, 2);
     } else {
-        // If not including history, just use the question directly
-        prompt = question;
+        // If not including history, still use JSON format for consistency but with empty history
+        prompt = JSON.stringify({
+            history: [],
+            query: question
+        }, null, 2);
     }
 
     const headers = {
