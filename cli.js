@@ -83,18 +83,36 @@ async function askOnce(question, model) {
 async function handleAICommand() {
     const commandArgs = args.slice(1);
 
-    // 支持 --model 和 -m 两种写法
-    const longIndex = commandArgs.indexOf('--model');
-    const shortIndex = commandArgs.indexOf('-m');
-    const modelIndex = longIndex !== -1 ? longIndex : shortIndex;
-
     let model = null; // Default model will be handled in index.js
     let questionParts = commandArgs;
 
-    if (modelIndex !== -1 && commandArgs.length > modelIndex + 1) {
-        model = commandArgs[modelIndex + 1];
-        // Filter out --model/-m and its value
-        questionParts = commandArgs.filter((_, index) => index !== modelIndex && index !== modelIndex + 1);
+    // Check for shorthand model flags first
+    const proIndex = commandArgs.indexOf('-p');
+    const flashIndex = commandArgs.indexOf('-f');
+    const liteIndex = commandArgs.indexOf('-l');
+
+    if (proIndex !== -1) {
+        model = 'gemini-pro';
+        questionParts = commandArgs.filter((_, index) => index !== proIndex);
+    } else if (flashIndex !== -1) {
+        model = 'gemini-flash-latest';
+        questionParts = commandArgs.filter((_, index) => index !== flashIndex);
+    } else if (liteIndex !== -1) {
+        model = 'gemini-flash-lite-latest';
+        questionParts = commandArgs.filter((_, index) => index !== liteIndex);
+    }
+
+    // If shorthand flags are not used, check for --model or -m
+    if (!model) {
+        const longIndex = questionParts.indexOf('--model');
+        const shortIndex = questionParts.indexOf('-m');
+        const modelIndex = longIndex !== -1 ? longIndex : shortIndex;
+
+        if (modelIndex !== -1 && questionParts.length > modelIndex + 1) {
+            model = questionParts[modelIndex + 1];
+            // Filter out --model/-m and its value
+            questionParts = questionParts.filter((_, index) => index !== modelIndex && index !== modelIndex + 1);
+        }
     }
 
     const question = questionParts.join(' ').trim();
