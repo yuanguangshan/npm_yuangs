@@ -1,0 +1,18 @@
+# Example configuration file for yuangs CLI
+# Add your custom applications here
+
+shici: "https://wealth.want.biz/shici/index.html"
+dict: "https://wealth.want.biz/pages/dict.html"
+pong: "https://wealth.want.biz/pages/pong.html"
+github: "https://github.com"
+calendar: "https://calendar.google.com"
+mail: "https://mail.google.com"
+
+# You can also use the apps property if you prefer to group them
+# apps:
+#   shici: "https://wealth.want.biz/shici/index.html"
+#   dict: "https://wealth.want.biz/pages/dict.html"
+#   pong: "https://wealth.want.biz/pages/pong.html"
+#   github: "https://github.com"
+#   calendar: "https://calendar.google.com"
+#   mail: "https://mail.google.com"

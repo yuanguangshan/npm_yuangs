@@ -63,6 +63,60 @@ yuangs ai
 
 Pong 游戏: https://wealth.want.biz/pages/pong.html
 
+## 配置自定义应用 (v1.3.24)
+
+从 v1.3.24 版本开始，您可以自定义应用列表，而无需修改源代码。
+
+### 配置文件格式
+
+创建一个 JSON 或 YAML 配置文件，支持以下格式之一：
+
+1. `yuangs.config.json` - 项目级别的 JSON 配置文件
+2. `.yuangs.json` - 项目级或用户主目录的 JSON 隐藏配置文件
+3. `yuangs.config.yaml` - 项目级别的 YAML 配置文件
+4. `yuangs.config.yml` - 项目级别的 YAML 配置文件
+5. `.yuangs.yaml` - 项目级或用户主目录的 YAML 隐藏配置文件
+6. `.yuangs.yml` - 项目级或用户主目录的 YAML 隐藏配置文件
+7. `~/.yuangs.json` - 全局用户 JSON 配置文件
+8. `~/.yuangs.yaml` - 全局用户 YAML 配置文件
+9. `~/.yuangs.yml` - 全局用户 YAML 配置文件
+
+配置文件示例：
+
+```json
+{
+  "shici": "https://wealth.want.biz/shici/index.html",
+  "dict": "https://wealth.want.biz/pages/dict.html",
+  "pong": "https://wealth.want.biz/pages/pong.html",
+  "github": "https://github.com",
+  "calendar": "https://calendar.google.com",
+  "mail": "https://mail.google.com"
+}
+```
+
+### 配置文件优先级
+
+配置文件按以下优先级顺序查找（高到低）：
+
+1. 当前工作目录下的 `yuangs.config.json`
+2. 当前工作目录下的 `.yuangs.json`
+3. 用户主目录下的 `.yuangs.json`
+4. 项目目录下的 `yuangs.config.json`
+5. 项目目录下的 `.yuangs.json`
+6. 如果没有配置文件，则使用默认应用列表
+
+### 使用自定义应用
+
+创建配置文件后，您可以使用任何定义的应用名称作为命令：
+
+```bash
+yuangs github      # 打开 GitHub
+yuangs calendar    # 打开日历
+yuangs mail        # 打开邮箱
+```
+
+使用 `yuangs list` 命令查看当前加载的所有应用。
+
 ## 近期主要更新日志
 
 ### v1.3.22 (2025-11-30)

@@ -13,10 +13,24 @@ function printHelp() {
     console.log(chalk.gray('仓库地址: https://www.npmjs.com/package/yuangs?activeTab=readme\n'));
     console.log(chalk.white('使用方法:') + chalk.gray(' yuangs <命令> [参数]\n'));
     console.log(chalk.bold('命令列表:'));
+
+    // Show default commands
     console.log(`  ${chalk.green('shici')}             打开古诗词 PWA`);
     console.log(`  ${chalk.green('dict')}              打开英语词典`);
     console.log(`  ${chalk.green('pong')}              打开 Pong 游戏`);
     console.log(`  ${chalk.green('list')}              列出所有应用链接`);
+
+    // Show dynamically configured apps
+    const dynamicApps = Object.keys(yuangs.urls).filter(key =>
+        !['shici', 'dict', 'pong'].includes(key)
+    );
+    if (dynamicApps.length > 0) {
+        console.log(chalk.bold('\n自定义应用:'));
+        dynamicApps.forEach(app => {
+            console.log(`  ${chalk.green(app)}              打开 ${app} 应用`);
+        });
+    }
+
     console.log(`  ${chalk.green('ai')} "<问题>"      向 AI 提问（不写问题进入交互模式）`);
     console.log(`    ${chalk.gray('--model, -m <模型名称>')}  指定 AI 模型 (可选)`);
     console.log(`    ${chalk.gray('-p -f -l')}  指定 pro,flash,lite 模型 (可选)`);
@@ -26,6 +40,7 @@ function printHelp() {
     console.log(`    ${chalk.gray('/history')}         查看对话历史\n`);
     console.log(chalk.gray('AI 示例: yuangs ai "你好" --model gemini-pro-latest'));
     console.log(chalk.gray('普通示例: yuangs shici\n'));
+    console.log(chalk.gray('配置文件: 您可以通过创建 yuangs.config.json 或 ~/.yuangs.json 来自定义应用列表\n'));
 }
 
 function printSuccess(app, url) {
@@ -185,17 +200,20 @@ async function handleAICommand() {
     await askOnce(question, model);
 }
 
+// Check if the command matches one of the configured apps
+const isAppCommand = Object.keys(yuangs.urls).includes(command);
+
 switch (command) {
     case 'shici':
-        printSuccess('古诗词应用', yuangs.urls.shici);
+        printSuccess('古诗词应用', yuangs.urls.shici || 'N/A');
         yuangs.openShici();
         break;
     case 'dict':
-        printSuccess('英语词典', yuangs.urls.dict);
+        printSuccess('英语词典', yuangs.urls.dict || 'N/A');
         yuangs.openDict();
         break;
     case 'pong':
-        printSuccess('Pong 游戏', yuangs.urls.pong);
+        printSuccess('Pong 游戏', yuangs.urls.pong || 'N/A');
         yuangs.openPong();
         break;
     case 'list':
@@ -212,7 +230,18 @@ switch (command) {
     case 'help':
     case '--help':
     case '-h':
-    default:
         printHelp();
+        break;
+    default:
+        // If it's an app command but not one of the named ones, handle it with the dynamic function
+        if (isAppCommand) {
+            printSuccess(command, yuangs.urls[command]);
+            yuangs.openApp(command);
+        } else if (command) {
+            console.log(chalk.red(`\n错误: 未知命令 '${command}'\n`));
+            printHelp();
+        } else {
+            printHelp();
+        }
         break;
 }

@@ -14,6 +14,16 @@ describe('Module: index.js', () => {
         expect(yuangs.urls.shici).toContain('shici/index.html');
     });
 
+    test('should have openApp function', () => {
+        expect(typeof yuangs.openApp).toBe('function');
+    });
+
+    test('should have backward compatibility functions', () => {
+        expect(typeof yuangs.openShici).toBe('function');
+        expect(typeof yuangs.openDict).toBe('function');
+        expect(typeof yuangs.openPong).toBe('function');
+    });
+
     test('should manage conversation history correctly', () => {
         yuangs.addToConversationHistory('user', 'hello');
         let history = yuangs.getConversationHistory();

@@ -1,14 +1,73 @@
 const { exec } = require('child_process');
 const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
 
 // Store conversation history
 let conversationHistory = [];
 
-const APPS = {
+// Default apps (fallback if no config file exists)
+const DEFAULT_APPS = {
     shici: 'https://wealth.want.biz/shici/index.html',
     dict: 'https://wealth.want.biz/pages/dict.html',
     pong: 'https://wealth.want.biz/pages/pong.html'
 };
+
+// Load apps from configuration file
+function loadAppsConfig() {
+    // Define possible config file locations (JSON and YAML)
+    const configPaths = [
+        path.join(process.cwd(), 'yuangs.config.json'),           // Current working directory
+        path.join(process.cwd(), '.yuangs.json'),                // Current working directory dot file
+        path.join(process.cwd(), 'yuangs.config.yaml'),          // Current working directory YAML
+        path.join(process.cwd(), 'yuangs.config.yml'),           // Current working directory YAML
+        path.join(process.cwd(), '.yuangs.yaml'),                // Current working directory dot YAML
+        path.join(process.cwd(), '.yuangs.yml'),                 // Current working directory dot YAML
+        path.join(require('os').homedir(), '.yuangs.json'),      // User home directory
+        path.join(require('os').homedir(), '.yuangs.yaml'),      // User home directory YAML
+        path.join(require('os').homedir(), '.yuangs.yml'),       // User home directory YAML
+        path.join(__dirname, 'yuangs.config.json'),              // Project directory
+        path.join(__dirname, '.yuangs.json'),                     // Project directory dot file
+        path.join(__dirname, 'yuangs.config.yaml'),              // Project directory YAML
+        path.join(__dirname, 'yuangs.config.yml')                // Project directory YAML
+    ];
+
+    for (const configPath of configPaths) {
+        if (fs.existsSync(configPath)) {
+            try {
+                const configContent = fs.readFileSync(configPath, 'utf8');
+
+                // Determine if it's JSON or YAML based on file extension
+                let config;
+                if (configPath.endsWith('.json')) {
+                    config = JSON.parse(configContent);
+                } else {
+                    // For YAML files, we need to require the yaml parser
+                    let yaml;
+                    try {
+                        yaml = require('js-yaml');
+                    } catch (yamlError) {
+                        console.warn(`Warning: js-yaml not installed, skipping YAML file ${configPath}`);
+                        console.warn('Install js-yaml with: npm install js-yaml');
+                        continue; // Skip this file and try the next config file
+                    }
+                    config = yaml.load(configContent);
+                }
+
+                // If config has an 'apps' property, use it, otherwise use the whole config as apps
+                return config.apps || config;
+            } catch (error) {
+                console.warn(`Warning: Could not parse config file at ${configPath}:`, error.message);
+                // Continue to next config file
+            }
+        }
+    }
+
+    // If no config file is found, use default apps
+    return DEFAULT_APPS;
+}
+
+const APPS = loadAppsConfig();
 
 function openUrl(url) {
     let command;
@@ -91,9 +150,20 @@ async function getAIAnswer(question, model, includeHistory = true) {
 
 module.exports = {
     urls: APPS,
-    openShici: () => openUrl(APPS.shici),
-    openDict: () => openUrl(APPS.dict),
-    openPong: () => openUrl(APPS.pong),
+    // Dynamic function to open any app by key
+    openApp: (appKey) => {
+        const url = APPS[appKey];
+        if (url) {
+            openUrl(url);
+            return true;
+        }
+        console.error(`App '${appKey}' not found`);
+        return false;
+    },
+    // Specific functions for default apps (for backward compatibility)
+    openShici: () => openUrl(APPS.shici || DEFAULT_APPS.shici),
+    openDict: () => openUrl(APPS.dict || DEFAULT_APPS.dict),
+    openPong: () => openUrl(APPS.pong || DEFAULT_APPS.pong),
     listApps: () => {
         console.log('--- YGS Apps ---');
         Object.entries(APPS).forEach(([key, url]) => console.log(`${key}: ${url}`));
