@@ -110,7 +110,7 @@ async function getAIAnswer(question, model, includeHistory = true) {
     // 2. 准备 Headers (包含客户端标识)
     const headers = {
         'Content-Type': 'application/json',
-        'X-Client-ID': 'npm_yuangs', // 客户端标识
+        'X-Client-ID': 'npm_yuangs', // 客户端 标识
         'Origin': 'https://cli.want.biz', // 配合后端白名单
         'Referer': 'https://cli.want.biz/',
         'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1',
