@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Store conversation history
+// 存储结构标准为: [{ role: 'user', content: '...' }, { role: 'assistant', content: '...' }]
 let conversationHistory = [];
 
 // Default apps (fallback if no config file exists)
@@ -99,51 +100,67 @@ function getConversationHistory() {
     return conversationHistory;
 }
 
+/**
+ * 获取 AI 回复 (OpenAI 兼容接口版)
+ */
 async function getAIAnswer(question, model, includeHistory = true) {
-    const url = 'https://aiproxy.want.biz/ai/explain';
+    // 1. 修改接口地址为 OpenAI 标准兼容路径
+    const url = 'https://aiproxy.want.biz/v1/chat/completions';
 
-    // Prepare the prompt with conversation history if enabled
-    let prompt;
-    if (includeHistory) {
-        prompt = JSON.stringify({
-            history: conversationHistory,
-            query: question
-        }, null, 2);
-    } else {
-        // If not including history, still use JSON format for consistency but with empty history
-        prompt = JSON.stringify({
-            history: [],
-            query: question
-        }, null, 2);
-    }
-
+    // 2. 准备 Headers (包含客户端标识)
     const headers = {
+        'Content-Type': 'application/json',
+        'X-Client-ID': 'npm_yuangs', // 客户端标识
+        'Origin': 'https://cli.want.biz', // 配合后端白名单
         'Referer': 'https://cli.want.biz/',
         'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1',
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
+        'Accept': 'application/json'
     };
 
+    // 3. 构建 messages 数组 (上下文 + 当前问题)
+    let messages = [];
+    if (includeHistory) {
+        // history 已经是 [{role, content}, ...] 格式，直接展开
+        messages = [...conversationHistory];
+    }
+    
+    // 添加当前用户提问
+    messages.push({ role: 'user', content: question });
+
+    // 4. 构建 OpenAI 标准请求体
     const data = {
-        text: prompt,
-        model: model || "gemini-flash-lite-latest"
+        model: model || "gemini-flash-lite-latest",
+        messages: messages,
+        stream: false
     };
 
     try {
+        // 发送请求
         const response = await axios.post(url, data, { headers });
-        const answer = response.data;
+        
+        // 5. 解析 OpenAI 格式响应 (choices[0].message.content)
+        const aiContent = response.data?.choices?.[0]?.message?.content;
 
-        // Add the user's question to the conversation history
-        addToConversationHistory('user', question);
-
-        // Add the AI response to the conversation history
-        if (answer && answer.explanation) {
-            addToConversationHistory('assistant', answer.explanation);
+        if (!aiContent) {
+            throw new Error('Invalid response structure from AI API');
         }
 
-        return answer;
+        // 6. 更新历史记录
+        // 只有请求成功才记录
+        addToConversationHistory('user', question);
+        addToConversationHistory('assistant', aiContent);
+
+        // 返回结果
+        // 为了兼容旧代码可能使用的 .explanation 属性，这里做一层包装
+        return {
+            explanation: aiContent, // 兼容字段
+            content: aiContent,     // 标准字段建议
+            raw: response.data      // 原始响应
+        };
+
     } catch (error) {
-        console.error('AI 请求失败:', error.response?.data?.message || error.message || '未知错误');
+        const errorMsg = error.response?.data?.error?.message || error.response?.data?.message || error.message || '未知错误';
+        console.error('AI 请求失败:', errorMsg);
         return null;
     }
 }
