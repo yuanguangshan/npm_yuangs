@@ -173,8 +173,68 @@ async function handleAICommand() {
         if (command) {
             console.log(chalk.gray('生成命令:'));
             console.log(chalk.bold.green(`> ${command}`));
+
+            // 1. Try to copy to clipboard
+            let copied = false;
+            try {
+                const { spawn } = require('child_process');
+                let copyCmd, copyArgs = [];
+                if (process.platform === 'darwin') {
+                    copyCmd = 'pbcopy';
+                } else if (process.platform === 'win32') {
+                    copyCmd = 'clip';
+                }
+
+                if (copyCmd) {
+                    const proc = spawn(copyCmd, copyArgs);
+                    proc.stdin.write(command);
+                    proc.stdin.end();
+                    copied = true;
+                    console.log(chalk.gray('(已复制到剪贴板)'));
+                }
+            } catch (e) {
+                // Ignore copy errors
+            }
+
+            // 2. Pre-fill and ask to execute
+            const readline = require('readline');
+            const rl = readline.createInterface({
+                input: process.stdin,
+                output: process.stdout
+            });
+
+            console.log(chalk.gray('👇 您可以直接回车执行，或修改后回车：'));
+
+            // This puts the command into the input line, effectively "pre-filling" it
+            rl.write(command);
+
+            rl.on('line', (input) => {
+                rl.close();
+                const finalCommand = input.trim();
+
+                if (!finalCommand) {
+                    process.exit(0);
+                }
+
+                const { spawn } = require('child_process');
+                console.log(chalk.gray('正在执行...'));
+                // Use shell: true to support pipes, redirects, etc.
+                const child = spawn(finalCommand, [], { shell: true, stdio: 'inherit' });
+
+                child.on('close', (code) => {
+                    if (code !== 0) {
+                        console.log(chalk.red(`\n命令执行失败 (退出码: ${code})`));
+                    }
+                    process.exit(code);
+                });
+            });
+
+            // Return to avoid continuing to other logic, let callback handle exit
+            return;
+
         } else {
             console.log(chalk.yellow('未能生成有效的命令。'));
+            process.exit(1);
         }
         return;
     }
