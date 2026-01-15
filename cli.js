@@ -34,11 +34,13 @@ function printHelp() {
     console.log(`  ${chalk.green('ai')} "<问题>"      向 AI 提问（不写问题进入交互模式）`);
     console.log(`    ${chalk.gray('--model, -m <模型名称>')}  指定 AI 模型 (可选)`);
     console.log(`    ${chalk.gray('-p -f -l')}  指定 pro,flash,lite 模型 (可选)`);
+    console.log(`    ${chalk.gray('-e <描述>')}         生成 Linux 命令`);
     console.log(`  ${chalk.green('help')}              显示帮助信息\n`);
     console.log(chalk.bold('AI 交互模式命令:'));
     console.log(`    ${chalk.gray('/clear')}           清空对话历史`);
     console.log(`    ${chalk.gray('/history')}         查看对话历史\n`);
     console.log(chalk.gray('AI 示例: yuangs ai "你好" --model gemini-pro-latest'));
+    console.log(chalk.gray('AI 生成命令: yuangs ai -e "查看当前目录"'));
     console.log(chalk.gray('普通示例: yuangs shici\n'));
     console.log(chalk.gray('配置文件: 您可以通过创建 yuangs.config.json 或 ~/.yuangs.json 来自定义应用列表\n'));
 }
@@ -99,23 +101,34 @@ async function askOnce(question, model) {
 async function handleAICommand() {
     const commandArgs = args.slice(1);
 
-    let model = null; // Default model will be handled in index.js
+    let model = null;
     let questionParts = commandArgs;
+    let isExecMode = false;
+
+    // Check for -e flag
+    const execIndex = commandArgs.indexOf('-e');
+    if (execIndex !== -1) {
+        isExecMode = true;
+        // removing -e from args
+        const before = commandArgs.slice(0, execIndex);
+        const after = commandArgs.slice(execIndex + 1);
+        questionParts = [...before, ...after];
+    }
 
     // Check for shorthand model flags first
-    const proIndex = commandArgs.indexOf('-p');
-    const flashIndex = commandArgs.indexOf('-f');
-    const liteIndex = commandArgs.indexOf('-l');
+    const proIndex = questionParts.indexOf('-p');
+    const flashIndex = questionParts.indexOf('-f');
+    const liteIndex = questionParts.indexOf('-l');
 
     if (proIndex !== -1) {
         model = 'gemini-pro-latest';
-        questionParts = commandArgs.filter((_, index) => index !== proIndex);
+        questionParts = questionParts.filter((_, index) => index !== proIndex);
     } else if (flashIndex !== -1) {
         model = 'gemini-flash-latest';
-        questionParts = commandArgs.filter((_, index) => index !== flashIndex);
+        questionParts = questionParts.filter((_, index) => index !== flashIndex);
     } else if (liteIndex !== -1) {
         model = 'gemini-flash-lite-latest';
-        questionParts = commandArgs.filter((_, index) => index !== liteIndex);
+        questionParts = questionParts.filter((_, index) => index !== liteIndex);
     }
 
     // If shorthand flags are not used, check for --model or -m
@@ -132,6 +145,39 @@ async function handleAICommand() {
     }
 
     const question = questionParts.join(' ').trim();
+
+    // Special handling for execution mode
+    if (isExecMode) {
+        if (!question) {
+            console.log(chalk.red('错误: 使用 -e 参数时必需提供描述。'));
+            return;
+        }
+
+        const startTime = Date.now();
+        let i = 0;
+        const spinner = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+        const interval = setInterval(() => {
+            process.stdout.write(chalk.cyan(`\r${spinner[i++ % spinner.length]} 正在生成命令...`));
+        }, 100);
+
+        const command = await yuangs.generateCommand(question, model);
+        clearInterval(interval);
+
+        if (process.stdout.clearLine) {
+            process.stdout.clearLine(0);
+            process.stdout.cursorTo(0);
+        } else {
+            process.stdout.write('\r');
+        }
+
+        if (command) {
+            console.log(chalk.gray('生成命令:'));
+            console.log(chalk.bold.green(`> ${command}`));
+        } else {
+            console.log(chalk.yellow('未能生成有效的命令。'));
+        }
+        return;
+    }
 
     // 如果用户直接输入 `yuangs ai`，进入交互式模式
     if (!question) {

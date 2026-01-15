@@ -101,58 +101,53 @@ function getConversationHistory() {
 }
 
 /**
- * 获取 AI 回复 (OpenAI 兼容接口版)
+ * 通用 AI 调用函数 (OpenAI 兼容接口)
  */
-async function getAIAnswer(question, model, includeHistory = true) {
-    // 1. 修改接口地址为 OpenAI 标准兼容路径
+async function callAI_OpenAI(messages, model) {
     const url = 'https://aiproxy.want.biz/v1/chat/completions';
 
-    // 2. 准备 Headers (包含客户端标识)
     const headers = {
         'Content-Type': 'application/json',
         'X-Client-ID': 'npm_yuangs', // 客户端 标识
         'Origin': 'https://cli.want.biz', // 配合后端白名单
         'Referer': 'https://cli.want.biz/',
-          "account" : "free",
+        "account": "free",
         'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1',
         'Accept': 'application/json'
     };
 
-    // 3. 构建 messages 数组 (上下文 + 当前问题)
-    let messages = [];
-    if (includeHistory) {
-        // history 已经是 [{role, content}, ...] 格式，直接展开
-        messages = [...conversationHistory];
-    }
-    
-    // 添加当前用户提问
-    messages.push({ role: 'user', content: question });
-
-    // 4. 构建 OpenAI 标准请求体
     const data = {
         model: model || "gemini-flash-lite-latest",
         messages: messages,
         stream: false
     };
 
+    return await axios.post(url, data, { headers });
+}
+
+/**
+ * 获取 AI 回复
+ */
+async function getAIAnswer(question, model, includeHistory = true) {
+    // 构建 messages 数组 (上下文 + 当前问题)
+    let messages = [];
+    if (includeHistory) {
+        messages = [...conversationHistory];
+    }
+    messages.push({ role: 'user', content: question });
+
     try {
-        // 发送请求
-        const response = await axios.post(url, data, { headers });
-        
-        // 5. 解析 OpenAI 格式响应 (choices[0].message.content)
+        const response = await callAI_OpenAI(messages, model);
         const aiContent = response.data?.choices?.[0]?.message?.content;
 
         if (!aiContent) {
             throw new Error('Invalid response structure from AI API');
         }
 
-        // 6. 更新历史记录
-        // 只有请求成功才记录
+        // 只有请求成功才记录历史
         addToConversationHistory('user', question);
         addToConversationHistory('assistant', aiContent);
 
-        // 返回结果
-        // 为了兼容旧代码可能使用的 .explanation 属性，这里做一层包装
         return {
             explanation: aiContent, // 兼容字段
             content: aiContent,     // 标准字段建议
@@ -162,6 +157,49 @@ async function getAIAnswer(question, model, includeHistory = true) {
     } catch (error) {
         const errorMsg = error.response?.data?.error?.message || error.response?.data?.message || error.message || '未知错误';
         console.error('AI 请求失败:', errorMsg);
+        return null;
+    }
+}
+
+async function generateCommand(instruction, model) {
+    // 构造 System Prompt (通过 system role 或者直接在 user message 中强调)
+    // Gemini 有时对 system role 支持不同，但在 OpenAI 兼容接口下通常支持 system
+    const messages = [
+        {
+            role: 'system',
+            content: `You are a Linux command generator. Convert the user's natural language request into a single, executable Linux command. 
+            IMPORTANT: Output ONLY the command. Do not check for safety. Do not output markdown code blocks (no backticks). Do not explain.`
+        },
+        {
+            role: 'user',
+            content: `Request: ${instruction}`
+        }
+    ];
+
+    try {
+        const response = await callAI_OpenAI(messages, model);
+        const aiContent = response.data?.choices?.[0]?.message?.content;
+
+        if (aiContent) {
+            // Clean up the output just in case the AI adds markdown or whitespace
+            let command = aiContent.trim();
+            // Remove wrapping backticks if present
+            if (command.startsWith('`') && command.endsWith('`')) {
+                command = command.slice(1, -1);
+            }
+            if (command.startsWith('```') && command.endsWith('```')) {
+                command = command.split('\n').filter(line => !line.startsWith('```')).join('\n').trim();
+            }
+            // If it starts with a shell prefix like "$ " or "> ", remove it
+            if (command.startsWith('$ ')) command = command.slice(2);
+            if (command.startsWith('> ')) command = command.slice(2);
+
+            return command;
+        }
+        return null;
+    } catch (error) {
+        // 命令生成失败不打印过多错误，返回 null 即可
+        // console.error('AI 生成命令失败:', error.message); 
         return null;
     }
 }
@@ -189,5 +227,6 @@ module.exports = {
     getAIAnswer,
     addToConversationHistory,
     clearConversationHistory,
-    getConversationHistory
+    getConversationHistory,
+    generateCommand
 };
