@@ -10,11 +10,12 @@ exports.runMacro = runMacro;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const os_1 = __importDefault(require("os"));
+const validation_1 = require("./validation");
 const MACROS_FILE = path_1.default.join(os_1.default.homedir(), '.yuangs_macros.json');
 function getMacros() {
     if (fs_1.default.existsSync(MACROS_FILE)) {
         try {
-            return JSON.parse(fs_1.default.readFileSync(MACROS_FILE, 'utf8'));
+            return (0, validation_1.parseMacros)(fs_1.default.readFileSync(MACROS_FILE, 'utf8'));
         }
         catch (e) { }
     }

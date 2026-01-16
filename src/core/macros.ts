@@ -1,19 +1,16 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { parseMacros, type Macro } from './validation';
 
 const MACROS_FILE = path.join(os.homedir(), '.yuangs_macros.json');
 
-export type Macro = {
-    commands: string;
-    description: string;
-    createdAt: string;
-};
+export type { Macro };
 
 export function getMacros(): Record<string, Macro> {
     if (fs.existsSync(MACROS_FILE)) {
         try {
-            return JSON.parse(fs.readFileSync(MACROS_FILE, 'utf8'));
+            return parseMacros(fs.readFileSync(MACROS_FILE, 'utf8'));
         } catch (e) { }
     }
     return {};

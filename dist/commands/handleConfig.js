@@ -8,6 +8,7 @@ const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const os_1 = __importDefault(require("os"));
 const chalk_1 = __importDefault(require("chalk"));
+const validation_1 = require("../core/validation");
 const CONFIG_FILE = path_1.default.join(os_1.default.homedir(), '.yuangs.json');
 function handleConfig(args) {
     const action = args[0]; // get, set, list
@@ -59,7 +60,7 @@ function handleConfig(args) {
 function readConfig() {
     if (fs_1.default.existsSync(CONFIG_FILE)) {
         try {
-            return JSON.parse(fs_1.default.readFileSync(CONFIG_FILE, 'utf8'));
+            return (0, validation_1.parseUserConfig)(fs_1.default.readFileSync(CONFIG_FILE, 'utf8'));
         }
         catch (e) {
             return {};
@@ -68,6 +69,7 @@ function readConfig() {
     return {};
 }
 function writeConfig(config) {
-    fs_1.default.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
+    const validated = validation_1.userConfigSchema.parse(config);
+    fs_1.default.writeFileSync(CONFIG_FILE, JSON.stringify(validated, null, 2));
 }
 //# sourceMappingURL=handleConfig.js.map

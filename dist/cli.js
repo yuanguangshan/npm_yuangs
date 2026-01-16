@@ -7,17 +7,130 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const chalk_1 = __importDefault(require("chalk"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
+const commander_1 = require("commander");
 const handleAICommand_1 = require("./commands/handleAICommand");
 const handleAIChat_1 = require("./commands/handleAIChat");
 const handleConfig_1 = require("./commands/handleConfig");
 const apps_1 = require("./core/apps");
-const macros_1 = require("./core/macros"); // I need to implement runMacro
+const macros_1 = require("./core/macros");
 const history_1 = require("./utils/history");
 const packageJson = JSON.parse(fs_1.default.readFileSync(path_1.default.join(__dirname, '../package.json'), 'utf8'));
 const version = packageJson.version;
-const args = process.argv.slice(2);
-const command = args[0];
-function printHelp() {
+const program = new commander_1.Command();
+program
+    .name('yuangs')
+    .description('苑广山的个人命令行工具')
+    .version(version);
+async function readStdin() {
+    if (process.stdin.isTTY)
+        return '';
+    return new Promise((resolve) => {
+        let data = '';
+        process.stdin.setEncoding('utf8');
+        process.stdin.on('data', chunk => data += chunk);
+        process.stdin.on('end', () => resolve(data));
+        setTimeout(() => resolve(data), 2000);
+    });
+}
+program
+    .command('ai [question...]')
+    .description('向 AI 提问')
+    .option('-e, --exec', '生成并执行 Linux 命令')
+    .option('-m, --model <model>', '指定 AI 模型')
+    .option('-p', '使用 Pro 模型 (gemini-pro-latest)')
+    .option('-f', '使用 Flash 模型 (gemini-flash-latest)')
+    .option('-l', '使用 Lite 模型 (gemini-flash-lite-latest)')
+    .action(async (questionArgs, options) => {
+    const stdinData = await readStdin();
+    let question = Array.isArray(questionArgs) ? questionArgs.join(' ').trim() : questionArgs || '';
+    if (stdinData) {
+        question = `以下是输入内容：\n\n${stdinData}\n\n我的问题是：${question || '分析以上内容'}`;
+    }
+    let model = options.model;
+    if (options.p)
+        model = 'gemini-pro-latest';
+    if (options.f)
+        model = 'gemini-flash-latest';
+    if (options.l)
+        model = 'gemini-flash-lite-latest';
+    if (options.exec) {
+        await (0, handleAICommand_1.handleAICommand)(question, { execute: false, model });
+    }
+    else {
+        await (0, handleAIChat_1.handleAIChat)(question || null, model);
+    }
+});
+program
+    .command('list')
+    .description('列出所有应用')
+    .action(() => {
+    const apps = (0, apps_1.loadAppsConfig)();
+    console.log(chalk_1.default.bold.cyan('\n📱 应用列表\n'));
+    Object.entries(apps).forEach(([key, url]) => {
+        console.log(`  ${chalk_1.default.green('●')} ${chalk_1.default.bold(key.padEnd(10))} ${chalk_1.default.blue(url)}`);
+    });
+});
+program
+    .command('history')
+    .description('查看命令历史')
+    .action(() => {
+    const history = (0, history_1.getCommandHistory)();
+    if (history.length === 0) {
+        console.log(chalk_1.default.gray('暂无命令历史\n'));
+    }
+    else {
+        console.log(chalk_1.default.bold.cyan('\n📋 命令历史\n'));
+        history.forEach((item, index) => {
+            console.log(`${index + 1}. ${chalk_1.default.white(item.command)}`);
+            console.log(chalk_1.default.gray(`   问题: ${item.question}\n`));
+        });
+    }
+});
+program
+    .command('config')
+    .description('管理本地配置 (~/.yuangs.json)')
+    .argument('[action]', 'get, set, list')
+    .argument('[key]', '配置项名称')
+    .argument('[value]', '配置项值')
+    .action(handleConfig_1.handleConfig);
+program
+    .command('macros')
+    .description('查看所有快捷指令')
+    .action(() => {
+    const allMacros = (0, macros_1.getMacros)();
+    console.log(chalk_1.default.bold.cyan('\n🚀 快捷指令列表\n'));
+    Object.keys(allMacros).forEach(name => {
+        console.log(`  ${chalk_1.default.white(name)}: ${chalk_1.default.gray(allMacros[name].commands)}`);
+    });
+});
+program
+    .command('save <name>')
+    .description('保存快捷指令')
+    .action(async (name) => {
+    const rl = require('node:readline/promises').createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
+    const cmd = await rl.question(chalk_1.default.cyan('请输入要保存的命令: '));
+    (0, macros_1.saveMacro)(name, cmd);
+    console.log(chalk_1.default.green(`✓ 快捷指令 "${name}" 已保存`));
+    rl.close();
+});
+program
+    .command('run <name>')
+    .description('执行快捷指令')
+    .action((name) => {
+    if ((0, macros_1.runMacro)(name)) {
+        console.log(chalk_1.default.green(`✓ 正在执行 "${name}"...`));
+    }
+    else {
+        console.log(chalk_1.default.red(`错误: 快捷指令 "${name}" 不存在`));
+    }
+});
+program
+    .command('help')
+    .description('显示帮助信息')
+    .action(() => {
     console.log(chalk_1.default.bold.cyan('\n🎨 苑广山的个人应用启动器 (Modular TS版)\n'));
     console.log(chalk_1.default.yellow(`当前版本: ${version}`));
     console.log(chalk_1.default.white('使用方法:') + chalk_1.default.gray(' yuangs <命令> [参数]\n'));
@@ -27,116 +140,45 @@ function printHelp() {
     console.log(`  ${chalk_1.default.green('list')}              列出所有应用`);
     console.log(`  ${chalk_1.default.green('history')}           查看命令历史`);
     console.log(`  ${chalk_1.default.green('config')}            管理本地配置 (~/.yuangs.json)`);
+    console.log(`  ${chalk_1.default.green('macros')}            查看所有快捷指令`);
+    console.log(`  ${chalk_1.default.green('save')} <名称>      保存快捷指令`);
+    console.log(`  ${chalk_1.default.green('run')} <名称>        执行快捷指令`);
     console.log(`  ${chalk_1.default.green('help')}              显示帮助信息\n`);
-}
-async function readStdin() {
-    if (process.stdin.isTTY)
-        return '';
-    return new Promise((resolve) => {
-        let data = '';
-        process.stdin.setEncoding('utf8');
-        process.stdin.on('data', chunk => data += chunk);
-        process.stdin.on('end', () => resolve(data));
-        // Safety timeout
-        setTimeout(() => resolve(data), 2000);
-    });
-}
-async function main() {
-    const apps = (0, apps_1.loadAppsConfig)();
-    const stdinData = await readStdin();
-    switch (command) {
-        case 'ai':
-            const aiArgs = args.slice(1);
-            const isExecMode = aiArgs.includes('-e');
-            const questionParts = aiArgs.filter(a => a !== '-e');
-            let question = questionParts.join(' ').trim();
-            if (stdinData) {
-                question = `以下是输入内容：\n\n${stdinData}\n\n我的问题是：${question || '分析以上内容'}`;
-            }
-            if (isExecMode) {
-                await (0, handleAICommand_1.handleAICommand)(question, { execute: false });
-            }
-            else {
-                await (0, handleAIChat_1.handleAIChat)(question || null);
-            }
-            break;
-        case 'list':
-            console.log(chalk_1.default.bold.cyan('\n📱 应用列表\n'));
-            Object.entries(apps).forEach(([key, url]) => {
-                console.log(`  ${chalk_1.default.green('●')} ${chalk_1.default.bold(key.padEnd(10))} ${chalk_1.default.blue(url)}`);
-            });
-            break;
-        case 'shici':
-        case 'dict':
-        case 'pong':
-            const url = apps[command] || apps_1.DEFAULT_APPS[command];
-            console.log(chalk_1.default.green(`✓ 正在打开 ${command}...`));
-            (0, apps_1.openUrl)(url);
-            break;
-        case 'history':
-            const history = (0, history_1.getCommandHistory)();
-            if (history.length === 0) {
-                console.log(chalk_1.default.gray('暂无命令历史\n'));
-            }
-            else {
-                console.log(chalk_1.default.bold.cyan('\n📋 命令历史\n'));
-                history.forEach((item, index) => {
-                    console.log(`${index + 1}. ${chalk_1.default.white(item.command)}`);
-                    console.log(chalk_1.default.gray(`   问题: ${item.question}\n`));
-                });
-            }
-            break;
-        case 'config':
-            (0, handleConfig_1.handleConfig)(args.slice(1));
-            break;
-        case 'macros':
-            const allMacros = (0, macros_1.getMacros)();
-            console.log(chalk_1.default.bold.cyan('\n🚀 快捷指令列表\n'));
-            Object.keys(allMacros).forEach(name => {
-                console.log(`  ${chalk_1.default.white(name)}: ${chalk_1.default.gray(allMacros[name].commands)}`);
-            });
-            break;
-        case 'save':
-            const macroName = args[1];
-            if (!macroName) {
-                console.log(chalk_1.default.red('\n错误: 请指定快捷指令名称'));
-                break;
-            }
-            const rlSave = require('node:readline/promises').createInterface({
-                input: process.stdin,
-                output: process.stdout
-            });
-            const cmd = await rlSave.question(chalk_1.default.cyan('请输入要保存的命令: '));
-            (0, macros_1.saveMacro)(macroName, cmd);
-            console.log(chalk_1.default.green(`✓ 快捷指令 "${macroName}" 已保存`));
-            rlSave.close();
-            break;
-        case 'run':
-            const runName = args[1];
-            if (!runName)
-                break;
-            if ((0, macros_1.runMacro)(runName)) {
-                console.log(chalk_1.default.green(`✓ 正在执行 "${runName}"...`));
-            }
-            else {
-                console.log(chalk_1.default.red(`错误: 快捷指令 "${runName}" 不存在`));
-            }
-            break;
-        case 'help':
-        case '--help':
-        case '-h':
-        default:
-            if (command && apps[command]) {
-                (0, apps_1.openUrl)(apps[command]);
-            }
-            else {
-                printHelp();
-            }
-            break;
-    }
-}
-main().catch(err => {
-    console.error(chalk_1.default.red('Fatal Error:'), err);
-    process.exit(1);
 });
+const apps = (0, apps_1.loadAppsConfig)();
+program
+    .command('shici')
+    .description('打开古诗词 PWA')
+    .action(() => {
+    const url = apps['shici'] || apps_1.DEFAULT_APPS['shici'];
+    console.log(chalk_1.default.green(`✓ 正在打开 shici...`));
+    (0, apps_1.openUrl)(url);
+});
+program
+    .command('dict')
+    .description('打开英语词典')
+    .action(() => {
+    const url = apps['dict'] || apps_1.DEFAULT_APPS['dict'];
+    console.log(chalk_1.default.green(`✓ 正在打开 dict...`));
+    (0, apps_1.openUrl)(url);
+});
+program
+    .command('pong')
+    .description('打开 Pong 游戏')
+    .action(() => {
+    const url = apps['pong'] || apps_1.DEFAULT_APPS['pong'];
+    console.log(chalk_1.default.green(`✓ 正在打开 pong...`));
+    (0, apps_1.openUrl)(url);
+});
+program
+    .argument('[command]', '自定义应用命令')
+    .action((command) => {
+    if (command && apps[command]) {
+        (0, apps_1.openUrl)(apps[command]);
+    }
+    else {
+        program.outputHelp();
+    }
+});
+program.parse();
 //# sourceMappingURL=cli.js.map

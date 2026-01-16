@@ -1,5 +1,1 @@
-export type AICommandPlan = {
-    plan: string;
-    command: string;
-    risk: 'low' | 'medium' | 'high';
-};
+export { AICommandPlan, type AICommandPlan as AICommandPlanType } from '../core/validation';

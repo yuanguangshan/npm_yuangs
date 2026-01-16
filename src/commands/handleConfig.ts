@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import chalk from 'chalk';
+import { parseUserConfig, userConfigSchema, type UserConfig } from '../core/validation';
 
 const CONFIG_FILE = path.join(os.homedir(), '.yuangs.json');
 
@@ -54,10 +55,10 @@ export function handleConfig(args: string[]) {
     }
 }
 
-function readConfig() {
+function readConfig(): UserConfig {
     if (fs.existsSync(CONFIG_FILE)) {
         try {
-            return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+            return parseUserConfig(fs.readFileSync(CONFIG_FILE, 'utf8'));
         } catch (e) {
             return {};
         }
@@ -65,6 +66,7 @@ function readConfig() {
     return {};
 }
 
-function writeConfig(config: any) {
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
+function writeConfig(config: UserConfig) {
+    const validated = userConfigSchema.parse(config);
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(validated, null, 2));
 }

@@ -13,6 +13,7 @@ const axios_1 = __importDefault(require("axios"));
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const os_1 = __importDefault(require("os"));
+const validation_1 = require("../core/validation");
 const CONFIG_FILE = path_1.default.join(os_1.default.homedir(), '.yuangs.json');
 let conversationHistory = [];
 function addToConversationHistory(role, content) {
@@ -30,7 +31,8 @@ function getConversationHistory() {
 function getUserConfig() {
     if (fs_1.default.existsSync(CONFIG_FILE)) {
         try {
-            return JSON.parse(fs_1.default.readFileSync(CONFIG_FILE, 'utf8'));
+            const content = fs_1.default.readFileSync(CONFIG_FILE, 'utf8');
+            return JSON.parse(content);
         }
         catch (e) { }
     }
@@ -38,18 +40,18 @@ function getUserConfig() {
 }
 async function askAI(prompt, model) {
     const config = getUserConfig();
-    const url = config.aiProxyUrl || 'https://aiproxy.want.biz/v1/chat/completions';
+    const url = config.aiProxyUrl || validation_1.DEFAULT_AI_PROXY_URL;
     const headers = {
         'Content-Type': 'application/json',
         'X-Client-ID': 'npm_yuangs',
         'Origin': 'https://cli.want.biz',
         'Referer': 'https://cli.want.biz/',
-        'account': config.accountType || 'free',
+        'account': config.accountType || validation_1.DEFAULT_ACCOUNT_TYPE,
         'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1',
         'Accept': 'application/json'
     };
     const data = {
-        model: model || config.defaultModel || 'Assistant',
+        model: model || config.defaultModel || validation_1.DEFAULT_MODEL,
         messages: [{ role: 'user', content: prompt }],
         stream: false
     };
@@ -65,12 +67,12 @@ async function askAI(prompt, model) {
 }
 async function callAI_Stream(messages, model, onChunk) {
     const config = getUserConfig();
-    const url = config.aiProxyUrl || 'https://aiproxy.want.biz/v1/chat/completions';
+    const url = config.aiProxyUrl || validation_1.DEFAULT_AI_PROXY_URL;
     const response = await (0, axios_1.default)({
         method: 'post',
         url: url,
         data: {
-            model: model || config.defaultModel || 'Assistant',
+            model: model || config.defaultModel || validation_1.DEFAULT_MODEL,
             messages: messages,
             stream: true
         },
@@ -80,7 +82,7 @@ async function callAI_Stream(messages, model, onChunk) {
             'X-Client-ID': 'npm_yuangs',
             'Origin': 'https://cli.want.biz',
             'Referer': 'https://cli.want.biz/',
-            'account': config.accountType || 'free',
+            'account': config.accountType || validation_1.DEFAULT_ACCOUNT_TYPE,
             'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1',
             'Accept': 'application/json'
         }

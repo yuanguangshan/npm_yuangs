@@ -11,11 +11,8 @@ const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const js_yaml_1 = __importDefault(require("js-yaml"));
 const os_1 = __importDefault(require("os"));
-exports.DEFAULT_APPS = {
-    shici: 'https://wealth.want.biz/shici/index.html',
-    dict: 'https://wealth.want.biz/pages/dict.html',
-    pong: 'https://wealth.want.biz/pages/pong.html'
-};
+const validation_1 = require("./validation");
+Object.defineProperty(exports, "DEFAULT_APPS", { enumerable: true, get: function () { return validation_1.DEFAULT_APPS; } });
 function loadAppsConfig() {
     const configPaths = [
         path_1.default.join(process.cwd(), 'yuangs.config.json'),
@@ -37,14 +34,14 @@ function loadAppsConfig() {
                     config = js_yaml_1.default.load(configContent);
                 }
                 else {
-                    config = JSON.parse(configContent);
+                    config = (0, validation_1.parseAppsConfig)(configContent);
                 }
-                return config.apps || config;
+                return config;
             }
             catch (error) { }
         }
     }
-    return exports.DEFAULT_APPS;
+    return validation_1.DEFAULT_APPS;
 }
 function openUrl(url) {
     let command;

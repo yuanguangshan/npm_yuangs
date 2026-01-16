@@ -64,15 +64,17 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
                 // Pause input while AI is processing to avoid interference
                 rl.pause();
                 await askOnceStream(trimmed, model);
-            } catch (err: any) {
-                console.error(chalk.red(`\n[AI execution error]: ${err.message}`));
+            } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : String(err);
+                console.error(chalk.red(`\n[AI execution error]: ${message}`));
             } finally {
                 // Always resume input
                 rl.resume();
             }
         }
-    } catch (criticalErr: any) {
-        console.error(chalk.red(`\n[Critical Loop Error]: ${criticalErr.message}`));
+    } catch (criticalErr: unknown) {
+        const message = criticalErr instanceof Error ? criticalErr.message : String(criticalErr);
+        console.error(chalk.red(`\n[Critical Loop Error]: ${message}`));
     } finally {
         rl.close();
     }

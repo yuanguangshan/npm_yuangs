@@ -3,12 +3,9 @@ import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
 import os from 'os';
+import { DEFAULT_APPS, parseAppsConfig } from './validation';
 
-export const DEFAULT_APPS = {
-    shici: 'https://wealth.want.biz/shici/index.html',
-    dict: 'https://wealth.want.biz/pages/dict.html',
-    pong: 'https://wealth.want.biz/pages/pong.html'
-};
+export { DEFAULT_APPS };
 
 export function loadAppsConfig(): Record<string, string> {
     const configPaths = [
@@ -27,13 +24,13 @@ export function loadAppsConfig(): Record<string, string> {
         if (fs.existsSync(configPath)) {
             try {
                 const configContent = fs.readFileSync(configPath, 'utf8');
-                let config: any;
+                let config: Record<string, string>;
                 if (configPath.endsWith('.yaml') || configPath.endsWith('.yml')) {
-                    config = yaml.load(configContent);
+                    config = yaml.load(configContent) as Record<string, string>;
                 } else {
-                    config = JSON.parse(configContent);
+                    config = parseAppsConfig(configContent);
                 }
-                return config.apps || config;
+                return config;
             } catch (error) { }
         }
     }
