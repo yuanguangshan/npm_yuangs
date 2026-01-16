@@ -34,14 +34,13 @@ async function main() {
     let stdinData = '';
     // Check if there is data in stdin (Pipe mode)
     if (!process.stdin.isTTY) {
-        stdinData = await new Promise((resolve) => {
-            let data = '';
-            process.stdin.setEncoding('utf8');
-            process.stdin.on('data', chunk => data += chunk);
-            process.stdin.on('end', () => resolve(data));
-            // timeout if no data comes
-            setTimeout(() => resolve(data), 1000);
-        });
+        try {
+            // Read all from stdin synchronously - reliable for pipes
+            stdinData = fs_1.default.readFileSync(0, 'utf8');
+        }
+        catch (error) {
+            // If failed to read sync, ignore
+        }
     }
     switch (command) {
         case 'ai':
@@ -101,13 +100,14 @@ async function main() {
                 console.log(chalk_1.default.red('\n错误: 请指定快捷指令名称'));
                 break;
             }
-            const readline = require('readline');
-            const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-            rl.question(chalk_1.default.cyan('请输入要保存的命令: '), (cmd) => {
-                (0, macros_1.saveMacro)(macroName, cmd);
-                console.log(chalk_1.default.green(`✓ 快捷指令 "${macroName}" 已保存`));
-                rl.close();
+            const rlSave = require('node:readline/promises').createInterface({
+                input: process.stdin,
+                output: process.stdout
             });
+            const cmd = await rlSave.question(chalk_1.default.cyan('请输入要保存的命令: '));
+            (0, macros_1.saveMacro)(macroName, cmd);
+            console.log(chalk_1.default.green(`✓ 快捷指令 "${macroName}" 已保存`));
+            rlSave.close();
             break;
         case 'run':
             const runName = args[1];

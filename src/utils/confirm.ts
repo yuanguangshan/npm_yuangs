@@ -1,4 +1,4 @@
-import readline from 'readline';
+import * as readline from 'node:readline/promises';
 import chalk from 'chalk';
 
 export async function confirm(message: string): Promise<boolean> {
@@ -7,10 +7,11 @@ export async function confirm(message: string): Promise<boolean> {
         output: process.stdout,
     });
 
-    return new Promise((resolve) => {
-        rl.question(chalk.yellow(`\n⚠️  ${message} (y/N) `), (answer) => {
-            rl.close();
-            resolve(answer.toLowerCase() === 'y');
-        });
-    });
+    try {
+        const answer = await rl.question(chalk.yellow(`\n⚠️  ${message} (y/N) `));
+        return answer.toLowerCase() === 'y';
+    } finally {
+        rl.close();
+    }
 }
+
