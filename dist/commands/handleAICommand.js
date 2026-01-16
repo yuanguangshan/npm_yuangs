@@ -14,6 +14,7 @@ const risk_1 = require("../core/risk");
 const autofix_1 = require("../core/autofix");
 const confirm_1 = require("../utils/confirm");
 const history_1 = require("../utils/history");
+const validation_1 = require("../core/validation");
 function validateAIPlan(obj) {
     return (typeof obj === 'object' &&
         obj !== null &&
@@ -30,29 +31,15 @@ async function handleAICommand(userInput, options) {
         const prompt = (0, prompt_1.buildCommandPrompt)(userInput, os);
         const raw = await (0, client_1.askAI)(prompt, options.model);
         spinner.stop();
-        let plan;
-        try {
-            // Extract JSON logic
-            let jsonContent = raw;
-            if (raw.includes('```json')) {
-                jsonContent = raw.split('```json')[1].split('```')[0].trim();
-            }
-            else if (raw.includes('```')) {
-                jsonContent = raw.split('```')[1].split('```')[0].trim();
-            }
-            const parsed = JSON.parse(jsonContent);
-            if (!validateAIPlan(parsed)) {
-                console.log(chalk_1.default.red('\n❌ AI 返回结构非法，已拒绝执行'));
-                console.log(chalk_1.default.gray('AI Output:'), raw);
-                return;
-            }
-            plan = parsed;
-        }
-        catch {
+        const { aiCommandPlanSchema } = require('../core/validation');
+        const parseResult = (0, validation_1.safeParseJSON)(raw, aiCommandPlanSchema, {});
+        if (!parseResult.success) {
             console.log(chalk_1.default.red('\n❌ AI 输出不是合法 JSON:'));
             console.log(raw);
+            console.log(chalk_1.default.gray('\n验证错误: ' + parseResult.error.issues.map((e) => e.message).join(', ')));
             return;
         }
+        const plan = parseResult.data;
         // 2️⃣ 风险兜底
         const finalRisk = (0, risk_1.assessRisk)(plan.command, plan.risk);
         // 3️⃣ 展示给用户
@@ -117,7 +104,8 @@ async function handleAICommand(userInput, options) {
         return result;
     }
     catch (error) {
-        spinner.fail(chalk_1.default.red('发生错误: ' + error.message));
+        const message = error instanceof Error ? error.message : String(error);
+        spinner.fail(chalk_1.default.red('发生错误: ' + message));
     }
 }
 //# sourceMappingURL=handleAICommand.js.map

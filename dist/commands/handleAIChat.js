@@ -65,7 +65,8 @@ async function handleAIChat(initialQuestion, model) {
                 await askOnceStream(trimmed, model);
             }
             catch (err) {
-                console.error(chalk_1.default.red(`\n[AI execution error]: ${err.message}`));
+                const message = err instanceof Error ? err.message : String(err);
+                console.error(chalk_1.default.red(`\n[AI execution error]: ${message}`));
             }
             finally {
                 // Always resume input
@@ -74,7 +75,8 @@ async function handleAIChat(initialQuestion, model) {
         }
     }
     catch (criticalErr) {
-        console.error(chalk_1.default.red(`\n[Critical Loop Error]: ${criticalErr.message}`));
+        const message = criticalErr instanceof Error ? criticalErr.message : String(criticalErr);
+        console.error(chalk_1.default.red(`\n[Critical Loop Error]: ${message}`));
     }
     finally {
         rl.close();

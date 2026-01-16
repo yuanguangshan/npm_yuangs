@@ -1,19 +1,16 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { parseCommandHistory, type HistoryEntry } from '../core/validation';
 
 const HISTORY_FILE = path.join(os.homedir(), '.yuangs_cmd_history.json');
 
-export type HistoryEntry = {
-    question: string;
-    command: string;
-    time: string;
-};
+export type { HistoryEntry };
 
 export function getCommandHistory(): HistoryEntry[] {
     if (fs.existsSync(HISTORY_FILE)) {
         try {
-            return JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf8'));
+            return parseCommandHistory(fs.readFileSync(HISTORY_FILE, 'utf8'));
         } catch (e) { }
     }
     return [];

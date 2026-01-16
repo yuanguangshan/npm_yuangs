@@ -8,7 +8,7 @@ import { assessRisk } from '../core/risk';
 import { autoFixCommand } from '../core/autofix';
 import { confirm } from '../utils/confirm';
 import { saveHistory } from '../utils/history';
-import { AICommandPlan } from '../ai/types';
+import { safeParseJSON, AICommandPlan } from '../core/validation';
 
 function validateAIPlan(obj: any): obj is AICommandPlan {
     return (
@@ -34,28 +34,17 @@ export async function handleAICommand(
         const raw = await askAI(prompt, options.model);
         spinner.stop();
 
-        let plan: AICommandPlan;
-        try {
-            // Extract JSON logic
-            let jsonContent = raw;
-            if (raw.includes('```json')) {
-                jsonContent = raw.split('```json')[1].split('```')[0].trim();
-            } else if (raw.includes('```')) {
-                jsonContent = raw.split('```')[1].split('```')[0].trim();
-            }
-            const parsed = JSON.parse(jsonContent);
+        const { aiCommandPlanSchema } = require('../core/validation');
+        const parseResult = safeParseJSON(raw, aiCommandPlanSchema, {} as AICommandPlan);
 
-            if (!validateAIPlan(parsed)) {
-                console.log(chalk.red('\n❌ AI 返回结构非法，已拒绝执行'));
-                console.log(chalk.gray('AI Output:'), raw);
-                return;
-            }
-            plan = parsed;
-        } catch {
+        if (!parseResult.success) {
             console.log(chalk.red('\n❌ AI 输出不是合法 JSON:'));
             console.log(raw);
+            console.log(chalk.gray('\n验证错误: ' + parseResult.error.issues.map((e: any) => e.message).join(', ')));
             return;
         }
+
+        const plan = parseResult.data;
 
         // 2️⃣ 风险兜底
         const finalRisk = assessRisk(plan.command, plan.risk);
@@ -137,7 +126,8 @@ export async function handleAICommand(
         }
 
         return result;
-    } catch (error: any) {
-        spinner.fail(chalk.red('发生错误: ' + error.message));
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        spinner.fail(chalk.red('发生错误: ' + message));
     }
 }

@@ -1,7 +1,7 @@
 import { OSProfile } from './os';
 import { buildFixPrompt } from '../ai/prompt';
 import { askAI } from '../ai/client';
-import { AICommandPlan } from '../ai/types';
+import { safeParseJSON, AICommandPlan, aiCommandPlanSchema } from './validation';
 
 export async function autoFixCommand(
     originalCmd: string,
@@ -12,17 +12,11 @@ export async function autoFixCommand(
     const prompt = buildFixPrompt(originalCmd, stderr, os);
     const raw = await askAI(prompt, model);
 
-    try {
-        // Extract JSON if AI wrapped it in triple backticks
-        let jsonContent = raw;
-        if (raw.includes('```json')) {
-            jsonContent = raw.split('```json')[1].split('```')[0].trim();
-        } else if (raw.includes('```')) {
-            jsonContent = raw.split('```')[1].split('```')[0].trim();
-        }
+    const parseResult = safeParseJSON(raw, aiCommandPlanSchema, {} as AICommandPlan);
 
-        return JSON.parse(jsonContent);
-    } catch {
+    if (!parseResult.success) {
         return null;
     }
+
+    return parseResult.data;
 }

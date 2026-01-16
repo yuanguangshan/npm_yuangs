@@ -3,22 +3,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.autoFixCommand = autoFixCommand;
 const prompt_1 = require("../ai/prompt");
 const client_1 = require("../ai/client");
+const validation_1 = require("./validation");
 async function autoFixCommand(originalCmd, stderr, os, model) {
     const prompt = (0, prompt_1.buildFixPrompt)(originalCmd, stderr, os);
     const raw = await (0, client_1.askAI)(prompt, model);
-    try {
-        // Extract JSON if AI wrapped it in triple backticks
-        let jsonContent = raw;
-        if (raw.includes('```json')) {
-            jsonContent = raw.split('```json')[1].split('```')[0].trim();
-        }
-        else if (raw.includes('```')) {
-            jsonContent = raw.split('```')[1].split('```')[0].trim();
-        }
-        return JSON.parse(jsonContent);
-    }
-    catch {
+    const parseResult = (0, validation_1.safeParseJSON)(raw, validation_1.aiCommandPlanSchema, {});
+    if (!parseResult.success) {
         return null;
     }
+    return parseResult.data;
 }
 //# sourceMappingURL=autofix.js.map

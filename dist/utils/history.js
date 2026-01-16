@@ -8,11 +8,12 @@ exports.saveHistory = saveHistory;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const os_1 = __importDefault(require("os"));
+const validation_1 = require("../core/validation");
 const HISTORY_FILE = path_1.default.join(os_1.default.homedir(), '.yuangs_cmd_history.json');
 function getCommandHistory() {
     if (fs_1.default.existsSync(HISTORY_FILE)) {
         try {
-            return JSON.parse(fs_1.default.readFileSync(HISTORY_FILE, 'utf8'));
+            return (0, validation_1.parseCommandHistory)(fs_1.default.readFileSync(HISTORY_FILE, 'utf8'));
         }
         catch (e) { }
     }
