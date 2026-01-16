@@ -32,7 +32,7 @@
   "bugs": {
     "url": "https://github.com/yuanguangshan/npm_yuangs/issues"
   },
-  "homepage": "https://github.com/yauangshan/npm_yuangs#readme",
+  "homepage": "https://github.com/yuanguangshan/npm_yuangs#readme",
   "dependencies": {
     "axios": "^1.13.2",
     "chalk": "^4.1.2",
