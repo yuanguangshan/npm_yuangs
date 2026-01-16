@@ -16,7 +16,8 @@
     "dev": "ts-node src/cli.ts",
     "build": "tsc",
     "prepublishOnly": "npm run build",
-    "test": "jest"
+    "test": "jest",
+    "verify": "./verify.sh"
   },
   "keywords": [
     "yuangs",
