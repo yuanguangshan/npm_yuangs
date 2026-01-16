@@ -59,13 +59,17 @@ async function handleAICommand(userInput, options) {
         console.log(chalk_1.default.bold.cyan('\n🧠 计划: ') + plan.plan);
         console.log(chalk_1.default.bold.green('💻 命令: ') + chalk_1.default.yellow(plan.command));
         const riskColor = finalRisk === 'high' ? chalk_1.default.red : (finalRisk === 'medium' ? chalk_1.default.yellow : chalk_1.default.green);
-        console.log(chalk_1.default.bold('⚠️  风险: ') + riskColor(finalRisk.toUpperCase()));
+        console.log(chalk_1.default.bold('⚠️  风险判断: ') + riskColor(finalRisk.toUpperCase()));
         // Check Dry Run
         if (options.dryRun) {
             console.log(chalk_1.default.gray('\n[Dry Run] 仅模拟，不执行命令。'));
             return;
         }
         // 4️⃣ 确认
+        console.log(chalk_1.default.gray('─'.repeat(50)));
+        console.log(chalk_1.default.yellow('⚠️  注意: 以上命令由 AI 生成，请在执行前仔细检查。'));
+        console.log(chalk_1.default.gray('   AI 可能会犯错，安全由您掌控。'));
+        console.log(chalk_1.default.gray('─'.repeat(50)));
         let shouldExecute = options.execute || options.autoYes;
         // If high risk, maybe force confirm even with autoYes? 
         // For now, let's respect autoYes as the "I know what I'm doing" flag.

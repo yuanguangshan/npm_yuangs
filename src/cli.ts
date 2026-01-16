@@ -25,19 +25,84 @@ const isAutoYes = hasFlag(['--yes', '-y']);
 const isLastHistory = hasFlag(['--last']);
 
 function printHelp() {
-    console.log(chalk.bold.cyan('\n🎨 苑广山的个人应用启动器 (Modular TS版)\n'));
-    console.log(chalk.yellow(`当前版本: ${version}`));
-    console.log(chalk.white('使用方法:') + chalk.gray(' yuangs <命令> [参数]\n'));
-    console.log(chalk.bold('命令列表:'));
-    console.log(`  ${chalk.green('ai')} "<问题>"      向 AI 提问`);
-    console.log(`    ${chalk.gray('-e')}              生成并执行 Linux 命令 (OS 感知)`);
-    console.log(`    ${chalk.gray('--dry-run')}       仅模拟不执行`);
-    console.log(`    ${chalk.gray('--yes, -y')}       自动确认`);
-    console.log(`  ${chalk.green('list')}              列出所有应用`);
-    console.log(`  ${chalk.green('history')}           查看命令历史`);
-    console.log(`    ${chalk.gray('--last')}          查看并重新执行上一条命令`);
-    console.log(`  ${chalk.green('config')}            管理本地配置 (~/.yuangs.json)`);
-    console.log(`  ${chalk.green('help')}              显示帮助信息\n`);
+    console.log(chalk.bold.cyan('\nyuangs CLI — Personal Command Line Toolkit'));
+    console.log(chalk.gray('─'.repeat(50)));
+    console.log(chalk.white('A lightweight CLI that combines:'));
+    console.log(`• ${chalk.blue('App launcher')}`);
+    console.log(`• ${chalk.green('AI assistant')}`);
+    console.log(`• ${chalk.yellow('Command helper')}\n`);
+
+    console.log(chalk.italic.gray('Design philosophy:'));
+    console.log(chalk.italic.gray('AI suggests, you decide.\n'));
+
+    console.log(chalk.bold('Usage:'));
+    console.log(chalk.white(`  yuangs <command> [options]\n`));
+
+    console.log(chalk.gray('─'.repeat(50)));
+    console.log(chalk.bold('Core Commands\n'));
+    console.log(`  ${chalk.green('shici'.padEnd(16))} Open Chinese poetry PWA`);
+    console.log(`  ${chalk.green('dict'.padEnd(16))} Open English dictionary`);
+    console.log(`  ${chalk.green('pong'.padEnd(16))} Open Pong game\n`);
+
+    console.log(`  ${chalk.green('ai'.padEnd(16))} Ask AI questions / analyze output`);
+    console.log(`  ${chalk.green('ai -e'.padEnd(16))} Let AI generate shell commands (manual confirm)\n`);
+
+    console.log(`  ${chalk.green('list'.padEnd(16))} List all available apps`);
+    console.log(`  ${chalk.green('help'.padEnd(16))} Show this help message\n`);
+
+    console.log(chalk.gray('─'.repeat(50)));
+    console.log(chalk.bold('AI Command\n'));
+    console.log(`  ${chalk.white('yuangs ai "your question"')}`);
+    console.log(chalk.gray('      Ask AI directly (safe, no side effects)\n'));
+
+    console.log(`  ${chalk.white('yuangs ai')}`);
+    console.log(chalk.gray('      Interactive chat mode\n'));
+
+    console.log(`  ${chalk.white('yuangs ai -e "task description"')}`);
+    console.log(chalk.gray('      Generate shell command and prefill for execution'));
+    console.log(chalk.gray('      (command is NOT executed automatically)\n'));
+
+    console.log(`  ${chalk.white('cat file | yuangs ai "explain this"')}`);
+    console.log(chalk.gray('      Pipe command output to AI for analysis\n'));
+
+    console.log(chalk.bold('Options:'));
+    console.log(`  ${chalk.gray('-p'.padEnd(16))} Use gemini-pro-latest`);
+    console.log(`  ${chalk.gray('-f'.padEnd(16))} Use gemini-flash-latest`);
+    console.log(`  ${chalk.gray('-l'.padEnd(16))} Use gemini-flash-lite-latest`);
+    console.log(`  ${chalk.gray('-m, --model'.padEnd(16))} Specify model explicitly\n`);
+
+    console.log(chalk.gray('─'.repeat(50)));
+    console.log(chalk.bold('Macros (Shortcuts)\n'));
+    console.log(`  ${chalk.white('yuangs save <name>')}   Save a complex command as a macro`);
+    console.log(`  ${chalk.white('yuangs run <name>')}    Run a saved macro`);
+    console.log(`  ${chalk.white('yuangs macros')}        List all saved macros\n`);
+
+    console.log(chalk.gray('─'.repeat(50)));
+    console.log(chalk.bold('Configuration\n'));
+    console.log(`  ${chalk.white('yuangs config <key> <value>')}   Update configuration\n`);
+    console.log(chalk.bold('Common keys:'));
+    console.log(`  ${chalk.gray('defaultModel'.padEnd(16))} Default AI model`);
+    console.log(`  ${chalk.gray('aiProxyUrl'.padEnd(16))} Custom AI endpoint`);
+    console.log(`  ${chalk.gray('accountType'.padEnd(16))} free | pro\n`);
+
+    console.log(chalk.gray('─'.repeat(50)));
+    console.log(chalk.bold('Custom Apps\n'));
+    console.log(chalk.gray('  Define your own apps in:'));
+    console.log(chalk.gray('    .yuangs.json, yuangs.config.json, ~/.yuangs.json\n'));
+    console.log(chalk.gray('  Then run:'));
+    console.log(`    ${chalk.white('yuangs <appName>')}\n`);
+
+    console.log(chalk.gray('─'.repeat(50)));
+    console.log(chalk.bold('Examples\n'));
+    console.log(`  ${chalk.gray('yuangs ai "Who is Li Bai?"')}`);
+    console.log(`  ${chalk.gray('yuangs ai -e "find files larger than 100M"')}`);
+    console.log(`  ${chalk.gray('ls -la | yuangs ai "summarize these files"')}`);
+    console.log(`  ${chalk.gray('yuangs save deploy')}`);
+    console.log(`  ${chalk.gray('yuangs run deploy')}\n`);
+
+    console.log(chalk.gray('─'.repeat(50)));
+    console.log(`${chalk.bold('Version:')} ${chalk.yellow(version)}`);
+    console.log(`${chalk.bold('Repository:')} ${chalk.blue('https://github.com/yuanguangshan/yuangs')}\n`);
 }
 
 async function readStdin(): Promise<string> {
