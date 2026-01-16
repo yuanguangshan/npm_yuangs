@@ -51,14 +51,60 @@ yuangs ai
 - 直接输入问题进行对话
 - 输入 `/clear` 清空对话历史
 - 输入 `/history` 查看对话历史
-### 命令生成模式（v1.3.32）
+### 命令生成模式
 
-使用 `-e` 参数让 AI 为你生成 Linux 命令：
+使用 `-e` 参数让 AI 为你生成 Linux 命令。现在支持生成后自动复制到剪贴板，并预填到输入行供你确认执行：
 
 ```bash
 yuangs ai -e "查看当前目录下大于100M的文件"
-# 输出: > find . -type f -size +100M
+# 1. 自动生成: > find . -type f -size +100M
+# 2. 自动复制到剪贴板
+# 3. 预填到下方，按回车即可执行
 ```
+
+### 管道模式 (Pipe Mode)
+
+支持将前一个命令的输出通过管道传给 AI 进行分析：
+
+```bash
+cat error.log | yuangs ai "解释这个报错"
+ls -la | yuangs ai "帮我总结这些文件"
+```
+
+### 流式输出与 Markdown 渲染
+
+所有 AI 回复默认开启流式输出（打字机效果），并在回答结束后自动进行 Markdown 渲染（包含代码高亮、表格格式化等）。
+
+## 快捷指令 (Macros)
+
+可以将常用的复杂命令保存为快捷指令：
+
+```bash
+# 创建快捷指令 (支持多行命令)
+yuangs save deploy
+# > 请输入要保存的命令:
+# > npm run build && git add . && git commit -m "deploy" && git push
+
+# 执行快捷指令
+yuangs run deploy
+
+# 查看所有指令
+yuangs macros
+```
+
+## 配置管理
+
+使用 `config` 命令快速修改 AI 配置：
+
+```bash
+yuangs config defaultModel Assistant
+yuangs config accountType pro
+```
+
+配置项说明：
+- `defaultModel`: 默认使用的 AI 模型 (默认为 `Assistant`)
+- `aiProxyUrl`: 自定义 AI 接口地址
+- `accountType`: 账户类型 (free/pro)
 
 ## 应用列表
 
@@ -126,9 +172,12 @@ yuangs mail        # 打开邮箱
 
 ## 近期主要更新日志
 
-### v1.3.32 (2026-01-16)
-- **新增** AI 命令生成模式：使用 `yuangs ai -e <描述>` 快速生成 Linux 命令。
-- **优化** AI 接口升级：全面迁移至 OpenAI 兼容接口，提升稳定性。
+### v1.3.38 (2026-01-16)
+- **新增** 快捷指令系统 (`save`/`run`/`macros`)，支持保存复杂命令。
+- **新增** 管道模式：支持 `cat file | yuangs ai` 分析内容。
+- **新增** AI 流式输出 + Markdown 终端渲染，体验对齐 ChatGPT 网页版。
+- **新增** `config` 命令，方便管理 AI 配置。
+- **优化** 命令生成模式 (`-e`) 增加剪贴板自动复制和预填执行功能。
 
 ### v1.3.22 (2025-11-30)
 - **新增** AI 命令支持 `-p` `-f` `-l` 简写，快速选择gemini默认模型

@@ -4,5 +4,8 @@
   "pong": "https://wealth.want.biz/pages/pong.html",
   "github": "https://github.com",
   "calendar": "https://calendar.google.com",
-  "mail": "https://mail.google.com"
+  "mail": "https://mail.google.com",
+  "aiProxyUrl": "https://aiproxy.want.biz/v1/chat/completions",
+  "defaultModel": "Assistant",
+  "accountType": "free"
 }

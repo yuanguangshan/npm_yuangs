@@ -8,6 +8,11 @@ github: "https://github.com"
 calendar: "https://calendar.google.com"
 mail: "https://mail.google.com"
 
+# AI Configuration
+aiProxyUrl: "https://aiproxy.want.biz/v1/chat/completions"
+defaultModel: "Assistant"
+accountType: "free"
+
 # You can also use the apps property if you prefer to group them
 # apps:
 #   shici: "https://wealth.want.biz/shici/index.html"
