@@ -101,21 +101,36 @@ async function askOnceStream(question: string, model?: string) {
     let fullResponse = '';
 
     try {
+        // 显示流式输出（打字机效果）
+        let isFirstOutput = true;
         await callAI_Stream(messages, model, (chunk) => {
             if (spinner.isSpinning) {
                 spinner.stop();
-
-                // 在第一次输出前添加标签
-                process.stdout.write(chalk.bold.blue('🤖 AI：'));
+                if (isFirstOutput) {
+                    process.stdout.write(chalk.bold.blue('🤖 AI：'));
+                    isFirstOutput = false;
+                }
             }
             fullResponse += chunk;
-
-            // 由于流式输出的限制，我们不能完美地渲染 Markdown（因为 Markdown 需要完整的上下文）
-            // 所以我们先输出原始内容，然后在最后重新渲染格式化的内容
-            // 但为了避免覆盖用户输入，我们只在内部缓存
+            // 实现流式输出
+            process.stdout.write(chunk);
         });
 
-        // 在完整响应接收完成后，渲染整个响应以应用 Markdown 格式
+        // 计算流式输出占用的行数
+        const lines = fullResponse.split('\n');
+        const lineCount = lines.length;
+
+        // 移动光标到输出开始的位置并清除内容
+        // \x1b[A 是向上移动一行
+        // \x1b[K 是清除从光标到行尾的内容
+        for (let i = 0; i < lineCount; i++) {
+            process.stdout.write('\x1b[A\x1b[K'); // Move up one line and clear it
+        }
+
+        // 额外清除 "🤖 AI：" 这一行
+        process.stdout.write('\x1b[A\x1b[K');
+
+        // 输出格式化的 AI 响应
         process.stdout.write(chalk.bold.blue('🤖 AI：'));
         const formattedResponse = marked.parse(fullResponse, { async: false });
         process.stdout.write(formattedResponse);
