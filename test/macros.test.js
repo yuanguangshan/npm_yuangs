@@ -1,5 +1,5 @@
 const fs = require('fs');
-const yuangs = require('../index.js');
+const yuangs = require('../dist/core/macros');
 const path = require('path');
 const os = require('os');
 
@@ -46,7 +46,8 @@ describe('Module: Macros', () => {
         const mockData = {
             "demo": {
                 "commands": "ls -la",
-                "description": "list files"
+                "description": "list files",
+                "createdAt": "2024-01-01T00:00:00.000Z"
             }
         };
         fs.existsSync.mockReturnValue(true);
@@ -58,8 +59,8 @@ describe('Module: Macros', () => {
 
     test('should delete a macro', () => {
         const mockData = {
-            "todelete": { "commands": "rm -rf /" },
-            "keep": { "commands": "echo safe" }
+            "todelete": { "commands": "rm -rf /", "description": "dangerous", "createdAt": "2024-01-01T00:00:00.000Z" },
+            "keep": { "commands": "echo safe", "description": "safe", "createdAt": "2024-01-01T00:00:00.000Z" }
         };
         fs.existsSync.mockReturnValue(true);
         fs.readFileSync.mockReturnValue(JSON.stringify(mockData));
