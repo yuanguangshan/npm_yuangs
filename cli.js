@@ -2,10 +2,42 @@
 
 const yuangs = require('./index.js');
 const chalk = require('chalk');
-const { version } = require('./package.json'); // 引入版本号
+const { version } = require('./package.json');
+const fs = require('fs');
+const path = require('path');
+const ora = require('ora').default;
+const { marked } = require('marked');
+const TerminalRenderer = require('marked-terminal').default;
+const { exec } = require('child_process');
+
+marked.setOptions({
+    renderer: new TerminalRenderer({
+        code: chalk.yellow,
+        heading: chalk.magenta.bold,
+        firstHeading: chalk.magenta.underline.bold,
+        listitem: chalk.cyan,
+        table: chalk.white,
+        strong: chalk.bold.red,
+        em: chalk.italic
+    })
+});
 
 const args = process.argv.slice(2);
 const command = args[0];
+
+async function readStdin() {
+    if (process.stdin.isTTY) return '';
+    return new Promise((resolve) => {
+        let data = '';
+        process.stdin.setEncoding('utf8');
+        process.stdin.on('data', (chunk) => {
+            data += chunk;
+        });
+        process.stdin.on('end', () => {
+            resolve(data);
+        });
+    });
+}
 
 function printHelp() {
     console.log(chalk.bold.cyan('\n🎨 苑广山的个人应用启动器\n'));
@@ -35,6 +67,11 @@ function printHelp() {
     console.log(`    ${chalk.gray('--model, -m <模型名称>')}  指定 AI 模型 (可选)`);
     console.log(`    ${chalk.gray('-p -f -l')}  指定 pro,flash,lite 模型 (可选)`);
     console.log(`    ${chalk.gray('-e <描述>')}         生成 Linux 命令`);
+    console.log(`  ${chalk.green('config')} <key> <value>  设置配置项`);
+    console.log(`  ${chalk.green('history')}           查看命令历史`);
+    console.log(`  ${chalk.green('save')} <名称>         创建快捷指令`);
+    console.log(`  ${chalk.green('run')} <名称>          执行快捷指令`);
+    console.log(`  ${chalk.green('macros')}            查看所有快捷指令`);
     console.log(`  ${chalk.green('help')}              显示帮助信息\n`);
     console.log(chalk.bold('AI 交互模式命令:'));
     console.log(`    ${chalk.gray('/clear')}           清空对话历史`);
@@ -51,50 +88,83 @@ function printSuccess(app, url) {
 }
 
 async function askOnce(question, model) {
-    const startTime = Date.now(); // Record start time
+    const startTime = Date.now();
     let i = 0;
     const spinner = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
     const interval = setInterval(() => {
-        const elapsedTime = Math.floor((Date.now() - startTime) / 1000); // Calculate elapsed time in seconds
+        const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
         process.stdout.write(chalk.cyan(`\r${spinner[i++ % spinner.length]} 正在请求 AI，请稍候... (${elapsedTime}s}`));
     }, 100);
 
     try {
-        // For single requests (non-interactive mode), we may want to include history
-        // For now, use history for all requests, but we could make this configurable
         const answer = await yuangs.getAIAnswer(question, model, true);
         clearInterval(interval);
 
-        // Clear the spinner line if possible
         if (process.stdout.clearLine) {
             process.stdout.clearLine(0);
             process.stdout.cursorTo(0);
         } else {
-            process.stdout.write('\r'); // Fallback to just carriage return
+            process.stdout.write('\r');
         }
 
-        const totalElapsedTime = (Date.now() - startTime) / 1000; // Calculate total elapsed time
+        const totalElapsedTime = (Date.now() - startTime) / 1000;
         if (answer && answer.explanation) {
-            console.log(chalk.bold.green('🤖 AI 回答:\n'));
-            console.log(answer.explanation);
+            console.log(marked(answer.explanation));
         } else {
             console.log(chalk.yellow('AI 未返回有效内容。'));
         }
-        console.log(chalk.gray(`\n请求耗时: ${totalElapsedTime.toFixed(2)}s\n`)); // Display total elapsed time
+        console.log(chalk.gray(`\n请求耗时: ${totalElapsedTime.toFixed(2)}s\n`));
     } catch (error) {
         clearInterval(interval);
 
-        // Clear the spinner line if possible
         if (process.stdout.clearLine) {
             process.stdout.clearLine(0);
             process.stdout.cursorTo(0);
         } else {
-            process.stdout.write('\r'); // Fallback to just carriage return
+            process.stdout.write('\r');
         }
 
-        const totalElapsedTime = (Date.now() - startTime) / 1000; // Calculate total elapsed time on error
+        const totalElapsedTime = (Date.now() - startTime) / 1000;
         console.error(chalk.red('处理 AI 请求时出错:'), error.message || error);
-        console.log(chalk.gray(`\n请求耗时: ${totalElapsedTime.toFixed(2)}s\n`)); // Display total elapsed time on error
+        console.log(chalk.gray(`\n请求耗时: ${totalElapsedTime.toFixed(2)}s\n`));
+    }
+}
+
+async function askOnceStream(question, model) {
+    const startTime = Date.now();
+    let messages = [...yuangs.getConversationHistory()];
+    messages.push({ role: 'user', content: question });
+
+    const spinner = ora(chalk.cyan('AI 正在思考...')).start();
+    let fullResponse = '';
+    let firstChunk = true;
+
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    try {
+        await yuangs.callAI_Stream(messages, model, (chunk) => {
+            if (spinner.isSpinning) {
+                spinner.stop();
+            }
+            fullResponse += chunk;
+            process.stdout.write(chunk);
+        });
+
+        yuangs.addToConversationHistory('user', question);
+        yuangs.addToConversationHistory('assistant', fullResponse);
+
+        // 打印优美的分割线和 Markdown 渲染结果
+        console.log('');
+        console.log(chalk.gray('─'.repeat(Math.min(80, process.stdout.columns || 80))));
+        console.log(marked(fullResponse));
+
+        const totalElapsedTime = (Date.now() - startTime) / 1000;
+        console.log(chalk.gray(`\n\n请求耗时: ${totalElapsedTime.toFixed(2)}s\n`));
+    } catch (error) {
+        if (spinner.isSpinning) {
+            spinner.fail(chalk.red('AI 响应出错'));
+        }
+        console.error(error.message);
     }
 }
 
@@ -104,6 +174,12 @@ async function handleAICommand() {
     let model = null;
     let questionParts = commandArgs;
     let isExecMode = false;
+
+    const stdinContent = await readStdin();
+
+    if (stdinContent) {
+        questionParts.unshift(stdinContent);
+    }
 
     // Check for -e flag
     const execIndex = commandArgs.indexOf('-e');
@@ -218,11 +294,13 @@ async function handleAICommand() {
 
                 const { spawn } = require('child_process');
                 console.log(chalk.gray('正在执行...'));
-                // Use shell: true to support pipes, redirects, etc.
                 const child = spawn(finalCommand, [], { shell: true, stdio: 'inherit' });
 
                 child.on('close', (code) => {
-                    if (code !== 0) {
+                    if (code === 0) {
+                        yuangs.saveSuccessfulCommand(question, finalCommand);
+                        console.log(chalk.green('\n✓ 执行成功并已存入历史库'));
+                    } else {
                         console.log(chalk.red(`\n命令执行失败 (退出码: ${code})`));
                     }
                     process.exit(code);
@@ -288,11 +366,10 @@ async function handleAICommand() {
                 }
 
                 if (!trimmed) {
-                    return askLoop(); // 空输入则重新询问
+                    return askLoop();
                 }
 
-                // 等待回答完成后，再开启下一轮询问
-                await askOnce(trimmed, model);
+                await askOnceStream(trimmed, model);
                 askLoop();
             });
         };
@@ -303,7 +380,7 @@ async function handleAICommand() {
     }
 
     // 有问题时，直接请求一次
-    await askOnce(question, model);
+    await askOnceStream(question, model);
 }
 
 // Check if the command matches one of the configured apps
@@ -333,13 +410,143 @@ switch (command) {
     case 'ai':
         handleAICommand();
         break;
+    case 'config':
+        const key = args[1];
+        const value = args[2];
+        if (!key || !value) {
+            console.log(chalk.cyan('\n⚙️  配置帮助: yuangs config <key> <value>'));
+            console.log(chalk.gray('当前配置:'), yuangs.getUserConfig());
+            console.log(chalk.gray('\n可用配置:'));
+            console.log(chalk.gray('  defaultModel  默认AI模型 (如: Assistant, gemini-pro-latest)'));
+            console.log(chalk.gray('  aiProxyUrl    AI代理地址'));
+            console.log(chalk.gray('  accountType   账户类型 (如: free, pro)\n'));
+            break;
+        }
+        const config = yuangs.getUserConfig();
+        config[key] = value;
+        fs.writeFileSync(path.join(require('os').homedir(), '.yuangs.json'), JSON.stringify(config, null, 2));
+        console.log(chalk.green(`✓ 已更新 ${key}`));
+        break;
+    case 'history':
+        const history = yuangs.getCommandHistory();
+        if (history.length === 0) {
+            console.log(chalk.gray('暂无命令历史\n'));
+        } else {
+            console.log(chalk.bold.cyan('\n📋 命令历史\n'));
+            console.log(chalk.gray('─────────────────────────────────────────────────'));
+            history.forEach((item, index) => {
+                console.log(chalk.white(`${index + 1}. ${item.command}`));
+                console.log(chalk.gray(`   问题: ${item.question}`));
+                console.log(chalk.gray(`   时间: ${item.time}\n`));
+            });
+            console.log(chalk.gray('─────────────────────────────────────────────────\n'));
+        }
+        break;
+    case 'save':
+        const macroName = args[1];
+        if (!macroName) {
+            console.log(chalk.red('\n错误: 请指定快捷指令名称'));
+            console.log(chalk.gray('用法: yuangs save <名称>\n'));
+            break;
+        }
+
+        const readline = require('readline');
+        const saveRl = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout
+        });
+
+        console.log(chalk.cyan(`\n正在创建快捷指令 "${macroName}"...`));
+        console.log(chalk.gray('请输入要保存的命令（多行命令用 && 或 ; 分隔，输入空行结束）:\n'));
+
+        let commandLines = [];
+        const askCommand = () => {
+            saveRl.question(chalk.green('> '), (line) => {
+                if (line.trim() === '') {
+                    if (commandLines.length === 0) {
+                        console.log(chalk.yellow('\n未输入命令，已取消'));
+                        saveRl.close();
+                        return;
+                    }
+
+                    saveRl.question(chalk.cyan('请输入描述（可选）: '), (desc) => {
+                        const commands = commandLines.map(cmd => cmd.trim()).join(' && ');
+                        yuangs.saveMacro(macroName, commands, desc.trim());
+                        console.log(chalk.green(`\n✓ 快捷指令 "${macroName}" 已保存\n`));
+                        saveRl.close();
+                    });
+                    return;
+                }
+                commandLines.push(line);
+                askCommand();
+            });
+        };
+        askCommand();
+        break;
+    case 'run':
+        const runMacroName = args[1];
+        if (!runMacroName) {
+            console.log(chalk.red('\n错误: 请指定快捷指令名称'));
+            console.log(chalk.gray('用法: yuangs run <名称>\n'));
+            break;
+        }
+
+        const macros = yuangs.getMacros();
+        if (!macros[runMacroName]) {
+            console.log(chalk.red(`\n错误: 快捷指令 "${runMacroName}" 不存在`));
+            console.log(chalk.gray('使用 "yuangs macros" 查看所有快捷指令\n'));
+            break;
+        }
+
+        const macro = macros[runMacroName];
+        console.log(chalk.cyan(`\n执行快捷指令: ${runMacroName}`));
+        if (macro.description) {
+            console.log(chalk.gray(`描述: ${macro.description}`));
+        }
+        console.log(chalk.gray(`命令: ${macro.commands}\n`));
+
+        const { spawn } = require('child_process');
+        const child = spawn(macro.commands, [], { shell: true, stdio: 'inherit' });
+
+        child.on('close', (code) => {
+            if (code !== 0) {
+                console.error(chalk.red(`\n快捷指令执行失败 (退出码: ${code})`));
+                process.exit(code);
+            }
+        });
+        break;
+    case 'macros':
+        const allMacros = yuangs.getMacros();
+        const macroNames = Object.keys(allMacros);
+
+        if (macroNames.length === 0) {
+            console.log(chalk.gray('暂无快捷指令\n'));
+            console.log(chalk.gray('使用 "yuangs save <名称>" 创建快捷指令\n'));
+            break;
+        }
+
+        console.log(chalk.bold.cyan('\n🚀 快捷指令列表\n'));
+        console.log(chalk.gray('─────────────────────────────────────────────────'));
+        macroNames.forEach(name => {
+            const m = allMacros[name];
+            console.log(chalk.white(`  ${name}`));
+            if (m.description) {
+                console.log(chalk.gray(`    描述: ${m.description}`));
+            }
+            console.log(chalk.gray(`    命令: ${m.commands}`));
+            console.log('');
+        });
+        console.log(chalk.gray('─────────────────────────────────────────────────\n'));
+        console.log(chalk.gray('使用:'));
+        console.log(chalk.gray('  yuangs run <名称>  执行快捷指令'));
+        console.log(chalk.gray('  yuangs save <名称>  创建新快捷指令\n'));
+        break;
     case 'help':
     case '--help':
     case '-h':
         printHelp();
         break;
     default:
-        // If it's an app command but not one of the named ones, handle it with the dynamic function
         if (isAppCommand) {
             printSuccess(command, yuangs.urls[command]);
             yuangs.openApp(command);

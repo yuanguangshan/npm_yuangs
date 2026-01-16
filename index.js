@@ -2,10 +2,71 @@ const { exec } = require('child_process');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
 // Store conversation history
 // 存储结构标准为: [{ role: 'user', content: '...' }, { role: 'assistant', content: '...' }]
 let conversationHistory = [];
+
+const HISTORY_FILE = path.join(os.homedir(), '.yuangs_cmd_history.json');
+const CONFIG_FILE = path.join(os.homedir(), '.yuangs.json');
+const MACROS_FILE = path.join(os.homedir(), '.yuangs_macros.json');
+
+function getUserConfig() {
+    if (fs.existsSync(CONFIG_FILE)) {
+        try {
+            return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+        } catch (e) {}
+    }
+    return {};
+}
+
+function getCommandHistory() {
+    if (fs.existsSync(HISTORY_FILE)) {
+        try {
+            return JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf8'));
+        } catch (e) {}
+    }
+    return [];
+}
+
+function saveSuccessfulCommand(question, command) {
+    if (!command) return;
+    let history = getCommandHistory();
+    const newEntry = { question, command, time: new Date().toLocaleString() };
+    history = [newEntry, ...history.filter(item => item.command !== command)].slice(0, 5);
+    fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
+}
+
+function getMacros() {
+    if (fs.existsSync(MACROS_FILE)) {
+        try {
+            return JSON.parse(fs.readFileSync(MACROS_FILE, 'utf8'));
+        } catch (e) {}
+    }
+    return {};
+}
+
+function saveMacro(name, commands, description = '') {
+    const macros = getMacros();
+    macros[name] = {
+        commands,
+        description,
+        createdAt: new Date().toISOString()
+    };
+    fs.writeFileSync(MACROS_FILE, JSON.stringify(macros, null, 2));
+    return true;
+}
+
+function deleteMacro(name) {
+    const macros = getMacros();
+    if (macros[name]) {
+        delete macros[name];
+        fs.writeFileSync(MACROS_FILE, JSON.stringify(macros, null, 2));
+        return true;
+    }
+    return false;
+}
 
 // Default apps (fallback if no config file exists)
 const DEFAULT_APPS = {
@@ -103,21 +164,90 @@ function getConversationHistory() {
 /**
  * 通用 AI 调用函数 (OpenAI 兼容接口)
  */
+async function callAI_Stream(messages, model, onChunk) {
+    const config = getUserConfig();
+    const url = config.aiProxyUrl || 'https://aiproxy.want.biz/v1/chat/completions';
+
+    const response = await axios({
+        method: 'post',
+        url: url,
+        data: {
+            model: model || config.defaultModel || 'Assistant',
+            messages: messages,
+            stream: true
+        },
+        responseType: 'stream',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Client-ID': 'npm_yuangs',
+            'Origin': 'https://cli.want.biz',
+            'Referer': 'https://cli.want.biz/',
+            'account': config.accountType || 'free',
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1',
+            'Accept': 'application/json'
+        }
+    });
+
+    return new Promise((resolve, reject) => {
+        let buffer = '';
+        response.data.on('data', chunk => {
+            buffer += chunk.toString();
+            let lines = buffer.split('\n');
+            // 数组的最后一个元素可能是不完整的行，留到下一次处理
+            buffer = lines.pop(); 
+
+            for (const line of lines) {
+                const trimmedLine = line.trim();
+                if (trimmedLine.startsWith('data: ')) {
+                    const data = trimmedLine.slice(6);
+                    if (data === '[DONE]') {
+                        resolve();
+                        return;
+                    }
+                    try {
+                        const parsed = JSON.parse(data);
+                        const content = parsed.choices[0]?.delta?.content || '';
+                        if (content) onChunk(content);
+                    } catch (e) {
+                        // 如果这一行真的有问题，忽略它
+                    }
+                }
+            }
+        });
+        response.data.on('error', reject);
+        response.data.on('end', () => {
+             // 处理缓冲区中剩余的内容（如果有）
+            if (buffer.trim().startsWith('data: ')) {
+                 try {
+                    const data = buffer.trim().slice(6);
+                    if (data !== '[DONE]') {
+                        const parsed = JSON.parse(data);
+                        const content = parsed.choices[0]?.delta?.content || '';
+                        if (content) onChunk(content);
+                    }
+                } catch (e) {}
+            }
+            resolve();
+        });
+    });
+}
+
 async function callAI_OpenAI(messages, model) {
-    const url = 'https://aiproxy.want.biz/v1/chat/completions';
+    const config = getUserConfig();
+    const url = config.aiProxyUrl || 'https://aiproxy.want.biz/v1/chat/completions';
 
     const headers = {
         'Content-Type': 'application/json',
-        'X-Client-ID': 'npm_yuangs', // 客户端 标识
-        'Origin': 'https://cli.want.biz', // 配合后端白名单
+        'X-Client-ID': 'npm_yuangs',
+        'Origin': 'https://cli.want.biz',
         'Referer': 'https://cli.want.biz/',
-        "account": "free",
+        'account': config.accountType || 'free',
         'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1',
         'Accept': 'application/json'
     };
 
     const data = {
-        model: model || "gemini-flash-lite-latest",
+        model: model || config.defaultModel || 'Assistant',
         messages: messages,
         stream: false
     };
@@ -162,8 +292,7 @@ async function getAIAnswer(question, model, includeHistory = true) {
 }
 
 async function generateCommand(instruction, model) {
-    // 构造 System Prompt (通过 system role 或者直接在 user message 中强调)
-    // Gemini 有时对 system role 支持不同，但在 OpenAI 兼容接口下通常支持 system
+    const config = getUserConfig();
     const messages = [
         {
             role: 'system',
@@ -177,20 +306,17 @@ async function generateCommand(instruction, model) {
     ];
 
     try {
-        const response = await callAI_OpenAI(messages, model);
+        const response = await callAI_OpenAI(messages, model || config.defaultModel);
         const aiContent = response.data?.choices?.[0]?.message?.content;
 
         if (aiContent) {
-            // Clean up the output just in case the AI adds markdown or whitespace
             let command = aiContent.trim();
-            // Remove wrapping backticks if present
             if (command.startsWith('`') && command.endsWith('`')) {
                 command = command.slice(1, -1);
             }
             if (command.startsWith('```') && command.endsWith('```')) {
                 command = command.split('\n').filter(line => !line.startsWith('```')).join('\n').trim();
             }
-            // If it starts with a shell prefix like "$ " or "> ", remove it
             if (command.startsWith('$ ')) command = command.slice(2);
             if (command.startsWith('> ')) command = command.slice(2);
 
@@ -198,15 +324,12 @@ async function generateCommand(instruction, model) {
         }
         return null;
     } catch (error) {
-        // 命令生成失败不打印过多错误，返回 null 即可
-        // console.error('AI 生成命令失败:', error.message); 
         return null;
     }
 }
 
 module.exports = {
     urls: APPS,
-    // Dynamic function to open any app by key
     openApp: (appKey) => {
         const url = APPS[appKey];
         if (url) {
@@ -216,7 +339,6 @@ module.exports = {
         console.error(`App '${appKey}' not found`);
         return false;
     },
-    // Specific functions for default apps (for backward compatibility)
     openShici: () => openUrl(APPS.shici || DEFAULT_APPS.shici),
     openDict: () => openUrl(APPS.dict || DEFAULT_APPS.dict),
     openPong: () => openUrl(APPS.pong || DEFAULT_APPS.pong),
@@ -228,5 +350,12 @@ module.exports = {
     addToConversationHistory,
     clearConversationHistory,
     getConversationHistory,
-    generateCommand
+    generateCommand,
+    getUserConfig,
+    getCommandHistory,
+    saveSuccessfulCommand,
+    callAI_Stream,
+    getMacros,
+    saveMacro,
+    deleteMacro
 };
