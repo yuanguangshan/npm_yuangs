@@ -176,7 +176,22 @@ program
 program
     .command('save <name>')
     .description('保存快捷指令')
-    .action(async (name) => {
+    .option('-l, --from-last', 'save last executed AI command')
+    .action(async (name, options) => {
+    if (options.fromLast) {
+        const history = (0, history_1.getCommandHistory)();
+        if (history.length === 0) {
+            console.log(chalk_1.default.red('❌ 暂无 AI 命令历史'));
+            return;
+        }
+        const lastItem = history[0];
+        // Assume the last item in history is what we want. 
+        // The history is unshifted, so index 0 is the latest.
+        (0, macros_1.saveMacro)(name, lastItem.command, `Saved from: ${lastItem.question}`);
+        console.log(chalk_1.default.green(`✓ 已将最近一条 AI 命令保存为 "${name}"`));
+        console.log(chalk_1.default.gray(`  Command: ${lastItem.command}`));
+        return;
+    }
     const rl = require('node:readline/promises').createInterface({
         input: process.stdin,
         output: process.stdout
