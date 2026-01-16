@@ -30,15 +30,32 @@ function printHelp() {
     console.log(`  ${chalk.green('help')}              显示帮助信息\n`);
 }
 
+async function readStdin(): Promise<string> {
+    if (process.stdin.isTTY) return '';
+    return new Promise((resolve) => {
+        let data = '';
+        process.stdin.setEncoding('utf8');
+        process.stdin.on('data', chunk => data += chunk);
+        process.stdin.on('end', () => resolve(data));
+        // Safety timeout
+        setTimeout(() => resolve(data), 2000);
+    });
+}
+
 async function main() {
     const apps = loadAppsConfig();
+    const stdinData = await readStdin();
 
     switch (command) {
         case 'ai':
             const aiArgs = args.slice(1);
             const isExecMode = aiArgs.includes('-e');
             const questionParts = aiArgs.filter(a => a !== '-e');
-            const question = questionParts.join(' ').trim();
+            let question = questionParts.join(' ').trim();
+
+            if (stdinData) {
+                question = `以下是输入内容：\n\n${stdinData}\n\n我的问题是：${question || '分析以上内容'}`;
+            }
 
             if (isExecMode) {
                 await handleAICommand(question, { execute: false });
@@ -46,6 +63,9 @@ async function main() {
                 await handleAIChat(question || null);
             }
             break;
+
+
+
 
         case 'list':
             console.log(chalk.bold.cyan('\n📱 应用列表\n'));
@@ -94,14 +114,16 @@ async function main() {
                 console.log(chalk.red('\n错误: 请指定快捷指令名称'));
                 break;
             }
-            const readline = require('readline');
-            const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-            rl.question(chalk.cyan('请输入要保存的命令: '), (cmd: string) => {
-                saveMacro(macroName, cmd);
-                console.log(chalk.green(`✓ 快捷指令 "${macroName}" 已保存`));
-                rl.close();
+            const rlSave = require('node:readline/promises').createInterface({
+                input: process.stdin,
+                output: process.stdout
             });
+            const cmd = await rlSave.question(chalk.cyan('请输入要保存的命令: '));
+            saveMacro(macroName, cmd);
+            console.log(chalk.green(`✓ 快捷指令 "${macroName}" 已保存`));
+            rlSave.close();
             break;
+
 
         case 'run':
             const runName = args[1];
