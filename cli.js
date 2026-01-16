@@ -432,14 +432,51 @@ switch (command) {
         if (history.length === 0) {
             console.log(chalk.gray('暂无命令历史\n'));
         } else {
-            console.log(chalk.bold.cyan('\n📋 命令历史\n'));
+            console.log(chalk.bold.cyan('\n📋 命令历史 (输入序号可重新执行)\n'));
             console.log(chalk.gray('─────────────────────────────────────────────────'));
             history.forEach((item, index) => {
                 console.log(chalk.white(`${index + 1}. ${item.command}`));
                 console.log(chalk.gray(`   问题: ${item.question}`));
                 console.log(chalk.gray(`   时间: ${item.time}\n`));
             });
-            console.log(chalk.gray('─────────────────────────────────────────────────\n'));
+            console.log(chalk.gray('─────────────────────────────────────────────────'));
+
+            const readline = require('readline');
+            const rlHistory = readline.createInterface({
+                input: process.stdin,
+                output: process.stdout
+            });
+
+            rlHistory.question(chalk.green('👇 输入序号 (1-' + history.length + ') 或 q 退出: '), (answer) => {
+                const index = parseInt(answer) - 1;
+                if (!isNaN(index) && index >= 0 && index < history.length) {
+                    const targetCommand = history[index].command;
+                    
+                    // 核心逻辑：把命令“写”进输入流，假装是用户刚打进去的
+                    console.log(chalk.cyan(`\n✨ 已加载命令，按回车执行:`));
+                    rlHistory.write(targetCommand);
+                    
+                    rlHistory.on('line', (input) => {
+                        const finalCommand = input.trim();
+                        rlHistory.close();
+                        if (finalCommand) {
+                            const { spawn } = require('child_process');
+                            console.log(chalk.gray('正在执行...'));
+                            const child = spawn(finalCommand, [], { shell: true, stdio: 'inherit' });
+                            child.on('close', (code) => {
+                                process.exit(code);
+                            });
+                        } else {
+                            process.exit(0);
+                        }
+                    });
+                } else {
+                    rlHistory.close();
+                    if (answer.toLowerCase() !== 'q') {
+                        // 如果输错了或者是q，就退出，不报错
+                    }
+                }
+            });
         }
         break;
     case 'save':
