@@ -14,17 +14,25 @@ const risk_1 = require("../core/risk");
 const autofix_1 = require("../core/autofix");
 const confirm_1 = require("../utils/confirm");
 const history_1 = require("../utils/history");
+function validateAIPlan(obj) {
+    return (typeof obj === 'object' &&
+        obj !== null &&
+        typeof obj.plan === 'string' &&
+        typeof obj.command === 'string' &&
+        ['low', 'medium', 'high'].includes(obj.risk));
+}
 async function handleAICommand(userInput, options) {
     const os = (0, os_1.getOSProfile)();
     const spinner = (0, ora_1.default)(chalk_1.default.cyan('🧠 AI 正在规划中...')).start();
     try {
         // 1️⃣ 让 AI 出计划
+        // ... (AI call logic remains same)
         const prompt = (0, prompt_1.buildCommandPrompt)(userInput, os);
         const raw = await (0, client_1.askAI)(prompt, options.model);
         spinner.stop();
         let plan;
         try {
-            // Extract JSON if AI wrapped it in triple backticks
+            // Extract JSON logic
             let jsonContent = raw;
             if (raw.includes('```json')) {
                 jsonContent = raw.split('```json')[1].split('```')[0].trim();
@@ -32,7 +40,13 @@ async function handleAICommand(userInput, options) {
             else if (raw.includes('```')) {
                 jsonContent = raw.split('```')[1].split('```')[0].trim();
             }
-            plan = JSON.parse(jsonContent);
+            const parsed = JSON.parse(jsonContent);
+            if (!validateAIPlan(parsed)) {
+                console.log(chalk_1.default.red('\n❌ AI 返回结构非法，已拒绝执行'));
+                console.log(chalk_1.default.gray('AI Output:'), raw);
+                return;
+            }
+            plan = parsed;
         }
         catch {
             console.log(chalk_1.default.red('\n❌ AI 输出不是合法 JSON:'));
@@ -46,8 +60,16 @@ async function handleAICommand(userInput, options) {
         console.log(chalk_1.default.bold.green('💻 命令: ') + chalk_1.default.yellow(plan.command));
         const riskColor = finalRisk === 'high' ? chalk_1.default.red : (finalRisk === 'medium' ? chalk_1.default.yellow : chalk_1.default.green);
         console.log(chalk_1.default.bold('⚠️  风险: ') + riskColor(finalRisk.toUpperCase()));
+        // Check Dry Run
+        if (options.dryRun) {
+            console.log(chalk_1.default.gray('\n[Dry Run] 仅模拟，不执行命令。'));
+            return;
+        }
         // 4️⃣ 确认
-        let shouldExecute = options.execute;
+        let shouldExecute = options.execute || options.autoYes;
+        // If high risk, maybe force confirm even with autoYes? 
+        // For now, let's respect autoYes as the "I know what I'm doing" flag.
+        // But if risk is high and NOT autoYes, we definitely ask.
         if (!shouldExecute) {
             shouldExecute = await (0, confirm_1.confirm)('是否执行该命令？');
         }
