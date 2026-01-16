@@ -84,6 +84,45 @@ async function main() {
                     console.log(`${index + 1}. ${chalk_1.default.white(item.command)}`);
                     console.log(chalk_1.default.gray(`   问题: ${item.question}\n`));
                 });
+                const rlHistory = require('node:readline/promises').createInterface({
+                    input: process.stdin,
+                    output: process.stdout
+                });
+                const indexInput = await rlHistory.question(chalk_1.default.cyan('输入序号选择命令 (直接回车取消): '));
+                rlHistory.close();
+                if (indexInput.trim()) {
+                    const index = parseInt(indexInput) - 1;
+                    if (index >= 0 && index < history.length) {
+                        const targetCommand = history[index].command;
+                        console.log(chalk_1.default.yellow(`\n即将执行: ${targetCommand}\n`));
+                        const rlConfirm = require('node:readline/promises').createInterface({
+                            input: process.stdin,
+                            output: process.stdout
+                        });
+                        const confirm = await rlConfirm.question(chalk_1.default.cyan('确认执行? (y/N): '));
+                        rlConfirm.close();
+                        if (confirm.toLowerCase() === 'y' || confirm.toLowerCase() === 'yes') {
+                            const { exec } = require('child_process');
+                            console.log(chalk_1.default.bold.cyan('执行中...\n'));
+                            exec(targetCommand, (error, stdout, stderr) => {
+                                if (stdout)
+                                    console.log(stdout);
+                                if (stderr)
+                                    console.error(chalk_1.default.red(stderr));
+                                if (error)
+                                    console.error(chalk_1.default.red(error.message));
+                                process.exit(0);
+                            });
+                            return;
+                        }
+                        else {
+                            console.log(chalk_1.default.gray('已取消执行'));
+                        }
+                    }
+                    else {
+                        console.log(chalk_1.default.red('无效的序号'));
+                    }
+                }
             }
             break;
         case 'config':

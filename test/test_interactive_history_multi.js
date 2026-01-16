@@ -18,8 +18,7 @@ if (fs.existsSync(historyFile)) {
 }
 fs.writeFileSync(historyFile, JSON.stringify(dummyHistory));
 
-const cliPath = path.join(__dirname, 'cli.js');
-// Run: yuangs history
+const cliPath = path.join(__dirname, '..', 'dist/cli.js');
 const child = spawn('node', [cliPath, 'history'], { stdio: 'pipe' });
 
 let output = '';
@@ -30,17 +29,17 @@ child.stdout.on('data', (data) => {
     output += str;
     console.log(`[CLI Output] ${str}`);
 
-    // Step 1: Wait for prompt and send index '2' (Select standard middleware item)
+    // Step 1: Wait for prompt and send index '2' (Select second item)
     if (step === 0 && str.includes('输入序号')) {
         console.log('[Test] Sending "2"... (Selecting second item)');
         child.stdin.write('2\n');
         step++;
     }
 
-    // Step 2: Wait for pre-fill confirmation
-    if (step === 1 && str.includes('echo \'I am command 2\'')) {
-        console.log('[Test] Command 2 pre-filled. Sending Enter to execute...');
-        child.stdin.write('\n');
+    // Step 2: Wait for confirmation prompt and send 'y'
+    if (step === 1 && str.includes('确认执行')) {
+        console.log('[Test] Confirming execution...');
+        child.stdin.write('y\n');
         step++;
     }
 });

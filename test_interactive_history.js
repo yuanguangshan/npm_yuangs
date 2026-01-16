@@ -16,7 +16,7 @@ if (fs.existsSync(historyFile)) {
 }
 fs.writeFileSync(historyFile, JSON.stringify(dummyHistory));
 
-const cliPath = path.join(__dirname, 'cli.js');
+const cliPath = path.join(__dirname, 'dist/cli.js');
 const child = spawn('node', [cliPath, 'history'], { stdio: 'pipe' });
 
 let output = '';
@@ -34,12 +34,10 @@ child.stdout.on('data', (data) => {
         step++;
     }
 
-    // Step 2: Wait for pre-fill confirmation (readline write)
-    // Note: Since we are in a non-TTY pipe, readline.write might behave differently or just output the text.
-    // In our code: rlHistory.write(targetCommand) -> outputs to stdout.
-    if (step === 1 && str.includes('echo \'History Test Success\'')) {
-        console.log('[Test] Command pre-filled. Sending Enter to execute...');
-        child.stdin.write('\n');
+    // Step 2: Wait for confirmation prompt and send 'y'
+    if (step === 1 && str.includes('确认执行')) {
+        console.log('[Test] Confirming execution...');
+        child.stdin.write('y\n');
         step++;
     }
 });
