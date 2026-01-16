@@ -1,37 +1,4 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -39,31 +6,38 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleAIChat = handleAIChat;
 const chalk_1 = __importDefault(require("chalk"));
 const ora_1 = __importDefault(require("ora"));
-const readline = __importStar(require("node:readline/promises"));
+const readline_1 = __importDefault(require("readline"));
 const client_1 = require("../ai/client");
-async function handleAIChat(question, model) {
-    if (question) {
-        // First answer the provided question
-        await askOnceStream(question, model);
-        // If not a TTY, we stop here (likely piped input)
-        if (!process.stdin.isTTY) {
+async function handleAIChat(initialQuestion, model) {
+    if (initialQuestion) {
+        await askOnceStream(initialQuestion, model);
+        if (!process.stdin.isTTY)
             return;
-        }
     }
-    // Interactive mode
     console.log(chalk_1.default.bold.cyan('\n🤖 进入 AI 交互模式 (输入 exit 退出)\n'));
-    const rl = readline.createInterface({
+    const rl = readline_1.default.createInterface({
         input: process.stdin,
-        output: process.stdout
+        output: process.stdout,
+        terminal: true
     });
+    // Helper to wrap rl.question in a Promise
+    const ask = (query) => {
+        return new Promise((resolve) => {
+            rl.question(query, (answer) => {
+                resolve(answer);
+            });
+        });
+    };
     try {
         while (true) {
-            const q = await rl.question(chalk_1.default.green('你：'));
-            const trimmed = q.trim();
+            const input = await ask(chalk_1.default.green('你：'));
+            const trimmed = input.trim();
+            // Handle Exit
             if (['exit', 'quit', 'bye'].includes(trimmed.toLowerCase())) {
                 console.log(chalk_1.default.cyan('👋 再见！'));
                 break;
             }
+            // Handle Commands
             if (trimmed === '/clear') {
                 (0, client_1.clearConversationHistory)();
                 console.log(chalk_1.default.yellow('✓ 对话历史已清空\n'));
@@ -84,8 +58,23 @@ async function handleAIChat(question, model) {
             }
             if (!trimmed)
                 continue;
-            await askOnceStream(trimmed, model);
+            // Handle AI Request
+            try {
+                // Pause input while AI is processing to avoid interference
+                rl.pause();
+                await askOnceStream(trimmed, model);
+            }
+            catch (err) {
+                console.error(chalk_1.default.red(`\n[AI execution error]: ${err.message}`));
+            }
+            finally {
+                // Always resume input
+                rl.resume();
+            }
         }
+    }
+    catch (criticalErr) {
+        console.error(chalk_1.default.red(`\n[Critical Loop Error]: ${criticalErr.message}`));
     }
     finally {
         rl.close();
@@ -109,15 +98,14 @@ async function askOnceStream(question, model) {
         (0, client_1.addToConversationHistory)('user', question);
         (0, client_1.addToConversationHistory)('assistant', fullResponse);
         const elapsed = (Date.now() - startTime) / 1000;
-        console.log('\n' + chalk_1.default.gray(`─`.repeat(20) + ` (耗时: ${elapsed.toFixed(2)}s) ` + `─`.repeat(20) + '\n'));
+        process.stdout.write('\n' + chalk_1.default.gray(`─`.repeat(20) + ` (耗时: ${elapsed.toFixed(2)}s) ` + `─`.repeat(20) + '\n\n'));
     }
     catch (error) {
         if (spinner.isSpinning) {
-            spinner.fail(chalk_1.default.red('AI 响应出错'));
+            spinner.stop();
         }
-        else {
-            console.log(chalk_1.default.red('\n[AI Error]: ' + error.message));
-        }
+        // Re-throw to be caught by the loop
+        throw error;
     }
 }
 //# sourceMappingURL=handleAIChat.js.map

@@ -30,19 +30,21 @@ function printHelp() {
     console.log(`  ${chalk.green('help')}              显示帮助信息\n`);
 }
 
+async function readStdin(): Promise<string> {
+    if (process.stdin.isTTY) return '';
+    return new Promise((resolve) => {
+        let data = '';
+        process.stdin.setEncoding('utf8');
+        process.stdin.on('data', chunk => data += chunk);
+        process.stdin.on('end', () => resolve(data));
+        // Safety timeout
+        setTimeout(() => resolve(data), 2000);
+    });
+}
+
 async function main() {
     const apps = loadAppsConfig();
-    let stdinData = '';
-
-    // Check if there is data in stdin (Pipe mode)
-    if (!process.stdin.isTTY) {
-        try {
-            // Read all from stdin synchronously - reliable for pipes
-            stdinData = fs.readFileSync(0, 'utf8');
-        } catch (error) {
-            // If failed to read sync, ignore
-        }
-    }
+    const stdinData = await readStdin();
 
     switch (command) {
         case 'ai':
@@ -61,6 +63,7 @@ async function main() {
                 await handleAIChat(question || null);
             }
             break;
+
 
 
 

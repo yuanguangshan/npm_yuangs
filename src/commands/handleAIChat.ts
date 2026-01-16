@@ -1,43 +1,49 @@
 import chalk from 'chalk';
 import ora from 'ora';
-import * as readline from 'node:readline/promises';
+import readline from 'readline';
 import { callAI_Stream, getConversationHistory, addToConversationHistory, clearConversationHistory } from '../ai/client';
 
-
-
-export async function handleAIChat(question: string | null, model?: string) {
-    if (question) {
-        // First answer the provided question
-        await askOnceStream(question, model);
-
-        // If not a TTY, we stop here (likely piped input)
-        if (!process.stdin.isTTY) {
-            return;
-        }
+export async function handleAIChat(initialQuestion: string | null, model?: string) {
+    if (initialQuestion) {
+        await askOnceStream(initialQuestion, model);
+        if (!process.stdin.isTTY) return;
     }
 
-    // Interactive mode
     console.log(chalk.bold.cyan('\n🤖 进入 AI 交互模式 (输入 exit 退出)\n'));
 
     const rl = readline.createInterface({
         input: process.stdin,
-        output: process.stdout
+        output: process.stdout,
+        terminal: true
     });
+
+    // Helper to wrap rl.question in a Promise
+    const ask = (query: string): Promise<string> => {
+        return new Promise((resolve) => {
+            rl.question(query, (answer) => {
+                resolve(answer);
+            });
+        });
+    };
 
     try {
         while (true) {
-            const q = await rl.question(chalk.green('你：'));
-            const trimmed = q.trim();
+            const input = await ask(chalk.green('你：'));
+            const trimmed = input.trim();
 
+            // Handle Exit
             if (['exit', 'quit', 'bye'].includes(trimmed.toLowerCase())) {
                 console.log(chalk.cyan('👋 再见！'));
                 break;
             }
+
+            // Handle Commands
             if (trimmed === '/clear') {
                 clearConversationHistory();
                 console.log(chalk.yellow('✓ 对话历史已清空\n'));
                 continue;
             }
+
             if (trimmed === '/history') {
                 const history = getConversationHistory();
                 if (history.length === 0) {
@@ -50,10 +56,23 @@ export async function handleAIChat(question: string | null, model?: string) {
                 }
                 continue;
             }
+
             if (!trimmed) continue;
 
-            await askOnceStream(trimmed, model);
+            // Handle AI Request
+            try {
+                // Pause input while AI is processing to avoid interference
+                rl.pause();
+                await askOnceStream(trimmed, model);
+            } catch (err: any) {
+                console.error(chalk.red(`\n[AI execution error]: ${err.message}`));
+            } finally {
+                // Always resume input
+                rl.resume();
+            }
         }
+    } catch (criticalErr: any) {
+        console.error(chalk.red(`\n[Critical Loop Error]: ${criticalErr.message}`));
     } finally {
         rl.close();
     }
@@ -81,12 +100,12 @@ async function askOnceStream(question: string, model?: string) {
         addToConversationHistory('assistant', fullResponse);
 
         const elapsed = (Date.now() - startTime) / 1000;
-        console.log('\n' + chalk.gray(`─`.repeat(20) + ` (耗时: ${elapsed.toFixed(2)}s) ` + `─`.repeat(20) + '\n'));
+        process.stdout.write('\n' + chalk.gray(`─`.repeat(20) + ` (耗时: ${elapsed.toFixed(2)}s) ` + `─`.repeat(20) + '\n\n'));
     } catch (error: any) {
         if (spinner.isSpinning) {
-            spinner.fail(chalk.red('AI 响应出错'));
-        } else {
-            console.log(chalk.red('\n[AI Error]: ' + error.message));
+            spinner.stop();
         }
+        // Re-throw to be caught by the loop
+        throw error;
     }
 }

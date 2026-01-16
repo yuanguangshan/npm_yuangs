@@ -29,19 +29,21 @@ function printHelp() {
     console.log(`  ${chalk_1.default.green('config')}            管理本地配置 (~/.yuangs.json)`);
     console.log(`  ${chalk_1.default.green('help')}              显示帮助信息\n`);
 }
+async function readStdin() {
+    if (process.stdin.isTTY)
+        return '';
+    return new Promise((resolve) => {
+        let data = '';
+        process.stdin.setEncoding('utf8');
+        process.stdin.on('data', chunk => data += chunk);
+        process.stdin.on('end', () => resolve(data));
+        // Safety timeout
+        setTimeout(() => resolve(data), 2000);
+    });
+}
 async function main() {
     const apps = (0, apps_1.loadAppsConfig)();
-    let stdinData = '';
-    // Check if there is data in stdin (Pipe mode)
-    if (!process.stdin.isTTY) {
-        try {
-            // Read all from stdin synchronously - reliable for pipes
-            stdinData = fs_1.default.readFileSync(0, 'utf8');
-        }
-        catch (error) {
-            // If failed to read sync, ignore
-        }
-    }
+    const stdinData = await readStdin();
     switch (command) {
         case 'ai':
             const aiArgs = args.slice(1);
