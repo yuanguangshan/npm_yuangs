@@ -1,6 +1,6 @@
 {
   "name": "yuangs",
-  "version": "1.3.37",
+  "version": "1.3.38",
   "description": "苑广山的个人应用集合 CLI（彩色版）",
   "main": "index.js",
   "bin": {
