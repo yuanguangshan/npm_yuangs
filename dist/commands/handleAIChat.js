@@ -30,34 +30,37 @@ async function handleAIChat(question, model) {
             input: process.stdin,
             output: process.stdout
         });
-        const askLoop = () => {
-            rl.question(chalk_1.default.green('你：'), async (q) => {
-                const trimmed = q.trim();
-                if (['exit', 'quit', 'bye'].includes(trimmed.toLowerCase())) {
-                    console.log(chalk_1.default.cyan('👋 再见！'));
-                    rl.close();
-                    return;
-                }
-                if (trimmed === '/clear') {
-                    (0, client_1.clearConversationHistory)();
-                    console.log(chalk_1.default.yellow('✓ 对话历史已清空\n'));
-                    return askLoop();
-                }
-                if (trimmed === '/history') {
-                    const history = (0, client_1.getConversationHistory)();
-                    history.forEach((msg) => {
-                        const prefix = msg.role === 'user' ? chalk_1.default.green('你: ') : chalk_1.default.blue('AI: ');
-                        console.log(prefix + msg.content);
-                    });
-                    return askLoop();
-                }
-                if (!trimmed)
-                    return askLoop();
-                await askOnceStream(trimmed, model);
-                askLoop();
-            });
-        };
-        askLoop();
+        return new Promise((resolve) => {
+            const askLoop = () => {
+                rl.question(chalk_1.default.green('你：'), async (q) => {
+                    const trimmed = q.trim();
+                    if (['exit', 'quit', 'bye'].includes(trimmed.toLowerCase())) {
+                        console.log(chalk_1.default.cyan('👋 再见！'));
+                        rl.close();
+                        resolve();
+                        return;
+                    }
+                    if (trimmed === '/clear') {
+                        (0, client_1.clearConversationHistory)();
+                        console.log(chalk_1.default.yellow('✓ 对话历史已清空\n'));
+                        return askLoop();
+                    }
+                    if (trimmed === '/history') {
+                        const history = (0, client_1.getConversationHistory)();
+                        history.forEach((msg) => {
+                            const prefix = msg.role === 'user' ? chalk_1.default.green('你: ') : chalk_1.default.blue('AI: ');
+                            console.log(prefix + msg.content);
+                        });
+                        return askLoop();
+                    }
+                    if (!trimmed)
+                        return askLoop();
+                    await askOnceStream(trimmed, model);
+                    askLoop();
+                });
+            };
+            askLoop();
+        });
     }
     else {
         await askOnceStream(question, model);
@@ -71,22 +74,25 @@ async function askOnceStream(question, model) {
     let fullResponse = '';
     try {
         await (0, client_1.callAI_Stream)(messages, model, (chunk) => {
-            if (spinner.isSpinning)
+            if (spinner.isSpinning) {
                 spinner.stop();
+                process.stdout.write(chalk_1.default.bold.blue('🤖 AI：'));
+            }
             fullResponse += chunk;
             process.stdout.write(chunk);
         });
         (0, client_1.addToConversationHistory)('user', question);
         (0, client_1.addToConversationHistory)('assistant', fullResponse);
-        console.log('\n' + chalk_1.default.gray('─'.repeat(80)));
-        console.log((0, marked_1.marked)(fullResponse));
         const elapsed = (Date.now() - startTime) / 1000;
-        console.log(chalk_1.default.gray(`\n请求耗时: ${elapsed.toFixed(2)}s\n`));
+        console.log('\n' + chalk_1.default.gray(`─`.repeat(20) + ` (耗时: ${elapsed.toFixed(2)}s) ` + `─`.repeat(20) + '\n'));
     }
     catch (error) {
-        if (spinner.isSpinning)
+        if (spinner.isSpinning) {
             spinner.fail(chalk_1.default.red('AI 响应出错'));
-        console.error(error.message);
+        }
+        else {
+            console.log(chalk_1.default.red('\n[AI Error]: ' + error.message));
+        }
     }
 }
 //# sourceMappingURL=handleAIChat.js.map

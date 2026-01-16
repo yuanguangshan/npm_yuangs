@@ -28,34 +28,37 @@ export async function handleAIChat(question: string | null, model?: string) {
             output: process.stdout
         });
 
-        const askLoop = () => {
-            rl.question(chalk.green('你：'), async (q) => {
-                const trimmed = q.trim();
-                if (['exit', 'quit', 'bye'].includes(trimmed.toLowerCase())) {
-                    console.log(chalk.cyan('👋 再见！'));
-                    rl.close();
-                    return;
-                }
-                if (trimmed === '/clear') {
-                    clearConversationHistory();
-                    console.log(chalk.yellow('✓ 对话历史已清空\n'));
-                    return askLoop();
-                }
-                if (trimmed === '/history') {
-                    const history = getConversationHistory();
-                    history.forEach((msg) => {
-                        const prefix = msg.role === 'user' ? chalk.green('你: ') : chalk.blue('AI: ');
-                        console.log(prefix + msg.content);
-                    });
-                    return askLoop();
-                }
-                if (!trimmed) return askLoop();
+        return new Promise<void>((resolve) => {
+            const askLoop = () => {
+                rl.question(chalk.green('你：'), async (q) => {
+                    const trimmed = q.trim();
+                    if (['exit', 'quit', 'bye'].includes(trimmed.toLowerCase())) {
+                        console.log(chalk.cyan('👋 再见！'));
+                        rl.close();
+                        resolve();
+                        return;
+                    }
+                    if (trimmed === '/clear') {
+                        clearConversationHistory();
+                        console.log(chalk.yellow('✓ 对话历史已清空\n'));
+                        return askLoop();
+                    }
+                    if (trimmed === '/history') {
+                        const history = getConversationHistory();
+                        history.forEach((msg) => {
+                            const prefix = msg.role === 'user' ? chalk.green('你: ') : chalk.blue('AI: ');
+                            console.log(prefix + msg.content);
+                        });
+                        return askLoop();
+                    }
+                    if (!trimmed) return askLoop();
 
-                await askOnceStream(trimmed, model);
-                askLoop();
-            });
-        };
-        askLoop();
+                    await askOnceStream(trimmed, model);
+                    askLoop();
+                });
+            };
+            askLoop();
+        });
     } else {
         await askOnceStream(question, model);
     }
@@ -71,7 +74,10 @@ async function askOnceStream(question: string, model?: string) {
 
     try {
         await callAI_Stream(messages, model, (chunk) => {
-            if (spinner.isSpinning) spinner.stop();
+            if (spinner.isSpinning) {
+                spinner.stop();
+                process.stdout.write(chalk.bold.blue('🤖 AI：'));
+            }
             fullResponse += chunk;
             process.stdout.write(chunk);
         });
@@ -79,13 +85,13 @@ async function askOnceStream(question: string, model?: string) {
         addToConversationHistory('user', question);
         addToConversationHistory('assistant', fullResponse);
 
-        console.log('\n' + chalk.gray('─'.repeat(80)));
-        console.log(marked(fullResponse));
-
         const elapsed = (Date.now() - startTime) / 1000;
-        console.log(chalk.gray(`\n请求耗时: ${elapsed.toFixed(2)}s\n`));
+        console.log('\n' + chalk.gray(`─`.repeat(20) + ` (耗时: ${elapsed.toFixed(2)}s) ` + `─`.repeat(20) + '\n'));
     } catch (error: any) {
-        if (spinner.isSpinning) spinner.fail(chalk.red('AI 响应出错'));
-        console.error(error.message);
+        if (spinner.isSpinning) {
+            spinner.fail(chalk.red('AI 响应出错'));
+        } else {
+            console.log(chalk.red('\n[AI Error]: ' + error.message));
+        }
     }
 }

@@ -32,13 +32,30 @@ function printHelp() {
 
 async function main() {
     const apps = loadAppsConfig();
+    let stdinData = '';
+
+    // Check if there is data in stdin (Pipe mode)
+    if (!process.stdin.isTTY) {
+        stdinData = await new Promise<string>((resolve) => {
+            let data = '';
+            process.stdin.setEncoding('utf8');
+            process.stdin.on('data', chunk => data += chunk);
+            process.stdin.on('end', () => resolve(data));
+            // timeout if no data comes
+            setTimeout(() => resolve(data), 1000);
+        });
+    }
 
     switch (command) {
         case 'ai':
             const aiArgs = args.slice(1);
             const isExecMode = aiArgs.includes('-e');
             const questionParts = aiArgs.filter(a => a !== '-e');
-            const question = questionParts.join(' ').trim();
+            let question = questionParts.join(' ').trim();
+
+            if (stdinData) {
+                question = `以下是输入内容：\n\n${stdinData}\n\n我的问题是：${question || '分析以上内容'}`;
+            }
 
             if (isExecMode) {
                 await handleAICommand(question, { execute: false });
@@ -46,6 +63,7 @@ async function main() {
                 await handleAIChat(question || null);
             }
             break;
+
 
         case 'list':
             console.log(chalk.bold.cyan('\n📱 应用列表\n'));
