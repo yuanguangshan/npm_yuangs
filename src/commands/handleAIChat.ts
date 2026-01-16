@@ -7,10 +7,12 @@ import TerminalRenderer from 'marked-terminal';
 
 export async function handleAIChat(initialQuestion: string | null, model?: string) {
     if (initialQuestion) {
+        // 如果有初始问题，直接回答并退出，不进入交互模式
         await askOnceStream(initialQuestion, model);
-        if (!process.stdin.isTTY) return;
+        return;
     }
 
+    // 如果没有初始问题，进入交互模式
     console.log(chalk.bold.cyan('\n🤖 进入 AI 交互模式 (输入 exit 退出)\n'));
 
     const rl = readline.createInterface({

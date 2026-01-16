@@ -45,10 +45,11 @@ const marked = __importStar(require("marked"));
 const marked_terminal_1 = __importDefault(require("marked-terminal"));
 async function handleAIChat(initialQuestion, model) {
     if (initialQuestion) {
+        // 如果有初始问题，直接回答并退出，不进入交互模式
         await askOnceStream(initialQuestion, model);
-        if (!process.stdin.isTTY)
-            return;
+        return;
     }
+    // 如果没有初始问题，进入交互模式
     console.log(chalk_1.default.bold.cyan('\n🤖 进入 AI 交互模式 (输入 exit 退出)\n'));
     const rl = readline_1.default.createInterface({
         input: process.stdin,
