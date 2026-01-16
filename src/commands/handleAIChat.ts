@@ -2,6 +2,8 @@ import chalk from 'chalk';
 import ora from 'ora';
 import readline from 'readline';
 import { callAI_Stream, getConversationHistory, addToConversationHistory, clearConversationHistory } from '../ai/client';
+import * as marked from 'marked';
+import TerminalRenderer from 'marked-terminal';
 
 export async function handleAIChat(initialQuestion: string | null, model?: string) {
     if (initialQuestion) {
@@ -80,6 +82,16 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
     }
 }
 
+// 配置 marked 使用 TerminalRenderer
+marked.setOptions({
+  renderer: new TerminalRenderer({
+    // 自定义终端渲染选项
+    tab: 2,
+    width: process.stdout.columns || 80,
+    showSectionPrefix: false,
+  })
+});
+
 async function askOnceStream(question: string, model?: string) {
     const startTime = Date.now();
     const messages = [...getConversationHistory()];
@@ -92,11 +104,21 @@ async function askOnceStream(question: string, model?: string) {
         await callAI_Stream(messages, model, (chunk) => {
             if (spinner.isSpinning) {
                 spinner.stop();
+
+                // 在第一次输出前添加标签
                 process.stdout.write(chalk.bold.blue('🤖 AI：'));
             }
             fullResponse += chunk;
-            process.stdout.write(chunk);
+
+            // 由于流式输出的限制，我们不能完美地渲染 Markdown（因为 Markdown 需要完整的上下文）
+            // 所以我们先输出原始内容，然后在最后重新渲染格式化的内容
+            // 但为了避免覆盖用户输入，我们只在内部缓存
         });
+
+        // 在完整响应接收完成后，渲染整个响应以应用 Markdown 格式
+        process.stdout.write(chalk.bold.blue('🤖 AI：'));
+        const formattedResponse = marked.parse(fullResponse, { async: false });
+        process.stdout.write(formattedResponse);
 
         addToConversationHistory('user', question);
         addToConversationHistory('assistant', fullResponse);

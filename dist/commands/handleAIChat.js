@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -8,6 +41,8 @@ const chalk_1 = __importDefault(require("chalk"));
 const ora_1 = __importDefault(require("ora"));
 const readline_1 = __importDefault(require("readline"));
 const client_1 = require("../ai/client");
+const marked = __importStar(require("marked"));
+const marked_terminal_1 = __importDefault(require("marked-terminal"));
 async function handleAIChat(initialQuestion, model) {
     if (initialQuestion) {
         await askOnceStream(initialQuestion, model);
@@ -82,6 +117,15 @@ async function handleAIChat(initialQuestion, model) {
         rl.close();
     }
 }
+// 配置 marked 使用 TerminalRenderer
+marked.setOptions({
+    renderer: new marked_terminal_1.default({
+        // 自定义终端渲染选项
+        tab: 2,
+        width: process.stdout.columns || 80,
+        showSectionPrefix: false,
+    })
+});
 async function askOnceStream(question, model) {
     const startTime = Date.now();
     const messages = [...(0, client_1.getConversationHistory)()];
@@ -92,11 +136,18 @@ async function askOnceStream(question, model) {
         await (0, client_1.callAI_Stream)(messages, model, (chunk) => {
             if (spinner.isSpinning) {
                 spinner.stop();
+                // 在第一次输出前添加标签
                 process.stdout.write(chalk_1.default.bold.blue('🤖 AI：'));
             }
             fullResponse += chunk;
-            process.stdout.write(chunk);
+            // 由于流式输出的限制，我们不能完美地渲染 Markdown（因为 Markdown 需要完整的上下文）
+            // 所以我们先输出原始内容，然后在最后重新渲染格式化的内容
+            // 但为了避免覆盖用户输入，我们只在内部缓存
         });
+        // 在完整响应接收完成后，渲染整个响应以应用 Markdown 格式
+        process.stdout.write(chalk_1.default.bold.blue('🤖 AI：'));
+        const formattedResponse = marked.parse(fullResponse, { async: false });
+        process.stdout.write(formattedResponse);
         (0, client_1.addToConversationHistory)('user', question);
         (0, client_1.addToConversationHistory)('assistant', fullResponse);
         const elapsed = (Date.now() - startTime) / 1000;
