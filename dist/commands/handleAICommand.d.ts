@@ -3,4 +3,8 @@ export declare function handleAICommand(userInput: string, options: {
     model?: string;
     dryRun?: boolean;
     autoYes?: boolean;
-}): Promise<import("../core/executor").ExecResult | undefined>;
+}): Promise<{
+    code: number | null;
+    stdout?: string;
+    stderr?: string;
+} | undefined>;

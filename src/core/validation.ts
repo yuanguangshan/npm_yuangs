@@ -37,11 +37,22 @@ export const DEFAULT_APPS = {
 
 export const aiCommandPlanSchema = z.object({
     plan: z.string().describe('Explanation of the command'),
-    command: z.string().describe('The shell command to execute'),
+    command: z.string().optional().describe('The shell command to execute'),
+    macro: z.string().optional().describe('Name of an existing macro to reuse'),
     risk: z.enum(['low', 'medium', 'high']).describe('Risk level assessment')
+}).refine(data => data.command || data.macro, {
+    message: 'Either command or macro must be provided'
 });
 
 export type AICommandPlan = z.infer<typeof aiCommandPlanSchema>;
+
+export const aiFixPlanSchema = z.object({
+    plan: z.string().describe('Fix explanation'),
+    command: z.string().describe('The fixed shell command (always required for fixes)'),
+    risk: z.enum(['low', 'medium', 'high']).describe('Risk level assessment')
+});
+
+export type AIFixPlan = z.infer<typeof aiFixPlanSchema>;
 
 export const userConfigSchema = z.object({
     defaultModel: z.string().optional(),

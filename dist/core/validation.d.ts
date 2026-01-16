@@ -30,7 +30,8 @@ export declare const DEFAULT_APPS: {
 };
 export declare const aiCommandPlanSchema: z.ZodObject<{
     plan: z.ZodString;
-    command: z.ZodString;
+    command: z.ZodOptional<z.ZodString>;
+    macro: z.ZodOptional<z.ZodString>;
     risk: z.ZodEnum<{
         low: "low";
         medium: "medium";
@@ -38,6 +39,16 @@ export declare const aiCommandPlanSchema: z.ZodObject<{
     }>;
 }, z.core.$strip>;
 export type AICommandPlan = z.infer<typeof aiCommandPlanSchema>;
+export declare const aiFixPlanSchema: z.ZodObject<{
+    plan: z.ZodString;
+    command: z.ZodString;
+    risk: z.ZodEnum<{
+        low: "low";
+        medium: "medium";
+        high: "high";
+    }>;
+}, z.core.$strip>;
+export type AIFixPlan = z.infer<typeof aiFixPlanSchema>;
 export declare const userConfigSchema: z.ZodObject<{
     defaultModel: z.ZodOptional<z.ZodString>;
     aiProxyUrl: z.ZodOptional<z.ZodString>;

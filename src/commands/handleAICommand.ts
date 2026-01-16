@@ -8,15 +8,16 @@ import { assessRisk } from '../core/risk';
 import { autoFixCommand } from '../core/autofix';
 import { confirm } from '../utils/confirm';
 import { saveHistory } from '../utils/history';
-import { safeParseJSON, AICommandPlan } from '../core/validation';
+import { safeParseJSON, AICommandPlan, AIFixPlan } from '../core/validation';
+import { getMacros, runMacro } from '../core/macros';
 
 function validateAIPlan(obj: any): obj is AICommandPlan {
     return (
         typeof obj === 'object' &&
         obj !== null &&
         typeof obj.plan === 'string' &&
-        typeof obj.command === 'string' &&
-        ['low', 'medium', 'high'].includes(obj.risk)
+        ['low', 'medium', 'high'].includes(obj.risk) &&
+        (typeof obj.command === 'string' || typeof obj.macro === 'string')
     );
 }
 
@@ -25,12 +26,12 @@ export async function handleAICommand(
     options: { execute: boolean; model?: string; dryRun?: boolean; autoYes?: boolean }
 ) {
     const os = getOSProfile();
+    const macros = getMacros();
     const spinner = ora(chalk.cyan('🧠 AI 正在规划中...')).start();
 
     try {
         // 1️⃣ 让 AI 出计划
-        // ... (AI call logic remains same)
-        const prompt = buildCommandPrompt(userInput, os);
+        const prompt = buildCommandPrompt(userInput, os, macros);
         const raw = await askAI(prompt, options.model);
         spinner.stop();
 
@@ -46,12 +47,34 @@ export async function handleAICommand(
 
         const plan = parseResult.data;
 
+        // Determine if we're using a macro or a new command
+        const isUsingMacro = !!plan.macro;
+        let actualCommand = plan.macro ? macros[plan.macro]?.commands : plan.command;
+
+        if (!actualCommand) {
+            console.log(chalk.red('\n❌ 无效的计划：'));
+            if (plan.macro) {
+                console.log(chalk.red(`未找到名为 "${plan.macro}" 的 Macro`));
+            } else {
+                console.log(chalk.red('未提供有效的命令'));
+            }
+            return;
+        }
+
+        const commandToExecute: string = actualCommand;
+
         // 2️⃣ 风险兜底
-        const finalRisk = assessRisk(plan.command, plan.risk);
+        const finalRisk = assessRisk(commandToExecute, plan.risk);
 
         // 3️⃣ 展示给用户
         console.log(chalk.bold.cyan('\n🧠 计划: ') + plan.plan);
-        console.log(chalk.bold.green('💻 命令: ') + chalk.yellow(plan.command));
+
+        if (isUsingMacro) {
+            console.log(chalk.bold.green('✨ 复用 Macro: ') + chalk.yellow(plan.macro!));
+            console.log(chalk.gray('   (已验证的命令，无需重新生成)'));
+        } else {
+            console.log(chalk.bold.green('💻 命令: ') + chalk.yellow(commandToExecute));
+        }
 
         const riskColor = finalRisk === 'high' ? chalk.red : (finalRisk === 'medium' ? chalk.yellow : chalk.green);
         console.log(chalk.bold('⚠️  风险判断: ') + riskColor(finalRisk.toUpperCase()));
@@ -64,13 +87,17 @@ export async function handleAICommand(
 
         // 4️⃣ 确认
         console.log(chalk.gray('─'.repeat(50)));
-        console.log(chalk.yellow('⚠️  注意: 以上命令由 AI 生成，请在执行前仔细检查。'));
-        console.log(chalk.gray('   AI 可能会犯错，安全由您掌控。'));
+        if (isUsingMacro) {
+            console.log(chalk.yellow('⚠️  注意: AI 正在复用已验证的 Macro。'));
+        } else {
+            console.log(chalk.yellow('⚠️  注意: 以上命令由 AI 生成，请在执行前仔细检查。'));
+            console.log(chalk.gray('   AI 可能会犯错，安全由您掌控。'));
+        }
         console.log(chalk.gray('─'.repeat(50)));
 
         let shouldExecute = options.execute || options.autoYes;
 
-        // If high risk, maybe force confirm even with autoYes? 
+        // If high risk, maybe force confirm even with autoYes?
         // For now, let's respect autoYes as the "I know what I'm doing" flag.
         // But if risk is high and NOT autoYes, we definitely ask.
         if (!shouldExecute) {
@@ -84,19 +111,27 @@ export async function handleAICommand(
 
         // 5️⃣ 执行
         console.log(chalk.gray('\n执行中...\n'));
-        let result = await exec(plan.command);
+        let result: { code: number | null; stdout?: string; stderr?: string };
 
-        // 6️⃣ 自动修复（仅一次）
-        if (result.code !== 0 && result.code !== null) {
+        if (isUsingMacro) {
+            const macroSuccess = runMacro(plan.macro!);
+            result = { code: 0, stdout: '', stderr: '' };
+            console.log(chalk.green('✓ Macro 已执行'));
+        } else {
+            result = await exec(commandToExecute);
+        }
+
+        // 6️⃣ 自动修复（仅针对新生成的命令，不针对 Macros）
+        if (!isUsingMacro && result.code !== 0 && result.code !== null) {
             console.log(chalk.red('\n❌ 执行失败，尝试自动修复...'));
             const fixedPlan = await autoFixCommand(
-                plan.command,
-                result.stderr,
+                commandToExecute,
+                result.stderr!,
                 os,
                 options.model
             );
 
-            if (fixedPlan) {
+            if (fixedPlan && fixedPlan.command) {
                 console.log(chalk.bold.cyan('🔁 修复方案: ') + fixedPlan.plan);
                 console.log(chalk.bold.green('💻 修复命令: ') + chalk.yellow(fixedPlan.command));
 
@@ -120,9 +155,13 @@ export async function handleAICommand(
         if (result.code === 0) {
             saveHistory({
                 question: userInput,
-                command: plan.command,
+                command: commandToExecute,
             });
-            console.log(chalk.green('\n✓ 执行成功并已存入历史库'));
+            if (isUsingMacro) {
+                console.log(chalk.green('\n✓ Macro 执行成功并已存入历史库'));
+            } else {
+                console.log(chalk.green('\n✓ 执行成功并已存入历史库'));
+            }
         }
 
         return result;

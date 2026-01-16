@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.historyEntrySchema = exports.macroSchema = exports.appsConfigSchema = exports.userConfigSchema = exports.aiCommandPlanSchema = exports.DEFAULT_APPS = exports.DEFAULT_ACCOUNT_TYPE = exports.DEFAULT_MODEL = exports.DEFAULT_AI_PROXY_URL = void 0;
+exports.historyEntrySchema = exports.macroSchema = exports.appsConfigSchema = exports.userConfigSchema = exports.aiFixPlanSchema = exports.aiCommandPlanSchema = exports.DEFAULT_APPS = exports.DEFAULT_ACCOUNT_TYPE = exports.DEFAULT_MODEL = exports.DEFAULT_AI_PROXY_URL = void 0;
 exports.extractJSON = extractJSON;
 exports.safeParseJSON = safeParseJSON;
 exports.parseUserConfig = parseUserConfig;
@@ -18,7 +18,15 @@ exports.DEFAULT_APPS = {
 };
 exports.aiCommandPlanSchema = zod_1.z.object({
     plan: zod_1.z.string().describe('Explanation of the command'),
-    command: zod_1.z.string().describe('The shell command to execute'),
+    command: zod_1.z.string().optional().describe('The shell command to execute'),
+    macro: zod_1.z.string().optional().describe('Name of an existing macro to reuse'),
+    risk: zod_1.z.enum(['low', 'medium', 'high']).describe('Risk level assessment')
+}).refine(data => data.command || data.macro, {
+    message: 'Either command or macro must be provided'
+});
+exports.aiFixPlanSchema = zod_1.z.object({
+    plan: zod_1.z.string().describe('Fix explanation'),
+    command: zod_1.z.string().describe('The fixed shell command (always required for fixes)'),
     risk: zod_1.z.enum(['low', 'medium', 'high']).describe('Risk level assessment')
 });
 exports.userConfigSchema = zod_1.z.object({
