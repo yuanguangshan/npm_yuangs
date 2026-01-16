@@ -207,6 +207,50 @@ yuangs mail        # 打开邮箱
 这样日常开发只需要专注写代码和推送到 `main`，发布和版本管理都由 CI 自动完成。
 本地开发前务必先：`git pull`，确保本地代码与远程仓库一致。
 
+## 开发与构建 (Development)
+
+本项目使用 TypeScript 开发，构建后发布到 npm。
+
+### 本地开发
+
+```bash
+# 安装依赖
+npm install
+
+# 源码运行 (使用 ts-node)
+npm run dev -- ai "你好"
+
+# 执行所有测试
+npm test
+```
+
+### 构建项目
+
+```bash
+# 清理并构建 (输出到 dist 目录)
+rm -rf dist
+npm run build
+```
+
+### 本地测试 CLI
+
+```bash
+# 将当前目录链接到全局命令
+npm link
+
+# 然后就可以在任何地方直接使用 yuangs 了
+yuangs --help
+```
+
+### 发布前检查
+
+```bash
+# 模拟打包查看内容
+npm pack
+tar -tf yuangs-*.tgz
+```
+
 ## 维护者
 
 @yuanguangshan
+

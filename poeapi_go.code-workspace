@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"name": "npm_yuangs",
+			"path": "."
+		},
+		{
+			"name": "poeapi_go",
+			"path": "../poeapi_go"
+		}
+	],
+	"settings": {}
+}
