@@ -4,6 +4,112 @@ import readline from 'readline';
 import { callAI_Stream, getConversationHistory, addToConversationHistory, clearConversationHistory } from '../ai/client';
 import * as marked from 'marked';
 import TerminalRenderer from 'marked-terminal';
+import fs from 'fs';
+import path from 'path';
+import { buildPromptWithFileContent, readFilesContent } from '../core/fileReader';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+const execAsync = promisify(exec);
+
+async function showFileSelector(rl: readline.Interface): Promise<string | null> {
+    return new Promise((resolve) => {
+        try {
+            const currentDir = process.cwd();
+            const files = fs.readdirSync(currentDir);
+            
+            if (files.length === 0) {
+                console.log(chalk.yellow('当前目录为空\n'));
+                resolve(null);
+                return;
+            }
+
+            console.log(chalk.bold.cyan('📁 当前目录文件列表:\n'));
+            
+            files.forEach((file, index) => {
+                const fullPath = path.join(currentDir, file);
+                const isDir = fs.statSync(fullPath).isDirectory();
+                const icon = isDir ? chalk.cyan('📁') : chalk.green('📄');
+                const padding = (index + 1).toString().padStart(2);
+                console.log(`  [${padding}] ${icon} ${file}`);
+            });
+            console.log();
+
+            rl.question(chalk.cyan('请选择文件 (输入序号，或按 Enter 返回): '), (choice) => {
+                if (choice.trim() === '') {
+                    console.log(chalk.gray('已取消选择\n'));
+                    resolve(null);
+                    return;
+                }
+
+                const index = parseInt(choice) - 1;
+                if (isNaN(index) || index < 0 || index >= files.length) {
+                    console.log(chalk.red('无效的序号\n'));
+                    resolve(null);
+                    return;
+                }
+
+                const selectedFile = files[index];
+                console.log(chalk.green(`✓ 已选择: ${selectedFile}\n`));
+                resolve(selectedFile);
+            });
+        } catch (error) {
+            console.error(chalk.red(`读取目录失败: ${error}\n`));
+            resolve(null);
+        }
+    });
+}
+
+async function handleDirectoryReference(input: string): Promise<string> {
+    const match = input.match(/^#\s*(.+?)\s*(?:\n(.*))?$/s);
+    if (!match) {
+        console.log(chalk.yellow('格式错误，正确用法: # 目录路径 [问题]\n'));
+        return input;
+    }
+
+    const dirPath = match[1].trim();
+    const question = match[2] ? match[2].trim() : '请分析这个目录下的文件';
+
+    const fullPath = path.resolve(dirPath);
+
+    if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isDirectory()) {
+        console.log(chalk.red(`错误: 目录 "${dirPath}" 不存在或不是一个目录\n`));
+        return question;
+    }
+
+    const spinner = ora(chalk.cyan('正在读取文件...')).start();
+    
+    try {
+        const findCommand = process.platform === 'darwin' || process.platform === 'linux'
+            ? `find "${fullPath}" -type f`
+            : `dir /s /b "${fullPath}"`;
+
+        const { stdout } = await execAsync(findCommand);
+        const filePaths = stdout.trim().split('\n').filter(f => f);
+
+        spinner.stop();
+
+        if (filePaths.length === 0) {
+            console.log(chalk.yellow(`目录 "${dirPath}" 下没有文件\n`));
+            return question;
+        }
+
+        const contentMap = readFilesContent(filePaths);
+        
+        const prompt = buildPromptWithFileContent(
+            `目录: ${dirPath}\n找到 ${filePaths.length} 个文件`,
+            filePaths.map(p => path.relative(process.cwd(), p)),
+            contentMap,
+            question
+        );
+
+        console.log(chalk.green(`✓ 已读取 ${contentMap.size} 个文件\n`));
+        return prompt;
+    } catch (error) {
+        spinner.stop();
+        console.error(chalk.red(`读取目录失败: ${error}\n`));
+        return question;
+    }
+}
 
 export async function handleAIChat(initialQuestion: string | null, model?: string) {
     if (initialQuestion) {
@@ -35,7 +141,28 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
             const input = await ask(chalk.green('你：'));
             const trimmed = input.trim();
 
-            // Handle Exit
+            if (trimmed === '@') {
+                const selectedFile = await showFileSelector(rl);
+                if (selectedFile) {
+                    continue;
+                }
+                continue;
+            }
+
+            if (trimmed.startsWith('#')) {
+                rl.pause();
+                try {
+                    const processedInput = await handleDirectoryReference(trimmed);
+                    await askOnceStream(processedInput, model);
+                } catch (err: unknown) {
+                    const message = err instanceof Error ? err.message : String(err);
+                    console.error(chalk.red(`\n[处理错误]: ${message}`));
+                } finally {
+                    rl.resume();
+                }
+                continue;
+            }
+
             if (['exit', 'quit', 'bye'].includes(trimmed.toLowerCase())) {
                 console.log(chalk.cyan('👋 再见！'));
                 break;
