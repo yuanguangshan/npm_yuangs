@@ -19,7 +19,7 @@ async function showFileSelector(rl: readline.Interface): Promise<string | null> 
         try {
             const currentDir = process.cwd();
             const files = fs.readdirSync(currentDir);
-            
+
             if (files.length === 0) {
                 console.log(chalk.yellow('当前目录为空\n'));
                 resolve(null);
@@ -27,7 +27,7 @@ async function showFileSelector(rl: readline.Interface): Promise<string | null> 
             }
 
             console.log(chalk.bold.cyan('📁 当前目录文件列表:\n'));
-            
+
             files.forEach((file, index) => {
                 const fullPath = path.join(currentDir, file);
                 const isDir = fs.statSync(fullPath).isDirectory();
@@ -126,7 +126,7 @@ async function handleDirectoryReference(input: string): Promise<string> {
     }
 
     const spinner = ora(chalk.cyan('正在读取文件...')).start();
-    
+
     try {
         const findCommand = process.platform === 'darwin' || process.platform === 'linux'
             ? `find "${fullPath}" -type f`
@@ -143,7 +143,7 @@ async function handleDirectoryReference(input: string): Promise<string> {
         }
 
         const contentMap = readFilesContent(filePaths);
-        
+
         const prompt = buildPromptWithFileContent(
             `目录: ${dirPath}\n找到 ${filePaths.length} 个文件`,
             filePaths.map(p => path.relative(process.cwd(), p)),
@@ -256,7 +256,7 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
 
                     await saveContext(contextBuffer.export());
                     const displayName = alias ? `${alias} (${filePath}${lineStart !== null ? `:${lineStart}${lineEnd ? `-${lineEnd}` : ''}` : ''})` :
-                                              (filePath + (lineStart !== null ? `:${lineStart}${lineEnd ? `-${lineEnd}` : ''}` : ''));
+                        (filePath + (lineStart !== null ? `:${lineStart}${lineEnd ? `-${lineEnd}` : ''}` : ''));
                     console.log(chalk.green(`✅ 已加入文件上下文: ${displayName}\n`));
                 } catch (err: unknown) {
                     const message = err instanceof Error ? err.message : String(err);
@@ -404,12 +404,12 @@ ${finalPrompt}
 
 // 配置 marked 使用 TerminalRenderer
 marked.setOptions({
-  renderer: new TerminalRenderer({
-    // 自定义终端渲染选项
-    tab: 2,
-    width: process.stdout.columns || 80,
-    showSectionPrefix: false,
-  }) as any
+    renderer: new TerminalRenderer({
+        // 自定义终端渲染选项
+        tab: 2,
+        width: process.stdout.columns || 80,
+        showSectionPrefix: false,
+    }) as any
 });
 
 async function askOnceStream(question: string, model?: string) {
@@ -419,41 +419,59 @@ async function askOnceStream(question: string, model?: string) {
 
     const spinner = ora(chalk.cyan('AI 正在思考...')).start();
     let fullResponse = '';
+    let lastRenderedLines = 0;
+    const BOT_PREFIX = chalk.bold.blue('🤖 AI：');
+
+    // Helper function to calculate visual lines in terminal (including wrapping)
+    const getVisualLineCount = (text: string): number => {
+        const columns = process.stdout.columns || 80;
+        const lines = text.split('\n');
+        let totalLines = 0;
+        for (const line of lines) {
+            // Strip ANSI escape codes
+            const cleanLine = line.replace(/\x1b\[[0-9;]*m/g, '');
+            // Calculate visual width (counting CJK characters as 2)
+            let visualWidth = 0;
+            for (let i = 0; i < cleanLine.length; i++) {
+                visualWidth += cleanLine.charCodeAt(i) > 255 ? 2 : 1;
+            }
+            totalLines += Math.max(1, Math.ceil(visualWidth / columns));
+        }
+        return totalLines;
+    };
 
     try {
-        // 显示流式输出（打字机效果）
-        let isFirstOutput = true;
+        // Hide cursor to prevent flickering
+        process.stdout.write('\x1b[?25l');
+
         await callAI_Stream(messages, model, (chunk) => {
             if (spinner.isSpinning) {
                 spinner.stop();
-                if (isFirstOutput) {
-                    process.stdout.write(chalk.bold.blue('🤖 AI：'));
-                    isFirstOutput = false;
+            }
+
+            fullResponse += chunk;
+
+            // 1. Move cursor back and clear previous output
+            if (lastRenderedLines > 0) {
+                for (let i = 0; i < lastRenderedLines; i++) {
+                    // \x1b[F moves cursor to start of previous line, \x1b[K clears line
+                    process.stdout.write('\x1b[F\x1b[K');
                 }
             }
-            fullResponse += chunk;
-            // 实现流式输出
-            process.stdout.write(chunk);
+
+            // 2. Render current full response as Markdown
+            const formatted = marked.parse(fullResponse, { async: false }) as string;
+            const output = BOT_PREFIX + formatted;
+
+            // 3. Output rendered content
+            process.stdout.write(output);
+
+            // 4. Record number of lines for next erasure
+            lastRenderedLines = getVisualLineCount(output);
         });
 
-        // 计算流式输出占用的行数
-        const lines = fullResponse.split('\n');
-        const lineCount = lines.length;
-
-        // 移动光标到输出开始的位置并清除内容
-        // \x1b[A 是向上移动一行
-        // \x1b[K 是清除从光标到行尾的内容
-        for (let i = 0; i < lineCount; i++) {
-            process.stdout.write('\x1b[A\x1b[K'); // Move up one line and clear it
-        }
-
-        // 额外清除 "🤖 AI：" 这一行
-        process.stdout.write('\x1b[A\x1b[K');
-
-        // 输出格式化的 AI 响应
-        process.stdout.write(chalk.bold.blue('🤖 AI：'));
-        const formattedResponse = marked.parse(fullResponse, { async: false });
-        process.stdout.write(formattedResponse);
+        // Show cursor back
+        process.stdout.write('\x1b[?25h');
 
         addToConversationHistory('user', question);
         addToConversationHistory('assistant', fullResponse);
@@ -464,7 +482,7 @@ async function askOnceStream(question: string, model?: string) {
         if (spinner.isSpinning) {
             spinner.stop();
         }
-        // Re-throw to be caught by the loop
+        process.stdout.write('\x1b[?25h'); // Ensure cursor is shown even on error
         throw error;
     }
 }
