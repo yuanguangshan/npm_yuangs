@@ -425,55 +425,66 @@ async function askOnceStream(question: string, model?: string) {
     let fullResponse = '';
     const BOT_PREFIX = chalk.bold.blue('🤖 AI：');
 
-    // Helper function to calculate visual lines in terminal (including wrapping)
+    // A robust terminal simulator to calculate occupied rows
     const getVisualLineCount = (text: string): number => {
         if (!text) return 0;
         const columns = process.stdout.columns || 80;
-        const lines = text.split('\n');
-        let totalLines = 0;
-        for (const line of lines) {
-            // Strip all ANSI escape sequences more thoroughly
-            const cleanLine = line.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
-            let visualWidth = 0;
-            for (const char of cleanLine) {
+        let x = 0;
+        let y = 1;
+        // Strip ANSI escape codes
+        const cleanText = text.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
+
+        for (const char of cleanText) {
+            if (char === '\n') {
+                x = 0;
+                y++;
+            } else {
                 const code = char.codePointAt(0) || 0;
-                // Threshold 255 is more accurate for CJK/Emoji detection in most terminal fonts
-                visualWidth += code > 255 ? 2 : 1;
+                const w = code > 255 ? 2 : 1;
+                if (x + w > columns) {
+                    y++;
+                    x = w;
+                } else {
+                    x += w;
+                }
             }
-            // Standard terminal wrap logic: a line of length 'columns' occupies 2 rows (cursor on next row)
-            totalLines += Math.floor(visualWidth / columns) + 1;
         }
-        return totalLines;
+        return y;
     };
 
     try {
-        // Hide cursor to prevent flickering
         process.stdout.write('\x1b[?25l');
+        let typewriterLines = 0;
 
         await callAI_Stream(messages, model, (chunk) => {
             if (spinner.isSpinning) {
                 spinner.stop();
-                process.stdout.write(BOT_PREFIX);
             }
-            process.stdout.write(chunk);
+
+            // 1. Clear previous typewriter block
+            if (typewriterLines > 0) {
+                readline.moveCursor(process.stdout, 0, -(typewriterLines - 1));
+                readline.cursorTo(process.stdout, 0);
+                readline.clearScreenDown(process.stdout);
+            }
+
             fullResponse += chunk;
+            const output = BOT_PREFIX + fullResponse;
+            process.stdout.write(output);
+
+            // 2. Sync line count
+            typewriterLines = getVisualLineCount(output);
         });
 
-        // After stream is complete, we replace with Markdown
-        const plainOutput = BOT_PREFIX + fullResponse;
-        const plainLines = getVisualLineCount(plainOutput);
-
-        if (plainLines > 0) {
-            readline.moveCursor(process.stdout, 0, -(plainLines - 1));
+        // Final transition to Markdown
+        if (typewriterLines > 0) {
+            readline.moveCursor(process.stdout, 0, -(typewriterLines - 1));
             readline.cursorTo(process.stdout, 0);
             readline.clearScreenDown(process.stdout);
         }
 
-        // 3. Render and print the full Markdown version
         const formatted = (marked.parse(fullResponse, { async: false }) as string).trimEnd();
         process.stdout.write(BOT_PREFIX + formatted);
-
-        // Show cursor back
         process.stdout.write('\n\x1b[?25h');
 
         addToConversationHistory('user', question);
