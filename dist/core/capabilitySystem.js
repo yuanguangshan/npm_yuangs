@@ -28,7 +28,7 @@ class CapabilitySystem {
                 costProfile: 'high',
             },
             {
-                name: 'gemini-flash-latest',
+                name: 'gemini-2.5-flash',
                 provider: 'google',
                 atomicCapabilities: [
                     require('./capabilities').AtomicCapability.TEXT_GENERATION,
@@ -53,7 +53,7 @@ class CapabilitySystem {
         ];
         this.fallbackModels = [
             {
-                name: 'gemini-flash-lite-latest',
+                name: 'gemini-2.5-flash-lite',
                 provider: 'google',
                 atomicCapabilities: [
                     require('./capabilities').AtomicCapability.TEXT_GENERATION,

@@ -70,8 +70,8 @@ program
     .option('-e, --exec', '生成并执行 Linux 命令')
     .option('-m, --model <model>', '指定 AI 模型')
     .option('-p', '使用 Pro 模型 (gemini-3-flash-preview)')
-    .option('-f', '使用 Flash 模型 (gemini-flash-latest)')
-    .option('-l', '使用 Lite 模型 (gemini-flash-lite-latest)')
+    .option('-f', '使用 Flash 模型 (gemini-2.5-flash)')
+    .option('-l', '使用 Lite 模型 (gemini-2.5-flash-lite)')
     .option('-w, --with-content', '在管道模式下读取文件内容')
     .option('-v, --verbose', '详细输出（显示 Capability 匹配详情）')
     .action(async (questionArgs, options) => {
