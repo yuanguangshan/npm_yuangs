@@ -76,7 +76,7 @@ function parseOptionsFromArgs(args) {
 }
 function getModelFromShortcuts(args) {
     if (args.includes('-p'))
-        return 'gemini-pro-latest';
+        return 'gemini-3-flash-preview';
     if (args.includes('-f'))
         return 'gemini-flash-latest';
     if (args.includes('-l'))
@@ -98,7 +98,7 @@ program
     .description('向 AI 提问')
     .option('-e, --exec', '生成并执行 Linux 命令')
     .option('-m, --model <model>', '指定 AI 模型')
-    .option('-p', '使用 Pro 模型 (gemini-pro-latest)')
+    .option('-p', '使用 Pro 模型 (gemini-3-flash-preview)')
     .option('-f', '使用 Flash 模型 (gemini-flash-latest)')
     .option('-l', '使用 Lite 模型 (gemini-flash-lite-latest)')
     .option('-w, --with-content', '在管道模式下读取文件内容')
@@ -119,7 +119,7 @@ program
     }
     let model = options.model;
     if (options.p)
-        model = 'gemini-pro-latest';
+        model = 'gemini-3-flash-preview';
     if (options.f)
         model = 'gemini-flash-latest';
     if (options.l)

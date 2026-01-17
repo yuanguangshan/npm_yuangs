@@ -15,7 +15,7 @@ class CapabilitySystem {
     initializeDefaultModels() {
         this.primaryModels = [
             {
-                name: 'gemini-pro-latest',
+                name: 'gemini-3-flash-preview',
                 provider: 'google',
                 atomicCapabilities: [
                     require('./capabilities').AtomicCapability.TEXT_GENERATION,
