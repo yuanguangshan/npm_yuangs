@@ -12,14 +12,14 @@
   "files": [
     "dist"
   ],
-"scripts": {
-  "dev": "ts-node src/cli.ts",
-  "build": "tsc",
-  "prepare": "npm run build",
-  "prepublishOnly": "npm run build",
-  "test": "jest",
-  "verify": "./verify.sh"
-},
+  "scripts": {
+    "dev": "ts-node src/cli.ts",
+    "build": "tsc",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run build",
+    "test": "jest",
+    "verify": "./verify.sh"
+  },
   "keywords": [
     "yuangs",
     "cli",
@@ -37,7 +37,7 @@
   "dependencies": {
     "axios": "^1.13.2",
     "chalk": "^4.1.2",
-    "commander": "^14.0.2",
+    "commander": "^13.1.0",
     "js-yaml": "^4.1.0",
     "json5": "^2.2.3",
     "marked": "^15.0.12",

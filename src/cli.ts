@@ -11,7 +11,13 @@ import { registerCapabilityCommands } from './commands/capabilityCommands';
 import { loadAppsConfig, openUrl, DEFAULT_APPS } from './core/apps';
 import { getMacros, saveMacro, runMacro } from './core/macros';
 import { getCommandHistory } from './utils/history';
-import { getUserConfig } from './ai/client';
+
+// Mandatory Node.js version check
+const majorVersion = Number(process.versions.node.split('.')[0]);
+if (majorVersion < 18) {
+    console.error(chalk.red(`Error: yuangs requires Node.js >= 18. Current version: ${process.version}`));
+    process.exit(1);
+}
 
 const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf8'));
 const version = packageJson.version;
@@ -21,7 +27,7 @@ const program = new Command();
 program
     .name('yuangs')
     .description('苑广山的个人命令行工具')
-    .version(version, '-v, --version');
+    .version(version, '-V, --version');
 
 async function readStdin(): Promise<string> {
     if (process.stdin.isTTY) return '';
@@ -74,7 +80,7 @@ program
     .option('-f', '使用 Flash 模型 (gemini-2.5-flash-lite)')
     .option('-l', '使用 Lite 模型 (gemini-2.5-flash-lite)')
     .option('-w, --with-content', '在管道模式下读取文件内容')
-    .option('-v, --verbose', '详细输出（显示 Capability 匹配详情）')
+    .option('--verbose', '详细输出（显示 Capability 匹配详情）')
     .action(async (questionArgs, options) => {
         const stdinData = await readStdin();
         let question = Array.isArray(questionArgs) ? questionArgs.join(' ').trim() : questionArgs || '';

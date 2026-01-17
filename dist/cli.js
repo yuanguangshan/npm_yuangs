@@ -49,13 +49,19 @@ const capabilityCommands_1 = require("./commands/capabilityCommands");
 const apps_1 = require("./core/apps");
 const macros_1 = require("./core/macros");
 const history_1 = require("./utils/history");
+// Mandatory Node.js version check
+const majorVersion = Number(process.versions.node.split('.')[0]);
+if (majorVersion < 18) {
+    console.error(chalk_1.default.red(`Error: yuangs requires Node.js >= 18. Current version: ${process.version}`));
+    process.exit(1);
+}
 const packageJson = JSON.parse(fs_1.default.readFileSync(path_1.default.join(__dirname, '../package.json'), 'utf8'));
 const version = packageJson.version;
 const program = new commander_1.Command();
 program
     .name('yuangs')
     .description('苑广山的个人命令行工具')
-    .version(version, '-v, --version');
+    .version(version, '-V, --version');
 async function readStdin() {
     if (process.stdin.isTTY)
         return '';
@@ -103,7 +109,7 @@ program
     .option('-f', '使用 Flash 模型 (gemini-2.5-flash-lite)')
     .option('-l', '使用 Lite 模型 (gemini-2.5-flash-lite)')
     .option('-w, --with-content', '在管道模式下读取文件内容')
-    .option('-v, --verbose', '详细输出（显示 Capability 匹配详情）')
+    .option('--verbose', '详细输出（显示 Capability 匹配详情）')
     .action(async (questionArgs, options) => {
     const stdinData = await readStdin();
     let question = Array.isArray(questionArgs) ? questionArgs.join(' ').trim() : questionArgs || '';

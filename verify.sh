@@ -36,12 +36,19 @@ if [ -f "index.js" ]; then
     rm index.js
 fi
 
-# 2. 安装依赖
-log "2. 检查依赖..."
+# 2. Node.js 版本检查
+log "2. 检查 Node.js 版本..."
+NODE_MAJOR=$(node -v | cut -d'.' -f1 | sed 's/v//')
+if [ "$NODE_MAJOR" -lt 18 ]; then
+    error "Node.js 版本太低 (当前: $(node -v))，必须 >= 18"
+fi
+
+# 3. 安装依赖
+log "3. 检查依赖..."
 npm install
 
-# 3. TypeScript 构建
-log "3. 执行构建 (npm run build)..."
+# 4. TypeScript 构建
+log "4. 执行构建 (npm run build)..."
 npm run build
 
 # 验证构建产物是否存在
@@ -49,13 +56,13 @@ if [ ! -f "dist/cli.js" ]; then
     error "构建失败：dist/cli.js 未生成"
 fi
 
-# 4. 单元测试
-log "4. 运行单元测试 (npm test)..."
+# 5. 单元测试
+log "5. 运行单元测试 (npm test)..."
 # 注意：你的测试依赖于 dist/ 目录，所以必须在 build 之后运行
 npm test
 
-# 5. NPM 打包模拟
-log "5. 模拟 NPM 打包 (npm pack)..."
+# 6. NPM 打包模拟
+log "6. 模拟 NPM 打包 (npm pack)..."
 npm pack
 
 # 获取生成的 tgz 文件名
@@ -67,8 +74,8 @@ fi
 
 echo -e "📦 生成包文件: ${YELLOW}$PACKAGE_FILE${NC}"
 
-# 6. 包内容验证 (防止源码泄漏)
-log "6. 验证包内容结构..."
+# 7. 包内容验证 (防止源码泄漏)
+log "7. 验证包内容结构..."
 # 检查是否包含 dist 目录
 if ! tar -tf "$PACKAGE_FILE" | grep -q "dist/cli.js"; then
     error "包结构错误：缺少 dist/cli.js"
@@ -81,8 +88,8 @@ else
     echo "✅ 源码未泄漏 (src/ 目录未包含)"
 fi
 
-# 7. 冒烟测试 (Smoke Test)
-log "7. 执行冒烟测试 (运行构建后的 CLI)..."
+# 8. 执行冒烟测试 (运行构建后的 CLI)...
+log "8. 执行冒烟测试 (运行构建后的 CLI)..."
 
 # 测试 help 命令
 echo "Testing: yuangs --help"
@@ -98,7 +105,8 @@ echo "Testing: yuangs --version"
 VERSION_OUTPUT=$(node dist/cli.js --version)
 echo "✅ 版本号显示: $VERSION_OUTPUT"
 
-# 8. 完成
+# 9. 完成
+log "9. 完成验证"
 echo ""
 echo -e "${GREEN}=============================================${NC}"
 echo -e "${GREEN}🎉 验证通过！项目状态健康，随时可以发布。${NC}"
