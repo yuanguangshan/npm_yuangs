@@ -8,6 +8,7 @@ import { buildCommandPrompt as buildCommandPromptString } from '../ai/prompt';
 import { getOSProfile } from '../core/os';
 import { getMacros } from '../core/macros';
 import { aiCommandPlanSchema } from '../core/validation';
+import { getRelevantSkills } from './skills';
 
 export function buildPrompt(
     intent: AgentIntent,
@@ -59,7 +60,13 @@ function buildCommandPromptObject(
 ): AgentPrompt {
     const os = getOSProfile();
     const macros = getMacros();
-    const promptText = buildCommandPromptString(input, os, macros);
+    const skills = getRelevantSkills(input);
+    let promptText = buildCommandPromptString(input, os, macros);
+
+    if (skills.length > 0) {
+        const skillList = skills.map(s => `- ${s.name}: 当遇到 "${s.whenToUse}" 时，你可以参考计划: ${s.planTemplate.goal}`).join('\n');
+        promptText = `【参考技能库】\n${skillList}\n\n${promptText}`;
+    }
 
     return {
         messages: [
