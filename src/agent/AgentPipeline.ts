@@ -61,10 +61,9 @@ export class AgentPipeline {
         });
 
         // 8. Plan Execution
-        await executePlan(plan, input.options);
+        const summary = await executePlan(plan, input.options);
 
         // 9. Post-execution: Learn Skill if successful
-        // Note: In an MVP, we assume it's successful if executePlan finishes without error
         learnSkillFromRecord({
             id,
             timestamp: Date.now(),
@@ -78,7 +77,7 @@ export class AgentPipeline {
                 command: plan.tasks[0].payload.command,
                 risk: plan.tasks[0].payload.risk
             } : { type: 'print', content: result.rawText },
-        });
+        }, summary.success);
 
         // Log execution metrics if verbose
         if (input.options?.verbose) {

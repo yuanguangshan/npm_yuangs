@@ -2,10 +2,16 @@ import { AgentPlan, AgentTask } from './plan';
 import { executeAction } from './actions';
 import chalk from 'chalk';
 
+export interface PlanExecutionSummary {
+    success: boolean;
+    completedCount: number;
+    totalCount: number;
+}
+
 export async function executePlan(
     plan: AgentPlan,
     options?: { autoYes?: boolean; verbose?: boolean }
-): Promise<void> {
+): Promise<PlanExecutionSummary> {
     const completed = new Set<string>();
     const failed = new Set<string>();
 
@@ -46,6 +52,12 @@ export async function executePlan(
     if (options?.verbose) {
         console.log(chalk.bold.green(`\n✅ 计划执行完成 (${completed.size}/${plan.tasks.length} 成功)\n`));
     }
+
+    return {
+        success: failed.size === 0 && completed.size > 0,
+        completedCount: completed.size,
+        totalCount: plan.tasks.length
+    };
 }
 
 async function executeTask(

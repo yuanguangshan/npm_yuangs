@@ -7,34 +7,70 @@ export interface Skill {
     description: string;
     whenToUse: string; // 触发场景描述
     planTemplate: AgentPlan;
+
+    // 评价指标
     successCount: number;
+    failureCount: number;
+    confidence: number; // 0 ~ 1, 初始 0.5
+
+    // 时间戳
     lastUsed: number;
+    createdAt: number;
 }
 
-const skillLibrary: Skill[] = [];
+let skillLibrary: Skill[] = [];
 
 /**
- * 从成功的执行记录中学习技能
+ * 计算技能分 (0 ~ 1)
  */
-export function learnSkillFromRecord(record: ExecutionRecord) {
-    // 只有成功的 shell 命令才值得学习
-    if (record.mode === 'chat') return;
-    if (!record.llmResult.plan) return;
+function computeSkillScore(skill: Skill, now: number = Date.now()): number {
+    const totalUses = skill.successCount + skill.failureCount;
+    const successRate = totalUses === 0 ? 0.5 : skill.successCount / totalUses;
 
-    // 检查是否已经存在类似的技能 (简单基于名称匹配)
+    // 时间衰减 (Freshness): 半衰期约 14 天
+    const idleDays = (now - skill.lastUsed) / (1000 * 60 * 60 * 24);
+    const freshness = Math.exp(-idleDays / 14);
+
+    // 综合得分: 45% 成功率 + 35% 新鲜度 + 20% 置信度
+    return (0.45 * successRate) + (0.35 * freshness) + (0.20 * skill.confidence);
+}
+
+/**
+ * 更新技能状态 (执行后调用)
+ */
+export function updateSkillStatus(skillId: string, success: boolean) {
+    const skill = skillLibrary.find(s => s.id === skillId);
+    if (!skill) return;
+
+    skill.lastUsed = Date.now();
+    if (success) {
+        skill.successCount++;
+        // 成功奖励: 置信度缓慢提升
+        skill.confidence = Math.min(1, skill.confidence + 0.05);
+    } else {
+        skill.failureCount++;
+        // 失败惩罚: 惩罚力度大于奖励，防止系统“自嗨”
+        skill.confidence = Math.max(0, skill.confidence - 0.1);
+    }
+}
+
+/**
+ * 自动学习新技能
+ */
+export function learnSkillFromRecord(record: ExecutionRecord, success: boolean = true) {
+    if (record.mode === 'chat' || !record.llmResult.plan) return;
+
     const existingSkill = skillLibrary.find(s => s.name === record.llmResult.plan?.goal);
 
     if (existingSkill) {
-        existingSkill.successCount++;
-        existingSkill.lastUsed = Date.now();
+        updateSkillStatus(existingSkill.id, success);
         return;
     }
 
-    // 限制技能库大小
-    if (skillLibrary.length > 50) {
-        skillLibrary.shift(); // 移除最老的一个
-    }
+    // 只有成功的记录才被学为新技能
+    if (!success) return;
 
+    const now = Date.now();
     skillLibrary.push({
         id: record.id,
         name: record.llmResult.plan.goal,
@@ -42,18 +78,56 @@ export function learnSkillFromRecord(record: ExecutionRecord) {
         whenToUse: record.input.rawInput,
         planTemplate: record.llmResult.plan,
         successCount: 1,
-        lastUsed: Date.now()
+        failureCount: 0,
+        confidence: 0.5,
+        lastUsed: now,
+        createdAt: now
     });
+
+    // 每学习一次，尝试清理一次“冷”技能
+    reapColdSkills();
 }
 
 /**
- * 获取相关技能以注入 Prompt
+ * 筛选并排序技能 (用于注入 Prompt)
  */
-export function getRelevantSkills(input: string): Skill[] {
-    // 简单返回最近使用的 3 个，未来可以用向量检索 (Vector Search)
+export function getRelevantSkills(input: string, limit: number = 3): Skill[] {
+    const now = Date.now();
+
     return skillLibrary
-        .sort((a, b) => b.lastUsed - a.lastUsed)
-        .slice(0, 3);
+        // 1. 基础筛选: 剔除评分过低的技能 (硬淘汰阈值 0.3)
+        .filter(s => computeSkillScore(s, now) >= 0.3)
+        // 2. 排序: 按综合分排序
+        .sort((a, b) => computeSkillScore(b, now) - computeSkillScore(a, now))
+        // 3. 取上限
+        .slice(0, limit);
+}
+
+/**
+ * 清理过期或低质技能 (Reaper)
+ */
+export function reapColdSkills() {
+    const now = Date.now();
+
+    skillLibrary = skillLibrary.filter(skill => {
+        const score = computeSkillScore(skill, now);
+        const idleDays = (now - skill.lastUsed) / (1000 * 60 * 60 * 24);
+
+        // 满足以下任一条件则淘汰:
+        // 1. 得分极低且长期不用
+        if (score < 0.25 && idleDays > 30) return false;
+        // 2. 失败率极高且尝试过一定次数
+        if (skill.failureCount > 5 && (skill.successCount / (skill.successCount + skill.failureCount)) < 0.2) return false;
+
+        return true;
+    });
+
+    // 强制保持容量
+    if (skillLibrary.length > 100) {
+        // 如果还超标，移除得分最低的那个
+        skillLibrary.sort((a, b) => computeSkillScore(a, now) - computeSkillScore(b, now));
+        skillLibrary.shift();
+    }
 }
 
 export function getAllSkills(): Skill[] {
