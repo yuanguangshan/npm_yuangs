@@ -11,8 +11,9 @@ export async function exec(command: string): Promise<ExecResult> {
         let stdout = '';
         let stderr = '';
 
-        // Using shell: true to support things like pipes
-        const child = spawn(command, [], { shell: true });
+        // Use user's preferred shell back with full support for their environment
+        const shell = process.env.SHELL || true;
+        const child = spawn(command, [], { shell });
 
         child.stdout.on('data', (data) => {
             stdout += data.toString();

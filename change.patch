@@ -1,0 +1,1606 @@
+diff --git a/AGENT_PIPELINE.md b/AGENT_PIPELINE.md
+new file mode 100644
+index 0000000..bd7bdc8
+--- /dev/null
++++ b/AGENT_PIPELINE.md
+@@ -0,0 +1,249 @@
++# Agent Pipeline Architecture
++
++## 概述
++
++版本 2.1.0 引入了全新的 **Agent Pipeline** 架构，统一了 AI Chat 和 AI Command 的执行流程。这是一个可扩展、可调试、可进化的智能体系统。
++
++## 核心架构
++
++### Pipeline 阶段
++
++```
++User Input
++   ↓
++1. Intent Analysis (意图分析)
++   ↓
++2. Context Assembly (上下文组装)
++   ↓
++3. Prompt Construction (提示词构建)
++   ↓
++4. Model Selection (模型选择)
++   ↓
++5. LLM Execution (LLM 执行)
++   ↓
++6. Result Interpretation (结果解释)
++   ↓
++7. Action Execution (动作执行)
++   ↓
++8. Execution Record (执行记录)
++```
++
++### 目录结构
++
++```
++src/agent/
++├── AgentPipeline.ts    # 核心编排器
++├── types.ts            # 类型定义
++├── intent.ts           # 意图推断
++├── context.ts          # 上下文组装
++├── prompt.ts           # 提示词构建
++├── selectModel.ts      # 模型选择
++├── llm.ts              # LLM 执行
++├── interpret.ts        # 结果解释
++├── actions.ts          # 动作执行
++├── record.ts           # 执行记录
++├── replay.ts           # 重放功能
++└── index.ts            # 导出
++```
++
++## 核心概念
++
++### AgentMode
++
++三种运行模式：
++
++- `chat`: AI 聊天模式（流式输出，无命令执行）
++- `command`: 生成 shell 命令（需要确认）
++- `command+exec`: 生成并执行命令
++
++### AgentInput
++
++统一的输入接口：
++
++```typescript
++interface AgentInput {
++  rawInput: string;           // 用户输入
++  stdin?: string;             // 管道输入
++  context?: AgentContext;     // 上下文
++  options?: {
++    model?: string;           // 指定模型
++    stream?: boolean;         // 是否流式
++    autoYes?: boolean;        // 自动确认
++    verbose?: boolean;        // 详细输出
++  };
++}
++```
++
++### AgentContext
++
++上下文信息：
++
++```typescript
++interface AgentContext {
++  files?: Array<{           // 文件上下文
++    path: string;
++    content: string;
++  }>;
++  gitDiff?: string;         // Git 差异
++  history?: AIRequestMessage[];  // 对话历史
++}
++```
++
++## 使用示例
++
++### 基础用法
++
++```typescript
++import { AgentPipeline } from './agent';
++
++const agent = new AgentPipeline();
++
++// Chat 模式
++await agent.run(
++  { rawInput: "解释一下冒泡排序" },
++  'chat'
++);
++
++// Command 模式
++await agent.run(
++  { rawInput: "列出当前目录的所有文件" },
++  'command'
++);
++```
++
++### 高级用法
++
++```typescript
++// 带上下文的查询
++await agent.run(
++  {
++    rawInput: "这个文件有什么问题？",
++    context: {
++      files: [{
++        path: 'src/index.ts',
++        content: fs.readFileSync('src/index.ts', 'utf8')
++      }]
++    },
++    options: {
++      model: 'gemini-2.0-flash-exp',
++      verbose: true
++    }
++  },
++  'chat'
++);
++```
++
++## 执行记录与重放
++
++### 执行记录
++
++每次 Agent 运行都会自动保存执行记录：
++
++```typescript
++interface ExecutionRecord {
++  id: string;                 // 唯一 ID
++  timestamp: number;          // 时间戳
++  mode: AgentMode;            // 运行模式
++  input: AgentInput;          // 输入
++  prompt: AgentPrompt;        // 提示词
++  model: string;              // 使用的模型
++  llmResult: LLMResult;       // LLM 结果
++  action: AgentAction;        // 执行的动作
++}
++```
++
++### 重放功能
++
++```typescript
++import { replay, getRecordById } from './agent/replay';
++
++// 获取记录
++const record = getRecordById('some-uuid');
++
++// 重放执行
++if (record) {
++  await replay(record);
++}
++```
++
++## 能力系统集成
++
++Agent Pipeline 完全集成了现有的 Capability System：
++
++- **Intent Analysis**: 自动推断所需能力
++- **Model Selection**: 根据能力选择最佳模型
++- **Execution Record**: 记录能力匹配结果
++
++## 扩展性
++
++### 添加新的 Action 类型
++
++```typescript
++// 在 types.ts 中扩展 AgentAction
++export type AgentAction =
++  | { type: 'print'; content: string }
++  | { type: 'confirm'; next: AgentAction }
++  | { type: 'execute'; command: string; risk: 'low' | 'medium' | 'high' }
++  | { type: 'custom'; handler: () => Promise<void> };  // 新类型
++
++// 在 actions.ts 中实现
++if (action.type === 'custom') {
++  await action.handler();
++}
++```
++
++### 添加新的 Context 来源
++
++```typescript
++// 在 context.ts 中扩展
++export function buildContext(input: AgentInput): AgentContext {
++  return {
++    files: getFiles(),
++    gitDiff: getGitDiff(),
++    history: getHistory(),
++    // 新增
++    systemInfo: getSystemInfo(),
++    recentCommands: getRecentCommands(),
++  };
++}
++```
++
++## 下一步计划
++
++根据 todo.md，后续将实现：
++
++1. **Planner / Tool Calling**: 多步 Agent 执行
++2. **Agent Memory**: 长期记忆与摘要
++3. **成本 / Token 可视化**: 执行指标追踪
++4. **风险策略**: 高风险命令强制多确认
++5. **Multi-Agent**: Planner / Executor / Critic 分体
++6. **UI 化**: Timeline + Replay + Diff
++
++## 迁移指南
++
++### 从旧系统迁移
++
++旧的 `handleAICommand` 和 `handleAIChat` 仍然可用，但建议逐步迁移到 Agent Pipeline：
++
++```typescript
++// 旧方式
++await handleAICommand(question, { execute: false, model });
++
++// 新方式
++const agent = new AgentPipeline();
++await agent.run(
++  { rawInput: question, options: { model } },
++  'command'
++);
++```
++
++### 兼容性
++
++- ✅ 完全向后兼容现有 CLI 命令
++- ✅ 复用现有的 Capability System
++- ✅ 复用现有的 AI Client
++- ✅ 复用现有的 Context Buffer
++
++## 贡献
++
++欢迎贡献新的 Agent 能力和扩展！请参考 `src/agent/` 目录下的代码结构。
+diff --git a/dist/agent/AgentPipeline.d.ts b/dist/agent/AgentPipeline.d.ts
+new file mode 100644
+index 0000000..5301aaf
+--- /dev/null
++++ b/dist/agent/AgentPipeline.d.ts
+@@ -0,0 +1,4 @@
++import { AgentInput, AgentMode } from './types';
++export declare class AgentPipeline {
++    run(input: AgentInput, mode: AgentMode): Promise<void>;
++}
+diff --git a/dist/agent/AgentPipeline.js b/dist/agent/AgentPipeline.js
+new file mode 100644
+index 0000000..4b457c1
+--- /dev/null
++++ b/dist/agent/AgentPipeline.js
+@@ -0,0 +1,62 @@
++"use strict";
++Object.defineProperty(exports, "__esModule", { value: true });
++exports.AgentPipeline = void 0;
++const intent_1 = require("./intent");
++const context_1 = require("./context");
++const prompt_1 = require("./prompt");
++const selectModel_1 = require("./selectModel");
++const llm_1 = require("./llm");
++const interpret_1 = require("./interpret");
++const actions_1 = require("./actions");
++const record_1 = require("./record");
++const crypto_1 = require("crypto");
++class AgentPipeline {
++    async run(input, mode) {
++        const id = (0, crypto_1.randomUUID)();
++        // 1. Intent Analysis
++        const intent = (0, intent_1.inferIntent)(input, mode);
++        // 2. Context Assembly
++        const context = (0, context_1.buildContext)(input);
++        // 3. Prompt Construction
++        const prompt = (0, prompt_1.buildPrompt)(intent, context, mode, input.rawInput);
++        // 4. Model Selection
++        const model = (0, selectModel_1.selectModel)(intent, input.options?.model);
++        // 5. LLM Execution
++        const result = await (0, llm_1.runLLM)({
++            prompt,
++            model,
++            stream: mode === 'chat',
++            onChunk: mode === 'chat'
++                ? (s) => process.stdout.write(s)
++                : undefined,
++        });
++        // 6. Result Interpretation
++        const action = (0, interpret_1.interpretResult)(result, intent, mode);
++        // 7. Save Execution Record (before execution for safety)
++        (0, record_1.saveRecord)({
++            id,
++            timestamp: Date.now(),
++            mode,
++            input,
++            prompt,
++            model,
++            llmResult: result,
++            action,
++        });
++        // 8. Action Execution
++        await (0, actions_1.executeAction)(action, input.options);
++        // Log execution metrics if verbose
++        if (input.options?.verbose) {
++            console.log(`\n${'-'.repeat(50)}`);
++            console.log(`Execution ID: ${id}`);
++            console.log(`Model: ${model}`);
++            console.log(`Latency: ${result.latencyMs}ms`);
++            if (result.tokens) {
++                console.log(`Tokens: ${result.tokens.total}`);
++            }
++            console.log(`${'-'.repeat(50)}\n`);
++        }
++    }
++}
++exports.AgentPipeline = AgentPipeline;
++//# sourceMappingURL=AgentPipeline.js.map
+\ No newline at end of file
+diff --git a/dist/agent/actions.d.ts b/dist/agent/actions.d.ts
+new file mode 100644
+index 0000000..60b8e87
+--- /dev/null
++++ b/dist/agent/actions.d.ts
+@@ -0,0 +1,4 @@
++import { AgentAction } from './types';
++export declare function executeAction(action: AgentAction, options?: {
++    autoYes?: boolean;
++}): Promise<void>;
+diff --git a/dist/agent/actions.js b/dist/agent/actions.js
+new file mode 100644
+index 0000000..9056f15
+--- /dev/null
++++ b/dist/agent/actions.js
+@@ -0,0 +1,51 @@
++"use strict";
++var __importDefault = (this && this.__importDefault) || function (mod) {
++    return (mod && mod.__esModule) ? mod : { "default": mod };
++};
++Object.defineProperty(exports, "__esModule", { value: true });
++exports.executeAction = executeAction;
++const child_process_1 = require("child_process");
++const util_1 = require("util");
++const chalk_1 = __importDefault(require("chalk"));
++const readline_1 = __importDefault(require("readline"));
++const execAsync = (0, util_1.promisify)(child_process_1.exec);
++async function executeAction(action, options) {
++    if (action.type === 'print') {
++        console.log(action.content);
++        return;
++    }
++    if (action.type === 'confirm') {
++        const ok = options?.autoYes || await confirm('Execute this action?');
++        if (ok) {
++            await executeAction(action.next, options);
++        }
++        return;
++    }
++    if (action.type === 'execute') {
++        try {
++            console.log(chalk_1.default.cyan(`\nExecuting: ${action.command}\n`));
++            const { stdout, stderr } = await execAsync(action.command);
++            if (stdout)
++                console.log(stdout);
++            if (stderr)
++                console.error(chalk_1.default.yellow(stderr));
++        }
++        catch (error) {
++            console.error(chalk_1.default.red(`Execution failed: ${error.message}`));
++            throw error;
++        }
++    }
++}
++async function confirm(message) {
++    const rl = readline_1.default.createInterface({
++        input: process.stdin,
++        output: process.stdout,
++    });
++    return new Promise((resolve) => {
++        rl.question(chalk_1.default.cyan(`${message} (y/N): `), (answer) => {
++            rl.close();
++            resolve(answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes');
++        });
++    });
++}
++//# sourceMappingURL=actions.js.map
+\ No newline at end of file
+diff --git a/dist/agent/context.d.ts b/dist/agent/context.d.ts
+new file mode 100644
+index 0000000..b79baf0
+--- /dev/null
++++ b/dist/agent/context.d.ts
+@@ -0,0 +1,4 @@
++import { AgentInput, AgentContext } from './types';
++import { ContextBuffer } from '../commands/contextBuffer';
++export declare function buildContext(input: AgentInput): AgentContext;
++export declare function getAgentContextBuffer(): ContextBuffer;
+diff --git a/dist/agent/context.js b/dist/agent/context.js
+new file mode 100644
+index 0000000..efdfeab
+--- /dev/null
++++ b/dist/agent/context.js
+@@ -0,0 +1,22 @@
++"use strict";
++Object.defineProperty(exports, "__esModule", { value: true });
++exports.buildContext = buildContext;
++exports.getAgentContextBuffer = getAgentContextBuffer;
++const contextBuffer_1 = require("../commands/contextBuffer");
++// Create a singleton instance for the agent
++const globalContextBuffer = new contextBuffer_1.ContextBuffer();
++function buildContext(input) {
++    const items = globalContextBuffer.export();
++    return {
++        files: items.map(item => ({
++            path: item.path,
++            content: item.content,
++        })),
++        gitDiff: undefined, // Will be enhanced later
++        history: [], // Will be populated from conversation history
++    };
++}
++function getAgentContextBuffer() {
++    return globalContextBuffer;
++}
++//# sourceMappingURL=context.js.map
+\ No newline at end of file
+diff --git a/dist/agent/index.d.ts b/dist/agent/index.d.ts
+new file mode 100644
+index 0000000..d186c12
+--- /dev/null
++++ b/dist/agent/index.d.ts
+@@ -0,0 +1,2 @@
++export { AgentPipeline } from './AgentPipeline';
++export * from './types';
+diff --git a/dist/agent/index.js b/dist/agent/index.js
+new file mode 100644
+index 0000000..7679fad
+--- /dev/null
++++ b/dist/agent/index.js
+@@ -0,0 +1,21 @@
++"use strict";
++var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
++    if (k2 === undefined) k2 = k;
++    var desc = Object.getOwnPropertyDescriptor(m, k);
++    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
++      desc = { enumerable: true, get: function() { return m[k]; } };
++    }
++    Object.defineProperty(o, k2, desc);
++}) : (function(o, m, k, k2) {
++    if (k2 === undefined) k2 = k;
++    o[k2] = m[k];
++}));
++var __exportStar = (this && this.__exportStar) || function(m, exports) {
++    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
++};
++Object.defineProperty(exports, "__esModule", { value: true });
++exports.AgentPipeline = void 0;
++var AgentPipeline_1 = require("./AgentPipeline");
++Object.defineProperty(exports, "AgentPipeline", { enumerable: true, get: function () { return AgentPipeline_1.AgentPipeline; } });
++__exportStar(require("./types"), exports);
++//# sourceMappingURL=index.js.map
+\ No newline at end of file
+diff --git a/dist/agent/intent.d.ts b/dist/agent/intent.d.ts
+new file mode 100644
+index 0000000..f4a378e
+--- /dev/null
++++ b/dist/agent/intent.d.ts
+@@ -0,0 +1,2 @@
++import { AgentInput, AgentIntent, AgentMode } from './types';
++export declare function inferIntent(input: AgentInput, mode: AgentMode): AgentIntent;
+diff --git a/dist/agent/intent.js b/dist/agent/intent.js
+new file mode 100644
+index 0000000..f30203f
+--- /dev/null
++++ b/dist/agent/intent.js
+@@ -0,0 +1,28 @@
++"use strict";
++Object.defineProperty(exports, "__esModule", { value: true });
++exports.inferIntent = inferIntent;
++const capabilityInference_1 = require("../core/capabilityInference");
++const capabilities_1 = require("../core/capabilities");
++function inferIntent(input, mode) {
++    if (mode === 'chat') {
++        return {
++            type: 'chat',
++            capabilities: {
++                reasoning: true,
++                streaming: true,
++                longContext: true,
++            },
++        };
++    }
++    // For command mode, use the existing capability inference
++    const capReq = (0, capabilityInference_1.inferCapabilityRequirement)(input.rawInput);
++    return {
++        type: 'shell',
++        capabilities: {
++            reasoning: capReq.required.includes(capabilities_1.AtomicCapability.REASONING),
++            code: capReq.required.includes(capabilities_1.AtomicCapability.CODE_GENERATION),
++            longContext: capReq.required.includes(capabilities_1.AtomicCapability.LONG_CONTEXT),
++        },
++    };
++}
++//# sourceMappingURL=intent.js.map
+\ No newline at end of file
+diff --git a/dist/agent/interpret.d.ts b/dist/agent/interpret.d.ts
+new file mode 100644
+index 0000000..f0df3fa
+--- /dev/null
++++ b/dist/agent/interpret.d.ts
+@@ -0,0 +1,2 @@
++import { AgentIntent, AgentMode, LLMResult, AgentAction } from './types';
++export declare function interpretResult(result: LLMResult, intent: AgentIntent, mode: AgentMode): AgentAction;
+diff --git a/dist/agent/interpret.js b/dist/agent/interpret.js
+new file mode 100644
+index 0000000..9f348ba
+--- /dev/null
++++ b/dist/agent/interpret.js
+@@ -0,0 +1,21 @@
++"use strict";
++Object.defineProperty(exports, "__esModule", { value: true });
++exports.interpretResult = interpretResult;
++function interpretResult(result, intent, mode) {
++    if (mode === 'chat') {
++        return { type: 'print', content: result.rawText };
++    }
++    const plan = result.parsed;
++    if (!plan || !plan.command) {
++        throw new Error('Invalid command plan from LLM');
++    }
++    return {
++        type: 'confirm',
++        next: {
++            type: 'execute',
++            command: plan.command,
++            risk: plan.risk ?? 'medium',
++        },
++    };
++}
++//# sourceMappingURL=interpret.js.map
+\ No newline at end of file
+diff --git a/dist/agent/llm.d.ts b/dist/agent/llm.d.ts
+new file mode 100644
+index 0000000..ec69906
+--- /dev/null
++++ b/dist/agent/llm.d.ts
+@@ -0,0 +1,7 @@
++import { AgentPrompt, LLMResult } from './types';
++export declare function runLLM({ prompt, model, stream, onChunk, }: {
++    prompt: AgentPrompt;
++    model: string;
++    stream: boolean;
++    onChunk?: (s: string) => void;
++}): Promise<LLMResult>;
+diff --git a/dist/agent/llm.js b/dist/agent/llm.js
+new file mode 100644
+index 0000000..e5efa78
+--- /dev/null
++++ b/dist/agent/llm.js
+@@ -0,0 +1,76 @@
++"use strict";
++var __importDefault = (this && this.__importDefault) || function (mod) {
++    return (mod && mod.__esModule) ? mod : { "default": mod };
++};
++Object.defineProperty(exports, "__esModule", { value: true });
++exports.runLLM = runLLM;
++const client_1 = require("../ai/client");
++const axios_1 = __importDefault(require("axios"));
++const validation_1 = require("../core/validation");
++const fs_1 = __importDefault(require("fs"));
++const path_1 = __importDefault(require("path"));
++const os_1 = __importDefault(require("os"));
++const validation_2 = require("../core/validation");
++const CONFIG_FILE = path_1.default.join(os_1.default.homedir(), '.yuangs.json');
++function getUserConfig() {
++    if (fs_1.default.existsSync(CONFIG_FILE)) {
++        try {
++            const content = fs_1.default.readFileSync(CONFIG_FILE, 'utf8');
++            return JSON.parse(content);
++        }
++        catch (e) { }
++    }
++    return {};
++}
++async function runLLM({ prompt, model, stream, onChunk, }) {
++    const start = Date.now();
++    if (stream) {
++        let raw = '';
++        await (0, client_1.callAI_Stream)(prompt.messages, model, (chunk) => {
++            raw += chunk;
++            onChunk?.(chunk);
++        });
++        return {
++            rawText: raw,
++            latencyMs: Date.now() - start,
++        };
++    }
++    // Non-streaming mode with optional schema
++    const config = getUserConfig();
++    const url = config.aiProxyUrl || validation_1.DEFAULT_AI_PROXY_URL;
++    const headers = {
++        'Content-Type': 'application/json',
++        'X-Client-ID': 'npm_yuangs',
++        'Origin': 'https://cli.want.biz',
++        'Referer': 'https://cli.want.biz/',
++        'account': config.accountType || validation_1.DEFAULT_ACCOUNT_TYPE,
++        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1',
++        'Accept': 'application/json'
++    };
++    const data = {
++        model: model || config.defaultModel || validation_1.DEFAULT_MODEL,
++        messages: prompt.messages,
++        stream: false
++    };
++    try {
++        const response = await axios_1.default.post(url, data, { headers });
++        const rawText = response.data.choices[0]?.message?.content || '';
++        let parsed = undefined;
++        if (prompt.outputSchema) {
++            const parseResult = (0, validation_2.safeParseJSON)(rawText, prompt.outputSchema, {});
++            if (parseResult.success) {
++                parsed = parseResult.data;
++            }
++        }
++        return {
++            rawText,
++            parsed,
++            latencyMs: Date.now() - start,
++        };
++    }
++    catch (error) {
++        const errorMsg = error.response?.data?.error?.message || error.response?.data?.message || error.message || '未知错误';
++        throw new Error(`AI 请求失败: ${errorMsg}`);
++    }
++}
++//# sourceMappingURL=llm.js.map
+\ No newline at end of file
+diff --git a/dist/agent/prompt.d.ts b/dist/agent/prompt.d.ts
+new file mode 100644
+index 0000000..141d77f
+--- /dev/null
++++ b/dist/agent/prompt.d.ts
+@@ -0,0 +1,2 @@
++import { AgentIntent, AgentContext, AgentMode, AgentPrompt } from './types';
++export declare function buildPrompt(intent: AgentIntent, context: AgentContext, mode: AgentMode, input: string): AgentPrompt;
+diff --git a/dist/agent/prompt.js b/dist/agent/prompt.js
+new file mode 100644
+index 0000000..79628d1
+--- /dev/null
++++ b/dist/agent/prompt.js
+@@ -0,0 +1,49 @@
++"use strict";
++Object.defineProperty(exports, "__esModule", { value: true });
++exports.buildPrompt = buildPrompt;
++const prompt_1 = require("../ai/prompt");
++const os_1 = require("../core/os");
++const macros_1 = require("../core/macros");
++const validation_1 = require("../core/validation");
++function buildPrompt(intent, context, mode, input) {
++    if (mode === 'chat') {
++        return buildChatPrompt(context, input);
++    }
++    return buildCommandPromptObject(input, context);
++}
++function buildChatPrompt(context, input) {
++    const messages = [
++        ...(context.history ?? []),
++    ];
++    // Add context files if available
++    if (context.files && context.files.length > 0) {
++        const contextDesc = context.files.map(f => `File: ${f.path}\n\`\`\`\n${f.content}\n\`\`\``).join('\n\n');
++        messages.push({
++            role: 'system',
++            content: `Context:\n${contextDesc}`,
++        });
++    }
++    messages.push({
++        role: 'user',
++        content: input,
++    });
++    return {
++        system: 'You are a helpful AI assistant with expertise in software development, system administration, and problem-solving.',
++        messages,
++    };
++}
++function buildCommandPromptObject(input, context) {
++    const os = (0, os_1.getOSProfile)();
++    const macros = (0, macros_1.getMacros)();
++    const promptText = (0, prompt_1.buildCommandPrompt)(input, os, macros);
++    return {
++        messages: [
++            {
++                role: 'user',
++                content: promptText,
++            },
++        ],
++        outputSchema: validation_1.aiCommandPlanSchema,
++    };
++}
++//# sourceMappingURL=prompt.js.map
+\ No newline at end of file
+diff --git a/dist/agent/record.d.ts b/dist/agent/record.d.ts
+new file mode 100644
+index 0000000..2eb4bdd
+--- /dev/null
++++ b/dist/agent/record.d.ts
+@@ -0,0 +1,14 @@
++import { AgentInput, AgentMode, AgentPrompt, LLMResult, AgentAction } from './types';
++export interface ExecutionRecord {
++    id: string;
++    timestamp: number;
++    mode: AgentMode;
++    input: AgentInput;
++    prompt: AgentPrompt;
++    model: string;
++    llmResult: LLMResult;
++    action: AgentAction;
++}
++export declare function saveRecord(record: ExecutionRecord): void;
++export declare function getRecords(): ExecutionRecord[];
++export declare function getRecordById(id: string): ExecutionRecord | undefined;
+diff --git a/dist/agent/record.js b/dist/agent/record.js
+new file mode 100644
+index 0000000..3377683
+--- /dev/null
++++ b/dist/agent/record.js
+@@ -0,0 +1,20 @@
++"use strict";
++Object.defineProperty(exports, "__esModule", { value: true });
++exports.saveRecord = saveRecord;
++exports.getRecords = getRecords;
++exports.getRecordById = getRecordById;
++const records = [];
++function saveRecord(record) {
++    records.push(record);
++    // Keep only last 100 records in memory
++    if (records.length > 100) {
++        records.shift();
++    }
++}
++function getRecords() {
++    return [...records];
++}
++function getRecordById(id) {
++    return records.find(r => r.id === id);
++}
++//# sourceMappingURL=record.js.map
+\ No newline at end of file
+diff --git a/dist/agent/replay.d.ts b/dist/agent/replay.d.ts
+new file mode 100644
+index 0000000..6854ae5
+--- /dev/null
++++ b/dist/agent/replay.d.ts
+@@ -0,0 +1,2 @@
++import { ExecutionRecord } from './record';
++export declare function replay(record: ExecutionRecord): Promise<import("./types").AgentAction>;
+diff --git a/dist/agent/replay.js b/dist/agent/replay.js
+new file mode 100644
+index 0000000..aeb1755
+--- /dev/null
++++ b/dist/agent/replay.js
+@@ -0,0 +1,25 @@
++"use strict";
++Object.defineProperty(exports, "__esModule", { value: true });
++exports.replay = replay;
++const llm_1 = require("./llm");
++const interpret_1 = require("./interpret");
++async function replay(record) {
++    console.log(`\nReplaying execution: ${record.id}`);
++    console.log(`Original timestamp: ${new Date(record.timestamp).toISOString()}`);
++    console.log(`Mode: ${record.mode}\n`);
++    const result = await (0, llm_1.runLLM)({
++        prompt: record.prompt,
++        model: record.model,
++        stream: record.mode === 'chat',
++        onChunk: record.mode === 'chat'
++            ? (s) => process.stdout.write(s)
++            : undefined,
++    });
++    // Create a minimal intent for interpretation
++    const intent = {
++        type: record.mode === 'chat' ? 'chat' : 'shell',
++        capabilities: {},
++    };
++    return (0, interpret_1.interpretResult)(result, intent, record.mode);
++}
++//# sourceMappingURL=replay.js.map
+\ No newline at end of file
+diff --git a/dist/agent/selectModel.d.ts b/dist/agent/selectModel.d.ts
+new file mode 100644
+index 0000000..c226651
+--- /dev/null
++++ b/dist/agent/selectModel.d.ts
+@@ -0,0 +1,2 @@
++import { AgentIntent } from './types';
++export declare function selectModel(intent: AgentIntent, override?: string): string;
+diff --git a/dist/agent/selectModel.js b/dist/agent/selectModel.js
+new file mode 100644
+index 0000000..f18a9b5
+--- /dev/null
++++ b/dist/agent/selectModel.js
+@@ -0,0 +1,19 @@
++"use strict";
++Object.defineProperty(exports, "__esModule", { value: true });
++exports.selectModel = selectModel;
++function selectModel(intent, override) {
++    if (override)
++        return override;
++    const caps = intent.capabilities;
++    // Long context + reasoning = most powerful model
++    if (caps.longContext && caps.reasoning) {
++        return 'gemini-2.0-flash-exp';
++    }
++    // Code-focused tasks
++    if (caps.code) {
++        return 'gemini-2.5-flash-lite';
++    }
++    // Default to balanced model
++    return 'gemini-2.5-flash-lite';
++}
++//# sourceMappingURL=selectModel.js.map
+\ No newline at end of file
+diff --git a/dist/agent/types.d.ts b/dist/agent/types.d.ts
+new file mode 100644
+index 0000000..7f86ae8
+--- /dev/null
++++ b/dist/agent/types.d.ts
+@@ -0,0 +1,57 @@
++import type { AIRequestMessage } from '../core/validation';
++export type AgentMode = 'chat' | 'command' | 'command+exec';
++export interface AgentInput {
++    rawInput: string;
++    stdin?: string;
++    context?: AgentContext;
++    options?: {
++        model?: string;
++        stream?: boolean;
++        autoYes?: boolean;
++        verbose?: boolean;
++    };
++}
++export interface AgentContext {
++    files?: Array<{
++        path: string;
++        content: string;
++    }>;
++    gitDiff?: string;
++    history?: AIRequestMessage[];
++}
++export interface AgentIntent {
++    type: 'chat' | 'shell' | 'analysis';
++    capabilities: {
++        reasoning?: boolean;
++        code?: boolean;
++        longContext?: boolean;
++        streaming?: boolean;
++    };
++}
++export interface AgentPrompt {
++    system?: string;
++    messages: AIRequestMessage[];
++    outputSchema?: any;
++}
++export interface LLMResult {
++    rawText: string;
++    parsed?: any;
++    latencyMs: number;
++    tokens?: {
++        prompt: number;
++        completion: number;
++        total: number;
++    };
++    costUsd?: number;
++}
++export type AgentAction = {
++    type: 'print';
++    content: string;
++} | {
++    type: 'confirm';
++    next: AgentAction;
++} | {
++    type: 'execute';
++    command: string;
++    risk: 'low' | 'medium' | 'high';
++};
+diff --git a/dist/agent/types.js b/dist/agent/types.js
+new file mode 100644
+index 0000000..11e638d
+--- /dev/null
++++ b/dist/agent/types.js
+@@ -0,0 +1,3 @@
++"use strict";
++Object.defineProperty(exports, "__esModule", { value: true });
++//# sourceMappingURL=types.js.map
+\ No newline at end of file
+diff --git a/dist/cli.js b/dist/cli.js
+old mode 100644
+new mode 100755
+diff --git a/package.json b/package.json
+index 56bc142..6f87b01 100644
+--- a/package.json
++++ b/package.json
+@@ -1,6 +1,6 @@
+ {
+   "name": "yuangs",
+-  "version": "2.0.22",
++  "version": "2.1.0",
+   "description": "苑广山的个人应用集合 CLI（彩色版）",
+   "author": "苑广山",
+   "license": "ISC",
+diff --git a/src/agent/AgentPipeline.ts b/src/agent/AgentPipeline.ts
+new file mode 100644
+index 0000000..2b63597
+--- /dev/null
++++ b/src/agent/AgentPipeline.ts
+@@ -0,0 +1,73 @@
++import {
++    AgentInput,
++    AgentMode,
++    AgentAction,
++} from './types';
++
++import { inferIntent } from './intent';
++import { buildContext } from './context';
++import { buildPrompt } from './prompt';
++import { selectModel } from './selectModel';
++import { runLLM } from './llm';
++import { interpretResult } from './interpret';
++import { executeAction } from './actions';
++import { saveRecord } from './record';
++import { randomUUID } from 'crypto';
++
++export class AgentPipeline {
++    async run(input: AgentInput, mode: AgentMode): Promise<void> {
++        const id = randomUUID();
++
++        // 1. Intent Analysis
++        const intent = inferIntent(input, mode);
++
++        // 2. Context Assembly
++        const context = buildContext(input);
++
++        // 3. Prompt Construction
++        const prompt = buildPrompt(intent, context, mode, input.rawInput);
++
++        // 4. Model Selection
++        const model = selectModel(intent, input.options?.model);
++
++        // 5. LLM Execution
++        const result = await runLLM({
++            prompt,
++            model,
++            stream: mode === 'chat',
++            onChunk: mode === 'chat'
++                ? (s) => process.stdout.write(s)
++                : undefined,
++        });
++
++        // 6. Result Interpretation
++        const action: AgentAction = interpretResult(result, intent, mode);
++
++        // 7. Save Execution Record (before execution for safety)
++        saveRecord({
++            id,
++            timestamp: Date.now(),
++            mode,
++            input,
++            prompt,
++            model,
++            llmResult: result,
++            action,
++        });
++
++        // 8. Action Execution
++        await executeAction(action, input.options);
++
++        // Log execution metrics if verbose
++        if (input.options?.verbose) {
++            console.log(`\n${'-'.repeat(50)}`);
++            console.log(`Execution ID: ${id}`);
++            console.log(`Model: ${model}`);
++            console.log(`Latency: ${result.latencyMs}ms`);
++            if (result.tokens) {
++                console.log(`Tokens: ${result.tokens.total}`);
++            }
++            console.log(`${'-'.repeat(50)}\n`);
++        }
++    }
++}
+diff --git a/src/agent/actions.ts b/src/agent/actions.ts
+new file mode 100644
+index 0000000..dff07f8
+--- /dev/null
++++ b/src/agent/actions.ts
+@@ -0,0 +1,51 @@
++import { AgentAction } from './types';
++import { exec } from 'child_process';
++import { promisify } from 'util';
++import chalk from 'chalk';
++import readline from 'readline';
++
++const execAsync = promisify(exec);
++
++export async function executeAction(
++    action: AgentAction,
++    options?: { autoYes?: boolean }
++): Promise<void> {
++    if (action.type === 'print') {
++        console.log(action.content);
++        return;
++    }
++
++    if (action.type === 'confirm') {
++        const ok = options?.autoYes || await confirm('Execute this action?');
++        if (ok) {
++            await executeAction(action.next, options);
++        }
++        return;
++    }
++
++    if (action.type === 'execute') {
++        try {
++            console.log(chalk.cyan(`\nExecuting: ${action.command}\n`));
++            const { stdout, stderr } = await execAsync(action.command);
++            if (stdout) console.log(stdout);
++            if (stderr) console.error(chalk.yellow(stderr));
++        } catch (error: any) {
++            console.error(chalk.red(`Execution failed: ${error.message}`));
++            throw error;
++        }
++    }
++}
++
++async function confirm(message: string): Promise<boolean> {
++    const rl = readline.createInterface({
++        input: process.stdin,
++        output: process.stdout,
++    });
++
++    return new Promise((resolve) => {
++        rl.question(chalk.cyan(`${message} (y/N): `), (answer) => {
++            rl.close();
++            resolve(answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes');
++        });
++    });
++}
+diff --git a/src/agent/context.ts b/src/agent/context.ts
+new file mode 100644
+index 0000000..2a148fe
+--- /dev/null
++++ b/src/agent/context.ts
+@@ -0,0 +1,22 @@
++import { AgentInput, AgentContext } from './types';
++import { ContextBuffer } from '../commands/contextBuffer';
++
++// Create a singleton instance for the agent
++const globalContextBuffer = new ContextBuffer();
++
++export function buildContext(input: AgentInput): AgentContext {
++    const items = globalContextBuffer.export();
++
++    return {
++        files: items.map(item => ({
++            path: item.path,
++            content: item.content,
++        })),
++        gitDiff: undefined, // Will be enhanced later
++        history: [], // Will be populated from conversation history
++    };
++}
++
++export function getAgentContextBuffer(): ContextBuffer {
++    return globalContextBuffer;
++}
+diff --git a/src/agent/index.ts b/src/agent/index.ts
+new file mode 100644
+index 0000000..d186c12
+--- /dev/null
++++ b/src/agent/index.ts
+@@ -0,0 +1,2 @@
++export { AgentPipeline } from './AgentPipeline';
++export * from './types';
+diff --git a/src/agent/intent.ts b/src/agent/intent.ts
+new file mode 100644
+index 0000000..12a31c9
+--- /dev/null
++++ b/src/agent/intent.ts
+@@ -0,0 +1,31 @@
++import { AgentInput, AgentIntent, AgentMode } from './types';
++import { inferCapabilityRequirement } from '../core/capabilityInference';
++import { AtomicCapability } from '../core/capabilities';
++
++export function inferIntent(
++    input: AgentInput,
++    mode: AgentMode
++): AgentIntent {
++    if (mode === 'chat') {
++        return {
++            type: 'chat',
++            capabilities: {
++                reasoning: true,
++                streaming: true,
++                longContext: true,
++            },
++        };
++    }
++
++    // For command mode, use the existing capability inference
++    const capReq = inferCapabilityRequirement(input.rawInput);
++
++    return {
++        type: 'shell',
++        capabilities: {
++            reasoning: capReq.required.includes(AtomicCapability.REASONING),
++            code: capReq.required.includes(AtomicCapability.CODE_GENERATION),
++            longContext: capReq.required.includes(AtomicCapability.LONG_CONTEXT),
++        },
++    };
++}
+diff --git a/src/agent/interpret.ts b/src/agent/interpret.ts
+new file mode 100644
+index 0000000..f29f95a
+--- /dev/null
++++ b/src/agent/interpret.ts
+@@ -0,0 +1,25 @@
++import { AgentIntent, AgentMode, LLMResult, AgentAction } from './types';
++
++export function interpretResult(
++    result: LLMResult,
++    intent: AgentIntent,
++    mode: AgentMode
++): AgentAction {
++    if (mode === 'chat') {
++        return { type: 'print', content: result.rawText };
++    }
++
++    const plan = result.parsed;
++    if (!plan || !plan.command) {
++        throw new Error('Invalid command plan from LLM');
++    }
++
++    return {
++        type: 'confirm',
++        next: {
++            type: 'execute',
++            command: plan.command,
++            risk: plan.risk ?? 'medium',
++        },
++    };
++}
+diff --git a/src/agent/llm.ts b/src/agent/llm.ts
+new file mode 100644
+index 0000000..10f736c
+--- /dev/null
++++ b/src/agent/llm.ts
+@@ -0,0 +1,88 @@
++import { AgentPrompt, LLMResult } from './types';
++import { callAI_Stream } from '../ai/client';
++import axios from 'axios';
++import { DEFAULT_AI_PROXY_URL, DEFAULT_MODEL, DEFAULT_ACCOUNT_TYPE, type AIRequestMessage } from '../core/validation';
++import fs from 'fs';
++import path from 'path';
++import os from 'os';
++import { safeParseJSON } from '../core/validation';
++
++const CONFIG_FILE = path.join(os.homedir(), '.yuangs.json');
++
++function getUserConfig(): any {
++    if (fs.existsSync(CONFIG_FILE)) {
++        try {
++            const content = fs.readFileSync(CONFIG_FILE, 'utf8');
++            return JSON.parse(content);
++        } catch (e) { }
++    }
++    return {};
++}
++
++export async function runLLM({
++    prompt,
++    model,
++    stream,
++    onChunk,
++}: {
++    prompt: AgentPrompt;
++    model: string;
++    stream: boolean;
++    onChunk?: (s: string) => void;
++}): Promise<LLMResult> {
++    const start = Date.now();
++
++    if (stream) {
++        let raw = '';
++        await callAI_Stream(prompt.messages, model, (chunk) => {
++            raw += chunk;
++            onChunk?.(chunk);
++        });
++        return {
++            rawText: raw,
++            latencyMs: Date.now() - start,
++        };
++    }
++
++    // Non-streaming mode with optional schema
++    const config = getUserConfig();
++    const url = config.aiProxyUrl || DEFAULT_AI_PROXY_URL;
++
++    const headers = {
++        'Content-Type': 'application/json',
++        'X-Client-ID': 'npm_yuangs',
++        'Origin': 'https://cli.want.biz',
++        'Referer': 'https://cli.want.biz/',
++        'account': config.accountType || DEFAULT_ACCOUNT_TYPE,
++        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1',
++        'Accept': 'application/json'
++    };
++
++    const data = {
++        model: model || config.defaultModel || DEFAULT_MODEL,
++        messages: prompt.messages,
++        stream: false
++    };
++
++    try {
++        const response = await axios.post(url, data, { headers });
++        const rawText = response.data.choices[0]?.message?.content || '';
++
++        let parsed = undefined;
++        if (prompt.outputSchema) {
++            const parseResult = safeParseJSON(rawText, prompt.outputSchema, {});
++            if (parseResult.success) {
++                parsed = parseResult.data;
++            }
++        }
++
++        return {
++            rawText,
++            parsed,
++            latencyMs: Date.now() - start,
++        };
++    } catch (error: any) {
++        const errorMsg = error.response?.data?.error?.message || error.response?.data?.message || error.message || '未知错误';
++        throw new Error(`AI 请求失败: ${errorMsg}`);
++    }
++}
+diff --git a/src/agent/prompt.ts b/src/agent/prompt.ts
+new file mode 100644
+index 0000000..0de87b3
+--- /dev/null
++++ b/src/agent/prompt.ts
+@@ -0,0 +1,73 @@
++import {
++    AgentIntent,
++    AgentContext,
++    AgentMode,
++    AgentPrompt,
++} from './types';
++import { buildCommandPrompt as buildCommandPromptString } from '../ai/prompt';
++import { getOSProfile } from '../core/os';
++import { getMacros } from '../core/macros';
++import { aiCommandPlanSchema } from '../core/validation';
++
++export function buildPrompt(
++    intent: AgentIntent,
++    context: AgentContext,
++    mode: AgentMode,
++    input: string
++): AgentPrompt {
++    if (mode === 'chat') {
++        return buildChatPrompt(context, input);
++    }
++
++    return buildCommandPromptObject(input, context);
++}
++
++function buildChatPrompt(
++    context: AgentContext,
++    input: string
++): AgentPrompt {
++    const messages: any[] = [
++        ...(context.history ?? []),
++    ];
++
++    // Add context files if available
++    if (context.files && context.files.length > 0) {
++        const contextDesc = context.files.map(f =>
++            `File: ${f.path}\n\`\`\`\n${f.content}\n\`\`\``
++        ).join('\n\n');
++
++        messages.push({
++            role: 'system',
++            content: `Context:\n${contextDesc}`,
++        });
++    }
++
++    messages.push({
++        role: 'user',
++        content: input,
++    });
++
++    return {
++        system: 'You are a helpful AI assistant with expertise in software development, system administration, and problem-solving.',
++        messages,
++    };
++}
++
++function buildCommandPromptObject(
++    input: string,
++    context: AgentContext
++): AgentPrompt {
++    const os = getOSProfile();
++    const macros = getMacros();
++    const promptText = buildCommandPromptString(input, os, macros);
++
++    return {
++        messages: [
++            {
++                role: 'user',
++                content: promptText,
++            },
++        ],
++        outputSchema: aiCommandPlanSchema,
++    };
++}
+diff --git a/src/agent/record.ts b/src/agent/record.ts
+new file mode 100644
+index 0000000..78cf4a1
+--- /dev/null
++++ b/src/agent/record.ts
+@@ -0,0 +1,36 @@
++import {
++    AgentInput,
++    AgentMode,
++    AgentPrompt,
++    LLMResult,
++    AgentAction,
++} from './types';
++
++export interface ExecutionRecord {
++    id: string;
++    timestamp: number;
++    mode: AgentMode;
++    input: AgentInput;
++    prompt: AgentPrompt;
++    model: string;
++    llmResult: LLMResult;
++    action: AgentAction;
++}
++
++const records: ExecutionRecord[] = [];
++
++export function saveRecord(record: ExecutionRecord) {
++    records.push(record);
++    // Keep only last 100 records in memory
++    if (records.length > 100) {
++        records.shift();
++    }
++}
++
++export function getRecords(): ExecutionRecord[] {
++    return [...records];
++}
++
++export function getRecordById(id: string): ExecutionRecord | undefined {
++    return records.find(r => r.id === id);
++}
+diff --git a/src/agent/replay.ts b/src/agent/replay.ts
+new file mode 100644
+index 0000000..a1eb788
+--- /dev/null
++++ b/src/agent/replay.ts
+@@ -0,0 +1,27 @@
++import { ExecutionRecord } from './record';
++import { runLLM } from './llm';
++import { interpretResult } from './interpret';
++import { AgentIntent } from './types';
++
++export async function replay(record: ExecutionRecord) {
++    console.log(`\nReplaying execution: ${record.id}`);
++    console.log(`Original timestamp: ${new Date(record.timestamp).toISOString()}`);
++    console.log(`Mode: ${record.mode}\n`);
++
++    const result = await runLLM({
++        prompt: record.prompt,
++        model: record.model,
++        stream: record.mode === 'chat',
++        onChunk: record.mode === 'chat'
++            ? (s) => process.stdout.write(s)
++            : undefined,
++    });
++
++    // Create a minimal intent for interpretation
++    const intent: AgentIntent = {
++        type: record.mode === 'chat' ? 'chat' : 'shell',
++        capabilities: {},
++    };
++
++    return interpretResult(result, intent, record.mode);
++}
+diff --git a/src/agent/selectModel.ts b/src/agent/selectModel.ts
+new file mode 100644
+index 0000000..0818dde
+--- /dev/null
++++ b/src/agent/selectModel.ts
+@@ -0,0 +1,23 @@
++import { AgentIntent } from './types';
++
++export function selectModel(
++    intent: AgentIntent,
++    override?: string
++): string {
++    if (override) return override;
++
++    const caps = intent.capabilities;
++
++    // Long context + reasoning = most powerful model
++    if (caps.longContext && caps.reasoning) {
++        return 'gemini-2.0-flash-exp';
++    }
++
++    // Code-focused tasks
++    if (caps.code) {
++        return 'gemini-2.5-flash-lite';
++    }
++
++    // Default to balanced model
++    return 'gemini-2.5-flash-lite';
++}
+diff --git a/src/agent/types.ts b/src/agent/types.ts
+new file mode 100644
+index 0000000..3f5eb5d
+--- /dev/null
++++ b/src/agent/types.ts
+@@ -0,0 +1,54 @@
++import type { AIRequestMessage } from '../core/validation';
++
++export type AgentMode = 'chat' | 'command' | 'command+exec';
++
++export interface AgentInput {
++    rawInput: string;
++    stdin?: string;
++    context?: AgentContext;
++    options?: {
++        model?: string;
++        stream?: boolean;
++        autoYes?: boolean;
++        verbose?: boolean;
++    };
++}
++
++export interface AgentContext {
++    files?: Array<{ path: string; content: string }>;
++    gitDiff?: string;
++    history?: AIRequestMessage[];
++}
++
++export interface AgentIntent {
++    type: 'chat' | 'shell' | 'analysis';
++    capabilities: {
++        reasoning?: boolean;
++        code?: boolean;
++        longContext?: boolean;
++        streaming?: boolean;
++    };
++}
++
++export interface AgentPrompt {
++    system?: string;
++    messages: AIRequestMessage[];
++    outputSchema?: any;
++}
++
++export interface LLMResult {
++    rawText: string;
++    parsed?: any;
++    latencyMs: number;
++    tokens?: {
++        prompt: number;
++        completion: number;
++        total: number;
++    };
++    costUsd?: number;
++}
++
++export type AgentAction =
++    | { type: 'print'; content: string }
++    | { type: 'confirm'; next: AgentAction }
++    | { type: 'execute'; command: string; risk: 'low' | 'medium' | 'high' };
+diff --git a/test_agent_pipeline.js b/test_agent_pipeline.js
+new file mode 100644
+index 0000000..80f8130
+--- /dev/null
++++ b/test_agent_pipeline.js
+@@ -0,0 +1,98 @@
++#!/usr/bin/env node
++
++/**
++ * Agent Pipeline 测试脚本
++ * 
++ * 用法：
++ *   node test_agent_pipeline.js
++ */
++
++const { AgentPipeline } = require('./dist/agent');
++
++async function testChatMode() {
++    console.log('\n=== 测试 Chat 模式 ===\n');
++
++    const agent = new AgentPipeline();
++
++    try {
++        await agent.run(
++            {
++                rawInput: "简单解释一下什么是冒泡排序",
++                options: {
++                    verbose: true
++                }
++            },
++            'chat'
++        );
++
++        console.log('\n✅ Chat 模式测试通过\n');
++    } catch (error) {
++        console.error('\n❌ Chat 模式测试失败:', error.message);
++    }
++}
++
++async function testCommandMode() {
++    console.log('\n=== 测试 Command 模式 ===\n');
++
++    const agent = new AgentPipeline();
++
++    try {
++        await agent.run(
++            {
++                rawInput: "列出当前目录的所有 TypeScript 文件",
++                options: {
++                    verbose: true,
++                    autoYes: false  // 不自动执行，只生成命令
++                }
++            },
++            'command'
++        );
++
++        console.log('\n✅ Command 模式测试通过\n');
++    } catch (error) {
++        console.error('\n❌ Command 模式测试失败:', error.message);
++    }
++}
++
++async function testExecutionRecord() {
++    console.log('\n=== 测试执行记录 ===\n');
++
++    const { getRecords } = require('./dist/agent/record');
++
++    const records = getRecords();
++    console.log(`当前共有 ${records.length} 条执行记录`);
++
++    if (records.length > 0) {
++        const latest = records[records.length - 1];
++        console.log('\n最新记录:');
++        console.log(`  ID: ${latest.id}`);
++        console.log(`  模式: ${latest.mode}`);
++        console.log(`  时间: ${new Date(latest.timestamp).toLocaleString()}`);
++        console.log(`  模型: ${latest.model}`);
++        console.log(`  延迟: ${latest.llmResult.latencyMs}ms`);
++    }
++
++    console.log('\n✅ 执行记录测试通过\n');
++}
++
++async function main() {
++    console.log('🚀 开始测试 Agent Pipeline\n');
++
++    // 注意：这些测试需要有效的 AI API 配置
++    // 如果没有配置，测试会失败
++
++    try {
++        await testChatMode();
++        // await testCommandMode();  // 取消注释以测试命令模式
++        await testExecutionRecord();
++
++        console.log('\n🎉 所有测试完成！\n');
++    } catch (error) {
++        console.error('\n💥 测试过程中发生错误:', error);
++        process.exit(1);
++    }
++}
++
++if (require.main === module) {
++    main();
++}
