@@ -409,7 +409,7 @@ marked.setOptions({
     tab: 2,
     width: process.stdout.columns || 80,
     showSectionPrefix: false,
-  })
+  }) as any
 });
 
 async function askOnceStream(question: string, model?: string) {

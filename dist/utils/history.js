@@ -25,8 +25,8 @@ function saveHistory(entry) {
         ...entry,
         time: new Date().toLocaleString()
     };
-    // Keep last 5, unique commands
-    history = [newEntry, ...history.filter(item => item.command !== entry.command)].slice(0, 5);
+    // Keep last 1000, unique commands
+    history = [newEntry, ...history.filter(item => item.command !== entry.command)].slice(0, 1000);
     fs_1.default.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
 }
 //# sourceMappingURL=history.js.map

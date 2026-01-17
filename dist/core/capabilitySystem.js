@@ -16,7 +16,7 @@ class CapabilitySystem {
         this.primaryModels = [
             {
                 name: 'Assistant',
-                provider: 'google',
+                provider: 'POE',
                 atomicCapabilities: [
                     require('./capabilities').AtomicCapability.TEXT_GENERATION,
                     require('./capabilities').AtomicCapability.CODE_GENERATION,
@@ -29,7 +29,7 @@ class CapabilitySystem {
             },
             {
                 name: 'Assistant',
-                provider: 'google',
+                provider: 'POE',
                 atomicCapabilities: [
                     require('./capabilities').AtomicCapability.TEXT_GENERATION,
                     require('./capabilities').AtomicCapability.CODE_GENERATION,
@@ -41,7 +41,7 @@ class CapabilitySystem {
             },
             {
                 name: 'Assistant',
-                provider: 'aiproxy',
+                provider: 'POE',
                 atomicCapabilities: [
                     require('./capabilities').AtomicCapability.TEXT_GENERATION,
                     require('./capabilities').AtomicCapability.CODE_GENERATION,
@@ -54,7 +54,7 @@ class CapabilitySystem {
         this.fallbackModels = [
             {
                 name: 'Assistant',
-                provider: 'google',
+                provider: 'POE',
                 atomicCapabilities: [
                     require('./capabilities').AtomicCapability.TEXT_GENERATION,
                     require('./capabilities').AtomicCapability.REASONING,
