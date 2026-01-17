@@ -6,6 +6,7 @@ import { Command } from 'commander';
 import { handleAICommand } from './commands/handleAICommand';
 import { handleAIChat } from './commands/handleAIChat';
 import { handleConfig } from './commands/handleConfig';
+import { registerCapabilityCommands } from './commands/capabilityCommands';
 import { loadAppsConfig, openUrl, DEFAULT_APPS } from './core/apps';
 import { getMacros, saveMacro, runMacro } from './core/macros';
 import { getCommandHistory } from './utils/history';
@@ -72,6 +73,7 @@ program
     .option('-f', '使用 Flash 模型 (gemini-flash-latest)')
     .option('-l', '使用 Lite 模型 (gemini-flash-lite-latest)')
     .option('-w, --with-content', '在管道模式下读取文件内容')
+    .option('-v, --verbose', '详细输出（显示 Capability 匹配详情）')
     .action(async (questionArgs, options) => {
         const stdinData = await readStdin();
         let question = Array.isArray(questionArgs) ? questionArgs.join(' ').trim() : questionArgs || '';
@@ -93,7 +95,7 @@ program
         if (options.l) model = 'gemini-flash-lite-latest';
 
         if (options.exec) {
-            await handleAICommand(question, { execute: false, model });
+            await handleAICommand(question, { execute: false, model, verbose: options.verbose });
         } else {
             await handleAIChat(question || null, model);
         }
@@ -256,6 +258,8 @@ program
         }
     });
 
+registerCapabilityCommands(program);
+
 program
     .command('help')
     .description('显示帮助信息')
@@ -317,7 +321,7 @@ program
 async function main() {
     const args = process.argv.slice(2);
 
-    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong'];
+    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities'];
     const firstArg = args[0];
     const isKnownCommand = firstArg && knownCommands.includes(firstArg);
 
@@ -341,7 +345,7 @@ async function main() {
             
             let model = options.model;
             if (options.exec) {
-                await handleAICommand(question, { execute: false, model });
+                await handleAICommand(question, { execute: false, model, verbose: options.withContent });
             } else {
                 await handleAIChat(question || null, model);
             }

@@ -1,0 +1,1 @@
+{"models":[{"name":"custom-model","provider":"custom","atomicCapabilities":["text_generation","reasoning","code_generation"]}]}

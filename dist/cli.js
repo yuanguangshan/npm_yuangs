@@ -44,6 +44,7 @@ const commander_1 = require("commander");
 const handleAICommand_1 = require("./commands/handleAICommand");
 const handleAIChat_1 = require("./commands/handleAIChat");
 const handleConfig_1 = require("./commands/handleConfig");
+const capabilityCommands_1 = require("./commands/capabilityCommands");
 const apps_1 = require("./core/apps");
 const macros_1 = require("./core/macros");
 const history_1 = require("./utils/history");
@@ -101,6 +102,7 @@ program
     .option('-f', '使用 Flash 模型 (gemini-flash-latest)')
     .option('-l', '使用 Lite 模型 (gemini-flash-lite-latest)')
     .option('-w, --with-content', '在管道模式下读取文件内容')
+    .option('-v, --verbose', '详细输出（显示 Capability 匹配详情）')
     .action(async (questionArgs, options) => {
     const stdinData = await readStdin();
     let question = Array.isArray(questionArgs) ? questionArgs.join(' ').trim() : questionArgs || '';
@@ -123,7 +125,7 @@ program
     if (options.l)
         model = 'gemini-flash-lite-latest';
     if (options.exec) {
-        await (0, handleAICommand_1.handleAICommand)(question, { execute: false, model });
+        await (0, handleAICommand_1.handleAICommand)(question, { execute: false, model, verbose: options.verbose });
     }
     else {
         await (0, handleAIChat_1.handleAIChat)(question || null, model);
@@ -280,6 +282,7 @@ program
         console.log(chalk_1.default.red(`错误: 快捷指令 "${name}" 不存在`));
     }
 });
+(0, capabilityCommands_1.registerCapabilityCommands)(program);
 program
     .command('help')
     .description('显示帮助信息')
@@ -335,7 +338,7 @@ program
 });
 async function main() {
     const args = process.argv.slice(2);
-    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong'];
+    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities'];
     const firstArg = args[0];
     const isKnownCommand = firstArg && knownCommands.includes(firstArg);
     if (!isKnownCommand) {
@@ -356,7 +359,7 @@ async function main() {
             }
             let model = options.model;
             if (options.exec) {
-                await (0, handleAICommand_1.handleAICommand)(question, { execute: false, model });
+                await (0, handleAICommand_1.handleAICommand)(question, { execute: false, model, verbose: options.withContent });
             }
             else {
                 await (0, handleAIChat_1.handleAIChat)(question || null, model);
