@@ -9,6 +9,9 @@ import path from 'path';
 import { buildPromptWithFileContent, readFilesContent } from '../core/fileReader';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { ContextBuffer } from './contextBuffer';
+import { loadContext, saveContext, clearContextStorage } from './contextStorage';
+import { getGitContext } from './gitContext';
 const execAsync = promisify(exec);
 
 async function showFileSelector(rl: readline.Interface): Promise<string | null> {
@@ -159,13 +162,19 @@ async function handleDirectoryReference(input: string): Promise<string> {
 
 export async function handleAIChat(initialQuestion: string | null, model?: string) {
     if (initialQuestion) {
-        // 如果有初始问题，直接回答并退出，不进入交互模式
         await askOnceStream(initialQuestion, model);
         return;
     }
 
-    // 如果没有初始问题，进入交互模式
     console.log(chalk.bold.cyan('\n🤖 进入 AI 交互模式 (输入 exit 退出)\n'));
+
+    const contextBuffer = new ContextBuffer();
+    const persisted = await loadContext();
+    contextBuffer.import(persisted);
+
+    if (persisted.length > 0) {
+        console.log(chalk.yellow(`📦 已恢复 ${persisted.length} 条上下文\n`));
+    }
 
     const rl = readline.createInterface({
         input: process.stdin,
@@ -190,21 +199,27 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
             if (trimmed.startsWith('@')) {
                 rl.pause();
                 try {
-                    if (trimmed === '@') {
-                        const selectedFile = await showFileSelector(rl);
-                        if (selectedFile) {
-                            const processedInput = await handleFileReference(selectedFile);
-                            await askOnceStream(processedInput, model);
-                        }
-                    } else {
-                        const processedInput = await handleFileReferenceInput(trimmed);
-                        if (processedInput) {
-                            await askOnceStream(processedInput, model);
-                        }
-                    }
+                    const match = trimmed.match(/^@\s*(.+?)(?:\s+as\s+(.+))?$/);
+                    const filePath = match?.[1] ?? (await showFileSelector(rl));
+                    const alias = match?.[2];
+
+                    if (!filePath) continue;
+
+                    const absolutePath = path.resolve(filePath);
+                    const content = await fs.promises.readFile(absolutePath, 'utf-8');
+
+                    contextBuffer.add({
+                        type: 'file',
+                        path: filePath,
+                        alias,
+                        content
+                    });
+
+                    await saveContext(contextBuffer.export());
+                    console.log(chalk.green(`✅ 已加入文件上下文: ${alias ?? filePath}\n`));
                 } catch (err: unknown) {
                     const message = err instanceof Error ? err.message : String(err);
-                    console.error(chalk.red(`\n[处理错误]: ${message}`));
+                    console.error(chalk.red(`\n[处理错误]: ${message}\n`));
                 } finally {
                     rl.resume();
                 }
@@ -214,11 +229,54 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
             if (trimmed.startsWith('#')) {
                 rl.pause();
                 try {
-                    const processedInput = await handleDirectoryReference(trimmed);
-                    await askOnceStream(processedInput, model);
+                    const match = trimmed.match(/^#\s*(.+?)\s*(?:\n(.*))?$/s);
+                    if (!match) {
+                        console.log(chalk.yellow('格式错误，正确用法: # 目录路径\n'));
+                        rl.resume();
+                        continue;
+                    }
+
+                    const dirPath = match[1].trim();
+                    const fullPath = path.resolve(dirPath);
+
+                    if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isDirectory()) {
+                        console.log(chalk.red(`错误: 目录 "${dirPath}" 不存在或不是一个目录\n`));
+                        rl.resume();
+                        continue;
+                    }
+
+                    const findCommand = process.platform === 'darwin' || process.platform === 'linux'
+                        ? `find "${fullPath}" -type f`
+                        : `dir /s /b "${fullPath}"`;
+
+                    const { stdout } = await execAsync(findCommand);
+                    const filePaths = stdout.trim().split('\n').filter(f => f);
+
+                    if (filePaths.length === 0) {
+                        console.log(chalk.yellow(`目录 "${dirPath}" 下没有文件\n`));
+                        rl.resume();
+                        continue;
+                    }
+
+                    const contentMap = readFilesContent(filePaths);
+                    const prompt = buildPromptWithFileContent(
+                        `目录: ${dirPath}\n找到 ${filePaths.length} 个文件`,
+                        filePaths.map(p => path.relative(process.cwd(), p)),
+                        contentMap,
+                        ''
+                    );
+
+                    contextBuffer.add({
+                        type: 'directory',
+                        path: dirPath,
+                        content: prompt
+                    });
+
+                    await saveContext(contextBuffer.export());
+                    console.log(chalk.green(`✅ 已加入目录上下文: ${dirPath}\n`));
                 } catch (err: unknown) {
                     const message = err instanceof Error ? err.message : String(err);
-                    console.error(chalk.red(`\n[处理错误]: ${message}`));
+                    console.error(chalk.red(`\n[处理错误]: ${message}\n`));
                 } finally {
                     rl.resume();
                 }
@@ -230,7 +288,6 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
                 break;
             }
 
-            // Handle Commands
             if (trimmed === '/clear') {
                 clearConversationHistory();
                 console.log(chalk.yellow('✓ 对话历史已清空\n'));
@@ -250,18 +307,49 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
                 continue;
             }
 
+            if (trimmed === ':ls') {
+                const list = contextBuffer.list();
+                if (list.length === 0) {
+                    console.log(chalk.gray('📭 当前没有上下文\n'));
+                } else {
+                    console.table(list);
+                }
+                continue;
+            }
+
+            if (trimmed === ':clear') {
+                contextBuffer.clear();
+                await clearContextStorage();
+                console.log(chalk.yellow('🧹 上下文已清空（含持久化）\n'));
+                continue;
+            }
+
             if (!trimmed) continue;
 
-            // Handle AI Request
+            let finalPrompt = contextBuffer.isEmpty()
+                ? trimmed
+                : contextBuffer.buildPrompt(trimmed);
+
+            const gitContext = await getGitContext();
+
+            if (gitContext) {
+                finalPrompt = `
+${gitContext}
+
+${finalPrompt}
+`;
+            }
+
             try {
-                // Pause input while AI is processing to avoid interference
                 rl.pause();
-                await askOnceStream(trimmed, model);
+                await askOnceStream(finalPrompt, model);
+
+                contextBuffer.clear();
+                await saveContext([]);
             } catch (err: unknown) {
                 const message = err instanceof Error ? err.message : String(err);
                 console.error(chalk.red(`\n[AI execution error]: ${message}`));
             } finally {
-                // Always resume input
                 rl.resume();
             }
         }

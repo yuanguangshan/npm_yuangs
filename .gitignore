@@ -1,4 +1,4 @@
 node_modules
 .weaver/
 .vscode/
-.github/workflows/publish.yml
+.github/workflows/publish.yml.ai/
