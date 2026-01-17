@@ -5,10 +5,12 @@ const estimateTokens = (text) => Math.ceil(text.length / 4);
 class ContextBuffer {
     items = [];
     maxTokens = 8000;
-    add(item) {
+    add(item, bypassTokenLimit = false) {
         const tokens = estimateTokens(item.content);
         this.items.push({ ...item, tokens });
-        this.trimIfNeeded();
+        if (!bypassTokenLimit) {
+            this.trimIfNeeded();
+        }
     }
     clear() {
         this.items = [];
@@ -59,4 +61,6 @@ ${userInput}
     }
 }
 exports.ContextBuffer = ContextBuffer;
+// Test change for git diff
+// Another test change (unstaged)
 //# sourceMappingURL=contextBuffer.js.map

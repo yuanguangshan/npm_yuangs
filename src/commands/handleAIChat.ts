@@ -199,24 +199,65 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
             if (trimmed.startsWith('@')) {
                 rl.pause();
                 try {
-                    const match = trimmed.match(/^@\s*(.+?)(?:\s+as\s+(.+))?$/);
+                    // 增强的匹配模式，支持行号指定: @ filepath:startLine-endLine as alias
+                    const match = trimmed.match(/^@\s*(.+?)(?::(\d+)(?:-(\d+))?)?(?:\s+as\s+(.+))?$/);
                     const filePath = match?.[1] ?? (await showFileSelector(rl));
-                    const alias = match?.[2];
+                    const lineStart = match?.[2] ? parseInt(match[2]) : null;
+                    const lineEnd = match?.[3] ? parseInt(match[3]) : null;
+                    const alias = match?.[4];
 
                     if (!filePath) continue;
 
                     const absolutePath = path.resolve(filePath);
-                    const content = await fs.promises.readFile(absolutePath, 'utf-8');
+                    let content = await fs.promises.readFile(absolutePath, 'utf-8');
 
-                    contextBuffer.add({
-                        type: 'file',
-                        path: filePath,
-                        alias,
-                        content
-                    });
+                    // 如果指定了行号范围，则提取相应行
+                    if (lineStart !== null) {
+                        const lines = content.split('\n');
+
+                        // 验证行号范围
+                        if (lineStart < 1 || lineStart > lines.length) {
+                            console.log(chalk.red(`\n错误: 起始行号 ${lineStart} 超出文件范围 (文件共有 ${lines.length} 行)\n`));
+                            rl.resume();
+                            continue;
+                        }
+
+                        const startIdx = lineStart - 1; // 转换为数组索引（从0开始）
+                        let endIdx = lineEnd ? Math.min(lineEnd, lines.length) : lines.length; // 如果未指定结束行，则到文件末尾
+
+                        if (lineEnd && (lineEnd < lineStart || lineEnd > lines.length)) {
+                            console.log(chalk.red(`\n错误: 结束行号 ${lineEnd} 超出有效范围 (应在 ${lineStart}-${lines.length} 之间)\n`));
+                            rl.resume();
+                            continue;
+                        }
+
+                        // 提取指定范围的行
+                        content = lines.slice(startIdx, endIdx).join('\n');
+
+                        // 更新路径显示，包含行号信息
+                        const rangeInfo = lineEnd ? `${lineStart}-${lineEnd}` : `${lineStart}`;
+                        const pathWithRange = `${filePath}:${rangeInfo}`;
+
+                        contextBuffer.add({
+                            type: 'file',
+                            path: pathWithRange,
+                            alias,
+                            content
+                        }, true); // bypassTokenLimit = true
+                    } else {
+                        // 原始行为：添加整个文件
+                        contextBuffer.add({
+                            type: 'file',
+                            path: filePath,
+                            alias,
+                            content
+                        });
+                    }
 
                     await saveContext(contextBuffer.export());
-                    console.log(chalk.green(`✅ 已加入文件上下文: ${alias ?? filePath}\n`));
+                    const displayName = alias ? `${alias} (${filePath}${lineStart !== null ? `:${lineStart}${lineEnd ? `-${lineEnd}` : ''}` : ''})` :
+                                              (filePath + (lineStart !== null ? `:${lineStart}${lineEnd ? `-${lineEnd}` : ''}` : ''));
+                    console.log(chalk.green(`✅ 已加入文件上下文: ${displayName}\n`));
                 } catch (err: unknown) {
                     const message = err instanceof Error ? err.message : String(err);
                     console.error(chalk.red(`\n[处理错误]: ${message}\n`));

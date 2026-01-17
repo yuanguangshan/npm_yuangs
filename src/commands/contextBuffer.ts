@@ -13,10 +13,12 @@ export class ContextBuffer {
     private items: ContextItem[] = [];
     private maxTokens = 8000;
 
-    add(item: Omit<ContextItem, 'tokens'>) {
+    add(item: Omit<ContextItem, 'tokens'>, bypassTokenLimit: boolean = false) {
         const tokens = estimateTokens(item.content);
         this.items.push({ ...item, tokens });
-        this.trimIfNeeded();
+        if (!bypassTokenLimit) {
+            this.trimIfNeeded();
+        }
     }
 
     clear() {

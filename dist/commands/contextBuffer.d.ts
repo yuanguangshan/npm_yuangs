@@ -9,7 +9,7 @@ export type ContextItem = {
 export declare class ContextBuffer {
     private items;
     private maxTokens;
-    add(item: Omit<ContextItem, 'tokens'>): void;
+    add(item: Omit<ContextItem, 'tokens'>, bypassTokenLimit?: boolean): void;
     clear(): void;
     list(): {
         index: number;
