@@ -5,5 +5,8 @@
   "mail": "https://mail.google.com",
   "github": "https://github.com",
   "calendar": "https://calendar.google.com",
-  "homepage": "https://i.want.biz"
+  "homepage": "https://i.want.biz",
+  "aiProxyUrl": "https://aiproxy.want.biz/v1/chat/completions",
+  "defaultModel": "Assistant",
+  "accountType": "free"
 }
