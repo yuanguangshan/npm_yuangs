@@ -1,25 +1,21 @@
-name: Auto Bump & Publish
+name: Publish to npm
 
 on:
   push:
-    branches:
-      - main # 如果你的默认分支不是 main，记得改成对应名字
+    tags:
+      - "v*"
 
 jobs:
   publish:
     runs-on: ubuntu-latest
 
-    # 权限：允许 Action 修改仓库代码 + 生成 provenance
     permissions:
-      contents: write
-      id-token: write
+      contents: read        # 只读即可
+      id-token: write       # npm provenance 必需
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0 # 完整历史，方便推 tag
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -27,27 +23,12 @@ jobs:
           node-version: "18"
           registry-url: "https://registry.npmjs.org/"
 
-      - name: Configure Git
-        run: |
-          git config user.name "GitHub Action"
-          git config user.email "action@github.com"
-
-      # 自动 bump patch 版本：1.1.5 -> 1.1.6
-      # [skip ci] 防止这个 commit 再次触发 workflow 形成死循环
-      - name: Bump version
-        run: |
-          npm version patch -m "苑广山注：自动升版本号%s[skip ci]"
-
-      # 推送 commit + tag 回 GitHub
-      - name: Push changes
-        run: |
-          git push --follow-tags
-
-      # 安装依赖
       - name: Install dependencies
         run: npm ci
 
-      # 发布到 npm
+      - name: Build
+        run: npm run build
+
       - name: Publish to npm
         run: npm publish --provenance
         env:
