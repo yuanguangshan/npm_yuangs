@@ -76,11 +76,11 @@ function parseOptionsFromArgs(args) {
 }
 function getModelFromShortcuts(args) {
     if (args.includes('-p'))
-        return 'gemini-3-flash-preview';
+        return 'Assistant';
     if (args.includes('-f'))
-        return 'gemini-2.5-flash';
+        return 'Assistant';
     if (args.includes('-l'))
-        return 'gemini-2.5-flash-lite';
+        return 'Assistant';
     return undefined;
 }
 function getArgValue(args, flags) {
@@ -98,9 +98,9 @@ program
     .description('向 AI 提问')
     .option('-e, --exec', '生成并执行 Linux 命令')
     .option('-m, --model <model>', '指定 AI 模型')
-    .option('-p', '使用 Pro 模型 (gemini-3-flash-preview)')
-    .option('-f', '使用 Flash 模型 (gemini-2.5-flash)')
-    .option('-l', '使用 Lite 模型 (gemini-2.5-flash-lite)')
+    .option('-p', '使用 Pro 模型 (Assistant)')
+    .option('-f', '使用 Flash 模型 (Assistant)')
+    .option('-l', '使用 Lite 模型 (Assistant)')
     .option('-w, --with-content', '在管道模式下读取文件内容')
     .option('-v, --verbose', '详细输出（显示 Capability 匹配详情）')
     .action(async (questionArgs, options) => {
@@ -119,11 +119,11 @@ program
     }
     let model = options.model;
     if (options.p)
-        model = 'gemini-3-flash-preview';
+        model = 'Assistant';
     if (options.f)
-        model = 'gemini-2.5-flash';
+        model = 'Assistant';
     if (options.l)
-        model = 'gemini-2.5-flash-lite';
+        model = 'Assistant';
     if (options.exec) {
         await (0, handleAICommand_1.handleAICommand)(question, { execute: false, model, verbose: options.verbose });
     }

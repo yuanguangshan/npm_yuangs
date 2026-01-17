@@ -15,7 +15,7 @@ class CapabilitySystem {
     initializeDefaultModels() {
         this.primaryModels = [
             {
-                name: 'gemini-3-flash-preview',
+                name: 'Assistant',
                 provider: 'google',
                 atomicCapabilities: [
                     require('./capabilities').AtomicCapability.TEXT_GENERATION,
@@ -28,7 +28,7 @@ class CapabilitySystem {
                 costProfile: 'high',
             },
             {
-                name: 'gemini-2.5-flash',
+                name: 'Assistant',
                 provider: 'google',
                 atomicCapabilities: [
                     require('./capabilities').AtomicCapability.TEXT_GENERATION,
@@ -53,7 +53,7 @@ class CapabilitySystem {
         ];
         this.fallbackModels = [
             {
-                name: 'gemini-2.5-flash-lite',
+                name: 'Assistant',
                 provider: 'google',
                 atomicCapabilities: [
                     require('./capabilities').AtomicCapability.TEXT_GENERATION,
