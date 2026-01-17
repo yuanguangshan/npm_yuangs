@@ -59,6 +59,52 @@ async function showFileSelector(rl: readline.Interface): Promise<string | null> 
     });
 }
 
+async function handleFileReference(filePath: string, question?: string): Promise<string> {
+    const fullPath = path.resolve(filePath);
+
+    if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isFile()) {
+        console.log(chalk.red(`错误: 文件 "${filePath}" 不存在或不是一个文件\n`));
+        return question || '';
+    }
+
+    const spinner = ora(chalk.cyan('正在读取文件...')).start();
+
+    try {
+        const content = fs.readFileSync(fullPath, 'utf-8');
+        const relativePath = path.relative(process.cwd(), fullPath);
+
+        const contentMap = new Map<string, string>();
+        contentMap.set(relativePath, content);
+
+        const prompt = buildPromptWithFileContent(
+            `文件: ${relativePath}`,
+            [relativePath],
+            contentMap,
+            question || `请分析文件: ${relativePath}`
+        );
+
+        spinner.stop();
+        console.log(chalk.green(`✓ 已读取文件: ${relativePath}\n`));
+        return prompt;
+    } catch (error) {
+        spinner.stop();
+        console.error(chalk.red(`读取文件失败: ${error}\n`));
+        return question || '';
+    }
+}
+
+async function handleFileReferenceInput(input: string): Promise<string> {
+    const match = input.match(/^@\s*(.+?)\s*(?:\n(.*))?$/s);
+    if (!match) {
+        console.log(chalk.yellow('格式错误，正确用法: @文件路径 [问题]\n'));
+        return '';
+    }
+
+    const filePath = match[1].trim();
+    const question = match[2] ? match[2].trim() : '';
+    return handleFileReference(filePath, question);
+}
+
 async function handleDirectoryReference(input: string): Promise<string> {
     const match = input.match(/^#\s*(.+?)\s*(?:\n(.*))?$/s);
     if (!match) {
@@ -141,10 +187,26 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
             const input = await ask(chalk.green('你：'));
             const trimmed = input.trim();
 
-            if (trimmed === '@') {
-                const selectedFile = await showFileSelector(rl);
-                if (selectedFile) {
-                    continue;
+            if (trimmed.startsWith('@')) {
+                rl.pause();
+                try {
+                    if (trimmed === '@') {
+                        const selectedFile = await showFileSelector(rl);
+                        if (selectedFile) {
+                            const processedInput = await handleFileReference(selectedFile);
+                            await askOnceStream(processedInput, model);
+                        }
+                    } else {
+                        const processedInput = await handleFileReferenceInput(trimmed);
+                        if (processedInput) {
+                            await askOnceStream(processedInput, model);
+                        }
+                    }
+                } catch (err: unknown) {
+                    const message = err instanceof Error ? err.message : String(err);
+                    console.error(chalk.red(`\n[处理错误]: ${message}`));
+                } finally {
+                    rl.resume();
                 }
                 continue;
             }
