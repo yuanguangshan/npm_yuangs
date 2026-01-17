@@ -382,6 +382,10 @@ marked.setOptions({
         tab: 2,
         width: process.stdout.columns || 80,
         showSectionPrefix: false,
+        // 抑制着色错误，防止其在流式输出中打破行数计算
+        highlight: (code, lang) => {
+            return code; // 默认返回原样，避免某些解析器向 stdout/stderr 打印警告
+        }
     })
 });
 async function askOnceStream(question, model) {
@@ -390,7 +394,6 @@ async function askOnceStream(question, model) {
     messages.push({ role: 'user', content: question });
     const spinner = (0, ora_1.default)(chalk_1.default.cyan('AI 正在思考...')).start();
     let fullResponse = '';
-    let lastRenderedLines = 0;
     const BOT_PREFIX = chalk_1.default.bold.blue('🤖 AI：');
     // Helper function to calculate visual lines in terminal (including wrapping)
     const getVisualLineCount = (text) => {
@@ -400,37 +403,42 @@ async function askOnceStream(question, model) {
         const lines = text.split('\n');
         let totalLines = 0;
         for (const line of lines) {
-            const cleanLine = line.replace(/\x1b\[[0-9;]*m/g, '');
+            // Strip all ANSI escape sequences more thoroughly
+            const cleanLine = line.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
             let visualWidth = 0;
-            for (let i = 0; i < cleanLine.length; i++) {
-                visualWidth += cleanLine.charCodeAt(i) > 255 ? 2 : 1;
+            for (const char of cleanLine) {
+                const code = char.codePointAt(0) || 0;
+                // Threshold 255 is more accurate for CJK/Emoji detection in most terminal fonts
+                visualWidth += code > 255 ? 2 : 1;
             }
-            totalLines += Math.max(1, Math.ceil(visualWidth / columns));
+            // Standard terminal wrap logic: a line of length 'columns' occupies 2 rows (cursor on next row)
+            totalLines += Math.floor(visualWidth / columns) + 1;
         }
         return totalLines;
     };
     try {
+        // Hide cursor to prevent flickering
         process.stdout.write('\x1b[?25l');
         await (0, client_1.callAI_Stream)(messages, model, (chunk) => {
             if (spinner.isSpinning) {
                 spinner.stop();
+                process.stdout.write(BOT_PREFIX);
             }
+            process.stdout.write(chunk);
             fullResponse += chunk;
-            // 1. Render and format
-            const formatted = marked.parse(fullResponse, { async: false }).trimEnd();
-            const output = BOT_PREFIX + formatted;
-            // 2. Clear previous
-            if (lastRenderedLines > 0) {
-                for (let i = 0; i < lastRenderedLines - 1; i++) {
-                    process.stdout.write('\x1b[F');
-                }
-                process.stdout.write('\x1b[G\x1b[J');
-            }
-            // 3. Print
-            process.stdout.write(output);
-            // 4. Update
-            lastRenderedLines = getVisualLineCount(output);
         });
+        // After stream is complete, we replace with Markdown
+        const plainOutput = BOT_PREFIX + fullResponse;
+        const plainLines = getVisualLineCount(plainOutput);
+        if (plainLines > 0) {
+            readline_1.default.moveCursor(process.stdout, 0, -(plainLines - 1));
+            readline_1.default.cursorTo(process.stdout, 0);
+            readline_1.default.clearScreenDown(process.stdout);
+        }
+        // 3. Render and print the full Markdown version
+        const formatted = marked.parse(fullResponse, { async: false }).trimEnd();
+        process.stdout.write(BOT_PREFIX + formatted);
+        // Show cursor back
         process.stdout.write('\n\x1b[?25h');
         (0, client_1.addToConversationHistory)('user', question);
         (0, client_1.addToConversationHistory)('assistant', fullResponse);

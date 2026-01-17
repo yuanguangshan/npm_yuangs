@@ -20,7 +20,7 @@ const program = new Command();
 program
     .name('yuangs')
     .description('苑广山的个人命令行工具')
-    .version(version);
+    .version(version, '-v, --version');
 
 async function readStdin(): Promise<string> {
     if (process.stdin.isTTY) return '';
