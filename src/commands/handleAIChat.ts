@@ -425,67 +425,30 @@ async function askOnceStream(question: string, model?: string) {
     let fullResponse = '';
     const BOT_PREFIX = chalk.bold.blue('🤖 AI：');
 
-    // A robust terminal simulator to calculate occupied rows
-    const getVisualLineCount = (text: string): number => {
-        if (!text) return 0;
-        const columns = process.stdout.columns || 80;
-        let x = 0;
-        let y = 1;
-        // Strip ANSI escape codes
-        const cleanText = text.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
 
-        for (const char of cleanText) {
-            if (char === '\n') {
-                x = 0;
-                y++;
-            } else {
-                const code = char.codePointAt(0) || 0;
-                const w = code > 255 ? 2 : 1;
-                if (x + w > columns) {
-                    y++;
-                    x = w;
-                } else {
-                    x += w;
-                }
-            }
-        }
-        return y;
-    };
 
     try {
-        process.stdout.write('\x1b[?25l');
-        let typewriterLines = 0;
+        process.stdout.write('\x1b[?25l'); // Hide cursor
 
         await callAI_Stream(messages, model, (chunk) => {
             if (spinner.isSpinning) {
                 spinner.stop();
+                // Save the absolute starting position of the AI response
+                process.stdout.write('\x1b[s');
             }
 
-            // 1. Clear previous typewriter block
-            if (typewriterLines > 0) {
-                readline.moveCursor(process.stdout, 0, -(typewriterLines - 1));
-                readline.cursorTo(process.stdout, 0);
-                readline.clearScreenDown(process.stdout);
-            }
+            // Move back to anchor and clear everything below
+            process.stdout.write('\x1b[u\x1b[J');
 
             fullResponse += chunk;
-            const output = BOT_PREFIX + fullResponse;
-            process.stdout.write(output);
-
-            // 2. Sync line count
-            typewriterLines = getVisualLineCount(output);
+            process.stdout.write(BOT_PREFIX + fullResponse);
         });
 
-        // Final transition to Markdown
-        if (typewriterLines > 0) {
-            readline.moveCursor(process.stdout, 0, -(typewriterLines - 1));
-            readline.cursorTo(process.stdout, 0);
-            readline.clearScreenDown(process.stdout);
-        }
-
+        // Final transition to Markdown: Restore anchor one last time
+        process.stdout.write('\x1b[u\x1b[J');
         const formatted = (marked.parse(fullResponse, { async: false }) as string).trimEnd();
         process.stdout.write(BOT_PREFIX + formatted);
-        process.stdout.write('\n\x1b[?25h');
+        process.stdout.write('\x1b[?25h\n'); // Show cursor back and add newline
 
         addToConversationHistory('user', question);
         addToConversationHistory('assistant', fullResponse);
