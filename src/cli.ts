@@ -33,6 +33,36 @@ async function readStdin(): Promise<string> {
     });
 }
 
+function parseOptionsFromArgs(args: string[]): {
+    exec: boolean;
+    model?: string;
+    withContent: boolean;
+} {
+    return {
+        exec: args.includes('-e') || args.includes('--exec'),
+        model: getArgValue(args, ['-m', '--model']) || getModelFromShortcuts(args),
+        withContent: args.includes('-w') || args.includes('--with-content')
+    };
+}
+
+function getModelFromShortcuts(args: string[]): string | undefined {
+    if (args.includes('-p')) return 'gemini-pro-latest';
+    if (args.includes('-f')) return 'gemini-flash-latest';
+    if (args.includes('-l')) return 'gemini-flash-lite-latest';
+    return undefined;
+}
+
+function getArgValue(args: string[], flags: string[]): string | undefined {
+    for (let i = 0; i < args.length; i++) {
+        for (const flag of flags) {
+            if (args[i] === flag && i + 1 < args.length && !args[i + 1].startsWith('-')) {
+                return args[i + 1];
+            }
+        }
+    }
+    return undefined;
+}
+
 program
     .command('ai [question...]')
     .description('向 AI 提问')
@@ -41,12 +71,20 @@ program
     .option('-p', '使用 Pro 模型 (gemini-pro-latest)')
     .option('-f', '使用 Flash 模型 (gemini-flash-latest)')
     .option('-l', '使用 Lite 模型 (gemini-flash-lite-latest)')
+    .option('-w, --with-content', '在管道模式下读取文件内容')
     .action(async (questionArgs, options) => {
         const stdinData = await readStdin();
         let question = Array.isArray(questionArgs) ? questionArgs.join(' ').trim() : questionArgs || '';
 
         if (stdinData) {
-            question = `以下是输入内容：\n\n${stdinData}\n\n我的问题是：${question || '分析以上内容'}`;
+            if (options.withContent) {
+                const { parseFilePathsFromLsOutput, readFilesContent, buildPromptWithFileContent } = await import('./core/fileReader');
+                const filePaths = parseFilePathsFromLsOutput(stdinData);
+                const contentMap = readFilesContent(filePaths);
+                question = buildPromptWithFileContent(stdinData, filePaths, contentMap, question || undefined);
+            } else {
+                question = `以下是输入内容：\n\n${stdinData}\n\n我的问题是：${question || '分析以上内容'}`;
+            }
         }
 
         let model = options.model;
@@ -276,4 +314,45 @@ program
         }
     });
 
-program.parse();
+async function main() {
+    const args = process.argv.slice(2);
+
+    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong'];
+    const firstArg = args[0];
+    const isKnownCommand = firstArg && knownCommands.includes(firstArg);
+
+    if (!isKnownCommand) {
+        const stdinData = await readStdin();
+        
+        if (stdinData || args.length > 0) {
+            const options = parseOptionsFromArgs(args);
+            let question = args.filter(arg => !arg.startsWith('-')).join(' ');
+            
+            if (stdinData) {
+                if (options.withContent) {
+                    const { parseFilePathsFromLsOutput, readFilesContent, buildPromptWithFileContent } = await import('./core/fileReader');
+                    const filePaths = parseFilePathsFromLsOutput(stdinData);
+                    const contentMap = readFilesContent(filePaths);
+                    question = buildPromptWithFileContent(stdinData, filePaths, contentMap, question || undefined);
+                } else {
+                    question = `以下是输入内容：\n\n${stdinData}\n\n我的问题是：${question || '分析以上内容'}`;
+                }
+            }
+            
+            let model = options.model;
+            if (options.exec) {
+                await handleAICommand(question, { execute: false, model });
+            } else {
+                await handleAIChat(question || null, model);
+            }
+            process.exit(0);
+        }
+    }
+
+    program.parse();
+}
+
+main().catch(err => {
+    console.error('Fatal error:', err);
+    process.exit(1);
+});

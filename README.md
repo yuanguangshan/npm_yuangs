@@ -71,9 +71,12 @@ yuangs ai "李白是谁？"
 | `-p` | `gemini-pro-latest` |
 | `-f` | `gemini-flash-latest` |
 | `-l` | `gemini-flash-lite-latest` |
+| `-w` | 智能读取文件内容（管道模式） |
 
 ```bash
 yuangs ai "用 Python 写个 Hello World" -p
+cat file.txt | yuangs -p "分析这个文件"
+ls | yuangs -w "分析目录下的文件"
 ```
 
 ---
@@ -122,6 +125,20 @@ yuangs ai -e "查看当前目录下大于 100M 的文件"
 ```bash
 cat error.log | yuangs ai "解释这个报错"
 ls -la | yuangs ai "帮我总结这些文件"
+```
+
+**省略 'ai' 关键字**（v1.3.66+）：
+
+```bash
+cat file.txt | yuangs "解释这个文件"
+git diff | yuangs "review这个代码变更"
+```
+
+**智能文件内容读取**（v1.3.66+）：
+
+```bash
+ls | yuangs -w "分析这个目录"
+ls *.ts | yuangs -w "解释这些文件的功能"
 ```
 
 非常适合：
@@ -224,6 +241,12 @@ yuangs mail
 ---
 
 ## 近期主要更新
+
+### v1.3.66 (2026-01-17)
+
+- ✅ 管道模式省略 `ai` 关键字：`cat file | yuangs "question"`
+- ✅ 智能文件内容读取：新增 `-w` 参数自动读取文件内容
+- ✅ 完整的管道模式选项支持：`-p`, `-f`, `-l`, `-e`, `-w`
 
 ### v1.3.38 (2026-01-16)
 

@@ -1,5 +1,38 @@
 #!/usr/bin/env node
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -33,6 +66,32 @@ async function readStdin() {
         setTimeout(() => resolve(data), 2000);
     });
 }
+function parseOptionsFromArgs(args) {
+    return {
+        exec: args.includes('-e') || args.includes('--exec'),
+        model: getArgValue(args, ['-m', '--model']) || getModelFromShortcuts(args),
+        withContent: args.includes('-w') || args.includes('--with-content')
+    };
+}
+function getModelFromShortcuts(args) {
+    if (args.includes('-p'))
+        return 'gemini-pro-latest';
+    if (args.includes('-f'))
+        return 'gemini-flash-latest';
+    if (args.includes('-l'))
+        return 'gemini-flash-lite-latest';
+    return undefined;
+}
+function getArgValue(args, flags) {
+    for (let i = 0; i < args.length; i++) {
+        for (const flag of flags) {
+            if (args[i] === flag && i + 1 < args.length && !args[i + 1].startsWith('-')) {
+                return args[i + 1];
+            }
+        }
+    }
+    return undefined;
+}
 program
     .command('ai [question...]')
     .description('向 AI 提问')
@@ -41,11 +100,20 @@ program
     .option('-p', '使用 Pro 模型 (gemini-pro-latest)')
     .option('-f', '使用 Flash 模型 (gemini-flash-latest)')
     .option('-l', '使用 Lite 模型 (gemini-flash-lite-latest)')
+    .option('-w, --with-content', '在管道模式下读取文件内容')
     .action(async (questionArgs, options) => {
     const stdinData = await readStdin();
     let question = Array.isArray(questionArgs) ? questionArgs.join(' ').trim() : questionArgs || '';
     if (stdinData) {
-        question = `以下是输入内容：\n\n${stdinData}\n\n我的问题是：${question || '分析以上内容'}`;
+        if (options.withContent) {
+            const { parseFilePathsFromLsOutput, readFilesContent, buildPromptWithFileContent } = await Promise.resolve().then(() => __importStar(require('./core/fileReader')));
+            const filePaths = parseFilePathsFromLsOutput(stdinData);
+            const contentMap = readFilesContent(filePaths);
+            question = buildPromptWithFileContent(stdinData, filePaths, contentMap, question || undefined);
+        }
+        else {
+            question = `以下是输入内容：\n\n${stdinData}\n\n我的问题是：${question || '分析以上内容'}`;
+        }
     }
     let model = options.model;
     if (options.p)
@@ -265,5 +333,41 @@ program
         program.outputHelp();
     }
 });
-program.parse();
+async function main() {
+    const args = process.argv.slice(2);
+    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong'];
+    const firstArg = args[0];
+    const isKnownCommand = firstArg && knownCommands.includes(firstArg);
+    if (!isKnownCommand) {
+        const stdinData = await readStdin();
+        if (stdinData || args.length > 0) {
+            const options = parseOptionsFromArgs(args);
+            let question = args.filter(arg => !arg.startsWith('-')).join(' ');
+            if (stdinData) {
+                if (options.withContent) {
+                    const { parseFilePathsFromLsOutput, readFilesContent, buildPromptWithFileContent } = await Promise.resolve().then(() => __importStar(require('./core/fileReader')));
+                    const filePaths = parseFilePathsFromLsOutput(stdinData);
+                    const contentMap = readFilesContent(filePaths);
+                    question = buildPromptWithFileContent(stdinData, filePaths, contentMap, question || undefined);
+                }
+                else {
+                    question = `以下是输入内容：\n\n${stdinData}\n\n我的问题是：${question || '分析以上内容'}`;
+                }
+            }
+            let model = options.model;
+            if (options.exec) {
+                await (0, handleAICommand_1.handleAICommand)(question, { execute: false, model });
+            }
+            else {
+                await (0, handleAIChat_1.handleAIChat)(question || null, model);
+            }
+            process.exit(0);
+        }
+    }
+    program.parse();
+}
+main().catch(err => {
+    console.error('Fatal error:', err);
+    process.exit(1);
+});
 //# sourceMappingURL=cli.js.map
