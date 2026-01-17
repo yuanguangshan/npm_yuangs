@@ -396,23 +396,36 @@ async function askOnceStream(question, model) {
     let fullResponse = '';
     const BOT_PREFIX = chalk_1.default.bold.blue('🤖 AI：');
     try {
-        process.stdout.write('\x1b[?25l'); // Hide cursor
+        let isFirstOutput = true;
         await (0, client_1.callAI_Stream)(messages, model, (chunk) => {
             if (spinner.isSpinning) {
                 spinner.stop();
-                // Save the absolute starting position of the AI response
-                process.stdout.write('\x1b[s');
+                if (isFirstOutput) {
+                    process.stdout.write(BOT_PREFIX);
+                    isFirstOutput = false;
+                }
             }
-            // Move back to anchor and clear everything below
-            process.stdout.write('\x1b[u\x1b[J');
             fullResponse += chunk;
-            process.stdout.write(BOT_PREFIX + fullResponse);
+            process.stdout.write(chunk);
         });
-        // Final transition to Markdown: Restore anchor one last time
-        process.stdout.write('\x1b[u\x1b[J');
+        // 这里的逻辑是：
+        // 1. 先输出原本的流式内容（Raw）
+        // 2. 结束时，计算 Raw 内容的高度（Visual Line Count）
+        // 3. 向上清除相应行数
+        // 4. 输出渲染后的 Markdown 内容
+        const screenWidth = process.stdout.columns || 80;
+        // 模拟前缀+内容的完整字符串，用于计算高度
+        // 注意：getVisualLineCount 会去除 ANSI，所以这里用带 '🤖 AI：' 的普通字符串即可
+        const totalContent = '🤖 AI：' + fullResponse;
+        const lineCount = getVisualLineCount(totalContent, screenWidth);
+        // 清除 Raw Output
+        process.stdout.write('\r');
+        for (let i = 0; i < lineCount; i++) {
+            process.stdout.write('\x1b[A\x1b[K');
+        }
         const formatted = marked.parse(fullResponse, { async: false }).trimEnd();
-        process.stdout.write(BOT_PREFIX + formatted);
-        process.stdout.write('\x1b[?25h\n'); // Show cursor back and add newline
+        process.stdout.write('\r');
+        process.stdout.write(BOT_PREFIX + formatted + '\n');
         (0, client_1.addToConversationHistory)('user', question);
         (0, client_1.addToConversationHistory)('assistant', fullResponse);
         const elapsed = (Date.now() - startTime) / 1000;
@@ -422,8 +435,29 @@ async function askOnceStream(question, model) {
         if (spinner.isSpinning) {
             spinner.stop();
         }
-        process.stdout.write('\x1b[?25h'); // Ensure cursor is shown even on error
         throw error;
     }
+}
+function getVisualLineCount(text, screenWidth) {
+    // Basic ANSI strip regex
+    const stripAnsi = (str) => str.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
+    // Split by newlines
+    const lines = text.split('\n');
+    let totalLines = 0;
+    for (const line of lines) {
+        const cleanLine = stripAnsi(line);
+        let lineWidth = 0;
+        for (let i = 0; i < cleanLine.length; i++) {
+            // Very simple width check: > 255 -> 2, else 1
+            lineWidth += cleanLine.charCodeAt(i) > 255 ? 2 : 1;
+        }
+        if (lineWidth === 0) {
+            totalLines += 1;
+        }
+        else {
+            totalLines += Math.ceil(lineWidth / screenWidth);
+        }
+    }
+    return totalLines;
 }
 //# sourceMappingURL=handleAIChat.js.map
