@@ -390,36 +390,48 @@ async function askOnceStream(question, model) {
     messages.push({ role: 'user', content: question });
     const spinner = (0, ora_1.default)(chalk_1.default.cyan('AI 正在思考...')).start();
     let fullResponse = '';
+    let lastRenderedLines = 0;
+    const BOT_PREFIX = chalk_1.default.bold.blue('🤖 AI：');
+    // Helper function to calculate visual lines in terminal (including wrapping)
+    const getVisualLineCount = (text) => {
+        if (!text)
+            return 0;
+        const columns = process.stdout.columns || 80;
+        const lines = text.split('\n');
+        let totalLines = 0;
+        for (const line of lines) {
+            const cleanLine = line.replace(/\x1b\[[0-9;]*m/g, '');
+            let visualWidth = 0;
+            for (let i = 0; i < cleanLine.length; i++) {
+                visualWidth += cleanLine.charCodeAt(i) > 255 ? 2 : 1;
+            }
+            totalLines += Math.max(1, Math.ceil(visualWidth / columns));
+        }
+        return totalLines;
+    };
     try {
-        // 显示流式输出（打字机效果）
-        let isFirstOutput = true;
+        process.stdout.write('\x1b[?25l');
         await (0, client_1.callAI_Stream)(messages, model, (chunk) => {
             if (spinner.isSpinning) {
                 spinner.stop();
-                if (isFirstOutput) {
-                    process.stdout.write(chalk_1.default.bold.blue('🤖 AI：'));
-                    isFirstOutput = false;
-                }
             }
             fullResponse += chunk;
-            // 实现流式输出
-            process.stdout.write(chunk);
+            // 1. Render and format
+            const formatted = marked.parse(fullResponse, { async: false }).trimEnd();
+            const output = BOT_PREFIX + formatted;
+            // 2. Clear previous
+            if (lastRenderedLines > 0) {
+                for (let i = 0; i < lastRenderedLines - 1; i++) {
+                    process.stdout.write('\x1b[F');
+                }
+                process.stdout.write('\x1b[G\x1b[J');
+            }
+            // 3. Print
+            process.stdout.write(output);
+            // 4. Update
+            lastRenderedLines = getVisualLineCount(output);
         });
-        // 计算流式输出占用的行数
-        const lines = fullResponse.split('\n');
-        const lineCount = lines.length;
-        // 移动光标到输出开始的位置并清除内容
-        // \x1b[A 是向上移动一行
-        // \x1b[K 是清除从光标到行尾的内容
-        for (let i = 0; i < lineCount; i++) {
-            process.stdout.write('\x1b[A\x1b[K'); // Move up one line and clear it
-        }
-        // 额外清除 "🤖 AI：" 这一行
-        process.stdout.write('\x1b[A\x1b[K');
-        // 输出格式化的 AI 响应
-        process.stdout.write(chalk_1.default.bold.blue('🤖 AI：'));
-        const formattedResponse = marked.parse(fullResponse, { async: false });
-        process.stdout.write(formattedResponse);
+        process.stdout.write('\n\x1b[?25h');
         (0, client_1.addToConversationHistory)('user', question);
         (0, client_1.addToConversationHistory)('assistant', fullResponse);
         const elapsed = (Date.now() - startTime) / 1000;
@@ -429,7 +441,7 @@ async function askOnceStream(question, model) {
         if (spinner.isSpinning) {
             spinner.stop();
         }
-        // Re-throw to be caught by the loop
+        process.stdout.write('\x1b[?25h'); // Ensure cursor is shown even on error
         throw error;
     }
 }

@@ -339,9 +339,11 @@ program
 async function main() {
     const args = process.argv.slice(2);
     const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities'];
+    const globalFlags = ['-h', '--help', '-V', '--version', '-v'];
     const firstArg = args[0];
     const isKnownCommand = firstArg && knownCommands.includes(firstArg);
-    if (!isKnownCommand) {
+    const isGlobalFlag = firstArg && globalFlags.includes(firstArg);
+    if (!isKnownCommand && !isGlobalFlag) {
         const stdinData = await readStdin();
         if (stdinData || args.length > 0) {
             const options = parseOptionsFromArgs(args);

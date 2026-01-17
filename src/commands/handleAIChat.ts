@@ -424,13 +424,12 @@ async function askOnceStream(question: string, model?: string) {
 
     // Helper function to calculate visual lines in terminal (including wrapping)
     const getVisualLineCount = (text: string): number => {
+        if (!text) return 0;
         const columns = process.stdout.columns || 80;
         const lines = text.split('\n');
         let totalLines = 0;
         for (const line of lines) {
-            // Strip ANSI escape codes
             const cleanLine = line.replace(/\x1b\[[0-9;]*m/g, '');
-            // Calculate visual width (counting CJK characters as 2)
             let visualWidth = 0;
             for (let i = 0; i < cleanLine.length; i++) {
                 visualWidth += cleanLine.charCodeAt(i) > 255 ? 2 : 1;
@@ -441,7 +440,6 @@ async function askOnceStream(question: string, model?: string) {
     };
 
     try {
-        // Hide cursor to prevent flickering
         process.stdout.write('\x1b[?25l');
 
         await callAI_Stream(messages, model, (chunk) => {
@@ -451,27 +449,26 @@ async function askOnceStream(question: string, model?: string) {
 
             fullResponse += chunk;
 
-            // 1. Move cursor back and clear previous output
-            if (lastRenderedLines > 0) {
-                for (let i = 0; i < lastRenderedLines; i++) {
-                    // \x1b[F moves cursor to start of previous line, \x1b[K clears line
-                    process.stdout.write('\x1b[F\x1b[K');
-                }
-            }
-
-            // 2. Render current full response as Markdown
-            const formatted = marked.parse(fullResponse, { async: false }) as string;
+            // 1. Render and format
+            const formatted = (marked.parse(fullResponse, { async: false }) as string).trimEnd();
             const output = BOT_PREFIX + formatted;
 
-            // 3. Output rendered content
+            // 2. Clear previous
+            if (lastRenderedLines > 0) {
+                for (let i = 0; i < lastRenderedLines - 1; i++) {
+                    process.stdout.write('\x1b[F');
+                }
+                process.stdout.write('\x1b[G\x1b[J');
+            }
+
+            // 3. Print
             process.stdout.write(output);
 
-            // 4. Record number of lines for next erasure
+            // 4. Update
             lastRenderedLines = getVisualLineCount(output);
         });
 
-        // Show cursor back
-        process.stdout.write('\x1b[?25h');
+        process.stdout.write('\n\x1b[?25h');
 
         addToConversationHistory('user', question);
         addToConversationHistory('assistant', fullResponse);

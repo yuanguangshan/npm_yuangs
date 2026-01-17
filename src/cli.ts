@@ -227,10 +227,10 @@ program
                 return;
             }
             const lastItem = history[0];
-            
+
             // Assume the last item in history is what we want. 
             // The history is unshifted, so index 0 is the latest.
-            
+
             saveMacro(name, lastItem.command, `Saved from: ${lastItem.question}`);
             console.log(chalk.green(`✓ 已将最近一条 AI 命令保存为 "${name}"`));
             console.log(chalk.gray(`  Command: ${lastItem.command}`));
@@ -322,16 +322,18 @@ async function main() {
     const args = process.argv.slice(2);
 
     const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities'];
+    const globalFlags = ['-h', '--help', '-V', '--version', '-v'];
     const firstArg = args[0];
     const isKnownCommand = firstArg && knownCommands.includes(firstArg);
+    const isGlobalFlag = firstArg && globalFlags.includes(firstArg);
 
-    if (!isKnownCommand) {
+    if (!isKnownCommand && !isGlobalFlag) {
         const stdinData = await readStdin();
-        
+
         if (stdinData || args.length > 0) {
             const options = parseOptionsFromArgs(args);
             let question = args.filter(arg => !arg.startsWith('-')).join(' ');
-            
+
             if (stdinData) {
                 if (options.withContent) {
                     const { parseFilePathsFromLsOutput, readFilesContent, buildPromptWithFileContent } = await import('./core/fileReader');
@@ -342,7 +344,7 @@ async function main() {
                     question = `以下是输入内容：\n\n${stdinData}\n\n我的问题是：${question || '分析以上内容'}`;
                 }
             }
-            
+
             let model = options.model;
             if (options.exec) {
                 await handleAICommand(question, { execute: false, model, verbose: options.withContent });
