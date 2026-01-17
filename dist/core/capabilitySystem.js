@@ -15,8 +15,8 @@ class CapabilitySystem {
     initializeDefaultModels() {
         this.primaryModels = [
             {
-                name: 'gemini-2.5-flash-lite',
-                provider: 'POE',
+                name: 'gemini-pro-latest',
+                provider: 'google',
                 atomicCapabilities: [
                     require('./capabilities').AtomicCapability.TEXT_GENERATION,
                     require('./capabilities').AtomicCapability.CODE_GENERATION,
@@ -28,8 +28,8 @@ class CapabilitySystem {
                 costProfile: 'high',
             },
             {
-                name: 'gemini-2.5-flash-lite',
-                provider: 'POE',
+                name: 'gemini-flash-latest',
+                provider: 'google',
                 atomicCapabilities: [
                     require('./capabilities').AtomicCapability.TEXT_GENERATION,
                     require('./capabilities').AtomicCapability.CODE_GENERATION,
@@ -40,8 +40,8 @@ class CapabilitySystem {
                 costProfile: 'medium',
             },
             {
-                name: 'gemini-2.5-flash-lite',
-                provider: 'POE',
+                name: 'Assistant',
+                provider: 'aiproxy',
                 atomicCapabilities: [
                     require('./capabilities').AtomicCapability.TEXT_GENERATION,
                     require('./capabilities').AtomicCapability.CODE_GENERATION,
@@ -53,8 +53,8 @@ class CapabilitySystem {
         ];
         this.fallbackModels = [
             {
-                name: 'gemini-2.5-flash-lite',
-                provider: 'POE',
+                name: 'gemini-flash-lite-latest',
+                provider: 'google',
                 atomicCapabilities: [
                     require('./capabilities').AtomicCapability.TEXT_GENERATION,
                     require('./capabilities').AtomicCapability.REASONING,
