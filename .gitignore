@@ -1,5 +1,13 @@
-node_modules
-.weaver/
+# dependencies
+node_modules/
+**/*.map
+
+# editor
 .vscode/
-.github/workflows/publish.yml.ai/
-.sisyphus
+
+# local tools / caches
+.weaver/
+.sisyphus/
+
+# AI / temp workflow drafts
+.github/workflows/*.ai/
