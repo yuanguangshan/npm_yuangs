@@ -32,7 +32,7 @@ function handleConfig(args) {
         const key = args[1];
         const value = args[2];
         if (!key || !value) {
-            console.log(chalk_1.default.red('错误: 请提供 key 和 value。例如: yuangs config set defaultModel Assistant'));
+            console.log(chalk_1.default.red('错误: 请提供 key 和 value。例如: yuangs config set defaultModel gemini-2.5-flash-lite'));
             return;
         }
         const config = readConfig();

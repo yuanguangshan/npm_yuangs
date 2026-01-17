@@ -45,7 +45,7 @@ async function handleAICommand(userInput, options) {
         }
         else {
             matchResult = capabilitySystem.matchCapability(requirement);
-            selectedModel = matchResult.selected?.name || 'Assistant';
+            selectedModel = matchResult.selected?.name || 'gemini-2.5-flash-lite';
         }
         spinner.stop();
         const prompt = (0, prompt_1.buildCommandPrompt)(userInput, os, macros);

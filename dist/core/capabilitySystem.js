@@ -15,7 +15,7 @@ class CapabilitySystem {
     initializeDefaultModels() {
         this.primaryModels = [
             {
-                name: 'Assistant',
+                name: 'gemini-2.5-flash-lite',
                 provider: 'POE',
                 atomicCapabilities: [
                     require('./capabilities').AtomicCapability.TEXT_GENERATION,
@@ -28,7 +28,7 @@ class CapabilitySystem {
                 costProfile: 'high',
             },
             {
-                name: 'Assistant',
+                name: 'gemini-2.5-flash-lite',
                 provider: 'POE',
                 atomicCapabilities: [
                     require('./capabilities').AtomicCapability.TEXT_GENERATION,
@@ -40,7 +40,7 @@ class CapabilitySystem {
                 costProfile: 'medium',
             },
             {
-                name: 'Assistant',
+                name: 'gemini-2.5-flash-lite',
                 provider: 'POE',
                 atomicCapabilities: [
                     require('./capabilities').AtomicCapability.TEXT_GENERATION,
@@ -53,7 +53,7 @@ class CapabilitySystem {
         ];
         this.fallbackModels = [
             {
-                name: 'Assistant',
+                name: 'gemini-2.5-flash-lite',
                 provider: 'POE',
                 atomicCapabilities: [
                     require('./capabilities').AtomicCapability.TEXT_GENERATION,
@@ -72,7 +72,7 @@ class CapabilitySystem {
     loadMergedConfig() {
         const builtin = {
             aiProxyUrl: 'https://aiproxy.want.biz/v1/chat/completions',
-            defaultModel: 'Assistant',
+            defaultModel: 'gemini-2.5-flash-lite',
             accountType: 'free',
         };
         const filePaths = (0, configMerge_1.getConfigFilePaths)();

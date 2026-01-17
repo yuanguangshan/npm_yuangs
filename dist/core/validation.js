@@ -9,7 +9,7 @@ exports.parseMacros = parseMacros;
 exports.parseCommandHistory = parseCommandHistory;
 const zod_1 = require("zod");
 exports.DEFAULT_AI_PROXY_URL = 'https://aiproxy.want.biz/v1/chat/completions';
-exports.DEFAULT_MODEL = 'Assistant';
+exports.DEFAULT_MODEL = 'gemini-2.5-flash-lite';
 exports.DEFAULT_ACCOUNT_TYPE = 'free';
 exports.DEFAULT_APPS = {
     shici: 'https://wealth.want.biz/shici/index.html',

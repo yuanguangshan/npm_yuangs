@@ -26,7 +26,7 @@ export type AIResponse = {
 };
 
 export const DEFAULT_AI_PROXY_URL = 'https://aiproxy.want.biz/v1/chat/completions';
-export const DEFAULT_MODEL = 'Assistant';
+export const DEFAULT_MODEL = 'gemini-2.5-flash-lite';
 export const DEFAULT_ACCOUNT_TYPE = 'free' as const;
 
 export const DEFAULT_APPS = {

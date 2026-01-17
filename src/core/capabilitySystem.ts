@@ -33,7 +33,7 @@ export class CapabilitySystem {
   private initializeDefaultModels(): void {
     this.primaryModels = [
       {
-        name: 'Assistant',
+        name: 'gemini-2.5-flash-lite',
         provider: 'POE',
         atomicCapabilities: [
           require('./capabilities').AtomicCapability.TEXT_GENERATION,
@@ -46,7 +46,7 @@ export class CapabilitySystem {
         costProfile: 'high',
       },
       {
-        name: 'Assistant',
+        name: 'gemini-2.5-flash-lite',
         provider: 'POE',
         atomicCapabilities: [
           require('./capabilities').AtomicCapability.TEXT_GENERATION,
@@ -58,7 +58,7 @@ export class CapabilitySystem {
         costProfile: 'medium',
       },
       {
-        name: 'Assistant',
+        name: 'gemini-2.5-flash-lite',
         provider: 'POE',
         atomicCapabilities: [
           require('./capabilities').AtomicCapability.TEXT_GENERATION,
@@ -72,7 +72,7 @@ export class CapabilitySystem {
 
     this.fallbackModels = [
       {
-        name: 'Assistant',
+        name: 'gemini-2.5-flash-lite',
         provider: 'POE',
         atomicCapabilities: [
           require('./capabilities').AtomicCapability.TEXT_GENERATION,
@@ -97,7 +97,7 @@ export class CapabilitySystem {
   loadMergedConfig(): MergedConfig {
     const builtin = {
       aiProxyUrl: 'https://aiproxy.want.biz/v1/chat/completions',
-      defaultModel: 'Assistant',
+      defaultModel: 'gemini-2.5-flash-lite',
       accountType: 'free',
     };
 
