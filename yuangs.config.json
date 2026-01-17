@@ -1,12 +1,104 @@
 {
-  "shici": "https://wealth.want.biz/shici/index.html",
-  "dict": "https://wealth.want.biz/pages/dict.html",
-  "pong": "https://wealth.want.biz/pages/pong.html",
-  "mail": "https://mail.google.com",
-  "github": "https://github.com",
-  "calendar": "https://calendar.google.com",
-  "homepage": "https://i.want.biz",
   "aiProxyUrl": "https://aiproxy.want.biz/v1/chat/completions",
-  "defaultModel": "Assistant",
-  "accountType": "paid"
+  "defaultModel": "gemini-2.5-flash",
+  "accountType": "paid",
+  "models": [
+    {
+      "name": "gemini-2.5-flash",
+      "provider": "gemini",
+      "atomicCapabilities": [
+        "text_generation",
+        "code_generation",
+        "reasoning",
+        "long_context",
+        "streaming"
+      ],
+      "contextWindow": 1000000,
+      "costProfile": "low"
+    },
+    {
+      "name": "gemini-2.5-flash-lite",
+      "provider": "gemini",
+      "atomicCapabilities": [
+        "text_generation",
+        "code_generation",
+        "reasoning",
+        "long_context",
+        "streaming"
+      ],
+      "contextWindow": 1000000,
+      "costProfile": "low"
+    },
+    {
+      "name": "Assistant",
+      "provider": "poe",
+      "atomicCapabilities": [
+        "text_generation",
+        "code_generation",
+        "reasoning"
+      ],
+      "contextWindow": 128000,
+      "costProfile": "low"
+    },
+    {
+      "name": "GPT-4o-mini",
+      "provider": "poe",
+      "atomicCapabilities": [
+        "text_generation",
+        "code_generation",
+        "reasoning",
+        "streaming"
+      ],
+      "contextWindow": 128000,
+      "costProfile": "low"
+    },
+    {
+      "name": "POE-DeepSeek-V3.2",
+      "provider": "poe",
+      "atomicCapabilities": [
+        "text_generation",
+        "code_generation",
+        "reasoning"
+      ],
+      "contextWindow": 32768,
+      "costProfile": "medium"
+    },
+    {
+      "name": "POE-Gemini-3-Flash",
+      "provider": "poe",
+      "atomicCapabilities": [
+        "text_generation",
+        "code_generation",
+        "reasoning",
+        "long_context",
+        "streaming"
+      ],
+      "contextWindow": 2000000,
+      "costProfile": "low"
+    },
+    {
+      "name": "POE-Gemini-3-Pro",
+      "provider": "poe",
+      "atomicCapabilities": [
+        "text_generation",
+        "code_generation",
+        "reasoning",
+        "long_context",
+        "streaming"
+      ],
+      "contextWindow": 2000000,
+      "costProfile": "high"
+    },
+    {
+      "name": "GLM-4-Flash",
+      "provider": "zhipu",
+      "atomicCapabilities": [
+        "text_generation",
+        "code_generation",
+        "reasoning"
+      ],
+      "contextWindow": 128000,
+      "costProfile": "low"
+    }
+  ]
 }

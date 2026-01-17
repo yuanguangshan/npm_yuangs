@@ -31,57 +31,9 @@ export class CapabilitySystem {
   }
 
   private initializeDefaultModels(): void {
-    this.primaryModels = [
-      {
-        name: 'gemini-pro-latest',
-        provider: 'google',
-        atomicCapabilities: [
-          require('./capabilities').AtomicCapability.TEXT_GENERATION,
-          require('./capabilities').AtomicCapability.CODE_GENERATION,
-          require('./capabilities').AtomicCapability.REASONING,
-          require('./capabilities').AtomicCapability.LONG_CONTEXT,
-          require('./capabilities').AtomicCapability.STREAMING,
-        ],
-        contextWindow: 128000,
-        costProfile: 'high',
-      },
-      {
-        name: 'gemini-flash-latest',
-        provider: 'google',
-        atomicCapabilities: [
-          require('./capabilities').AtomicCapability.TEXT_GENERATION,
-          require('./capabilities').AtomicCapability.CODE_GENERATION,
-          require('./capabilities').AtomicCapability.REASONING,
-          require('./capabilities').AtomicCapability.STREAMING,
-        ],
-        contextWindow: 32000,
-        costProfile: 'medium',
-      },
-      {
-        name: 'Assistant',
-        provider: 'aiproxy',
-        atomicCapabilities: [
-          require('./capabilities').AtomicCapability.TEXT_GENERATION,
-          require('./capabilities').AtomicCapability.CODE_GENERATION,
-          require('./capabilities').AtomicCapability.REASONING,
-        ],
-        contextWindow: 8000,
-        costProfile: 'low',
-      },
-    ];
-
-    this.fallbackModels = [
-      {
-        name: 'gemini-flash-lite-latest',
-        provider: 'google',
-        atomicCapabilities: [
-          require('./capabilities').AtomicCapability.TEXT_GENERATION,
-          require('./capabilities').AtomicCapability.REASONING,
-        ],
-        contextWindow: 16000,
-        costProfile: 'low',
-      },
-    ];
+    // 初始化为空数组，让配置文件成为主要来源
+    this.primaryModels = [];
+    this.fallbackModels = [];
   }
 
   matchCapability(requirement: CapabilityRequirement): CapabilityMatchResult {
