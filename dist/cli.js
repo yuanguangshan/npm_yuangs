@@ -40,6 +40,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const chalk_1 = __importDefault(require("chalk"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
+const os_1 = __importDefault(require("os"));
 const commander_1 = require("commander");
 const handleAICommand_1 = require("./commands/handleAICommand");
 const handleAIChat_1 = require("./commands/handleAIChat");
@@ -247,7 +248,31 @@ program
     .command('save <name>')
     .description('保存快捷指令')
     .option('-l, --from-last', 'save last executed AI command')
+    .option('-g, --global', 'add alias to ~/.zshrc')
     .action(async (name, options) => {
+    const addToZshrc = (aliasName) => {
+        const zshrcPath = path_1.default.join(os_1.default.homedir(), '.zshrc');
+        if (fs_1.default.existsSync(zshrcPath)) {
+            const aliasLine = `alias ${aliasName}="yuangs run ${aliasName}"`;
+            try {
+                const content = fs_1.default.readFileSync(zshrcPath, 'utf8');
+                if (!content.includes(aliasLine)) {
+                    fs_1.default.appendFileSync(zshrcPath, `\n${aliasLine}\n`);
+                    console.log(chalk_1.default.green(`✓ 已添加 alias 到 ~/.zshrc`));
+                    console.log(chalk_1.default.yellow(`ℹ️  请运行 "source ~/.zshrc" 以生效`));
+                }
+                else {
+                    console.log(chalk_1.default.yellow(`ℹ️  Alias "${aliasName}" 已存在于 ~/.zshrc`));
+                }
+            }
+            catch (err) {
+                console.error(chalk_1.default.red(`❌ 无法写入 ~/.zshrc: ${err.message}`));
+            }
+        }
+        else {
+            console.log(chalk_1.default.red(`❌ 未找到 ~/.zshrc`));
+        }
+    };
     if (options.fromLast) {
         const history = (0, history_1.getCommandHistory)();
         if (history.length === 0) {
@@ -255,11 +280,12 @@ program
             return;
         }
         const lastItem = history[0];
-        // Assume the last item in history is what we want. 
-        // The history is unshifted, so index 0 is the latest.
         (0, macros_1.saveMacro)(name, lastItem.command, `Saved from: ${lastItem.question}`);
         console.log(chalk_1.default.green(`✓ 已将最近一条 AI 命令保存为 "${name}"`));
         console.log(chalk_1.default.gray(`  Command: ${lastItem.command}`));
+        if (options.global) {
+            addToZshrc(name);
+        }
         return;
     }
     const rl = require('node:readline/promises').createInterface({
@@ -270,6 +296,9 @@ program
     (0, macros_1.saveMacro)(name, cmd);
     console.log(chalk_1.default.green(`✓ 快捷指令 "${name}" 已保存`));
     rl.close();
+    if (options.global) {
+        addToZshrc(name);
+    }
 });
 program
     .command('run <name>')

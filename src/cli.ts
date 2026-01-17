@@ -2,6 +2,7 @@
 import chalk from 'chalk';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import { Command } from 'commander';
 import { handleAICommand } from './commands/handleAICommand';
 import { handleAIChat } from './commands/handleAIChat';
@@ -219,7 +220,29 @@ program
     .command('save <name>')
     .description('保存快捷指令')
     .option('-l, --from-last', 'save last executed AI command')
+    .option('-g, --global', 'add alias to ~/.zshrc')
     .action(async (name, options) => {
+        const addToZshrc = (aliasName: string) => {
+            const zshrcPath = path.join(os.homedir(), '.zshrc');
+            if (fs.existsSync(zshrcPath)) {
+                const aliasLine = `alias ${aliasName}="yuangs run ${aliasName}"`;
+                try {
+                    const content = fs.readFileSync(zshrcPath, 'utf8');
+                    if (!content.includes(aliasLine)) {
+                        fs.appendFileSync(zshrcPath, `\n${aliasLine}\n`);
+                        console.log(chalk.green(`✓ 已添加 alias 到 ~/.zshrc`));
+                        console.log(chalk.yellow(`ℹ️  请运行 "source ~/.zshrc" 以生效`));
+                    } else {
+                        console.log(chalk.yellow(`ℹ️  Alias "${aliasName}" 已存在于 ~/.zshrc`));
+                    }
+                } catch (err) {
+                    console.error(chalk.red(`❌ 无法写入 ~/.zshrc: ${(err as Error).message}`));
+                }
+            } else {
+                console.log(chalk.red(`❌ 未找到 ~/.zshrc`));
+            }
+        };
+
         if (options.fromLast) {
             const history = getCommandHistory();
             if (history.length === 0) {
@@ -228,12 +251,13 @@ program
             }
             const lastItem = history[0];
 
-            // Assume the last item in history is what we want. 
-            // The history is unshifted, so index 0 is the latest.
-
             saveMacro(name, lastItem.command, `Saved from: ${lastItem.question}`);
             console.log(chalk.green(`✓ 已将最近一条 AI 命令保存为 "${name}"`));
             console.log(chalk.gray(`  Command: ${lastItem.command}`));
+
+            if (options.global) {
+                addToZshrc(name);
+            }
             return;
         }
 
@@ -245,6 +269,10 @@ program
         saveMacro(name, cmd);
         console.log(chalk.green(`✓ 快捷指令 "${name}" 已保存`));
         rl.close();
+
+        if (options.global) {
+            addToZshrc(name);
+        }
     });
 
 program
