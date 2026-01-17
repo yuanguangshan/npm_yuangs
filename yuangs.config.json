@@ -8,5 +8,5 @@
   "homepage": "https://i.want.biz",
   "aiProxyUrl": "https://aiproxy.want.biz/v1/chat/completions",
   "defaultModel": "Assistant",
-  "accountType": "free"
+  "accountType": "paid"
 }
