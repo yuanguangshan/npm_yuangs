@@ -3,6 +3,8 @@
 
 **以人类意图为中心的 AI‑Augmented Shell**
 
+> A seamless terminal where deterministic execution and probabilistic intelligence coexist without friction.
+
 一个集 **AI 助手 · 智能 Shell 内核 · 插件化运行时** 于一体的现代终端工具。
 
 > **核心理念**  
