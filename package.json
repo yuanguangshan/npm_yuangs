@@ -1,6 +1,6 @@
 {
   "name": "yuangs",
-  "version": "2.19.0",
+  "version": "2.21.0",
   "description": "苑广山的个人应用集合 CLI（彩色版）",
   "author": "苑广山",
   "license": "ISC",
@@ -53,6 +53,7 @@
     "@types/node": "^20.11.30",
     "@types/ora": "^3.1.0",
     "jest": "^29.7.0",
+    "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   },
