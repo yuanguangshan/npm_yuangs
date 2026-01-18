@@ -54,7 +54,7 @@ src/agent/
 
 - `chat`: AI 聊天模式（流式输出，无命令执行）
 - `command`: 生成 shell 命令（需要确认）
-- `command+exec`: 生成并执行命令
+- `command+exec`: **[EXPERIMENTAL/INTERNAL]** 生成并执行命令（仅限 replay/test）
 
 ### AgentInput
 
@@ -68,7 +68,7 @@ interface AgentInput {
   options?: {
     model?: string;           // 指定模型
     stream?: boolean;         // 是否流式
-    autoYes?: boolean;        // 自动确认
+    autoYes?: boolean;        // [UNSAFE] 自动确认 (仅限测试环境)
     verbose?: boolean;        // 详细输出
   };
 }

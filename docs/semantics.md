@@ -1,188 +1,190 @@
-# Execution Semantics Specification
+# Execution Semantics of yuangs
 
-> 本文档形式化定义 yuangs 的执行状态机、输入分类与状态转移规则。  
-> 其目标不是解释"怎么用"，而是回答：  
-> **"一条输入在系统中会经历什么，以及不会经历什么。"**
+> This document defines the **formal execution semantics** of yuangs.
+> It specifies **what the system is**, **what it can do**, and **what it must never do**.
 
----
-
-## 1. 基本对象定义
-
-### 1.1 Actor
-
-- **User**
-  - 唯一的执行主体
-  - 唯一的副作用责任承担者
-
-- **AI**
-  - 纯推理与建议组件
-  - 不具备执行能力
-
-- **Shell Runtime**
-  - 状态机宿主
-  - 执行用户确认后的 Action
+yuangs is modeled as a **user-governed execution state machine**.
+AI participates strictly as a reasoning component and never as an execution authority.
 
 ---
 
-### 1.2 Context（上下文）
+## 1. Core Principle
 
-上下文是一个**显式构建的、只读的数据集合**，来源包括：
+> **AI may reason.  
+> Only the user may execute.**
 
-- 文件内容（`@path[:line]`）
-- 目录结构（`#dir`）
-- 管道输入（`stdin`）
-- 命令输出（`@!cmd`）
-
-> **除非被显式声明，上下文不存在。**
+All system behaviors are constrained by this principle.
 
 ---
 
-## 2. 输入分类（Input Classification）
+## 2. State Machine Overview
 
-每一条输入在解析阶段被严格分类为以下之一：
+yuangs operates as a finite state machine with explicit user-controlled transitions.
 
-| 类型 | 示例 | 是否执行 |
-|----|----|----|
-| Shell Command | `ls -la` | ✅ |
-| Context Declaration | `@src/index.ts` | ❌ |
-| Directory Context | `#src/` | ❌ |
-| AI Dialogue | `ai "explain this"` | ❌ |
-| AI Command Proposal | `ai -e "find logs"` | ❌ |
-| Atomic Exec | `:exec ./deploy.sh` | ✅ |
-
----
-
-## 3. 状态机定义
-
-### 3.1 状态集合
-
-```text
-Idle
- ├─> ContextBuilding
- ├─> AIReasoning
- ├─> ProposalReady
- ├─> AwaitUserConfirmation
- ├─> Executing
- └─> Completed
+```mermaid
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> InputParse: User Input
+    InputParse --> ContextAssembly: @ / # / pipe
+    ContextAssembly --> Reasoning: AI Inference
+    Reasoning --> Proposal: text / cmd
+    Proposal --> Execution: Explicit User Action
+    Execution --> Idle
+    InputParse --> Execution: :exec (Bypass)
 ```
 
 ---
 
-### 3.2 状态转移规则
+## 3. States and Responsibilities
 
-#### Idle → ContextBuilding
+### 3.1 Idle
 
-触发条件：
-- 输入包含 `@` / `#` / 管道输入
-
-副作用：
-- 仅构建 ContextBuffer
-- 不执行任何系统命令
+- No context
+- No execution
+- Waiting for user input
 
 ---
 
-#### ContextBuilding → AIReasoning
+### 3.2 Input Parse
 
-触发条件：
-- 输入为自然语言
-- 或显式调用 `ai`
+The system classifies input into one or more of:
 
-副作用：
-- AI 读取 ContextBuffer
-- 不生成 Action
+- Context declaration (`@file`, `#dir`)
+- AI reasoning request (`ai`, `ai -e`)
+- Direct execution (`:exec`)
+- Plain question
 
----
-
-#### AIReasoning → ProposalReady
-
-触发条件：
-- 使用 `ai -e`
-
-副作用：
-- 生成 **建议命令**
-- 命令不可自动执行
+No file system access occurs here.
 
 ---
 
-#### ProposalReady → AwaitUserConfirmation
+### 3.3 Context Assembly
 
-触发条件：
-- 建议命令展示完成
+Context is **explicitly user-declared**.
 
-副作用：
-- 等待用户输入（Enter / 编辑 / 放弃）
+Allowed sources:
 
----
+| Source | Authorization |
+|------|---------------|
+| `@file` | Explicit |
+| `#dir` | Explicit |
+| Pipe input | Explicit |
+| Git diff | **Limited exception** (current working tree only) |
 
-#### AwaitUserConfirmation → Executing
+Disallowed sources:
 
-触发条件：
-- 用户明确确认执行
+- Implicit filesystem scanning
+- Environment variables
+- Network access
+- Undeclared directories
 
-副作用：
-- Shell Runtime 执行命令
-- 记录完整执行日志
-
----
-
-#### Any → Executing（特例）
-
-触发条件：
-- 输入为 `:exec`
-
-副作用：
-- 绕过 AIReasoning
-- 直接执行
+Context is read-only.
 
 ---
 
-## 4. 不可达状态（Illegal States）
+### 3.4 Reasoning (AI State)
 
-以下状态在 yuangs 中**被设计为不可达**：
+AI receives:
 
-- AI 直接进入 Executing
-- Context 在未声明情况下存在
-(Git Diff 例外：详见 [Semantic Exceptions](#semantic-exceptions))
+- User input
+- Assembled context
+- Execution history (if any)
 
----
+AI is allowed to:
 
-## 4.1 语义例外 (Semantic Exceptions)
+- Analyze
+- Explain
+- Suggest commands
+- Propose plans (future capability)
 
-### Git Diff 隐式上下文
+AI is **not allowed to**:
 
-作为唯一的"隐式上下文例外"，Git Diff 上下文允许被自动加载，但必须满足：
-1. 当前目录是一个 Git 仓库
-2. 上下文仅包含 Working Tree 或 Staged 的 Diff 内容
-3. 绝不包含提交历史 (Logs)、任意分支 (Branches) 或 stash 内容
-
-### `@!cmd` 执行语义
-
-语法 `@!cmd`属于 **Execution-for-Observation** (为观察而执行) 类别：
-- 它 **确实执行** 了命令 (副作用发生)
-- 但仅用于获取输出作为只读上下文
-- 约定上不应产生持久状态变更 (尽管无法强制)
+- Execute commands
+- Advance state autonomously
+- Access new context
+- Retry without user input
 
 ---
 
-## 5. 审计保证（Audit Guarantees）
-- 执行命令但无用户输入
-- 副作用发生但未被记录
+### 3.5 Proposal
+
+AI output is interpreted as a **proposal**, never an action.
+
+Proposal types:
+
+- Text explanation
+- Suggested shell command(s)
+- Step list (non-executable)
+- Warnings or risk notes
+
+All proposals are inert until acted upon by the user.
 
 ---
 
-## 5. 审计保证（Audit Guarantees）
+### 3.6 Execution (User-Governed)
 
-系统必须保证：
+Execution can only be triggered by **explicit user action**:
 
-- 任一执行动作可追溯到：
-  - 用户输入
-  - 上下文来源
-  - AI 建议（如存在）
-- 审计日志不可由 AI 修改
+| Mechanism | Description |
+|---------|-------------|
+| Press Enter | Confirm suggested command |
+| `:exec` | Bypass AI and execute directly |
+| Manual copy-paste | Outside system control |
+| `@!cmd` | **Execution-for-Observation** (Explicitly requested side-effect for context) |
+
+AI is not notified of execution unless output is piped back explicitly.
 
 ---
 
-## 6. 语义结论
+## 4. Forbidden Transitions (Hard Guarantees)
 
-> **yuangs 不是一个"智能代理"，  
-> 而是一个受限、可验证、可审计的执行状态机。"
+The following transitions **must never exist**:
+
+- AI → Execution (direct or indirect)
+- Proposal → Execution without user gate
+- Planner step → automatic next step
+- Retry loop without user input
+- Hidden execution side effects
+
+Any feature requiring these transitions is out of scope.
+
+---
+
+## 5. Error and Failure Semantics
+
+On failure:
+
+- Execution stops
+- System returns to Idle or Context state
+- AI may analyze failure **only after output is provided as context**
+
+There is no automatic recovery.
+
+---
+
+## 6. Observability and Auditability
+
+All executions are:
+
+- Visible
+- Reproducible
+- Attributable to user action
+
+Execution history may be recorded, replayed, or inspected.
+
+Replay does not grant execution authority.
+
+---
+
+## 7. Summary
+
+yuangs is not an autonomous agent.
+
+It is:
+
+- A reasoning assistant
+- A context-aware analyzer
+- A proposal generator
+- A user-governed execution environment
+
+At no point does yuangs replace user intent or responsibility.

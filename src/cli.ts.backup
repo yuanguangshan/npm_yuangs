@@ -11,7 +11,6 @@ import { registerCapabilityCommands } from './commands/capabilityCommands';
 import { loadAppsConfig, openUrl, DEFAULT_APPS } from './core/apps';
 import { getMacros, saveMacro, runMacro } from './core/macros';
 import { getCommandHistory } from './utils/history';
-import { handleSpecialSyntax } from './utils/syntaxHandler';
 
 // Mandatory Node.js version check
 const majorVersion = Number(process.versions.node.split('.')[0]);
@@ -370,81 +369,13 @@ async function main() {
             let question = args.filter(arg => !arg.startsWith('-')).join(' ');
 
             if (stdinData) {
-                // 检查 stdin 数据是否是特殊语法
-                const stdinTrimmed = stdinData.trim();
-                const isStdinSpecialSyntax = stdinTrimmed.startsWith('@') ||
-                                           stdinTrimmed.startsWith('#') ||
-                                           stdinTrimmed === ':ls' ||
-                                           stdinTrimmed === ':clear';
-
-                if (isStdinSpecialSyntax) {
-                    const result = await handleSpecialSyntax(stdinData, '');
-
-                    if (result.processed) {
-                        // 如果特殊语法被处理，使用处理结果作为问题
-                        if (result.result) {
-                            question = result.result;
-                        } else {
-                            // 如果没有结果，可能只是执行了命令，直接退出
-                            process.exit(0);
-                        }
-                    } else {
-                        // 如果没有被处理，继续使用原始问题
-                        console.log('警告: 未能处理特殊语法，使用原始输入');
-                        if (options.withContent) {
-                            const { parseFilePathsFromLsOutput, readFilesContent, buildPromptWithFileContent } = await import('./core/fileReader');
-                            const filePaths = parseFilePathsFromLsOutput(stdinData);
-                            const contentMap = readFilesContent(filePaths);
-                            question = buildPromptWithFileContent(stdinData, filePaths, contentMap, question || undefined);
-                        } else {
-                            question = `以下是输入内容：\n\n${stdinData}\n\n我的问题是：${question || '分析以上内容'}`;
-                        }
-                    }
+                if (options.withContent) {
+                    const { parseFilePathsFromLsOutput, readFilesContent, buildPromptWithFileContent } = await import('./core/fileReader');
+                    const filePaths = parseFilePathsFromLsOutput(stdinData);
+                    const contentMap = readFilesContent(filePaths);
+                    question = buildPromptWithFileContent(stdinData, filePaths, contentMap, question || undefined);
                 } else {
-                    if (options.withContent) {
-                        const { parseFilePathsFromLsOutput, readFilesContent, buildPromptWithFileContent } = await import('./core/fileReader');
-                        const filePaths = parseFilePathsFromLsOutput(stdinData);
-                        const contentMap = readFilesContent(filePaths);
-                        question = buildPromptWithFileContent(stdinData, filePaths, contentMap, question || undefined);
-                    } else {
-                        question = `以下是输入内容：\n\n${stdinData}\n\n我的问题是：${question || '分析以上内容'}`;
-                    }
-                }
-            }
-
-            // 如果 question 本身包含特殊语法（没有 stdin 或 stdin 不是特殊语法）
-            if (!stdinData || !(stdinData.trim().startsWith('@') || stdinData.trim().startsWith('#') || stdinData.trim() === ':ls' || stdinData.trim() === ':clear')) {
-                const questionTrimmed = (question || '').trim();
-                const isQuestionSpecialSyntax = questionTrimmed.startsWith('@') ||
-                                              questionTrimmed.startsWith('#') ||
-                                              questionTrimmed === ':ls' ||
-                                              questionTrimmed === ':clear';
-
-                if (isQuestionSpecialSyntax) {
-                    const result = await handleSpecialSyntax(question, stdinData);
-
-                    if (result.processed) {
-                        // 如果特殊语法被处理
-                        if (result.result) {
-                            // 检查是否是管理命令（如 :ls, :clear），这些命令的结果应该直接输出
-                            const isManagementCommand = question.trim() === ':ls' || question.trim() === ':clear';
-
-                            if (isManagementCommand) {
-                                // 直接输出结果并退出
-                                console.log(result.result);
-                                process.exit(0);
-                            } else {
-                                // 对于文件/目录引用，将结果作为问题传递给AI
-                                question = result.result;
-                            }
-                        } else {
-                            // 如果没有结果，可能只是执行了命令，直接退出
-                            process.exit(0);
-                        }
-                    } else {
-                        // 如果没有被处理，继续使用原始问题
-                        console.log('警告: 未能处理特殊语法，使用原始输入');
-                    }
+                    question = `以下是输入内容：\n\n${stdinData}\n\n我的问题是：${question || '分析以上内容'}`;
                 }
             }
 
