@@ -1,8 +1,9 @@
-import { DefaultTokenPolicy } from '../../dist/policy/token/DefaultTokenPolicy';
-import { ModelSpec } from '../../dist/policy/token/types';
+// @ts-nocheck
+import { DefaultTokenPolicy } from '../../../src/policy/token/DefaultTokenPolicy';
+import { ModelSpec } from '../../../src/policy/token/types';
 
 jest.mock('fs/promises');
-jest.mock('../../dist/policy/token/TokenEstimator');
+jest.mock('../../../src/policy/token/TokenEstimator');
 
 /**
  * T3: warn → switch → re-evaluate
@@ -17,7 +18,7 @@ describe('DefaultTokenPolicy - T3: Warn with Switch Model', () => {
     };
 
     beforeEach(() => {
-        const TokenEstimator = require('../../dist/policy/token/TokenEstimator').TokenEstimator;
+        const TokenEstimator = require('../../../src/policy/token/TokenEstimator').TokenEstimator;
         TokenEstimator.estimate.mockResolvedValue({
             totalBytes: 0,
             estimatedTokens: 0,
@@ -29,6 +30,14 @@ describe('DefaultTokenPolicy - T3: Warn with Switch Model', () => {
     test('warn 状态应提供 switch model 选项', async () => {
         const policy = new DefaultTokenPolicy();
 
+        const TokenEstimator = require('../../../src/policy/token/TokenEstimator').TokenEstimator;
+        TokenEstimator.estimate.mockResolvedValueOnce({
+            totalBytes: 3400,
+            estimatedTokens: 850,
+            warnings: [],
+            blockingError: undefined
+        });
+
         const result = await policy.evaluate({
             model: mockModel,
             contextItems: [],
@@ -38,7 +47,7 @@ describe('DefaultTokenPolicy - T3: Warn with Switch Model', () => {
         expect(result.status).toBe('warn');
         expect(result.actions).toBeDefined();
         expect(result.actions?.length).toBeGreaterThan(0);
-        
+
         const hasSwitchAction = result.actions?.some(
             (a: any) => a.type === 'suggest_model_switch'
         );

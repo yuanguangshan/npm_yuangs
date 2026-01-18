@@ -14,16 +14,22 @@ module.exports = {
         'text',
         'lcov'
     ],
-    moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'tsx', 'json'],
+    moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
     transform: {
-        '^.+\\.tsx?$': ['ts-jest']
-    },
-    globals: {
-        'ts-jest': {
+        '^.+\\.[tj]sx?$': ['ts-jest', {
             tsconfig: {
                 esModuleInterop: true,
-                module: 'commonjs'
+                module: 'commonjs',
+                allowJs: true
             }
-        }
-    }
+        }]
+    },
+    transformIgnorePatterns: [
+        '/node_modules/(?!(ora|marked|marked-terminal)/)'
+    ],
+    moduleNameMapper: {
+        '^ora$': '<rootDir>/test/__mocks__/ora.js',
+        '^marked$': '<rootDir>/test/__mocks__/marked.js',
+        '^marked-terminal$': '<rootDir>/test/__mocks__/marked-terminal.js'
+    },
 };

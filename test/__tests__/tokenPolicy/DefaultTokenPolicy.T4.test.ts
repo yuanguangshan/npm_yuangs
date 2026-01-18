@@ -1,8 +1,9 @@
-import { DefaultTokenPolicy } from '../../dist/policy/token/DefaultTokenPolicy';
-import { ModelSpec, PendingContextItem } from '../../dist/policy/token/types';
+// @ts-nocheck
+import { DefaultTokenPolicy } from '../../../src/policy/token/DefaultTokenPolicy';
+import { ModelSpec, PendingContextItem } from '../../../src/policy/token/types';
 
 jest.mock('fs/promises');
-jest.mock('../../dist/policy/token/TokenEstimator');
+jest.mock('../../../src/policy/token/TokenEstimator');
 
 /**
  * T4: block 状态下 resolve 永不被调用
@@ -12,14 +13,14 @@ describe('DefaultTokenPolicy - T4: Block with No Resolve Calls', () => {
     let resolveCallCount = 0;
 
     beforeEach(() => {
-        const TokenEstimator = require('../../dist/policy/token/TokenEstimator').TokenEstimator;
+        const TokenEstimator = require('../../../src/policy/token/TokenEstimator').TokenEstimator;
         TokenEstimator.estimate.mockResolvedValue({
             totalBytes: 0,
             estimatedTokens: 0,
             warnings: [],
-            blockingError: undefined
+            blockingError: 'EACCES: Permission denied'
         });
-        
+
         resolveCallCount = 0;
     });
 

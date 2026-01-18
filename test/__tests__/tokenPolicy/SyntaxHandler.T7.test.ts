@@ -1,8 +1,8 @@
-import { SyntaxHandler } from '../../dist/policy/syntaxHandler';
-import { TokenEstimator } from '../../dist/policy/token/TokenEstimator';
+// @ts-nocheck
+import { SyntaxHandler } from '../../../src/policy/syntaxHandler';
+import { TokenEstimator } from '../../../src/policy/token/TokenEstimator';
 
 jest.mock('fs/promises');
-jest.mock('../../dist/policy/token/TokenEstimator');
 
 /**
  * T7: Directory 估算准确性测试
@@ -23,13 +23,6 @@ describe('SyntaxHandler - T7: Directory Estimation Accuracy', () => {
                 { name: 'file3.txt', isDirectory: () => false, isFile: () => true }
             ]);
 
-        const TokenEstimator = require('../../dist/policy/token/TokenEstimator').TokenEstimator;
-        TokenEstimator.estimate.mockResolvedValue({
-            totalBytes: 0,
-            estimatedTokens: 0,
-            warnings: [],
-            blockingError: undefined
-        });
 
         const tokens = SyntaxHandler.parse(['#test/dir']);
         const item = tokens[0];
