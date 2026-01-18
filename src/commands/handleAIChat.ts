@@ -439,7 +439,7 @@ async function askOnceStream(question: string, model?: string) {
         const formatted = (marked.parse(fullResponse, { async: false }) as string).trim();
 
         if (process.stdout.isTTY) {
-            // 这里的逻辑是：
+            // TTY模式（交互模式）
             // 1. 先输出原本的流式内容（Raw）
             // 2. 结束时，计算 Raw 内容的高度（Visual Line Count）
             // 3. 向上清除相应行数
@@ -449,10 +449,6 @@ async function askOnceStream(question: string, model?: string) {
             const totalContent = BOT_PREFIX + fullResponse;
             let lineCount = getVisualLineCount(totalContent, screenWidth);
 
-            // 如果 Raw 内容正好填满最后一行，光标可能在下一行开头。
-            // 我们通过输出一个换行符来确保光标位置可预测（虽然这会增加一行，但更安全）
-            // 或者我们直接尝试清理更多的行。
-
             // 清除 Raw Output
             // 移至当前行开头并清除
             process.stdout.write('\r\x1b[K');
@@ -461,17 +457,15 @@ async function askOnceStream(question: string, model?: string) {
                 process.stdout.write('\x1b[A\x1b[K');
             }
 
-            // 关键修复：如果计算出的行数不足以覆盖实际渲染的视觉行（常见于恰好填满屏幕宽度的行），
-            // 这种手动清除很难十全十美。我们采取"先清后印"的原则。
+            // 输出格式化的 Markdown 内容
             process.stdout.write(BOT_PREFIX + formatted + '\n');
         } else {
-            // 非TTY模式（如管道模式），不执行清除逻辑，避免转义序列可见
-            // 直接输出格式化内容
+            // 非TTY模式（如管道模式）
+            // 只输出格式化内容，不执行清除逻辑，避免转义序列可见
             if (spinner.isSpinning) {
                 spinner.stop();
-                console.log(BOT_PREFIX);
             }
-            console.log(formatted);
+            process.stdout.write(BOT_PREFIX + formatted + '\n');
         }
 
         addToConversationHistory('user', question);
