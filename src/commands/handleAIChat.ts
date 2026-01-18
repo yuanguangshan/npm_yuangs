@@ -251,6 +251,23 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
             const input = await ask(chalk.green('你：'));
             const trimmed = input.trim();
 
+            // === 场景 5.1: 原子执行 (:exec) ===
+            if (trimmed.startsWith(':exec ')) {
+                const cmd = trimmed.slice(6).trim();
+                if (cmd) {
+                    console.log(chalk.cyan(`\n⚡️ [Atomic Exec] ${cmd}\n`));
+                    rl.pause();
+                    try {
+                        await shellExecuteCommand(cmd, (code) => {
+                            if (code !== 0) console.log(chalk.red(`Exited with ${code}`));
+                        });
+                    } finally {
+                        rl.resume();
+                    }
+                }
+                continue;
+            }
+
             if (trimmed.startsWith('@')) {
                 rl.pause();
                 try {
@@ -293,29 +310,51 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
                     }
 
                     if (immediateExecMatch) {
-                        // @!filename - 添加并立即执行文件
+                        // 场景 3.2: @!filename - 添加脚本源码并捕获执行输出
                         const filePath = immediateExecMatch[1].trim();
-                        const content = await readFileContent(filePath);
-                        
-                        contextBuffer.add({
-                            type: 'file',
-                            path: filePath,
-                            content
-                        });
+                        const fullPath = path.resolve(filePath);
 
-                        const displayName = filePath;
-                        console.log(chalk.green(`✓ 已加入文件上下文: ${displayName}\n`));
-                        
-                        await saveContext(contextBuffer.export());
-                        
-                        console.log(chalk.cyan(`⚡️  正在执行: ${filePath}\n`));
-                        
-                        const { stdout, stderr } = await exec(filePath, { cwd: process.cwd() });
-                        console.log(stdout);
-                        if (stderr) console.error(chalk.red(stderr));
+                        if (fs.existsSync(fullPath)) {
+                            // 1. 读取源码
+                            const sourceContent = await readFileContent(filePath);
+                            
+                            console.log(chalk.cyan(`⚡️ 正在执行并捕获: ${filePath}\n`));
+                            
+                            // 2. 执行并捕获
+                            const { stdout, stderr } = await execAsync(`chmod +x "${fullPath}" && "${fullPath}"`, { cwd: process.cwd() });
+                            console.log(stdout); // 实时打印给用户看
+                            if (stderr) console.error(chalk.red(stderr));
 
-                        await saveContext(contextBuffer.export());
-                        console.log(chalk.green(`✓ 执行完成\n`));
+                            // 3. 构造组合上下文 (契约：命令内容 + 实际输出)
+                            const combinedContent = `
+=== Source: ${filePath} ===
+\`\`\`bash
+${sourceContent}
+\`\`\`
+
+=== Stdout ===
+\`\`\`
+${stdout}
+\`\`\`
+
+=== Stderr ===
+\`\`\`
+${stderr}
+\`\`\`
+`;
+
+                            contextBuffer.add({
+                                type: 'file',
+                                path: `${filePath} [Run Log]`,
+                                alias: 'Execution Log',
+                                content: combinedContent
+                            });
+                            
+                            await saveContext(contextBuffer.export());
+                            console.log(chalk.green(`\n✓ 已捕获脚本源码及执行日志到上下文\n`));
+                        } else {
+                            console.log(chalk.red(`错误: 文件 ${filePath} 不存在`));
+                        }
 
                         rl.resume();
                         continue;
@@ -476,6 +515,33 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
                     console.log(chalk.gray('📭 当前没有上下文\n'));
                 } else {
                     console.table(list);
+                }
+                continue;
+            }
+
+            if (trimmed === ':cat' || trimmed.startsWith(':cat ')) {
+                const parts = trimmed.split(' ');
+                const index = parts.length > 1 ? parseInt(parts[1]) : null;
+                const items = contextBuffer.export();
+
+                if (items.length === 0) {
+                    console.log(chalk.gray('📭 当前没有上下文内容可查阅\n'));
+                } else if (index !== null) {
+                    if (index < 1 || index > items.length) {
+                        console.log(chalk.red(`❌ 索引 ${index} 超出范围 (1-${items.length})\n`));
+                    } else {
+                        const item = items[index - 1];
+                        console.log(chalk.cyan(`\n=== [${index}] ${item.path} ===`));
+                        console.log(item.content);
+                        console.log(chalk.cyan(`=== End ===\n`));
+                    }
+                } else {
+                    console.log(chalk.cyan('\n=== 当前完整上下文内容 ==='));
+                    items.forEach((item, i) => {
+                        console.log(chalk.yellow(`\n--- [${i + 1}] ${item.path} ---`));
+                        console.log(item.content);
+                    });
+                    console.log(chalk.cyan('\n==========================\n'));
                 }
                 continue;
             }

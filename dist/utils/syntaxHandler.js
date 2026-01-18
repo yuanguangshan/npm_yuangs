@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleSpecialSyntax = handleSpecialSyntax;
 const fs_1 = __importDefault(require("fs"));
+const chalk_1 = __importDefault(require("chalk"));
 const path_1 = __importDefault(require("path"));
 const child_process_1 = require("child_process");
 const util_1 = require("util");
@@ -47,6 +48,11 @@ async function handleSpecialSyntax(input, stdinData) {
     // 处理 :ls 命令
     if (trimmed === ':ls') {
         return await handleListContext();
+    }
+    // 场景 5.1: :exec 原子执行
+    if (trimmed.startsWith(':exec ')) {
+        const command = trimmed.slice(6).trim();
+        return await handleAtomicExec(command);
     }
     // 处理 :cat [index] 命令
     if (trimmed === ':cat' || trimmed.startsWith(':cat ')) {
@@ -144,28 +150,74 @@ async function handleImmediateExec(filePath) {
         };
     }
     try {
-        // 读取文件内容并添加到上下文
+        // 1. 读取脚本内容
         const content = fs_1.default.readFileSync(fullPath, 'utf-8');
+        console.log(chalk_1.default.gray(`正在执行 ${filePath} 并捕获输出...`));
+        // 2. 执行脚本
+        // 注意：这里使用 execAsync 捕获输出
+        const { stdout, stderr } = await execAsync(`chmod +x "${fullPath}" && "${fullPath}"`, { cwd: process.cwd() });
+        // 3. 构造组合上下文 (契约要求：命令内容 + 实际输出)
+        const combinedContext = `
+=== 脚本内容 (${filePath}) ===
+\`\`\`bash
+${content}
+\`\`\`
+
+=== 执行标准输出 (stdout) ===
+\`\`\`
+${stdout}
+\`\`\`
+
+=== 执行标准错误 (stderr) ===
+\`\`\`
+${stderr}
+\`\`\`
+`;
+        // 持久化到上下文
         const contextBuffer = new contextBuffer_1.ContextBuffer();
         const persisted = await (0, contextStorage_1.loadContext)();
         contextBuffer.import(persisted);
         contextBuffer.add({
             type: 'file',
-            path: filePath,
-            content
+            path: `${filePath} (Runtime Log)`,
+            content: combinedContext,
+            summary: '包含脚本源码和执行后的输出日志'
         });
         await (0, contextStorage_1.saveContext)(contextBuffer.export());
-        // 执行文件
-        const { stdout, stderr } = await execAsync(`chmod +x "${fullPath}" && "${fullPath}"`, { cwd: process.cwd() });
-        // 将命令输出作为上下文返回
-        const result = `文件 "${filePath}" 已执行\n\n标准输出:\n${stdout}\n\n标准错误:\n${stderr}`;
+        // 返回给 AI 的 Prompt
+        const result = `我执行了脚本 ${filePath}。\n以下是脚本源码和执行输出：\n${combinedContext}\n\n请分析为何会出现上述输出（特别是错误信息）？`;
         return { processed: true, result };
     }
     catch (error) {
-        return {
-            processed: true,
-            result: `执行文件失败: ${error}`
-        };
+        const errorMsg = error.message || String(error);
+        const result = `执行脚本 ${filePath} 时发生错误：\n${errorMsg}\n\n请分析原因。`;
+        return { processed: true, result };
+    }
+}
+async function handleAtomicExec(command) {
+    console.log(chalk_1.default.cyan(`\n⚡️ [Atomic Exec] 执行命令: ${command}\n`));
+    try {
+        // 对于原子执行，我们希望用户能实时看到输出，所以用 inherit
+        const { spawn } = require('child_process');
+        const child = spawn(command, {
+            shell: true,
+            stdio: 'inherit'
+        });
+        await new Promise((resolve, reject) => {
+            child.on('close', (code) => {
+                if (code === 0)
+                    resolve();
+                else
+                    reject(new Error(`Exit code ${code}`));
+            });
+            child.on('error', reject);
+        });
+        // 原子执行不将结果传给 AI，直接返回空结果表示处理完成
+        return { processed: true, result: '' };
+    }
+    catch (error) {
+        console.error(chalk_1.default.red(`执行失败: ${error}`));
+        return { processed: true, result: '' };
     }
 }
 async function handleListContext() {
