@@ -14,16 +14,25 @@ const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const os_1 = __importDefault(require("os"));
 const validation_1 = require("../core/validation");
+const chatHistoryStorage_1 = require("../commands/chatHistoryStorage");
 const CONFIG_FILE = path_1.default.join(os_1.default.homedir(), '.yuangs.json');
 let conversationHistory = [];
+// 初始化时加载持久化的聊天历史记录
+(0, chatHistoryStorage_1.loadChatHistory)().then(history => {
+    conversationHistory = history;
+});
 function addToConversationHistory(role, content) {
     conversationHistory.push({ role, content });
     if (conversationHistory.length > 20) {
         conversationHistory = conversationHistory.slice(-20);
     }
+    // 同时保存到持久化存储
+    (0, chatHistoryStorage_1.saveChatHistory)(conversationHistory);
 }
 function clearConversationHistory() {
     conversationHistory = [];
+    // 同时清除持久化存储
+    (0, chatHistoryStorage_1.saveChatHistory)(conversationHistory);
 }
 function getConversationHistory() {
     return conversationHistory;

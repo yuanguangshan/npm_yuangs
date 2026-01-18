@@ -3,20 +3,30 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { DEFAULT_AI_PROXY_URL, DEFAULT_MODEL, DEFAULT_ACCOUNT_TYPE, type UserConfig, type AIRequestMessage } from '../core/validation';
+import { loadChatHistory, saveChatHistory } from '../commands/chatHistoryStorage';
 
 const CONFIG_FILE = path.join(os.homedir(), '.yuangs.json');
 
 let conversationHistory: AIRequestMessage[] = [];
+
+// 初始化时加载持久化的聊天历史记录
+loadChatHistory().then(history => {
+    conversationHistory = history;
+});
 
 export function addToConversationHistory(role: 'system' | 'user' | 'assistant', content: string) {
     conversationHistory.push({ role, content });
     if (conversationHistory.length > 20) {
         conversationHistory = conversationHistory.slice(-20);
     }
+    // 同时保存到持久化存储
+    saveChatHistory(conversationHistory);
 }
 
 export function clearConversationHistory() {
     conversationHistory = [];
+    // 同时清除持久化存储
+    saveChatHistory(conversationHistory);
 }
 
 export function getConversationHistory() {

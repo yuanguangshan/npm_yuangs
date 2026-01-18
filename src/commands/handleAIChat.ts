@@ -207,6 +207,19 @@ async function handleDirectoryReference(input: string): Promise<string> {
 
 export async function handleAIChat(initialQuestion: string | null, model?: string) {
     if (initialQuestion) {
+        // 先检查是否为特殊语法
+        const { handleSpecialSyntax } = await import('../utils/syntaxHandler');
+        const result = await handleSpecialSyntax(initialQuestion);
+        
+        if (result.processed) {
+            // 如果是管理命令（:ls, :cat, :clear），直接输出结果
+            if (result.result) {
+                console.log(result.result);
+            }
+            return;
+        }
+        
+        // 不是特殊语法，正常发给 AI
         await askOnceStream(initialQuestion, model);
         return;
     }
