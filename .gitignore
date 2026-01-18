@@ -10,4 +10,4 @@ node_modules/
 .sisyphus/
 
 # AI / temp workflow drafts
-.github/workflows/*.ai/
+# .github/workflows/*.ai/
