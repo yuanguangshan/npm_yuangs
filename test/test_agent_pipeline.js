@@ -7,7 +7,7 @@
  *   node test_agent_pipeline.js
  */
 
-const { AgentPipeline } = require('./dist/agent');
+const { AgentPipeline } = require('../dist/agent');
 
 async function testChatMode() {
     console.log('\n=== 测试 Chat 模式 ===\n');
@@ -57,7 +57,7 @@ async function testCommandMode() {
 async function testExecutionRecord() {
     console.log('\n=== 测试执行记录 ===\n');
 
-    const { getRecords } = require('./dist/agent/record');
+    const { getRecords } = require('../dist/agent/record');
 
     const records = getRecords();
     console.log(`当前共有 ${records.length} 条执行记录`);

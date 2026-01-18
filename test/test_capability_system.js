@@ -5,7 +5,7 @@ const fs = require("fs");
 const path = require("path");
 
 // 动态导入必要的模块
-const { CapabilitySystem } = require("./dist/core/capabilitySystem");
+const { CapabilitySystem } = require("../dist/core/capabilitySystem");
 
 console.log("🧪 测试 CapabilitySystem 中的模型配置...\\n");
 
@@ -23,14 +23,14 @@ console.log("是否有重复模型:", modelIdentifiers.length !== uniqueModels.s
 console.log("");
 
 if (modelIdentifiers.length !== uniqueModels.size) {
-    console.log("🔍 重复的模型:");
-    const counts = {};
-    modelIdentifiers.forEach(id => {
-        counts[id] = (counts[id] || 0) + 1;
-    });
-    Object.entries(counts).forEach(([id, count]) => {
-        if (count > 1) {
-            console.log(\`  🚨 \${id}: \${count} 次\`);
+  console.log("🔍 重复的模型:");
+  const counts = {};
+  modelIdentifiers.forEach(id => {
+    counts[id] = (counts[id] || 0) + 1;
+  });
+  Object.entries(counts).forEach(([id, count]) => {
+    if (count > 1) {
+      console.log(\`  🚨 \${id}: \${count} 次\`);
         }
     });
     console.log("");
