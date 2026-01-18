@@ -218,10 +218,15 @@ yuangs config accountType pro
 
 - **设计原理**: [docs/implementation_principles.md](docs/implementation_principles.md)
 - **场景示例**: [docs/scenarios.md](docs/scenarios.md)
+- **执行语义**: [docs/semantics.md](docs/semantics.md)
+- **非目标**: [docs/non-goals.md](docs/non-goals.md)
+- **威胁模型**: [docs/threat_model.md](docs/threat_model.md)
+- **实现差距分析**: [docs/implementation_gap.md](docs/implementation_gap.md)
 - **变更日志**: [docs/CHANGELOG.md](docs/CHANGELOG.md)
 - **Shell 补全**: [docs/tab_completion_guide.md](docs/tab_completion_guide.md)
 - **上下文优化**: [docs/context_optimization_analysis.md](docs/context_optimization_analysis.md)
 - **代理管道**: [docs/AGENT_PIPELINE.md](docs/AGENT_PIPELINE.md)
+- **上下文管理**: [docs/context_management.md](docs/context_management.md)
 ```
 
 ---

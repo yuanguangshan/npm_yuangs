@@ -142,6 +142,29 @@ Idle
 
 - AI 直接进入 Executing
 - Context 在未声明情况下存在
+(Git Diff 例外：详见 [Semantic Exceptions](#semantic-exceptions))
+
+---
+
+## 4.1 语义例外 (Semantic Exceptions)
+
+### Git Diff 隐式上下文
+
+作为唯一的"隐式上下文例外"，Git Diff 上下文允许被自动加载，但必须满足：
+1. 当前目录是一个 Git 仓库
+2. 上下文仅包含 Working Tree 或 Staged 的 Diff 内容
+3. 绝不包含提交历史 (Logs)、任意分支 (Branches) 或 stash 内容
+
+### `@!cmd` 执行语义
+
+语法 `@!cmd`属于 **Execution-for-Observation** (为观察而执行) 类别：
+- 它 **确实执行** 了命令 (副作用发生)
+- 但仅用于获取输出作为只读上下文
+- 约定上不应产生持久状态变更 (尽管无法强制)
+
+---
+
+## 5. 审计保证（Audit Guarantees）
 - 执行命令但无用户输入
 - 副作用发生但未被记录
 
