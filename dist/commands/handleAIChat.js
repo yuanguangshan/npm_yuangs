@@ -254,7 +254,7 @@ async function handleAIChat(initialQuestion, model) {
                         ? prefix + basePath + path_1.default.sep + c
                         : prefix + c;
                     return fullCompletion;
-                }), newLine];
+                }), completions.length === 1 ? newLine : line];
         }
     });
     // Helper to wrap rl.question in a Promise

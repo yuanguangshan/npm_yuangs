@@ -254,17 +254,17 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
             const commonPrefix = completions.length === 1
                 ? completions[0]
                 : findCommonPrefix(completions);
-
+            
             const newLine = basePath
                 ? prefix + basePath + path.sep + commonPrefix
                 : prefix + commonPrefix;
-
+            
             return [completions.map(c => {
                 const fullCompletion = basePath
                     ? prefix + basePath + path.sep + c
                     : prefix + c;
                 return fullCompletion;
-            }), newLine];
+            }), completions.length === 1 ? newLine : line];
         }
     });
 
