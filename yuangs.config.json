@@ -1,6 +1,6 @@
 {
   "aiProxyUrl": "https://aiproxy.want.biz/v1/chat/completions",
-  "defaultModel": "gemini-2.5-flash",
+  "defaultModel": "Assistant",
   "accountType": "paid",
   "models": [
     {
