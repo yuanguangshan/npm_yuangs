@@ -33,6 +33,26 @@ function findCommonPrefix(strings: string[]): string {
     return common;
 }
 
+async function executeCommand(filePath: string, command?: string) {
+    const fullPath = path.resolve(filePath);
+    const commandStr = command || '';
+
+    if (command) {
+        const { stdout, stderr } = await exec(commandStr, { cwd: path.dirname(fullPath) });
+        console.log(stdout);
+        if (stderr) console.error(chalk.red(stderr));
+    } else {
+        const { stdout, stderr } = await exec(fullPath, { cwd: process.cwd() });
+        console.log(stdout);
+        if (stderr) console.error(chalk.red(stderr));
+    }
+}
+
+async function readFileContent(filePath: string): Promise<string> {
+    const fullPath = path.resolve(filePath);
+    return await fs.promises.readFile(fullPath, 'utf-8');
+}
+
 async function showFileSelector(rl: readline.Interface): Promise<string | null> {
     return new Promise((resolve) => {
         try {
@@ -285,6 +305,73 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
             if (trimmed.startsWith('@')) {
                 rl.pause();
                 try {
+                    // 新增：支持执行命令的语法
+                    // @ filename:command - 添加并执行命令
+                    // @!filename - 添加并立即执行文件
+
+                    const execMatch = trimmed.match(/^@\s*(.+?)\s*:\s*([^].*)?$/);
+                    const immediateExecMatch = trimmed.match(/^@\s*!\s*(.+?)$/);
+
+                    if (execMatch && execMatch[2]) {
+                        // @ filename:command - 添加并执行命令
+                        const filePath = execMatch[1].trim();
+                        const commandStr = execMatch[2].trim();
+
+                        const content = await readFileContent(filePath);
+
+                        contextBuffer.add({
+                            type: 'file',
+                            path: filePath,
+                            content
+                        });
+
+                        const displayName = filePath;
+                        console.log(chalk.green(`✓ 已加入文件上下文: ${displayName}\n`));
+                        
+                        await saveContext(contextBuffer.export());
+                        
+                        console.log(chalk.cyan(`⚡️  正在执行: ${commandStr}\n`));
+                        
+                        const { stdout, stderr } = await exec(commandStr, { cwd: path.dirname(filePath) });
+                        console.log(stdout);
+                        if (stderr) console.error(chalk.red(stderr));
+
+                        await saveContext(contextBuffer.export());
+                        console.log(chalk.green(`✓ 执行完成\n`));
+
+                        rl.resume();
+                        continue;
+                    }
+
+                    if (immediateExecMatch) {
+                        // @!filename - 添加并立即执行文件
+                        const filePath = immediateExecMatch[1].trim();
+                        const content = await readFileContent(filePath);
+                        
+                        contextBuffer.add({
+                            type: 'file',
+                            path: filePath,
+                            content
+                        });
+
+                        const displayName = filePath;
+                        console.log(chalk.green(`✓ 已加入文件上下文: ${displayName}\n`));
+                        
+                        await saveContext(contextBuffer.export());
+                        
+                        console.log(chalk.cyan(`⚡️  正在执行: ${filePath}\n`));
+                        
+                        const { stdout, stderr } = await exec(filePath, { cwd: process.cwd() });
+                        console.log(stdout);
+                        if (stderr) console.error(chalk.red(stderr));
+
+                        await saveContext(contextBuffer.export());
+                        console.log(chalk.green(`✓ 执行完成\n`));
+
+                        rl.resume();
+                        continue;
+                    }
+
                     // 增强的匹配模式，支持行号指定: @ filepath:startLine-endLine as alias
                     const match = trimmed.match(/^@\s*(.+?)(?::(\d+)(?:-(\d+))?)?(?:\s+as\s+(.+))?$/);
                     const filePath = match?.[1] ?? (await showFileSelector(rl));
