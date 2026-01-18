@@ -1,5 +1,9 @@
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 import { AgentPlan } from './plan';
 import { ExecutionRecord } from './record';
+import chalk from 'chalk';
 
 export interface Skill {
     id: string;
@@ -18,7 +22,35 @@ export interface Skill {
     createdAt: number;
 }
 
+const SKILLS_FILE = path.join(os.homedir(), '.yuangs_skills.json');
 let skillLibrary: Skill[] = [];
+
+// === Persistence Logic ===
+
+function loadSkills() {
+    if (fs.existsSync(SKILLS_FILE)) {
+        try {
+            const data = fs.readFileSync(SKILLS_FILE, 'utf-8');
+            skillLibrary = JSON.parse(data);
+        } catch (e) {
+            console.error(chalk.yellow(`Failed to load skills from ${SKILLS_FILE}, starting empty.`));
+            skillLibrary = [];
+        }
+    }
+}
+
+function saveSkills() {
+    try {
+        fs.writeFileSync(SKILLS_FILE, JSON.stringify(skillLibrary, null, 2));
+    } catch (e) {
+        console.error(chalk.red(`Failed to save skills to ${SKILLS_FILE}`));
+    }
+}
+
+// Initialize on load
+loadSkills();
+
+// === Existing Logic with Save Hooks ===
 
 /**
  * 计算技能分 (0 ~ 1)
@@ -52,6 +84,8 @@ export function updateSkillStatus(skillId: string, success: boolean) {
         // 失败惩罚: 惩罚力度大于奖励，防止系统“自嗨”
         skill.confidence = Math.max(0, skill.confidence - 0.1);
     }
+    
+    saveSkills(); // Persist changes
 }
 
 /**
@@ -86,6 +120,8 @@ export function learnSkillFromRecord(record: ExecutionRecord, success: boolean =
 
     // 每学习一次，尝试清理一次“冷”技能
     reapColdSkills();
+    
+    saveSkills(); // Persist changes
 }
 
 /**
@@ -108,6 +144,7 @@ export function getRelevantSkills(input: string, limit: number = 3): Skill[] {
  */
 export function reapColdSkills() {
     const now = Date.now();
+    const initialCount = skillLibrary.length;
 
     skillLibrary = skillLibrary.filter(skill => {
         const score = computeSkillScore(skill, now);
@@ -127,6 +164,10 @@ export function reapColdSkills() {
         // 如果还超标，移除得分最低的那个
         skillLibrary.sort((a, b) => computeSkillScore(a, now) - computeSkillScore(b, now));
         skillLibrary.shift();
+    }
+    
+    if (skillLibrary.length !== initialCount) {
+        saveSkills(); // Persist if changes happened
     }
 }
 

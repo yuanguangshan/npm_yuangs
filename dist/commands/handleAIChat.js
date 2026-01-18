@@ -1,37 +1,4 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -41,8 +8,6 @@ const chalk_1 = __importDefault(require("chalk"));
 const ora_1 = __importDefault(require("ora"));
 const readline_1 = __importDefault(require("readline"));
 const client_1 = require("../ai/client");
-const marked = __importStar(require("marked"));
-const marked_terminal_1 = __importDefault(require("marked-terminal"));
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const fileReader_1 = require("../core/fileReader");
@@ -52,6 +17,7 @@ const contextBuffer_1 = require("./contextBuffer");
 const contextStorage_1 = require("./contextStorage");
 const gitContext_1 = require("./gitContext");
 const shellCompletions_1 = require("./shellCompletions");
+const renderer_1 = require("../utils/renderer");
 const execAsync = (0, util_1.promisify)(child_process_1.exec);
 function findCommonPrefix(strings) {
     if (strings.length === 0)
@@ -503,66 +469,19 @@ ${finalPrompt}
         rl.close();
     }
 }
-// 配置 marked 使用 TerminalRenderer
-marked.setOptions({
-    renderer: new marked_terminal_1.default({
-        tab: 2,
-        width: process.stdout.columns || 80,
-        showSectionPrefix: false
-    })
-});
 async function askOnceStream(question, model) {
-    const startTime = Date.now();
     const messages = [...(0, client_1.getConversationHistory)()];
     messages.push({ role: 'user', content: question });
     const spinner = (0, ora_1.default)(chalk_1.default.cyan('AI 正在思考...')).start();
-    let fullResponse = '';
-    const BOT_PREFIX = chalk_1.default.bold.blue('🤖 AI：');
+    // 初始化渲染器
+    const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bold.blue('🤖 AI：'), spinner);
     try {
-        let isFirstOutput = true;
         await (0, client_1.callAI_Stream)(messages, model, (chunk) => {
-            if (spinner.isSpinning) {
-                spinner.stop();
-                if (isFirstOutput) {
-                    process.stdout.write(BOT_PREFIX);
-                    isFirstOutput = false;
-                }
-            }
-            fullResponse += chunk;
-            process.stdout.write(chunk);
+            renderer.onChunk(chunk);
         });
-        const formatted = marked.parse(fullResponse, { async: false }).trim();
-        if (process.stdout.isTTY) {
-            // TTY模式（交互模式）
-            // 1. 先输出原本的流式内容（Raw）
-            // 2. 结束时，计算 Raw 内容的高度（Visual Line Count）
-            // 3. 向上清除相应行数
-            // 4. 输出渲染后的 Markdown 内容
-            const screenWidth = process.stdout.columns || 80;
-            const totalContent = BOT_PREFIX + fullResponse;
-            let lineCount = getVisualLineCount(totalContent, screenWidth);
-            // 清除 Raw Output
-            // 移至当前行开头并清除
-            process.stdout.write('\r\x1b[K');
-            // 向上移动并清除
-            for (let i = 0; i < lineCount - 1; i++) {
-                process.stdout.write('\x1b[A\x1b[K');
-            }
-            // 输出格式化的 Markdown 内容
-            process.stdout.write(BOT_PREFIX + formatted + '\n');
-        }
-        else {
-            // 非TTY模式（如管道模式）
-            // 只输出格式化内容，不执行清除逻辑，避免转义序列可见
-            if (spinner.isSpinning) {
-                spinner.stop();
-            }
-            process.stdout.write(BOT_PREFIX + formatted + '\n');
-        }
+        const fullResponse = renderer.finish();
         (0, client_1.addToConversationHistory)('user', question);
         (0, client_1.addToConversationHistory)('assistant', fullResponse);
-        const elapsed = (Date.now() - startTime) / 1000;
-        process.stdout.write('\n' + chalk_1.default.gray(`─`.repeat(20) + ` (耗时: ${elapsed.toFixed(2)}s) ` + `─`.repeat(20) + '\n\n'));
     }
     catch (error) {
         if (spinner.isSpinning) {
@@ -570,28 +489,5 @@ async function askOnceStream(question, model) {
         }
         throw error;
     }
-}
-function getVisualLineCount(text, screenWidth) {
-    const stripAnsi = (str) => str.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
-    const lines = text.split('\n');
-    let totalLines = 0;
-    for (const line of lines) {
-        // Expand tabs (assuming 8 spaces)
-        const expandedLine = line.replace(/\t/g, '        ');
-        const cleanLine = stripAnsi(expandedLine);
-        let lineWidth = 0;
-        for (const char of cleanLine) {
-            const code = char.codePointAt(0) || 0;
-            // Most characters > 255 are 2 cells (CJK, Emojis, etc.)
-            lineWidth += code > 255 ? 2 : 1;
-        }
-        if (lineWidth === 0) {
-            totalLines += 1;
-        }
-        else {
-            totalLines += Math.ceil(lineWidth / screenWidth);
-        }
-    }
-    return totalLines;
 }
 //# sourceMappingURL=handleAIChat.js.map

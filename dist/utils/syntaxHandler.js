@@ -48,6 +48,12 @@ async function handleSpecialSyntax(input, stdinData) {
     if (trimmed === ':ls') {
         return await handleListContext();
     }
+    // 处理 :cat [index] 命令
+    if (trimmed === ':cat' || trimmed.startsWith(':cat ')) {
+        const parts = trimmed.split(' ');
+        const index = parts.length > 1 ? parseInt(parts[1]) : null;
+        return await handleCatContext(index);
+    }
     // 处理 :clear 命令
     if (trimmed === ':clear') {
         return await handleClearContext();
@@ -176,6 +182,43 @@ async function handleListContext() {
             result += `${index + 1}. ${item.type}: ${item.path} (${item.tokens} tokens)\n`;
         });
         return { processed: true, result };
+    }
+    catch (error) {
+        return {
+            processed: true,
+            result: `读取上下文失败: ${error}`
+        };
+    }
+}
+async function handleCatContext(index) {
+    try {
+        const persisted = await (0, contextStorage_1.loadContext)();
+        const contextBuffer = new contextBuffer_1.ContextBuffer();
+        contextBuffer.import(persisted);
+        if (contextBuffer.isEmpty()) {
+            return { processed: true, result: '当前没有上下文' };
+        }
+        const items = contextBuffer.export();
+        if (index !== null) {
+            // 查看指定索引
+            if (index < 1 || index > items.length) {
+                return { processed: true, result: `错误: 索引 ${index} 超出范围 (共有 ${items.length} 个项目)` };
+            }
+            const item = items[index - 1];
+            return {
+                processed: true,
+                result: `--- [${index}] ${item.type}: ${item.path} ---\n${item.content}\n--- End ---`
+            };
+        }
+        else {
+            // 查看全部
+            let result = '=== 当前完整上下文内容 ===\n\n';
+            items.forEach((item, i) => {
+                result += `--- [${i + 1}] ${item.type}: ${item.path} ---\n${item.content}\n\n`;
+            });
+            result += '==========================';
+            return { processed: true, result };
+        }
     }
     catch (error) {
         return {

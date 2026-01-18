@@ -390,7 +390,9 @@ async function main() {
                 const isStdinSpecialSyntax = stdinTrimmed.startsWith('@') ||
                     stdinTrimmed.startsWith('#') ||
                     stdinTrimmed === ':ls' ||
-                    stdinTrimmed === ':clear';
+                    stdinTrimmed === ':clear' ||
+                    stdinTrimmed === ':cat' ||
+                    stdinTrimmed.startsWith(':cat ');
                 if (isStdinSpecialSyntax) {
                     const result = await (0, syntaxHandler_1.handleSpecialSyntax)(stdinData, '');
                     if (result.processed) {
@@ -430,19 +432,24 @@ async function main() {
                 }
             }
             // 如果 question 本身包含特殊语法（没有 stdin 或 stdin 不是特殊语法）
-            if (!stdinData || !(stdinData.trim().startsWith('@') || stdinData.trim().startsWith('#') || stdinData.trim() === ':ls' || stdinData.trim() === ':clear')) {
+            const isSpecialSyntaxPrefix = (q) => {
+                const t = q.trim();
+                return t.startsWith('@') || t.startsWith('#') || t === ':ls' || t === ':clear' || t === ':cat' || t.startsWith(':cat ');
+            };
+            if (!stdinData || !isSpecialSyntaxPrefix(stdinData)) {
                 const questionTrimmed = (question || '').trim();
-                const isQuestionSpecialSyntax = questionTrimmed.startsWith('@') ||
-                    questionTrimmed.startsWith('#') ||
-                    questionTrimmed === ':ls' ||
-                    questionTrimmed === ':clear';
+                const isQuestionSpecialSyntax = isSpecialSyntaxPrefix(questionTrimmed);
                 if (isQuestionSpecialSyntax) {
                     const result = await (0, syntaxHandler_1.handleSpecialSyntax)(question, stdinData);
                     if (result.processed) {
                         // 如果特殊语法被处理
                         if (result.result) {
-                            // 检查是否是管理命令（如 :ls, :clear），这些命令的结果应该直接输出
-                            const isManagementCommand = question.trim() === ':ls' || question.trim() === ':clear';
+                            // 检查是否是管理命令（如 :ls, :clear, :cat），这些命令的结果应该直接输出
+                            const trimmedQuestion = question.trim();
+                            const isManagementCommand = trimmedQuestion === ':ls' ||
+                                trimmedQuestion === ':clear' ||
+                                trimmedQuestion === ':cat' ||
+                                trimmedQuestion.startsWith(':cat ');
                             if (isManagementCommand) {
                                 // 直接输出结果并退出
                                 console.log(result.result);

@@ -1,11 +1,43 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.updateSkillStatus = updateSkillStatus;
 exports.learnSkillFromRecord = learnSkillFromRecord;
 exports.getRelevantSkills = getRelevantSkills;
 exports.reapColdSkills = reapColdSkills;
 exports.getAllSkills = getAllSkills;
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
+const os_1 = __importDefault(require("os"));
+const chalk_1 = __importDefault(require("chalk"));
+const SKILLS_FILE = path_1.default.join(os_1.default.homedir(), '.yuangs_skills.json');
 let skillLibrary = [];
+// === Persistence Logic ===
+function loadSkills() {
+    if (fs_1.default.existsSync(SKILLS_FILE)) {
+        try {
+            const data = fs_1.default.readFileSync(SKILLS_FILE, 'utf-8');
+            skillLibrary = JSON.parse(data);
+        }
+        catch (e) {
+            console.error(chalk_1.default.yellow(`Failed to load skills from ${SKILLS_FILE}, starting empty.`));
+            skillLibrary = [];
+        }
+    }
+}
+function saveSkills() {
+    try {
+        fs_1.default.writeFileSync(SKILLS_FILE, JSON.stringify(skillLibrary, null, 2));
+    }
+    catch (e) {
+        console.error(chalk_1.default.red(`Failed to save skills to ${SKILLS_FILE}`));
+    }
+}
+// Initialize on load
+loadSkills();
+// === Existing Logic with Save Hooks ===
 /**
  * 计算技能分 (0 ~ 1)
  */
@@ -36,6 +68,7 @@ function updateSkillStatus(skillId, success) {
         // 失败惩罚: 惩罚力度大于奖励，防止系统“自嗨”
         skill.confidence = Math.max(0, skill.confidence - 0.1);
     }
+    saveSkills(); // Persist changes
 }
 /**
  * 自动学习新技能
@@ -66,6 +99,7 @@ function learnSkillFromRecord(record, success = true) {
     });
     // 每学习一次，尝试清理一次“冷”技能
     reapColdSkills();
+    saveSkills(); // Persist changes
 }
 /**
  * 筛选并排序技能 (用于注入 Prompt)
@@ -85,6 +119,7 @@ function getRelevantSkills(input, limit = 3) {
  */
 function reapColdSkills() {
     const now = Date.now();
+    const initialCount = skillLibrary.length;
     skillLibrary = skillLibrary.filter(skill => {
         const score = computeSkillScore(skill, now);
         const idleDays = (now - skill.lastUsed) / (1000 * 60 * 60 * 24);
@@ -102,6 +137,9 @@ function reapColdSkills() {
         // 如果还超标，移除得分最低的那个
         skillLibrary.sort((a, b) => computeSkillScore(a, now) - computeSkillScore(b, now));
         skillLibrary.shift();
+    }
+    if (skillLibrary.length !== initialCount) {
+        saveSkills(); // Persist if changes happened
     }
 }
 function getAllSkills() {

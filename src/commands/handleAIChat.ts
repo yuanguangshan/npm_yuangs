@@ -2,8 +2,6 @@ import chalk from 'chalk';
 import ora from 'ora';
 import readline from 'readline';
 import { callAI_Stream, getConversationHistory, addToConversationHistory, clearConversationHistory } from '../ai/client';
-import * as marked from 'marked';
-import TerminalRenderer from 'marked-terminal';
 import fs from 'fs';
 import path from 'path';
 import { buildPromptWithFileContent, readFilesContent } from '../core/fileReader';
@@ -17,11 +15,9 @@ import {
     detectMode,
     createCompleter,
     executeCommand as shellExecuteCommand,
-    updateGhost,
-    clearGhost,
-    renderGhost,
     listPlugins
 } from './shellCompletions';
+import { StreamMarkdownRenderer } from '../utils/renderer';
 const execAsync = promisify(exec);
 
 function findCommonPrefix(strings: string[]): string {
@@ -559,109 +555,28 @@ ${finalPrompt}
     }
 }
 
-// 配置 marked 使用 TerminalRenderer
-marked.setOptions({
-    renderer: new TerminalRenderer({
-        tab: 2,
-        width: process.stdout.columns || 80,
-        showSectionPrefix: false
-    }) as any
-});
-
 async function askOnceStream(question: string, model?: string) {
-    const startTime = Date.now();
     const messages = [...getConversationHistory()];
     messages.push({ role: 'user', content: question });
 
     const spinner = ora(chalk.cyan('AI 正在思考...')).start();
-    let fullResponse = '';
-    const BOT_PREFIX = chalk.bold.blue('🤖 AI：');
-
-
+    
+    // 初始化渲染器
+    const renderer = new StreamMarkdownRenderer(chalk.bold.blue('🤖 AI：'), spinner);
 
     try {
-        let isFirstOutput = true;
         await callAI_Stream(messages, model, (chunk) => {
-            if (spinner.isSpinning) {
-                spinner.stop();
-                if (isFirstOutput) {
-                    process.stdout.write(BOT_PREFIX);
-                    isFirstOutput = false;
-                }
-            }
-            fullResponse += chunk;
-            process.stdout.write(chunk);
+            renderer.onChunk(chunk);
         });
 
-        const formatted = (marked.parse(fullResponse, { async: false }) as string).trim();
-
-        if (process.stdout.isTTY) {
-            // TTY模式（交互模式）
-            // 1. 先输出原本的流式内容（Raw）
-            // 2. 结束时，计算 Raw 内容的高度（Visual Line Count）
-            // 3. 向上清除相应行数
-            // 4. 输出渲染后的 Markdown 内容
-
-            const screenWidth = process.stdout.columns || 80;
-            const totalContent = BOT_PREFIX + fullResponse;
-            let lineCount = getVisualLineCount(totalContent, screenWidth);
-
-            // 清除 Raw Output
-            // 移至当前行开头并清除
-            process.stdout.write('\r\x1b[K');
-            // 向上移动并清除
-            for (let i = 0; i < lineCount - 1; i++) {
-                process.stdout.write('\x1b[A\x1b[K');
-            }
-
-            // 输出格式化的 Markdown 内容
-            process.stdout.write(BOT_PREFIX + formatted + '\n');
-        } else {
-            // 非TTY模式（如管道模式）
-            // 只输出格式化内容，不执行清除逻辑，避免转义序列可见
-            if (spinner.isSpinning) {
-                spinner.stop();
-            }
-            process.stdout.write(BOT_PREFIX + formatted + '\n');
-        }
+        const fullResponse = renderer.finish();
 
         addToConversationHistory('user', question);
         addToConversationHistory('assistant', fullResponse);
-
-        const elapsed = (Date.now() - startTime) / 1000;
-        process.stdout.write('\n' + chalk.gray(`─`.repeat(20) + ` (耗时: ${elapsed.toFixed(2)}s) ` + `─`.repeat(20) + '\n\n'));
     } catch (error: any) {
         if (spinner.isSpinning) {
             spinner.stop();
         }
         throw error;
     }
-}
-
-function getVisualLineCount(text: string, screenWidth: number): number {
-    const stripAnsi = (str: string) => str.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
-
-    const lines = text.split('\n');
-    let totalLines = 0;
-
-    for (const line of lines) {
-        // Expand tabs (assuming 8 spaces)
-        const expandedLine = line.replace(/\t/g, '        ');
-        const cleanLine = stripAnsi(expandedLine);
-
-        let lineWidth = 0;
-        for (const char of cleanLine) {
-            const code = char.codePointAt(0) || 0;
-            // Most characters > 255 are 2 cells (CJK, Emojis, etc.)
-            lineWidth += code > 255 ? 2 : 1;
-        }
-
-        if (lineWidth === 0) {
-            totalLines += 1;
-        } else {
-            totalLines += Math.ceil(lineWidth / screenWidth);
-        }
-    }
-
-    return totalLines;
 }
