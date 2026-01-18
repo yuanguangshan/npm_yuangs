@@ -209,8 +209,19 @@ yuangs config accountType pro
 
 **@yuanguangshan**
 
-> **AI 提供思路，人类掌控执行。**  
+> **AI 提供思路，人类掌控执行。**
 > 这不是妥协，而是对工程理性的尊重。
+
+---
+
+## 📚 更多信息
+
+- **设计原理**: [docs/implementation_principles.md](docs/implementation_principles.md)
+- **场景示例**: [docs/scenarios.md](docs/scenarios.md)
+- **变更日志**: [docs/CHANGELOG.md](docs/CHANGELOG.md)
+- **Shell 补全**: [docs/tab_completion_guide.md](docs/tab_completion_guide.md)
+- **上下文优化**: [docs/context_optimization_analysis.md](docs/context_optimization_analysis.md)
+- **代理管道**: [docs/AGENT_PIPELINE.md](docs/AGENT_PIPELINE.md)
 ```
 
 ---
