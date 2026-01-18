@@ -136,10 +136,23 @@ export function detectMode(line: string): Mode {
 
 let commandCache: string[] | null = null;
 
+// Common shell builtins that should always be available
+const SHELL_BUILTINS = [
+    'cd', 'pwd', 'ls', 'mkdir', 'rmdir', 'rm', 'cp', 'mv', 'cat',
+    'echo', 'grep', 'find', 'head', 'tail', 'less', 'more',
+    'chmod', 'chown', 'touch', 'ln', 'df', 'du', 'free',
+    'ps', 'top', 'kill', 'killall', 'bg', 'fg', 'jobs',
+    'export', 'unset', 'env', 'alias', 'unalias',
+    'history', 'type', 'which', 'whereis', 'man',
+    'sleep', 'wait', 'date', 'cal', 'uptime', 'uname',
+    'tar', 'gzip', 'gunzip', 'zip', 'unzip',
+    'curl', 'wget', 'ssh', 'scp', 'rsync'
+];
+
 export function loadCommands(): string[] {
     return cached('PATH_COMMANDS', () => {
         const paths = process.env.PATH?.split(path.delimiter) ?? [];
-        const cmds = new Set<string>();
+        const cmds = new Set<string>(SHELL_BUILTINS);
 
         for (const p of paths) {
             try {

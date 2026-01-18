@@ -112,10 +112,22 @@ function detectMode(line) {
    COMMAND COMPLETION (PATH)
    ======================================== */
 let commandCache = null;
+// Common shell builtins that should always be available
+const SHELL_BUILTINS = [
+    'cd', 'pwd', 'ls', 'mkdir', 'rmdir', 'rm', 'cp', 'mv', 'cat',
+    'echo', 'grep', 'find', 'head', 'tail', 'less', 'more',
+    'chmod', 'chown', 'touch', 'ln', 'df', 'du', 'free',
+    'ps', 'top', 'kill', 'killall', 'bg', 'fg', 'jobs',
+    'export', 'unset', 'env', 'alias', 'unalias',
+    'history', 'type', 'which', 'whereis', 'man',
+    'sleep', 'wait', 'date', 'cal', 'uptime', 'uname',
+    'tar', 'gzip', 'gunzip', 'zip', 'unzip',
+    'curl', 'wget', 'ssh', 'scp', 'rsync'
+];
 function loadCommands() {
     return cached('PATH_COMMANDS', () => {
         const paths = process.env.PATH?.split(path_1.default.delimiter) ?? [];
-        const cmds = new Set();
+        const cmds = new Set(SHELL_BUILTINS);
         for (const p of paths) {
             try {
                 for (const f of fs_1.default.readdirSync(p)) {
