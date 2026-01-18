@@ -1,19 +1,20 @@
 # Project Documentation
 
-- **Generated at:** 2026-01-18 16:25:16
+- **Generated at:** 2026-01-18 21:55:06
 - **Root Dir:** `.`
-- **File Count:** 64
-- **Total Size:** 187.69 KB
+- **File Count:** 69
+- **Total Size:** 252.04 KB
 
 ## 📂 File List
 - `.gitignore` (0.15 KB)
 - `.yuangs.test.json` (0.12 KB)
+- `docs/g.html` (44.92 KB)
 - `example.json` (0.06 KB)
-- `package.json` (1.41 KB)
+- `package.json` (1.43 KB)
 - `poeapi_go.code-workspace` (0.08 KB)
-- `src/agent/AgentPipeline.ts` (3.05 KB)
+- `src/agent/AgentPipeline.ts` (3.89 KB)
 - `src/agent/actions.ts` (1.58 KB)
-- `src/agent/context.ts` (0.65 KB)
+- `src/agent/context.ts` (0.49 KB)
 - `src/agent/index.ts` (0.07 KB)
 - `src/agent/intent.ts` (0.94 KB)
 - `src/agent/interpret.ts` (1.29 KB)
@@ -24,19 +25,20 @@
 - `src/agent/record.ts` (0.73 KB)
 - `src/agent/replay.ts` (0.88 KB)
 - `src/agent/selectModel.ts` (0.50 KB)
-- `src/agent/skills.ts` (3.95 KB)
+- `src/agent/skills.ts` (5.01 KB)
 - `src/agent/types.ts` (1.26 KB)
-- `src/ai/client.ts` (4.14 KB)
-- `src/ai/prompt.ts` (2.22 KB)
+- `src/ai/client.ts` (4.50 KB)
+- `src/ai/prompt.ts` (2.29 KB)
 - `src/ai/types.ts` (0.09 KB)
-- `src/cli.ts` (19.24 KB)
+- `src/cli.ts` (19.61 KB)
 - `src/cli.ts.backup` (15.27 KB)
 - `src/commands/capabilityCommands.ts` (4.84 KB)
-- `src/commands/contextBuffer.ts` (1.84 KB)
+- `src/commands/chatHistoryStorage.ts` (1.70 KB)
+- `src/commands/contextBuffer.ts` (2.20 KB)
 - `src/commands/contextStorage.ts` (0.69 KB)
 - `src/commands/gitContext.ts` (0.77 KB)
-- `src/commands/handleAIChat.ts` (24.44 KB)
-- `src/commands/handleAICommand.ts` (8.07 KB)
+- `src/commands/handleAIChat.ts` (25.75 KB)
+- `src/commands/handleAICommand.ts` (8.57 KB)
 - `src/commands/handleConfig.ts` (2.28 KB)
 - `src/commands/shellCompletions.ts` (13.64 KB)
 - `src/core/apps.ts` (1.63 KB)
@@ -59,17 +61,20 @@
 - `src/types.d.ts` (0.17 KB)
 - `src/utils/confirm.ts` (0.44 KB)
 - `src/utils/history.ts` (0.89 KB)
-- `src/utils/syntaxHandler.ts` (8.14 KB)
+- `src/utils/renderer.ts` (3.65 KB)
+- `src/utils/syntaxHandler.ts` (12.54 KB)
+- `test/contextBuffer.test.js` (4.27 KB)
 - `test/fileReader.test.js` (5.94 KB)
 - `test/macros.test.js` (3.48 KB)
 - `test/risk-validation.test.js` (2.43 KB)
 - `test/test_agent_pipeline.js` (2.54 KB)
 - `test/test_logic.js` (0.92 KB)
+- `test_context.sh` (0.70 KB)
 - `tsconfig.json` (0.50 KB)
 - `verify.sh` (2.79 KB)
 - `yuangs.config.example.json` (0.39 KB)
 - `yuangs.config.example.yaml` (0.78 KB)
-- `yuangs.config.json` (2.25 KB)
+- `yuangs.config.json` (2.24 KB)
 
 ---
 
@@ -99,6 +104,1213 @@ node_modules/
 
 ````
 
+## 📄 `docs/g.html`
+
+````html
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>ULW Minecraft 3.0 - Survival Complete</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Minecraft', monospace;
+            user-select: none;
+            background: #000;
+        }
+
+// 这里要大幅优化，现在先这样吧
+        /* UI 覆盖层 */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        /* 准星 */
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            clip-path: polygon(40% 0, 60% 0, 60% 40%, 100% 40%, 100% 60%, 60% 60%, 60% 100%, 40% 100%, 40% 60%, 0 60%, 0 40%, 40% 40%);
+            transform: translate(-50%, -50%);
+            mix-blend-mode: difference;
+        }
+
+        /* 状态条 (血量/饥饿) */
+        #status-bars {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 200px;
+            width: 600px;
+            justify-content: center;
+        }
+
+        .bar-container {
+            display: flex;
+            flex-direction: row-reverse;
+            gap: 2px;
+        }
+
+        /* 居中布局 */
+        .heart,
+        .food {
+            width: 20px;
+            height: 20px;
+            background-size: contain;
+            display: inline-block;
+        }
+
+        .heart {
+            background-color: red;
+            mask: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>') no-repeat center;
+            -webkit-mask: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>') no-repeat center;
+        }
+
+        .food {
+            background-color: orange;
+            mask: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10"/></svg>') no-repeat center;
+            -webkit-mask: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10"/></svg>') no-repeat center;
+        }
+
+        /* 快捷栏 */
+        #hotbar {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 4px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px;
+            border-radius: 4px;
+            pointer-events: auto;
+        }
+
+        .slot {
+            width: 50px;
+            height: 50px;
+            background: #333;
+            border: 2px solid #555;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .slot.active {
+            border-color: white;
+            transform: scale(1.1);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        .slot img {
+            width: 32px;
+            height: 32px;
+            image-rendering: pixelated;
+        }
+
+        .slot .count {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            text-shadow: 1px 1px 0 #000;
+        }
+
+        /* 背包/合成 UI */
+        #inventory-screen {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 700px;
+            height: 500px;
+            background: #c6c6c6;
+            border: 4px solid #333;
+            pointer-events: auto;
+            box-shadow: 0 0 20px #000;
+            padding: 20px;
+            font-family: monospace;
+        }
+
+        h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+
+        #craft-list {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #777;
+            margin-bottom: 10px;
+        }
+
+        .craft-item {
+            background: #8b8b8b;
+            padding: 5px;
+            border: 2px solid #555;
+            cursor: pointer;
+            min-width: 60px;
+            text-align: center;
+            font-size: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .craft-item:hover {
+            background: #a0a0a0;
+        }
+
+        .craft-item.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            filter: grayscale(1);
+        }
+
+        #inv-grid {
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            gap: 5px;
+            height: 300px;
+            overflow-y: auto;
+            background: #8b8b8b;
+            padding: 5px;
+            border: inset 2px;
+        }
+
+        #damage-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: red;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.1s;
+        }
+
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            text-shadow: 1px 1px 0 #000;
+        }
+
+        /* 简单图标生成canvas隐藏 */
+        #texture-gen {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="damage-overlay"></div>
+    <div id="crosshair"></div>
+    <div id="ui-layer">
+        <div id="info">FPS: 60</div>
+        <div id="status-bars">
+            <div id="health-bar" class="bar-container"></div>
+            <div style="flex:1"></div>
+            <div id="food-bar" class="bar-container"></div>
+        </div>
+        <div id="hotbar"></div>
+        <div id="inventory-screen">
+            <h3>合成 (点击合成)</h3>
+            <div id="craft-list"></div>
+            <h3>背包 (点击选中 -> 点击快捷栏装备)</h3>
+            <div id="inv-grid"></div>
+            <button onclick="toggleInventory()" style="margin-top:10px; padding:5px 20px;">关闭 (E)</button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
+
+    <script>
+        // --- 游戏配置 ---
+        const CONF = {
+            CHUNK_SIZE: 16,
+            RENDER_DIST: 3,
+            WORLD_HEIGHT: 256, // 增加到256层，建立深层地下世界
+            SURFACE_LEVEL: 128,
+            WATER_LEVEL: 124,
+            CAVE_START: 80
+        };
+
+        // --- ID定义 ---
+        const B = {
+            AIR: 0,
+            GRASS: 1, DIRT: 2, STONE: 3, BEDROCK: 4,
+            LOG: 5, LEAVES: 6, PLANKS: 7,
+            COAL_ORE: 8, IRON_ORE: 9, DIAMOND_ORE: 10,
+            WATER: 11, LAVA: 12, SAND: 13,
+            CRAFTING_TABLE: 14, COBBLESTONE: 15, BRICK: 16,
+            // 物品ID
+            MEAT: 100, COOKED_MEAT: 101, SWORD: 102
+        };
+
+        // --- 资源生成 ---
+        const TEX_SIZE = 64;
+        const textures = {};
+        const iconUrls = {};
+
+        function genColor(hex) { return hex; }
+        
+        // 调整颜色的辅助函数
+        function adjustColor(hex, amount) {
+            // 解析hex颜色并调整亮度
+            const num = parseInt(hex.replace('#', ''), 16);
+            const r = Math.min(255, Math.max(0, (num >> 16) + amount));
+            const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + amount));
+            const b = Math.min(255, Math.max(0, (num & 0x0000FF) + amount));
+            return `rgb(${r},${g},${b})`;
+        }
+
+        // 增强的方块纹理生成
+        function createTexture(color, type) {
+            const c = document.createElement('canvas');
+            c.width = c.height = TEX_SIZE;
+            const ctx = c.getContext('2d'); 
+            
+            // 基础渐变（增加立体感）
+            const gradient = ctx.createLinearGradient(0, 0, 0, TEX_SIZE);
+            gradient.addColorStop(0, color);
+            gradient.addColorStop(1, adjustColor(color, -30)); // 底部更深
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, TEX_SIZE, TEX_SIZE); 
+            
+            // 细致噪声纹理
+            for (let i = 0; i < 500; i++) {
+                const shade = Math.random() > 0.5 ? 1.1 : 0.9;
+                ctx.fillStyle = `rgba(0,0,0,${Math.random() * 0.15})`;
+                const s = Math.random() * 4 + 1;
+                ctx.fillRect(Math.random() * TEX_SIZE, Math.random() * TEX_SIZE, s, s);
+            }
+            
+            // 边缘阴影（增强立体感）
+            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(1, 1, TEX_SIZE - 2, TEX_SIZE - 2);
+
+            if (type === 'ore') {
+                // 矿石亮点效果
+                ctx.fillStyle = adjustColor(color, 50); // 更亮的矿点
+                for (let i = 0; i < 12; i++) {
+                    const ox = Math.random() * 54 + 5;
+                    const oy = Math.random() * 54 + 5;
+                    const size = Math.random() * 4 + 2;
+                    ctx.beginPath();
+                    ctx.arc(ox, oy, size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            if (type === 'log') {
+                // 木纹效果
+                ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+                ctx.lineWidth = 3;
+                for (let i = 8; i < TEX_SIZE; i += 8) {
+                    ctx.beginPath();
+                    ctx.moveTo(i, 0);
+                    ctx.quadraticCurveTo(i + 2, TEX_SIZE / 2, i, TEX_SIZE);
+                    ctx.stroke();
+                }
+            }
+            if (type === 'brick') {
+                ctx.strokeStyle = '#ccc'; ctx.lineWidth = 2;
+                ctx.strokeRect(0, 0, TEX_SIZE, TEX_SIZE / 2);
+                ctx.strokeRect(0, TEX_SIZE / 2, TEX_SIZE, TEX_SIZE / 2);
+            }
+            if (type === 'leaves') {
+                // 树叶纹理
+                ctx.fillStyle = 'rgba(0,50,0,0.4)';
+                for (let i = 0; i < 100; i++) {
+                    ctx.fillRect(Math.random() * 60, Math.random() * 60, 4, 4);
+                }
+            }
+
+            iconUrls[color] = c.toDataURL(); // 保存图标用于UI
+            const tex = new THREE.CanvasTexture(c);
+            tex.magFilter = THREE.NearestFilter;
+            return tex;
+        }
+
+        // 材质库
+        const mats = {};
+        const cols = {
+            [B.GRASS]: '#559040', [B.DIRT]: '#5d4037', [B.STONE]: '#757575', [B.BEDROCK]: '#000',
+            [B.LOG]: '#4e342e', [B.LEAVES]: '#2e7d32', [B.PLANKS]: '#d7ccc8',
+            [B.WATER]: '#2196f3', [B.LAVA]: '#ff5722', [B.SAND]: '#fff9c4',
+            [B.COAL_ORE]: '#212121', [B.IRON_ORE]: '#bcaaa4', [B.DIAMOND_ORE]: '#00bcd4',
+            [B.CRAFTING_TABLE]: '#8d6e63', [B.COBBLESTONE]: '#616161', [B.BRICK]: '#8d6e63',
+            [B.MEAT]: '#e57373', [B.SWORD]: '#4caf50'
+        };
+
+        for (let k in B) {
+            const id = B[k];
+            if (id === 0 || id >= 100) continue;
+            const col = cols[id] || '#ff00ff';
+            const isFluid = (id === B.WATER || id === B.LAVA);
+            const isLeaf = id === B.LEAVES;
+
+            mats[id] = new THREE.MeshLambertMaterial({
+                map: createTexture(col, k.includes('ORE') ? 'ore' : (k === 'LOG' ? 'log' : (k === 'BRICK' ? 'brick' : 'base'))),
+                transparent: isFluid || isLeaf,
+                opacity: isFluid ? 0.7 : 1.0,
+                color: (id === B.GRASS) ? 0xaaaaaa : 0xffffff // 简单的色调调整
+            });
+            if (id === B.LAVA) mats[id].emissive = 0xff0000;
+
+            // 记录图标
+            if (cols[id]) iconUrls[id] = iconUrls[cols[id]];
+        }
+        // 物品图标
+        iconUrls[B.MEAT] = iconUrls[cols[B.MEAT]]; // 简化
+        iconUrls[B.SWORD] = iconUrls[cols[B.SWORD]];
+
+        // --- 引擎初始化 ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB);
+        scene.fog = new THREE.Fog(0x87CEEB, 20, 50);
+
+        const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.shadowMap.autoUpdate = false;
+        document.body.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        scene.add(ambientLight);
+        
+        // 半球光（增强环境光照）
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+        scene.add(hemiLight);
+        
+        // 方向光（太阳光，带阴影）
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(50, 200, 50);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.camera.near = 0.5;
+        dirLight.shadow.camera.far = 500;
+        dirLight.shadow.camera.left = -100;
+        dirLight.shadow.camera.right = 100;
+        dirLight.shadow.camera.top = 100;
+        dirLight.shadow.camera.bottom = -100;
+        scene.add(dirLight);
+
+        // --- 数据 ---
+        const world = {}; // "x,y,z" -> ID
+        const chunks = {};
+        const simplex = new SimplexNoise();
+
+        // 玩家状态
+        const player = {
+            hp: 20, maxHp: 20,
+            food: 20, maxFood: 20,
+            inv: new Array(36).fill(null),
+            hotbar: [null, null, null, null, null], // 指向inv的索引
+            selSlot: 0,
+            handObj: null,
+            mode: 'survival'
+        };
+
+        // 手部模型
+        const handGroup = new THREE.Group();
+        camera.add(handGroup);
+        scene.add(camera);
+
+        // 空手(肉色手臂)
+        const armGeo = new THREE.BoxGeometry(0.3, 0.3, 1.0);
+        const armMat = new THREE.MeshLambertMaterial({ color: 0xeebb99 });
+        const armMesh = new THREE.Mesh(armGeo, armMat);
+        armMesh.position.set(0.4, -0.4, -0.5);
+        handGroup.add(armMesh);
+
+        // 物品模型 holder
+        const itemMesh = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), mats[B.DIRT]);
+        itemMesh.position.set(0.4, -0.3, -0.8);
+        itemMesh.visible = false;
+        handGroup.add(itemMesh);
+
+        // --- 世界生成 ---
+        function getHeight(x, z) {
+            let n = simplex.noise2D(x / 60, z / 60);
+            return Math.floor(n * 30 + CONF.SURFACE_LEVEL);
+        }
+
+        function genChunk(cx, cz) {
+            const updates = {};
+            let hasVillage = Math.random() > 0.95; // 5%概率生成房子
+            let villageY = 0;
+
+            for (let x = 0; x < 16; x++) {
+                for (let z = 0; z < 16; z++) {
+                    const wx = cx * 16 + x, wz = cz * 16 + z;
+                    const h = getHeight(wx, wz);
+                    if (x === 8 && z === 8) villageY = h; 
+                    
+                    // 基础地形生成
+                    for (let y = 0; y <= CONF.WORLD_HEIGHT; y++) {
+                        let id = B.AIR;
+                        if (y === 0) id = B.BEDROCK;
+                        else if (y < h - 4) {
+                            // 地下层，后续洞穴生成会雕刻
+                            id = B.STONE;
+                        }
+                        else if (y < h) id = B.DIRT;
+                        else if (y === h) id = (h <= CONF.WATER_LEVEL) ? B.SAND : B.GRASS;
+                        else if (y <= CONF.WATER_LEVEL) id = B.WATER;
+
+                        if (id !== B.AIR) {
+                            world[`${wx},${y},${wz}`] = id;
+                            updates[`${wx},${y},${wz}`] = id;
+                        }
+                    }
+
+                    // 生成洞穴系统 (3D噪声)
+            for (let x = 0; x < 16; x++) {
+                for (let z = 0; z < 16; z++) {
+                    const wx = cx * 16 + x, wz = cz * 16 + z;
+                    
+                    for (let y = CONF.CAVE_START; y < CONF.WORLD_HEIGHT - 10; y++) {
+                        // 多层噪声叠加
+                        let caveNoise = 0;
+                        caveNoise += simplex.noise3D(wx / 30, y / 30, wz / 30) * 1.0;
+                        caveNoise += simplex.noise3D(wx / 60, y / 60, wz / 60) * 0.5;
+                        caveNoise += simplex.noise3D(wx / 120, y / 120, wz / 120) * 0.25;
+                        
+                        // 雕刻洞穴
+                        if (caveNoise > 0.6) {
+                            world[`${wx},${y},${wz}`] = B.AIR;
+                        }
+                    }
+                }
+            }
+            
+            // 矿石分布 (按深度分布矿脉)
+            const ORE_DISTRIBUTION = {
+                [B.COAL_ORE]: { min: 5, max: 120, freq: 0.02, size: 8 },
+                [B.IRON_ORE]: { min: 5, max: 64, freq: 0.01, size: 6 },
+                [B.GOLD_ORE]: { min: 5, max: 32, freq: 0.005, size: 4 },
+                [B.DIAMOND_ORE]: { min: 5, max: 16, freq: 0.002, size: 3 }
+            };
+            
+            for (let y = CONF.CAVE_START; y < CONF.WORLD_HEIGHT; y++) {
+                for (let oreType in ORE_DISTRIBUTION) {
+                    const ore = ORE_DISTRIBUTION[oreType];
+                    const oreId = parseInt(oreType);
+                    
+                    // 只在有效深度生成
+                    if (y >= ore.min && y <= ore.max && Math.random() < ore.freq) {
+                        // 生成矿脉中心
+                        const veinX = cx * 16 + 8 + Math.floor(Math.random() * 6 - 3);
+                        const veinZ = cz * 16 + 8 + Math.floor(Math.random() * 6 - 3);
+                        
+                        // 放置矿石块
+                        for (let i = 0; i < ore.size; i++) {
+                            const ox = veinX + Math.floor(Math.random() * 6 - 3);
+                            const oz = veinZ + Math.floor(Math.random() * 6 - 3);
+                            const oy = y + Math.floor(Math.random() * 6 - 3);
+                            
+                            const key = `${ox},${oy},${oz}`;
+                            if (world[key] === B.STONE) {
+                                world[key] = oreId;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 地下水/岩浆池
+            for (let y = 10; y < 50; y += 10) {
+                const poolNoise = simplex.noise3D(cx * 0.1, y * 0.1, cz * 0.1);
+                if (poolNoise > 0.7) {
+                    // 生成岩浆池 3x3x2
+                    for (let px = 6; px < 10; px++) {
+                        for (let pz = 6; pz < 10; pz++) {
+                            for (let py = y; py < y + 2; py++) {
+                                const wx = cx * 16 + px;
+                                const wz = cz * 16 + pz;
+                                world[`${wx},${py},${wz}`] = B.LAVA;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 树木生成 (增强版)
+            const forestNoise = simplex.noise2D(wx / 150, wz / 150);
+            const biomeNoise = simplex.noise2D(wx / 300, wz / 300);
+            
+            // 森林判定
+            const isForest = forestNoise > 0.2 && biomeNoise < 0.5;
+            
+            if (h > CONF.WATER_LEVEL + 1 && isForest && Math.random() > 0.85) {
+                // 根据生物群系选择树型
+                let treeType;
+                if (biomeNoise < -0.2) {
+                    // 松木 (寒带)
+                    genTreePine(wx, h + 1, wz);
+                } else if (biomeNoise > 0.2) {
+                    // 桦木 (温暖)
+                    genTreeBirch(wx, h + 1, wz);
+                } else {
+                    // 橡木 (温带)
+                    genTreeOak(wx, h + 1, wz);
+                }
+            }
+                }
+            }
+
+            // 简单的房子
+            if (hasVillage && villageY > CONF.WATER_LEVEL) {
+                genHouse(cx * 16 + 8, villageY + 1, cz * 16 + 8);
+                spawnEntity('villager', cx * 16 + 8, villageY + 1, cz * 16 + 8);
+            }
+
+            // 生物生成
+            if (Math.random() > 0.8) spawnEntity('pig', cx * 16 + 8, getHeight(cx * 16 + 8, cz * 16 + 8) + 2, cz * 16 + 8);
+            if (Math.random() > 0.9) spawnEntity('zombie', cx * 16 + 10, getHeight(cx * 16 + 10, cz * 16 + 10) + 2, cz * 16 + 10);
+        }
+
+        function genTree(x, y, z) {
+            for (let i = 0; i < 5; i++) world[`${x},${y + i},${z}`] = B.LOG;
+            for (let lx = -2; lx <= 2; lx++)
+                for (let lz = -2; lz <= 2; lz++)
+                    for (let ly = 3; ly <= 5; ly++)
+                        if (!world[`${x + lx},${y + ly},${z + lz}`]) world[`${x + lx},${y + ly},${z + lz}`] = B.LEAVES;
+        }
+        
+        // 橡木 (圆形树叶)
+        function genTreeOak(x, y, z) {
+            const height = Math.floor(Math.random() * 4) + 4;
+            for (let i = 0; i < height; i++) world[`${x},${y + i},${z}`] = B.LOG;
+            
+            // 圆形树叶
+            for (let ly = height - 2; ly <= height + 1; ly++) {
+                const radius = (ly === height) ? 1 : (ly === height + 1 ? 2 : 3);
+                for (let lx = -radius; lx <= radius; lx++) {
+                    for (let lz = -radius; lz <= radius; lz++) {
+                        if (Math.abs(lx) + Math.abs(lz) <= radius + 1) {
+                            const k = `${x + lx},${y + ly},${z + lz}`;
+                            if (!world[k]) world[k] = B.LEAVES;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 桦木 (椭圆形树叶，更高)
+        function genTreeBirch(x, y, z) {
+            const height = Math.floor(Math.random() * 5) + 5;
+            for (let i = 0; i < height; i++) world[`${x},${y + i},${z}`] = B.LOG;
+            
+            // 紧凑椭圆树叶
+            for (let ly = height - 3; ly <= height; ly++) {
+                const radius = (ly === height) ? 1 : 2;
+                for (let lx = -radius; lx <= radius; lx++) {
+                    for (let lz = -1; lz <= 2; lz++) {
+                        const k = `${x + lx},${y + ly},${z + lz}`;
+                        if (!world[k]) world[k] = B.LEAVES;
+                    }
+                }
+            }
+        }
+        
+        // 松木 (金字塔形树叶，最高)
+        function genTreePine(x, y, z) {
+            const height = Math.floor(Math.random() * 5) + 8;
+            for (let i = 0; i < height; i++) world[`${x},${y + i},${z}`] = B.LOG;
+            
+            // 金字塔树叶
+            for (let ly = height; ly <= height + 3; ly++) {
+                const radius = 3 - (ly - height);
+                for (let lx = -radius; lx <= radius; lx++) {
+                    for (let lz = -radius; lz <= radius; lz++) {
+                        if (Math.abs(lx) + Math.abs(lz) <= radius) {
+                            const k = `${x + lx},${y + ly},${z + lz}`;
+                            if (!world[k]) world[k] = B.LEAVES;
+                        }
+                    }
+                }
+            }
+        }
+
+        function genHouse(x, y, z) {
+            for (let dx = -2; dx <= 2; dx++)
+                for (let dz = -2; dz <= 2; dz++)
+                    for (let dy = 0; dy < 4; dy++) {
+                        const k = `${x + dx},${y + dy},${z + dz}`;
+                        if (Math.abs(dx) === 2 || Math.abs(dz) === 2 || dy === 0 || dy === 3) {
+                            if (!(dx === 0 && dz === 2 && dy < 2)) // 门
+                                world[k] = B.PLANKS;
+                        } else world[k] = B.AIR;
+                    }
+        }
+
+        // --- 渲染 ---
+        function updateChunkMesh(cx, cz) {
+            const key = `${cx},${cz}`;
+            if (chunks[key]) { scene.remove(chunks[key]); delete chunks[key]; }
+
+            const group = new THREE.Group();
+            const geometries = {};
+            const matrices = {};
+
+            for (let x = 0; x < 16; x++) {
+                for (let z = 0; z < 16; z++) {
+                    const wx = cx * 16 + x, wz = cz * 16 + z;
+                    // 从底向上渲染，减少遍历
+                    for (let y = 0; y <= CONF.WORLD_HEIGHT + 5; y++) {
+                        const id = world[`${wx},${y},${wz}`];
+                        if (id && id !== B.AIR) {
+                            // 简单剔除: 上下左右前后都有方块则不画
+                            // 为了性能简化，这里只做instancing
+                            if (!geometries[id]) { geometries[id] = 0; matrices[id] = []; }
+                            const m = new THREE.Matrix4().makeTranslation(wx, y, wz);
+                            matrices[id].push(m);
+                            geometries[id]++;
+                        }
+                    }
+                }
+            }
+
+            const box = new THREE.BoxGeometry(1, 1, 1);
+            for (let id in geometries) {
+                if (!mats[id]) continue;
+                const mesh = new THREE.InstancedMesh(box, mats[id], geometries[id]);
+                const arr = matrices[id];
+                for (let i = 0; i < arr.length; i++) mesh.setMatrixAt(i, arr[i]);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                group.add(mesh);
+            }
+            chunks[key] = group;
+            scene.add(group);
+        }
+
+        // --- 实体系统 ---
+        const entities = [];
+        function spawnEntity(type, x, y, z) {
+            let col = 0xffffff;
+            if (type === 'pig') col = 0xf06292; // 粉
+            if (type === 'zombie') col = 0x2e7d32; // 绿
+            if (type === 'villager') col = 0x8d6e63; // 褐
+
+            const mat = new THREE.MeshLambertMaterial({ color: col });
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.6, type === 'pig' ? 0.6 : 1.8, 0.6), mat);
+            mesh.position.set(x, y, z);
+            scene.add(mesh);
+
+            entities.push({
+                type, mesh, hp: type === 'zombie' ? 20 : 10,
+                vel: new THREE.Vector3(),
+                timer: Math.random()
+            });
+        }
+
+        function updateEntities(dt) {
+            const pPos = camera.position;
+            for (let i = entities.length - 1; i >= 0; i--) {
+                const e = entities[i];
+
+                // 简单的AI
+                e.timer -= dt;
+                if (e.timer <= 0) {
+                    e.timer = 1 + Math.random();
+                    if (e.type === 'zombie') {
+                        const dist = e.mesh.position.distanceTo(pPos);
+                        if (dist < 15) {
+                            const dir = pPos.clone().sub(e.mesh.position).normalize();
+                            e.vel.x = dir.x * 3;
+                            e.vel.z = dir.z * 3;
+                            // 攻击判定
+                            if (dist < 1.5) takeDamage(1);
+                        } else {
+                            e.vel.x = (Math.random() - 0.5) * 2; e.vel.z = (Math.random() - 0.5) * 2;
+                        }
+                    } else {
+                        e.vel.x = (Math.random() - 0.5) * 2; e.vel.z = (Math.random() - 0.5) * 2;
+                    }
+                    if (Math.random() > 0.8) e.vel.y = 5;
+                }
+
+                // 物理
+                e.vel.y -= 20 * dt; // Gravity
+                e.mesh.position.addScaledVector(e.vel, dt);
+
+                // 碰撞地面
+                const ex = Math.round(e.mesh.position.x);
+                const ey = Math.round(e.mesh.position.y - (e.type === 'pig' ? 0.3 : 0.9));
+                const ez = Math.round(e.mesh.position.z);
+                if (world[`${ex},${ey},${ez}`]) {
+                    e.mesh.position.y = ey + 1 + (e.type === 'pig' ? 0.3 : 0.9);
+                    e.vel.y = 0;
+                }
+
+                // 移除死亡
+                if (e.hp <= 0) {
+                    scene.remove(e.mesh);
+                    if (e.type === 'pig') addToInv(B.MEAT, 1);
+                    entities.splice(i, 1);
+                }
+            }
+        }
+
+        // --- 玩家逻辑 ---
+        const controls = new THREE.PointerLockControls(camera, document.body);
+        const vel = new THREE.Vector3();
+        const keys = {};
+
+        document.addEventListener('keydown', e => keys[e.code] = true);
+        document.addEventListener('keyup', e => keys[e.code] = false);
+        document.addEventListener('click', () => {
+            if (!document.getElementById('inventory-screen').style.display || document.getElementById('inventory-screen').style.display === 'none')
+                controls.lock();
+        });
+
+        // 交互
+        document.addEventListener('mousedown', e => {
+            if (!controls.isLocked) return;
+            if (e.button === 0) doAction('hit'); // 左键
+            if (e.button === 2) doAction('use'); // 右键
+        });
+
+        document.addEventListener('keydown', e => {
+            if (e.code === 'KeyE') toggleInventory();
+            if (e.key >= '1' && e.key <= '5') {
+                player.selSlot = parseInt(e.key) - 1;
+                updateHand();
+                renderHotbar();
+            }
+        });
+
+        // 防止右键菜单
+        document.oncontextmenu = () => false;
+
+        function getRay() {
+            const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
+            const pos = camera.position.clone();
+            for (let i = 0; i < 100; i++) { // 5 blocks dist
+                pos.addScaledVector(dir, 0.05);
+                const ix = Math.round(pos.x), iy = Math.round(pos.y), iz = Math.round(pos.z);
+                const id = world[`${ix},${iy},${iz}`];
+                if (id && id !== B.AIR && id !== B.WATER && id !== B.LAVA) {
+                    // 找到之前的一个空气格作为面
+                    const prev = pos.clone().addScaledVector(dir, -0.05);
+                    return { x: ix, y: iy, z: iz, id, face: { x: Math.round(prev.x) - ix, y: Math.round(prev.y) - iy, z: Math.round(prev.z) - iz } };
+                }
+            }
+            return null;
+        }
+
+        function doAction(act) {
+            // 挥手动画
+            armMesh.rotation.x = -1;
+            itemMesh.rotation.x = -1;
+            setTimeout(() => { armMesh.rotation.x = 0; itemMesh.rotation.x = 0; }, 200);
+
+            // 攻击实体
+            if (act === 'hit') {
+                let hitEnt = null;
+                entities.forEach(e => {
+                    if (e.mesh.position.distanceTo(camera.position) < 3) hitEnt = e;
+                });
+                if (hitEnt) {
+                    hitEnt.hp -= 3;
+                    hitEnt.mesh.material.color.setHex(0xff0000);
+                    setTimeout(() => hitEnt.mesh.material.color.setHex(hitEnt.type === 'zombie' ? 0x2e7d32 : (hitEnt.type === 'pig' ? 0xf06292 : 0x8d6e63)), 100);
+                    hitEnt.vel.y += 2;
+                    return;
+                }
+            }
+
+            const target = getRay();
+            const heldId = getHeldId();
+
+            if (act === 'hit' && target) {
+                // 不能撸水和岩浆 (已经在getRay里过滤，或者在这里双重检查)
+                if (target.id === B.BEDROCK) return;
+
+                delete world[`${target.x},${target.y},${target.z}`];
+                rebuild(target.x, target.z);
+
+                // 掉落逻辑
+                let drop = target.id;
+                if (drop === B.STONE) drop = B.COBBLESTONE;
+                if (drop === B.GRASS) drop = B.DIRT;
+                if (drop === B.LEAVES) drop = Math.random() > 0.8 ? B.PLANKS : null; // 树叶掉木棍(简化为木板)或者没东西
+                if (drop) addToInv(drop, 1);
+
+                // 消耗饱食
+                player.food = Math.max(0, player.food - 0.1);
+                updateStats();
+            }
+
+            if (act === 'use') {
+                // 吃东西
+                if (heldId === B.MEAT) {
+                    consumeHeld();
+                    player.food = Math.min(20, player.food + 4);
+                    player.hp = Math.min(20, player.hp + 2);
+                    updateStats();
+                    return;
+                }
+
+                // 放方块
+                if (target && heldId && heldId < 100) {
+                    const tx = target.x + target.face.x;
+                    const ty = target.y + target.face.y;
+                    const tz = target.z + target.face.z;
+
+                    // 碰撞检测
+                    if (Math.abs(camera.position.x - tx) < 0.8 && Math.abs(camera.position.y - ty) < 1.8 && Math.abs(camera.position.z - tz) < 0.8) return;
+
+                    world[`${tx},${ty},${tz}`] = heldId;
+                    consumeHeld();
+                    rebuild(tx, tz);
+                }
+            }
+        }
+
+        function rebuild(x, z) {
+            updateChunkMesh(Math.floor(x / 16), Math.floor(z / 16));
+        }
+
+        function getHeldId() {
+            const idx = player.hotbar[player.selSlot];
+            return (idx !== null && player.inv[idx]) ? player.inv[idx].id : null;
+        }
+
+        function consumeHeld() {
+            const idx = player.hotbar[player.selSlot];
+            if (idx !== null && player.inv[idx]) {
+                player.inv[idx].count--;
+                if (player.inv[idx].count <= 0) player.inv[idx] = null;
+                renderHotbar();
+                updateHand();
+                renderInv();
+            }
+        }
+
+        function addToInv(id, count) {
+            // 堆叠
+            for (let i = 0; i < player.inv.length; i++) {
+                if (player.inv[i] && player.inv[i].id === id && player.inv[i].count < 64) {
+                    player.inv[i].count += count;
+                    renderHotbar();
+                    renderInv();
+                    return;
+                }
+            }
+            // 空位
+            for (let i = 0; i < player.inv.length; i++) {
+                if (!player.inv[i]) {
+                    player.inv[i] = { id, count };
+                    renderHotbar();
+                    renderInv();
+                    updateHand();
+                    return;
+                }
+            }
+        }
+
+        // --- UI 系统 ---
+        function updateStats() {
+            const hBar = document.getElementById('health-bar');
+            const fBar = document.getElementById('food-bar');
+            hBar.innerHTML = ''; fBar.innerHTML = '';
+
+            for (let i = 0; i < Math.ceil(player.hp / 2); i++) hBar.innerHTML += '<div class="heart"></div>';
+            for (let i = 0; i < Math.ceil(player.food / 2); i++) fBar.innerHTML += '<div class="food"></div>';
+        }
+
+        function takeDamage(amt) {
+            player.hp -= amt;
+            updateStats();
+            const ol = document.getElementById('damage-overlay');
+            ol.style.opacity = 0.5;
+            setTimeout(() => ol.style.opacity = 0, 200);
+            if (player.hp <= 0) {
+                // 重生
+                player.hp = 20; player.food = 20;
+                camera.position.set(0, 60, 0);
+                vel.set(0, 0, 0);
+                updateStats();
+            }
+        }
+
+        // 合成表
+        const RECIPES = [
+            { out: B.PLANKS, n: 4, in: { [B.LOG]: 1 } },
+            { out: B.CRAFTING_TABLE, n: 1, in: { [B.PLANKS]: 4 } },
+            { out: B.SWORD, n: 1, in: { [B.PLANKS]: 2 } },
+            { out: B.BRICK, n: 1, in: { [B.STONE]: 1 } }
+        ];
+
+        let isInvOpen = false;
+        let selectedInvIndex = -1;
+
+        function toggleInventory() {
+            isInvOpen = !isInvOpen;
+            const scr = document.getElementById('inventory-screen');
+            scr.style.display = isInvOpen ? 'block' : 'none';
+            if (isInvOpen) {
+                controls.unlock();
+                renderInv();
+            } else {
+                controls.lock();
+            }
+        }
+
+        function renderInv() {
+            const grid = document.getElementById('inv-grid');
+            grid.innerHTML = '';
+            player.inv.forEach((item, i) => {
+                const el = document.createElement('div');
+                el.className = 'slot' + (selectedInvIndex === i ? ' active' : '');
+                if (item) {
+                    // 生成图像
+                    const icon = iconUrls[item.id] || '';
+                    el.innerHTML = `<img src="${icon}"><span class="count">${item.count}</span>`;
+                }
+                el.onclick = (e) => {
+                    e.stopPropagation(); // 防止传递到game click
+                    selectedInvIndex = i; renderInv();
+                };
+                grid.appendChild(el);
+            });
+
+            const cList = document.getElementById('craft-list');
+            cList.innerHTML = '';
+            RECIPES.forEach(r => {
+                const btn = document.createElement('div');
+                btn.className = 'craft-item';
+
+                // 检查材料
+                let canCraft = true;
+                for (let id in r.in) {
+                    const need = r.in[id];
+                    let has = 0;
+                    player.inv.forEach(it => { if (it && it.id == id) has += it.count; });
+                    if (has < need) canCraft = false;
+                }
+
+                if (!canCraft) btn.classList.add('disabled');
+
+                btn.innerHTML = `<img src="${iconUrls[r.out]}" width="32"><br>${r.n}个`;
+
+                btn.onclick = () => {
+                    if (!canCraft) return;
+                    // 扣除
+                    for (let id in r.in) {
+                        let cost = r.in[id];
+                        for (let i = 0; i < player.inv.length; i++) {
+                            if (player.inv[i] && player.inv[i].id == id) {
+                                const take = Math.min(cost, player.inv[i].count);
+                                player.inv[i].count -= take;
+                                cost -= take;
+                                if (player.inv[i].count === 0) player.inv[i] = null;
+                                if (cost <= 0) break;
+                            }
+                        }
+                    }
+                    addToInv(r.out, r.n);
+                    renderInv();
+                };
+                cList.appendChild(btn);
+            });
+        }
+
+        function renderHotbar() {
+            const bar = document.getElementById('hotbar');
+            bar.innerHTML = '';
+            for (let i = 0; i < 5; i++) {
+                const idx = player.hotbar[i];
+                const item = (idx !== null) ? player.inv[idx] : null;
+                const el = document.createElement('div');
+                el.className = 'slot ' + (player.selSlot === i ? 'active' : '');
+                if (item) {
+                    el.innerHTML = `<img src="${iconUrls[item.id]}"><span class="count">${item.count}</span>`;
+                }
+                // 点击背包里的东西再点快捷栏，绑定
+                el.onclick = (e) => {
+                    e.stopPropagation();
+                    if (isInvOpen && selectedInvIndex !== -1) {
+                        player.hotbar[i] = selectedInvIndex;
+                        selectedInvIndex = -1;
+                        renderInv();
+                        renderHotbar();
+                        updateHand();
+                    } else {
+                        player.selSlot = i;
+                        renderHotbar();
+                        updateHand();
+                    }
+                };
+                bar.appendChild(el);
+            }
+        }
+
+        function updateHand() {
+            const id = getHeldId();
+            if (id) {
+                armMesh.visible = false;
+                itemMesh.visible = true;
+                if (id === B.SWORD) {
+                    itemMesh.geometry = new THREE.BoxGeometry(0.1, 0.8, 0.1);
+                    itemMesh.rotation.set(Math.PI / 4, 0, 0);
+                } else {
+                    itemMesh.geometry = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+                    itemMesh.rotation.set(0, 0, 0);
+                }
+                itemMesh.material = mats[id] || mats[B.DIRT];
+            } else {
+                armMesh.visible = true;
+                itemMesh.visible = false;
+            }
+        }
+
+        // --- 游戏主循环 ---
+        const clock = new THREE.Clock();
+        let lastCx = -999, lastCz = -999;
+        camera.position.y = 50;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = Math.min(clock.getDelta(), 0.1);
+
+            if (controls.isLocked) {
+                // 环境检测
+                const cx = Math.round(camera.position.x);
+                const cy = Math.round(camera.position.y);
+                const cz = Math.round(camera.position.z);
+                const bodyId = world[`${cx},${cy},${cz}`];
+                const feetId = world[`${cx},${cy - 1},${cz}`];
+
+                const inWater = (bodyId === B.WATER || feetId === B.WATER);
+                const inLava = (bodyId === B.LAVA || feetId === B.LAVA);
+
+                if (inLava) takeDamage(0.5); // 岩浆伤害
+
+                // 物理移动
+                const speed = inWater ? 10 : 40;
+                vel.x -= vel.x * 10.0 * dt;
+                vel.z -= vel.z * 10.0 * dt;
+                vel.y -= 30.0 * dt; // 重力
+
+                const dir = new THREE.Vector3();
+                const fwd = (keys['KeyW'] ? 1 : 0) - (keys['KeyS'] ? 1 : 0);
+                const side = (keys['KeyD'] ? 1 : 0) - (keys['KeyA'] ? 1 : 0);
+                if (fwd || side) {
+                    dir.z = fwd; dir.x = side; dir.normalize();
+                    vel.z -= dir.z * speed * dt;
+                    vel.x -= dir.x * speed * dt;
+
+                    // 走路消耗饱食
+                    if (Math.random() > 0.99) {
+                        player.food = Math.max(0, player.food - 0.05);
+                        updateStats();
+                    }
+                }
+
+                if (keys['Space'] && (onGround || inWater)) {
+                    vel.y = inWater ? 5 : 9;
+                }
+
+                controls.moveRight(-vel.x * dt);
+                controls.moveForward(-vel.z * dt);
+                camera.position.y += vel.y * dt;
+
+                // 碰撞
+                checkCollisions();
+
+                // 饥饿扣血
+                if (player.food <= 0 && Math.random() > 0.99) takeDamage(0.5);
+            }
+
+            // 区块加载
+            const curCx = Math.floor(camera.position.x / 16);
+            const curCz = Math.floor(camera.position.z / 16);
+            if (curCx !== lastCx || curCz !== lastCz) {
+                for (let x = -CONF.RENDER_DIST; x <= CONF.RENDER_DIST; x++)
+                    for (let z = -CONF.RENDER_DIST; z <= CONF.RENDER_DIST; z++) {
+                        const k = `${curCx + x},${curCz + z}`;
+                        if (!chunks[k]) { genChunk(curCx + x, curCz + z); updateChunkMesh(curCx + x, curCz + z); }
+                    }
+                lastCx = curCx; lastCz = curCz;
+            }
+
+            updateEntities(dt);
+            renderer.render(scene, camera);
+        }
+
+        let onGround = false;
+        function checkCollisions() {
+            const x = Math.round(camera.position.x);
+            const z = Math.round(camera.position.z);
+            // 简单地面碰撞
+            let groundY = -100;
+            for (let y = Math.round(camera.position.y + 2); y > Math.round(camera.position.y - 5); y--) {
+                const id = world[`${x},${y},${z}`];
+                if (id && id !== B.AIR && id !== B.WATER && id !== B.LAVA) { // 液体无碰撞
+                    groundY = y;
+                    break;
+                }
+            }
+            if (camera.position.y < groundY + 2.6) {
+                camera.position.y = groundY + 2.6;
+                vel.y = 0;
+                onGround = true;
+            } else {
+                onGround = false;
+            }
+        }
+
+        updateStats();
+        renderHotbar();
+        animate();
+
+        window.onresize = () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        };
+
+    </script>
+</body>
+
+</html>
+````
+
 ## 📄 `example.json`
 
 ````json
@@ -115,7 +1327,7 @@ node_modules/
 ````json
 {
   "name": "yuangs",
-  "version": "2.11.0",
+  "version": "2.19.0",
   "description": "苑广山的个人应用集合 CLI（彩色版）",
   "author": "苑广山",
   "license": "ISC",
@@ -129,7 +1341,7 @@ node_modules/
   ],
   "scripts": {
     "dev": "ts-node src/cli.ts",
-    "build": "tsc",
+    "build": "tsc && chmod +x dist/cli.js",
     "prepare": "npm run build",
     "prepublishOnly": "npm run build",
     "test": "jest",
@@ -203,6 +1415,8 @@ import {
     AgentMode,
 } from './types';
 
+import { ContextBuffer } from '../commands/contextBuffer';
+
 import { inferIntent } from './intent';
 import { buildContext } from './context';
 import { buildPrompt } from './prompt';
@@ -213,8 +1427,13 @@ import { executePlan } from './planExecutor';
 import { saveRecord } from './record';
 import { learnSkillFromRecord } from './skills';
 import { randomUUID } from 'crypto';
+import { StreamMarkdownRenderer } from '../utils/renderer'; // Import renderer
+import ora, { Ora } from 'ora';
+import chalk from 'chalk';
 
 export class AgentPipeline {
+    private contextBuffer: ContextBuffer = new ContextBuffer();
+
     async run(input: AgentInput, mode: AgentMode): Promise<void> {
         const id = randomUUID();
 
@@ -222,7 +1441,7 @@ export class AgentPipeline {
         const intent = inferIntent(input, mode);
 
         // 2. Context Assembly
-        const context = buildContext(input);
+        const context = buildContext(input, this.contextBuffer);
 
         // 3. Prompt Construction
         const prompt = buildPrompt(intent, context, mode, input.rawInput);
@@ -230,15 +1449,29 @@ export class AgentPipeline {
         // 4. Model Selection
         const model = selectModel(intent, input.options?.model);
 
+        // Setup Renderer if in Chat Mode
+        let renderer: StreamMarkdownRenderer | undefined;
+        let spinner: Ora | undefined;
+
+        if (mode === 'chat') {
+            spinner = ora(chalk.cyan('Thinking...')).start();
+            renderer = new StreamMarkdownRenderer(chalk.bold.blue('🤖 AI: '), spinner);
+        }
+
         // 5. LLM Execution
         const result = await runLLM({
             prompt,
             model,
             stream: mode === 'chat',
-            onChunk: mode === 'chat'
-                ? (s) => process.stdout.write(s)
+            onChunk: mode === 'chat' && renderer
+                ? (s) => renderer!.onChunk(s)
                 : undefined,
         });
+
+        // Finish rendering if chat mode
+        if (mode === 'chat' && renderer) {
+            renderer.finish();
+        }
 
         // 6. Result Interpretation -> Plan
         const isStreaming = mode === 'chat';
@@ -258,10 +1491,12 @@ export class AgentPipeline {
                 type: 'execute',
                 command: plan.tasks[0].payload.command,
                 risk: plan.tasks[0].payload.risk
-            } : { type: 'print', content: result.rawText }, // For backward compatibility with record.action
+            } : { type: 'print', content: result.rawText }, 
         });
 
         // 8. Plan Execution
+        // Note: For chat, execution usually is just "printing", which happened via stream.
+        // interpretResultToPlan handles ignoring tasks if streamed.
         const summary = await executePlan(plan, input.options);
 
         // 9. Post-execution: Learn Skill if successful
@@ -361,11 +1596,8 @@ async function confirm(message: string): Promise<boolean> {
 import { AgentInput, AgentContext } from './types';
 import { ContextBuffer } from '../commands/contextBuffer';
 
-// Create a singleton instance for the agent
-const globalContextBuffer = new ContextBuffer();
-
-export function buildContext(input: AgentInput): AgentContext {
-    const items = globalContextBuffer.export();
+export function buildContext(input: AgentInput, contextBuffer: ContextBuffer): AgentContext {
+    const items = contextBuffer.export();
 
     return {
         files: items.map(item => ({
@@ -375,10 +1607,6 @@ export function buildContext(input: AgentInput): AgentContext {
         gitDiff: undefined, // Will be enhanced later
         history: [], // Will be populated from conversation history
     };
-}
-
-export function getAgentContextBuffer(): ContextBuffer {
-    return globalContextBuffer;
 }
 
 ````
@@ -884,8 +2112,12 @@ export function selectModel(
 ## 📄 `src/agent/skills.ts`
 
 ````typescript
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 import { AgentPlan } from './plan';
 import { ExecutionRecord } from './record';
+import chalk from 'chalk';
 
 export interface Skill {
     id: string;
@@ -904,7 +2136,35 @@ export interface Skill {
     createdAt: number;
 }
 
+const SKILLS_FILE = path.join(os.homedir(), '.yuangs_skills.json');
 let skillLibrary: Skill[] = [];
+
+// === Persistence Logic ===
+
+function loadSkills() {
+    if (fs.existsSync(SKILLS_FILE)) {
+        try {
+            const data = fs.readFileSync(SKILLS_FILE, 'utf-8');
+            skillLibrary = JSON.parse(data);
+        } catch (e) {
+            console.error(chalk.yellow(`Failed to load skills from ${SKILLS_FILE}, starting empty.`));
+            skillLibrary = [];
+        }
+    }
+}
+
+function saveSkills() {
+    try {
+        fs.writeFileSync(SKILLS_FILE, JSON.stringify(skillLibrary, null, 2));
+    } catch (e) {
+        console.error(chalk.red(`Failed to save skills to ${SKILLS_FILE}`));
+    }
+}
+
+// Initialize on load
+loadSkills();
+
+// === Existing Logic with Save Hooks ===
 
 /**
  * 计算技能分 (0 ~ 1)
@@ -938,6 +2198,8 @@ export function updateSkillStatus(skillId: string, success: boolean) {
         // 失败惩罚: 惩罚力度大于奖励，防止系统“自嗨”
         skill.confidence = Math.max(0, skill.confidence - 0.1);
     }
+    
+    saveSkills(); // Persist changes
 }
 
 /**
@@ -972,6 +2234,8 @@ export function learnSkillFromRecord(record: ExecutionRecord, success: boolean =
 
     // 每学习一次，尝试清理一次“冷”技能
     reapColdSkills();
+    
+    saveSkills(); // Persist changes
 }
 
 /**
@@ -994,6 +2258,7 @@ export function getRelevantSkills(input: string, limit: number = 3): Skill[] {
  */
 export function reapColdSkills() {
     const now = Date.now();
+    const initialCount = skillLibrary.length;
 
     skillLibrary = skillLibrary.filter(skill => {
         const score = computeSkillScore(skill, now);
@@ -1013,6 +2278,10 @@ export function reapColdSkills() {
         // 如果还超标，移除得分最低的那个
         skillLibrary.sort((a, b) => computeSkillScore(a, now) - computeSkillScore(b, now));
         skillLibrary.shift();
+    }
+    
+    if (skillLibrary.length !== initialCount) {
+        saveSkills(); // Persist if changes happened
     }
 }
 
@@ -1092,20 +2361,30 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { DEFAULT_AI_PROXY_URL, DEFAULT_MODEL, DEFAULT_ACCOUNT_TYPE, type UserConfig, type AIRequestMessage } from '../core/validation';
+import { loadChatHistory, saveChatHistory } from '../commands/chatHistoryStorage';
 
 const CONFIG_FILE = path.join(os.homedir(), '.yuangs.json');
 
 let conversationHistory: AIRequestMessage[] = [];
+
+// 初始化时加载持久化的聊天历史记录
+loadChatHistory().then(history => {
+    conversationHistory = history;
+});
 
 export function addToConversationHistory(role: 'system' | 'user' | 'assistant', content: string) {
     conversationHistory.push({ role, content });
     if (conversationHistory.length > 20) {
         conversationHistory = conversationHistory.slice(-20);
     }
+    // 同时保存到持久化存储
+    saveChatHistory(conversationHistory);
 }
 
 export function clearConversationHistory() {
     conversationHistory = [];
+    // 同时清除持久化存储
+    saveChatHistory(conversationHistory);
 }
 
 export function getConversationHistory() {
@@ -1217,7 +2496,8 @@ import type { Macro } from '../core/validation';
 export function buildCommandPrompt(
     userInput: string,
     os: OSProfile,
-    macros?: Record<string, Macro>
+    macros?: Record<string, Macro>,
+    context?: string
 ): string {
     const macroContext = macros && Object.keys(macros).length > 0
         ? `
@@ -1263,6 +2543,9 @@ ${macroContext}
   "macro": "要复用的 Macro 名称（优先使用，与 command 二选一）",
   "risk": "low | medium | high"
 }
+
+【上下文信息】
+${context || '无'}
 
 【用户需求】
 ${userInput}
@@ -1683,7 +2966,9 @@ async function main() {
                 const isStdinSpecialSyntax = stdinTrimmed.startsWith('@') ||
                                            stdinTrimmed.startsWith('#') ||
                                            stdinTrimmed === ':ls' ||
-                                           stdinTrimmed === ':clear';
+                                           stdinTrimmed === ':clear' ||
+                                           stdinTrimmed === ':cat' ||
+                                           stdinTrimmed.startsWith(':cat ');
 
                 if (isStdinSpecialSyntax) {
                     const result = await handleSpecialSyntax(stdinData, '');
@@ -1721,12 +3006,14 @@ async function main() {
             }
 
             // 如果 question 本身包含特殊语法（没有 stdin 或 stdin 不是特殊语法）
-            if (!stdinData || !(stdinData.trim().startsWith('@') || stdinData.trim().startsWith('#') || stdinData.trim() === ':ls' || stdinData.trim() === ':clear')) {
+            const isSpecialSyntaxPrefix = (q: string) => {
+                const t = q.trim();
+                return t.startsWith('@') || t.startsWith('#') || t === ':ls' || t === ':clear' || t === ':cat' || t.startsWith(':cat ');
+            };
+
+            if (!stdinData || !isSpecialSyntaxPrefix(stdinData)) {
                 const questionTrimmed = (question || '').trim();
-                const isQuestionSpecialSyntax = questionTrimmed.startsWith('@') ||
-                                              questionTrimmed.startsWith('#') ||
-                                              questionTrimmed === ':ls' ||
-                                              questionTrimmed === ':clear';
+                const isQuestionSpecialSyntax = isSpecialSyntaxPrefix(questionTrimmed);
 
                 if (isQuestionSpecialSyntax) {
                     const result = await handleSpecialSyntax(question, stdinData);
@@ -1734,8 +3021,12 @@ async function main() {
                     if (result.processed) {
                         // 如果特殊语法被处理
                         if (result.result) {
-                            // 检查是否是管理命令（如 :ls, :clear），这些命令的结果应该直接输出
-                            const isManagementCommand = question.trim() === ':ls' || question.trim() === ':clear';
+                            // 检查是否是管理命令（如 :ls, :clear, :cat），这些命令的结果应该直接输出
+                            const trimmedQuestion = question.trim();
+                            const isManagementCommand = trimmedQuestion === ':ls' || 
+                                                       trimmedQuestion === ':clear' || 
+                                                       trimmedQuestion === ':cat' || 
+                                                       trimmedQuestion.startsWith(':cat ');
 
                             if (isManagementCommand) {
                                 // 直接输出结果并退出
@@ -2327,6 +3618,63 @@ export function registerCapabilityCommands(program: Command): void {
 
 ````
 
+## 📄 `src/commands/chatHistoryStorage.ts`
+
+````typescript
+import fs from 'fs';
+import { promisify } from 'util';
+import path from 'path';
+import os from 'os';
+import { AIRequestMessage } from '../core/validation';
+
+const CHAT_HISTORY_DIR = path.resolve(os.homedir(), '.yuangs_chat_history');
+const CHAT_HISTORY_FILE = path.join(CHAT_HISTORY_DIR, 'chat_history.json');
+
+const readFileAsync = promisify(fs.readFile);
+const writeFileAsync = promisify(fs.writeFile);
+const mkdirAsync = promisify(fs.mkdir);
+const rmAsync = promisify(fs.rm);
+
+export async function loadChatHistory(): Promise<AIRequestMessage[]> {
+    if (fs.existsSync(CHAT_HISTORY_FILE)) {
+        try {
+            const raw = await readFileAsync(CHAT_HISTORY_FILE, 'utf-8');
+            const data = JSON.parse(raw);
+
+            // 验证数据结构
+            if (Array.isArray(data) && data.every(msg =>
+                typeof msg === 'object' &&
+                ['user', 'assistant', 'system'].includes(msg.role) &&
+                typeof msg.content === 'string'
+            )) {
+                return data as AIRequestMessage[];
+            }
+        } catch (e) {
+            console.warn('警告: 加载聊天历史记录失败，使用空历史记录');
+        }
+    }
+    return [];
+}
+
+export async function saveChatHistory(history: AIRequestMessage[]) {
+    try {
+        await mkdirAsync(CHAT_HISTORY_DIR, { recursive: true });
+        await writeFileAsync(CHAT_HISTORY_FILE, JSON.stringify(history, null, 2));
+    } catch (e) {
+        console.error('错误: 保存聊天历史记录失败:', e);
+    }
+}
+
+export async function clearChatHistory() {
+    try {
+        await rmAsync(CHAT_HISTORY_FILE, { force: true });
+    } catch (e) {
+        console.error('错误: 清除聊天历史记录失败:', e);
+    }
+}
+
+````
+
 ## 📄 `src/commands/contextBuffer.ts`
 
 ````typescript
@@ -2343,7 +3691,7 @@ const estimateTokens = (text: string) => Math.ceil(text.length / 4);
 
 export class ContextBuffer {
     private items: ContextItem[] = [];
-    private maxTokens = 8000;
+    private maxTokens = 32000; // 约 12.8 万字符
 
     add(item: Omit<ContextItem, 'tokens'>, bypassTokenLimit: boolean = false) {
         const tokens = estimateTokens(item.content);
@@ -2391,20 +3739,26 @@ export class ContextBuffer {
     }
 
     buildPrompt(userInput: string): string {
+        if (this.isEmpty()) return userInput;
+
         const contextBlock = this.items.map(item => {
             const title = item.alias
-                ? `${item.type}：${item.alias} (${item.path})`
-                : `${item.type}：${item.path}`;
+                ? `[Context Item] ${item.type}: ${item.alias} (${item.path})`
+                : `[Context Item] ${item.type}: ${item.path}`;
 
             const body = item.summary ?? item.content;
 
-            return `${title}\n\`\`\`\n${body}\n\`\`\``;
+            return `${title}\n---\n${body}\n---`;
         }).join('\n\n');
 
         return `
-你正在基于以下上下文回答问题：
+# 知识上下文 (Knowledge Context)
+你目前的会话已加载以下参考资料。在回答用户问题时，请优先参考这些内容：
 
 ${contextBlock}
+
+# 任务说明
+基于上述提供的上下文（如果有），回答用户的问题。如果上下文中包含源码，请将其视为你当前的“真理来源”。
 
 用户问题：
 ${userInput}
@@ -2491,8 +3845,6 @@ import chalk from 'chalk';
 import ora from 'ora';
 import readline from 'readline';
 import { callAI_Stream, getConversationHistory, addToConversationHistory, clearConversationHistory } from '../ai/client';
-import * as marked from 'marked';
-import TerminalRenderer from 'marked-terminal';
 import fs from 'fs';
 import path from 'path';
 import { buildPromptWithFileContent, readFilesContent } from '../core/fileReader';
@@ -2506,11 +3858,9 @@ import {
     detectMode,
     createCompleter,
     executeCommand as shellExecuteCommand,
-    updateGhost,
-    clearGhost,
-    renderGhost,
     listPlugins
 } from './shellCompletions';
+import { StreamMarkdownRenderer } from '../utils/renderer';
 const execAsync = promisify(exec);
 
 function findCommonPrefix(strings: string[]): string {
@@ -2700,6 +4050,19 @@ async function handleDirectoryReference(input: string): Promise<string> {
 
 export async function handleAIChat(initialQuestion: string | null, model?: string) {
     if (initialQuestion) {
+        // 先检查是否为特殊语法
+        const { handleSpecialSyntax } = await import('../utils/syntaxHandler');
+        const result = await handleSpecialSyntax(initialQuestion);
+        
+        if (result.processed) {
+            // 如果是管理命令（:ls, :cat, :clear），直接输出结果
+            if (result.result) {
+                console.log(result.result);
+            }
+            return;
+        }
+        
+        // 不是特殊语法，正常发给 AI
         await askOnceStream(initialQuestion, model);
         return;
     }
@@ -2744,6 +4107,23 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
             const input = await ask(chalk.green('你：'));
             const trimmed = input.trim();
 
+            // === 场景 5.1: 原子执行 (:exec) ===
+            if (trimmed.startsWith(':exec ')) {
+                const cmd = trimmed.slice(6).trim();
+                if (cmd) {
+                    console.log(chalk.cyan(`\n⚡️ [Atomic Exec] ${cmd}\n`));
+                    rl.pause();
+                    try {
+                        await shellExecuteCommand(cmd, (code) => {
+                            if (code !== 0) console.log(chalk.red(`Exited with ${code}`));
+                        });
+                    } finally {
+                        rl.resume();
+                    }
+                }
+                continue;
+            }
+
             if (trimmed.startsWith('@')) {
                 rl.pause();
                 try {
@@ -2786,29 +4166,51 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
                     }
 
                     if (immediateExecMatch) {
-                        // @!filename - 添加并立即执行文件
+                        // 场景 3.2: @!filename - 添加脚本源码并捕获执行输出
                         const filePath = immediateExecMatch[1].trim();
-                        const content = await readFileContent(filePath);
-                        
-                        contextBuffer.add({
-                            type: 'file',
-                            path: filePath,
-                            content
-                        });
+                        const fullPath = path.resolve(filePath);
 
-                        const displayName = filePath;
-                        console.log(chalk.green(`✓ 已加入文件上下文: ${displayName}\n`));
-                        
-                        await saveContext(contextBuffer.export());
-                        
-                        console.log(chalk.cyan(`⚡️  正在执行: ${filePath}\n`));
-                        
-                        const { stdout, stderr } = await exec(filePath, { cwd: process.cwd() });
-                        console.log(stdout);
-                        if (stderr) console.error(chalk.red(stderr));
+                        if (fs.existsSync(fullPath)) {
+                            // 1. 读取源码
+                            const sourceContent = await readFileContent(filePath);
+                            
+                            console.log(chalk.cyan(`⚡️ 正在执行并捕获: ${filePath}\n`));
+                            
+                            // 2. 执行并捕获
+                            const { stdout, stderr } = await execAsync(`chmod +x "${fullPath}" && "${fullPath}"`, { cwd: process.cwd() });
+                            console.log(stdout); // 实时打印给用户看
+                            if (stderr) console.error(chalk.red(stderr));
 
-                        await saveContext(contextBuffer.export());
-                        console.log(chalk.green(`✓ 执行完成\n`));
+                            // 3. 构造组合上下文 (契约：命令内容 + 实际输出)
+                            const combinedContent = `
+=== Source: ${filePath} ===
+\`\`\`bash
+${sourceContent}
+\`\`\`
+
+=== Stdout ===
+\`\`\`
+${stdout}
+\`\`\`
+
+=== Stderr ===
+\`\`\`
+${stderr}
+\`\`\`
+`;
+
+                            contextBuffer.add({
+                                type: 'file',
+                                path: `${filePath} [Run Log]`,
+                                alias: 'Execution Log',
+                                content: combinedContent
+                            });
+                            
+                            await saveContext(contextBuffer.export());
+                            console.log(chalk.green(`\n✓ 已捕获脚本源码及执行日志到上下文\n`));
+                        } else {
+                            console.log(chalk.red(`错误: 文件 ${filePath} 不存在`));
+                        }
 
                         rl.resume();
                         continue;
@@ -2915,21 +4317,35 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
                     }
 
                     const contentMap = readFilesContent(filePaths);
-                    const prompt = buildPromptWithFileContent(
-                        `目录: ${dirPath}\n找到 ${filePaths.length} 个文件`,
-                        filePaths.map(p => path.relative(process.cwd(), p)),
-                        contentMap,
-                        ''
-                    );
 
-                    contextBuffer.add({
-                        type: 'directory',
-                        path: dirPath,
-                        content: prompt
-                    });
+                    // 逐个添加文件，而不是将所有内容合并为一个大的目录项
+                    // 这样可以更好地控制token使用，并保留之前的上下文
+                    let addedCount = 0;
+                    for (const [filePath, content] of contentMap) {
+                        // 检查单个文件大小，如果太大则跳过
+                        const fileTokens = Math.ceil(content.length / 4);
+                        if (fileTokens > 2000) { // 限制单个文件不超过2000 tokens
+                            console.log(chalk.yellow(`⚠️  跳过大文件: ${filePath} (太大)`));
+                            continue;
+                        }
+
+                        contextBuffer.add({
+                            type: 'file',  // 改为file类型，因为实际上是单个文件
+                            path: filePath,
+                            content: content
+                        });
+                        addedCount++;
+
+                        // 检查是否达到token限制，如果达到则停止添加更多文件
+                        // 我们需要手动计算总tokens，因为totalTokens是私有方法
+                        const totalTokens = contextBuffer.export().reduce((sum, item) => sum + item.tokens, 0);
+                        if (totalTokens > 30000) { // 留2000 token余量
+                            console.log(chalk.yellow(`⚠️  达到token限制，停止添加更多文件`));
+                            break;
+                        }
+                    }
 
                     await saveContext(contextBuffer.export());
-                    console.log(chalk.green(`✅ 已加入目录上下文: ${dirPath}\n`));
                 } catch (err: unknown) {
                     const message = err instanceof Error ? err.message : String(err);
                     console.error(chalk.red(`\n[处理错误]: ${message}\n`));
@@ -2969,6 +4385,33 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
                     console.log(chalk.gray('📭 当前没有上下文\n'));
                 } else {
                     console.table(list);
+                }
+                continue;
+            }
+
+            if (trimmed === ':cat' || trimmed.startsWith(':cat ')) {
+                const parts = trimmed.split(' ');
+                const index = parts.length > 1 ? parseInt(parts[1]) : null;
+                const items = contextBuffer.export();
+
+                if (items.length === 0) {
+                    console.log(chalk.gray('📭 当前没有上下文内容可查阅\n'));
+                } else if (index !== null) {
+                    if (index < 1 || index > items.length) {
+                        console.log(chalk.red(`❌ 索引 ${index} 超出范围 (1-${items.length})\n`));
+                    } else {
+                        const item = items[index - 1];
+                        console.log(chalk.cyan(`\n=== [${index}] ${item.path} ===`));
+                        console.log(item.content);
+                        console.log(chalk.cyan(`=== End ===\n`));
+                    }
+                } else {
+                    console.log(chalk.cyan('\n=== 当前完整上下文内容 ==='));
+                    items.forEach((item, i) => {
+                        console.log(chalk.yellow(`\n--- [${i + 1}] ${item.path} ---`));
+                        console.log(item.content);
+                    });
+                    console.log(chalk.cyan('\n==========================\n'));
                 }
                 continue;
             }
@@ -3031,8 +4474,8 @@ ${finalPrompt}
                 rl.pause();
                 await askOnceStream(finalPrompt, model);
 
-                contextBuffer.clear();
-                await saveContext([]);
+                // IMPORTANT: Removed auto-clearing of contextBuffer.
+                // Keeping it for follow-up questions until :clear is called.
             } catch (err: unknown) {
                 const message = err instanceof Error ? err.message : String(err);
                 console.error(chalk.red(`\n[AI execution error]: ${message}`));
@@ -3048,111 +4491,30 @@ ${finalPrompt}
     }
 }
 
-// 配置 marked 使用 TerminalRenderer
-marked.setOptions({
-    renderer: new TerminalRenderer({
-        tab: 2,
-        width: process.stdout.columns || 80,
-        showSectionPrefix: false
-    }) as any
-});
-
 async function askOnceStream(question: string, model?: string) {
-    const startTime = Date.now();
     const messages = [...getConversationHistory()];
     messages.push({ role: 'user', content: question });
 
     const spinner = ora(chalk.cyan('AI 正在思考...')).start();
-    let fullResponse = '';
-    const BOT_PREFIX = chalk.bold.blue('🤖 AI：');
-
-
+    
+    // 初始化渲染器
+    const renderer = new StreamMarkdownRenderer(chalk.bold.blue('🤖 AI：'), spinner);
 
     try {
-        let isFirstOutput = true;
         await callAI_Stream(messages, model, (chunk) => {
-            if (spinner.isSpinning) {
-                spinner.stop();
-                if (isFirstOutput) {
-                    process.stdout.write(BOT_PREFIX);
-                    isFirstOutput = false;
-                }
-            }
-            fullResponse += chunk;
-            process.stdout.write(chunk);
+            renderer.onChunk(chunk);
         });
 
-        const formatted = (marked.parse(fullResponse, { async: false }) as string).trim();
-
-        if (process.stdout.isTTY) {
-            // TTY模式（交互模式）
-            // 1. 先输出原本的流式内容（Raw）
-            // 2. 结束时，计算 Raw 内容的高度（Visual Line Count）
-            // 3. 向上清除相应行数
-            // 4. 输出渲染后的 Markdown 内容
-
-            const screenWidth = process.stdout.columns || 80;
-            const totalContent = BOT_PREFIX + fullResponse;
-            let lineCount = getVisualLineCount(totalContent, screenWidth);
-
-            // 清除 Raw Output
-            // 移至当前行开头并清除
-            process.stdout.write('\r\x1b[K');
-            // 向上移动并清除
-            for (let i = 0; i < lineCount - 1; i++) {
-                process.stdout.write('\x1b[A\x1b[K');
-            }
-
-            // 输出格式化的 Markdown 内容
-            process.stdout.write(BOT_PREFIX + formatted + '\n');
-        } else {
-            // 非TTY模式（如管道模式）
-            // 只输出格式化内容，不执行清除逻辑，避免转义序列可见
-            if (spinner.isSpinning) {
-                spinner.stop();
-            }
-            process.stdout.write(BOT_PREFIX + formatted + '\n');
-        }
+        const fullResponse = renderer.finish();
 
         addToConversationHistory('user', question);
         addToConversationHistory('assistant', fullResponse);
-
-        const elapsed = (Date.now() - startTime) / 1000;
-        process.stdout.write('\n' + chalk.gray(`─`.repeat(20) + ` (耗时: ${elapsed.toFixed(2)}s) ` + `─`.repeat(20) + '\n\n'));
     } catch (error: any) {
         if (spinner.isSpinning) {
             spinner.stop();
         }
         throw error;
     }
-}
-
-function getVisualLineCount(text: string, screenWidth: number): number {
-    const stripAnsi = (str: string) => str.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
-
-    const lines = text.split('\n');
-    let totalLines = 0;
-
-    for (const line of lines) {
-        // Expand tabs (assuming 8 spaces)
-        const expandedLine = line.replace(/\t/g, '        ');
-        const cleanLine = stripAnsi(expandedLine);
-
-        let lineWidth = 0;
-        for (const char of cleanLine) {
-            const code = char.codePointAt(0) || 0;
-            // Most characters > 255 are 2 cells (CJK, Emojis, etc.)
-            lineWidth += code > 255 ? 2 : 1;
-        }
-
-        if (lineWidth === 0) {
-            totalLines += 1;
-        } else {
-            totalLines += Math.ceil(lineWidth / screenWidth);
-        }
-    }
-
-    return totalLines;
 }
 
 ````
@@ -3175,6 +4537,8 @@ import { getMacros, runMacro } from '../core/macros';
 import { CapabilitySystem } from '../core/capabilitySystem';
 import { inferCapabilityRequirement } from '../core/capabilityInference';
 import { CapabilityMatchResult } from '../core/modelMatcher';
+import { ContextBuffer } from './contextBuffer';
+import { loadContext, saveContext } from './contextStorage';
 
 function validateAIPlan(obj: any): obj is AICommandPlan {
     return (
@@ -3217,8 +4581,14 @@ export async function handleAICommand(
         }
 
         spinner.stop();
+        
+        // Load context
+        const contextBuffer = new ContextBuffer();
+        const persistedContext = await loadContext();
+        contextBuffer.import(persistedContext);
+        const contextStr = contextBuffer.isEmpty() ? '' : contextBuffer.buildPrompt('');
 
-        const prompt = buildCommandPrompt(userInput, os, macros);
+        const prompt = buildCommandPrompt(userInput, os, macros, contextStr);
         const raw = await askAI(prompt, selectedModel);
 
         const { aiCommandPlanSchema } = require('../core/validation');
@@ -3367,6 +4737,9 @@ export async function handleAICommand(
                     commandToExecute
                 );
             }
+
+            // Clear context after successful one-shot command execution
+            await saveContext([]);
         }
 
         return result;
@@ -5368,10 +6741,133 @@ export function saveHistory(entry: { question: string; command: string }) {
 
 ````
 
+## 📄 `src/utils/renderer.ts`
+
+````typescript
+import chalk from 'chalk';
+import * as marked from 'marked';
+import TerminalRenderer from 'marked-terminal';
+import ora, { Ora } from 'ora';
+
+// 初始化 marked 配置
+marked.setOptions({
+    renderer: new TerminalRenderer({
+        tab: 2,
+        width: process.stdout.columns || 80,
+        showSectionPrefix: false
+    }) as any
+});
+
+export class StreamMarkdownRenderer {
+    private fullResponse: string = '';
+    private prefix: string;
+    private isFirstOutput: boolean = true;
+    private spinner: Ora | null = null;
+    private startTime: number;
+
+    constructor(prefix: string = chalk.bold.blue('🤖 AI：'), spinner?: Ora) {
+        this.prefix = prefix;
+        this.spinner = spinner || null;
+        this.startTime = Date.now();
+    }
+
+    /**
+     * 处理流式数据块
+     */
+    public onChunk(chunk: string) {
+        if (this.spinner && this.spinner.isSpinning) {
+            this.spinner.stop();
+        }
+
+        if (this.isFirstOutput) {
+            process.stdout.write(this.prefix);
+            this.isFirstOutput = false;
+        }
+
+        this.fullResponse += chunk;
+        process.stdout.write(chunk);
+    }
+
+    /**
+     * 流结束，执行回滚并渲染 Markdown
+     */
+    public finish(): string {
+        // 如果 Spinner 还在转（说明没有任何输出），先停掉
+        if (this.spinner && this.spinner.isSpinning) {
+            this.spinner.stop();
+        }
+
+        const formatted = (marked.parse(this.fullResponse, { async: false }) as string).trim();
+
+        if (process.stdout.isTTY && this.fullResponse.trim()) {
+            const screenWidth = process.stdout.columns || 80;
+            const totalContent = this.prefix + this.fullResponse;
+            
+            // 计算原始文本占用的可视行数
+            const lineCount = this.getVisualLineCount(totalContent, screenWidth);
+
+            // 1. 清除当前行剩余内容
+            process.stdout.write('\r\x1b[K');
+            // 2. 向上回滚并清除之前的行
+            for (let i = 0; i < lineCount - 1; i++) {
+                process.stdout.write('\x1b[A\x1b[K');
+            }
+
+            // 3. 输出格式化后的 Markdown
+            process.stdout.write(this.prefix + formatted + '\n');
+        } else {
+            // 非 TTY 模式或无内容，直接补充换行（如果之前输出了内容）
+            if (this.fullResponse.trim()) {
+                process.stdout.write('\n'); 
+            }
+        }
+
+        // 输出耗时统计
+        const elapsed = (Date.now() - this.startTime) / 1000;
+        process.stdout.write('\n' + chalk.gray(`─`.repeat(20) + ` (耗时: ${elapsed.toFixed(2)}s) ` + `─`.repeat(20) + '\n\n'));
+
+        return this.fullResponse;
+    }
+
+    /**
+     * 计算文本在终端的可视行数
+     */
+    private getVisualLineCount(text: string, screenWidth: number): number {
+        const stripAnsi = (str: string) => str.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
+
+        const lines = text.split('\n');
+        let totalLines = 0;
+
+        for (const line of lines) {
+            // Expand tabs
+            const expandedLine = line.replace(/\t/g, '        ');
+            const cleanLine = stripAnsi(expandedLine);
+
+            let lineWidth = 0;
+            for (const char of cleanLine) {
+                const code = char.codePointAt(0) || 0;
+                // 大部分宽字符（如中文）占 2 格
+                lineWidth += code > 255 ? 2 : 1;
+            }
+
+            if (lineWidth === 0) {
+                totalLines += 1;
+            } else {
+                totalLines += Math.ceil(lineWidth / screenWidth);
+            }
+        }
+
+        return totalLines;
+    }
+}
+
+````
+
 ## 📄 `src/utils/syntaxHandler.ts`
 
 ````typescript
 import fs from 'fs';
+import chalk from 'chalk';
 import path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -5421,6 +6917,19 @@ export async function handleSpecialSyntax(input: string, stdinData?: string): Pr
     // 处理 :ls 命令
     if (trimmed === ':ls') {
         return await handleListContext();
+    }
+
+    // 场景 5.1: :exec 原子执行
+    if (trimmed.startsWith(':exec ')) {
+        const command = trimmed.slice(6).trim();
+        return await handleAtomicExec(command);
+    }
+
+    // 处理 :cat [index] 命令
+    if (trimmed === ':cat' || trimmed.startsWith(':cat ')) {
+        const parts = trimmed.split(' ');
+        const index = parts.length > 1 ? parseInt(parts[1]) : null;
+        return await handleCatContext(index);
     }
 
     // 处理 :clear 命令
@@ -5474,6 +6983,19 @@ async function handleFileReference(filePath: string, startLine: number | null = 
         const contentMap = new Map<string, string>();
         contentMap.set(filePath, content);
 
+        // 持久化到上下文
+        const contextBuffer = new ContextBuffer();
+        const persisted = await loadContext();
+        contextBuffer.import(persisted);
+
+        contextBuffer.add({
+            type: 'file',
+            path: filePath + (startLine !== null ? `:${startLine}${endLine ? `-${endLine}` : ''}` : ''),
+            content: content
+        });
+
+        await saveContext(contextBuffer.export());
+
         const prompt = buildPromptWithFileContent(
             `文件: ${filePath}${startLine !== null ? `:${startLine}${endLine ? `-${endLine}` : ''}` : ''}`,
             [filePath],
@@ -5517,6 +7039,19 @@ async function handleDirectoryReference(dirPath: string, question?: string): Pro
 
         const contentMap = readFilesContent(filePaths);
 
+        // 持久化到上下文
+        const contextBuffer = new ContextBuffer();
+        const persisted = await loadContext();
+        contextBuffer.import(persisted);
+
+        contextBuffer.add({
+            type: 'directory',
+            path: dirPath,
+            content: Array.from(contentMap.entries()).map(([p, c]) => `--- ${p} ---\n${c}`).join('\n\n')
+        });
+
+        await saveContext(contextBuffer.export());
+
         const prompt = buildPromptWithFileContent(
             `目录: ${dirPath}\n找到 ${filePaths.length} 个文件`,
             filePaths.map(p => path.relative(process.cwd(), p)),
@@ -5544,31 +7079,81 @@ async function handleImmediateExec(filePath: string): Promise<{ processed: boole
     }
 
     try {
-        // 读取文件内容并添加到上下文
+        // 1. 读取脚本内容
         const content = fs.readFileSync(fullPath, 'utf-8');
+        
+        console.log(chalk.gray(`正在执行 ${filePath} 并捕获输出...`));
+        
+        // 2. 执行脚本
+        // 注意：这里使用 execAsync 捕获输出
+        const { stdout, stderr } = await execAsync(`chmod +x "${fullPath}" && "${fullPath}"`, { cwd: process.cwd() });
+        
+        // 3. 构造组合上下文 (契约要求：命令内容 + 实际输出)
+        const combinedContext = `
+=== 脚本内容 (${filePath}) ===
+\`\`\`bash
+${content}
+\`\`\`
+
+=== 执行标准输出 (stdout) ===
+\`\`\`
+${stdout}
+\`\`\`
+
+=== 执行标准错误 (stderr) ===
+\`\`\`
+${stderr}
+\`\`\`
+`;
+
+        // 持久化到上下文
         const contextBuffer = new ContextBuffer();
         const persisted = await loadContext();
         contextBuffer.import(persisted);
 
         contextBuffer.add({
             type: 'file',
-            path: filePath,
-            content
+            path: `${filePath} (Runtime Log)`,
+            content: combinedContext,
+            summary: '包含脚本源码和执行后的输出日志'
         });
 
         await saveContext(contextBuffer.export());
 
-        // 执行文件
-        const { stdout, stderr } = await execAsync(`chmod +x "${fullPath}" && "${fullPath}"`, { cwd: process.cwd() });
-        
-        // 将命令输出作为上下文返回
-        const result = `文件 "${filePath}" 已执行\n\n标准输出:\n${stdout}\n\n标准错误:\n${stderr}`;
+        // 返回给 AI 的 Prompt
+        const result = `我执行了脚本 ${filePath}。\n以下是脚本源码和执行输出：\n${combinedContext}\n\n请分析为何会出现上述输出（特别是错误信息）？`;
         return { processed: true, result };
+    } catch (error: any) {
+        const errorMsg = error.message || String(error);
+        const result = `执行脚本 ${filePath} 时发生错误：\n${errorMsg}\n\n请分析原因。`;
+        return { processed: true, result };
+    }
+}
+
+async function handleAtomicExec(command: string): Promise<{ processed: boolean; result: string }> {
+    console.log(chalk.cyan(`\n⚡️ [Atomic Exec] 执行命令: ${command}\n`));
+    
+    try {
+        // 对于原子执行，我们希望用户能实时看到输出，所以用 inherit
+        const { spawn } = require('child_process');
+        const child = spawn(command, { 
+            shell: true, 
+            stdio: 'inherit' 
+        });
+
+        await new Promise<void>((resolve, reject) => {
+            child.on('close', (code: number) => {
+                if (code === 0) resolve();
+                else reject(new Error(`Exit code ${code}`));
+            });
+            child.on('error', reject);
+        });
+        
+        // 原子执行不将结果传给 AI，直接返回空结果表示处理完成
+        return { processed: true, result: '' }; 
     } catch (error) {
-        return { 
-            processed: true, 
-            result: `执行文件失败: ${error}` 
-        };
+        console.error(chalk.red(`执行失败: ${error}`));
+        return { processed: true, result: '' };
     }
 }
 
@@ -5597,6 +7182,45 @@ async function handleListContext(): Promise<{ processed: boolean; result: string
     }
 }
 
+async function handleCatContext(index: number | null): Promise<{ processed: boolean; result: string }> {
+    try {
+        const persisted = await loadContext();
+        const contextBuffer = new ContextBuffer();
+        contextBuffer.import(persisted);
+
+        if (contextBuffer.isEmpty()) {
+            return { processed: true, result: '当前没有上下文' };
+        }
+
+        const items = contextBuffer.export();
+
+        if (index !== null) {
+            // 查看指定索引
+            if (index < 1 || index > items.length) {
+                return { processed: true, result: `错误: 索引 ${index} 超出范围 (共有 ${items.length} 个项目)` };
+            }
+            const item = items[index - 1];
+            return { 
+                processed: true, 
+                result: `--- [${index}] ${item.type}: ${item.path} ---\n${item.content}\n--- End ---` 
+            };
+        } else {
+            // 查看全部
+            let result = '=== 当前完整上下文内容 ===\n\n';
+            items.forEach((item, i) => {
+                result += `--- [${i + 1}] ${item.type}: ${item.path} ---\n${item.content}\n\n`;
+            });
+            result += '==========================';
+            return { processed: true, result };
+        }
+    } catch (error) {
+        return { 
+            processed: true, 
+            result: `读取上下文失败: ${error}` 
+        };
+    }
+}
+
 async function handleClearContext(): Promise<{ processed: boolean; result: string }> {
     try {
         // 清除持久化存储
@@ -5610,6 +7234,150 @@ async function handleClearContext(): Promise<{ processed: boolean; result: strin
         };
     }
 }
+
+````
+
+## 📄 `test/contextBuffer.test.js`
+
+````javascript
+const { ContextBuffer } = require('../dist/commands/contextBuffer');
+
+describe('ContextBuffer', () => {
+    let contextBuffer;
+
+    beforeEach(() => {
+        contextBuffer = new ContextBuffer();
+    });
+
+    test('should add items to buffer', () => {
+        const item = {
+            type: 'file',
+            path: '/test/file.txt',
+            content: 'This is a test file content.',
+        };
+
+        contextBuffer.add(item);
+
+        expect(contextBuffer.isEmpty()).toBe(false);
+        expect(contextBuffer.export().length).toBe(1);
+        expect(contextBuffer.export()[0].path).toBe('/test/file.txt');
+    });
+
+    test('should calculate tokens correctly', () => {
+        const content = 'This is a test content for token calculation.';
+        const expectedTokens = Math.ceil(content.length / 4);
+
+        const item = {
+            type: 'file',
+            path: '/test/file.txt',
+            content: content,
+        };
+
+        contextBuffer.add(item);
+        const exported = contextBuffer.export();
+
+        expect(exported[0].tokens).toBe(expectedTokens);
+    });
+
+    test('should trim items when exceeding token limit', () => {
+        // 设置一个小的token限制用于测试
+        const smallContextBuffer = new ContextBuffer();
+        
+        // 添加多个项目直到超过限制
+        for (let i = 0; i < 10; i++) {
+            const item = {
+                type: 'file',
+                path: '/test/file' + i + '.txt',
+                content: 'A'.repeat(5000), // 大量内容以快速达到token限制
+            };
+            smallContextBuffer.add(item, true); // 绕过限制进行添加
+        }
+
+        // 现在添加一个新项目，不绕过限制，应该触发修剪
+        const newItem = {
+            type: 'file',
+            path: '/test/newfile.txt',
+            content: 'New content',
+        };
+        smallContextBuffer.add(newItem); // 不绕过限制
+
+        // 检查是否修剪了旧项目
+        const items = smallContextBuffer.export();
+        expect(items.length).toBeGreaterThan(0); // 应该仍有项目
+    });
+
+    test('should clear all items', () => {
+        const item = {
+            type: 'file',
+            path: '/test/file.txt',
+            content: 'This is a test file content.',
+        };
+
+        contextBuffer.add(item);
+        expect(contextBuffer.isEmpty()).toBe(false);
+
+        contextBuffer.clear();
+        expect(contextBuffer.isEmpty()).toBe(true);
+        expect(contextBuffer.export().length).toBe(0);
+    });
+
+    test('should list items with correct format', () => {
+        const item = {
+            type: 'file',
+            path: '/test/file.txt',
+            content: 'This is a test file content.',
+        };
+
+        contextBuffer.add(item);
+        const listed = contextBuffer.list();
+
+        expect(listed.length).toBe(1);
+        expect(listed[0].index).toBe(1);
+        expect(listed[0].type).toBe('file');
+        expect(listed[0].path).toBe('/test/file.txt');
+    });
+
+    test('should build prompt with context', () => {
+        const item = {
+            type: 'file',
+            path: '/test/file.txt',
+            content: 'This is the context content.',
+            alias: 'Test File'
+        };
+
+        contextBuffer.add(item);
+        const prompt = contextBuffer.buildPrompt('What is in the file?');
+
+        expect(prompt).toContain('知识上下文');
+        expect(prompt).toContain('Test File');
+        expect(prompt).toContain('/test/file.txt');
+        expect(prompt).toContain('This is the context content.');
+        expect(prompt).toContain('What is in the file?');
+    });
+
+    test('should return userInput when no context', () => {
+        const prompt = contextBuffer.buildPrompt('What is in the file?');
+
+        expect(prompt).toContain('What is in the file?');
+        expect(prompt).not.toContain('知识上下文');
+    });
+
+    test('should import items correctly', () => {
+        const items = [{
+            type: 'file',
+            path: '/imported/file.txt',
+            content: 'Imported content',
+            tokens: 10
+        }];
+
+        contextBuffer.import(items);
+        const exported = contextBuffer.export();
+
+        expect(exported.length).toBe(1);
+        expect(exported[0].path).toBe('/imported/file.txt');
+        expect(exported[0].content).toBe('Imported content');
+    });
+});
 
 ````
 
@@ -6073,6 +7841,42 @@ console.log('Total:', getVisualLineCount('a'.repeat(25)));
 
 ````
 
+## 📄 `test_context.sh`
+
+````bash
+#!/bin/bash
+# 测试上下文添加和查看功能
+
+echo "=== 测试 1: 清空现有上下文 ==="
+./dist/cli.js ai ":clear"
+
+echo ""
+echo "=== 测试 2: 添加单个文件 ==="
+echo "@ src/commands/contextBuffer.ts" | ./dist/cli.js ai
+
+echo ""
+echo "=== 测试 3: 查看上下文列表 ==="
+echo ":ls" | ./dist/cli.js ai
+
+echo ""
+echo "=== 测试 4: 查看上下文内容 ==="
+echo ":cat 1" | ./dist/cli.js ai
+
+echo ""
+echo "=== 测试 5: 直接查看持久化文件 ==="
+echo "--- .ai/context.json 内容 (前50行) ---"
+head -50 .ai/context.json
+
+echo ""
+echo "=== 测试 6: 添加目录 ==="
+echo "# src/utils" | ./dist/cli.js ai
+
+echo ""
+echo "=== 测试 7: 再次查看列表 ==="
+echo ":ls" | ./dist/cli.js ai
+
+````
+
 ## 📄 `tsconfig.json`
 
 ````json
@@ -6270,7 +8074,7 @@ accountType: "free"
 ````json
 {
   "aiProxyUrl": "https://aiproxy.want.biz/v1/chat/completions",
-  "defaultModel": "gemini-2.5-flash",
+  "defaultModel": "Assistant",
   "accountType": "paid",
   "models": [
     {
