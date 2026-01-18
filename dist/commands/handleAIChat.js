@@ -51,6 +51,7 @@ const util_1 = require("util");
 const contextBuffer_1 = require("./contextBuffer");
 const contextStorage_1 = require("./contextStorage");
 const gitContext_1 = require("./gitContext");
+const shellCompletions_1 = require("./shellCompletions");
 const execAsync = (0, util_1.promisify)(child_process_1.exec);
 function findCommonPrefix(strings) {
     if (strings.length === 0)
@@ -217,64 +218,13 @@ async function handleAIChat(initialQuestion, model) {
         input: process.stdin,
         output: process.stdout,
         terminal: true,
-        completer: (line) => {
-            if (!line.startsWith('@') && !line.startsWith('#')) {
-                return [[], line];
-            }
-            const isFileMode = line.startsWith('@');
-            const prefix = isFileMode ? '@ ' : '# ';
-            const inputAfterPrefix = line.substring(prefix.length);
-            if (!inputAfterPrefix) {
-                const currentDir = process.cwd();
-                const files = fs_1.default.readdirSync(currentDir);
-                const completions = isFileMode
-                    ? files.filter(f => {
-                        const fullPath = path_1.default.join(currentDir, f);
-                        return fs_1.default.statSync(fullPath).isFile();
-                    })
-                    : files.filter(f => {
-                        const fullPath = path_1.default.join(currentDir, f);
-                        return fs_1.default.statSync(fullPath).isDirectory();
-                    });
-                return [completions.map(c => prefix + c), prefix];
-            }
-            const parts = inputAfterPrefix.split(path_1.default.sep);
-            const partialName = parts[parts.length - 1];
-            const basePath = parts.slice(0, -1).join(path_1.default.sep);
-            const searchPath = basePath ? path_1.default.resolve(basePath) : process.cwd();
-            if (!fs_1.default.existsSync(searchPath) || !fs_1.default.statSync(searchPath).isDirectory()) {
-                return [[], line];
-            }
-            const files = fs_1.default.readdirSync(searchPath);
-            const completions = files
-                .filter(f => {
-                const fullPath = path_1.default.join(searchPath, f);
-                const isDir = fs_1.default.statSync(fullPath).isDirectory();
-                const matchesPrefix = f.toLowerCase().startsWith(partialName.toLowerCase());
-                if (isFileMode) {
-                    return matchesPrefix && !isDir;
-                }
-                else {
-                    return matchesPrefix && isDir;
-                }
-            })
-                .map(f => {
-                const fullPath = path_1.default.join(searchPath, f);
-                const isDir = fs_1.default.statSync(fullPath).isDirectory();
-                return isDir ? f + path_1.default.sep : f;
-            });
-            const commonPrefix = completions.length === 1
-                ? completions[0]
-                : findCommonPrefix(completions);
-            const newLine = basePath
-                ? prefix + basePath + path_1.default.sep + commonPrefix
-                : prefix + commonPrefix;
-            return [completions.map(c => {
-                    const fullCompletion = basePath
-                        ? prefix + basePath + path_1.default.sep + c
-                        : prefix + c;
-                    return fullCompletion;
-                }), completions.length === 1 ? newLine : line];
+        completer: (0, shellCompletions_1.createCompleter)(),
+        historySize: 1000
+    });
+    readline_1.default.emitKeypressEvents(process.stdin);
+    process.stdin.on('keypress', (str, key) => {
+        if (key.ctrl && key.name === 'r') {
+            rl.write(null, { ctrl: true, name: 'r' });
         }
     });
     // Helper to wrap rl.question in a Promise
@@ -486,8 +436,39 @@ async function handleAIChat(initialQuestion, model) {
                 console.log(chalk_1.default.yellow('🧹 上下文已清空（含持久化）\n'));
                 continue;
             }
+            if (trimmed === ':plugins') {
+                const plugins = (0, shellCompletions_1.listPlugins)();
+                if (plugins.length === 0) {
+                    console.log(chalk_1.default.gray('📭 当前没有加载的插件\n'));
+                }
+                else {
+                    console.log(chalk_1.default.cyan('已加载的插件:\n'));
+                    plugins.forEach(p => console.log(chalk_1.default.green(`  - ${p}`)));
+                    console.log();
+                }
+                continue;
+            }
             if (!trimmed)
                 continue;
+            const mode = (0, shellCompletions_1.detectMode)(trimmed);
+            if (mode === 'command') {
+                rl.pause();
+                try {
+                    await (0, shellCompletions_1.executeCommand)(trimmed, (code) => {
+                        if (code !== 0) {
+                            console.log(chalk_1.default.red(`\n[command exited with code ${code}]\n`));
+                        }
+                    });
+                }
+                catch (err) {
+                    const message = err instanceof Error ? err.message : String(err);
+                    console.error(chalk_1.default.red(`\n[Command Error]: ${message}`));
+                }
+                finally {
+                    rl.resume();
+                }
+                continue;
+            }
             let finalPrompt = contextBuffer.isEmpty()
                 ? trimmed
                 : contextBuffer.buildPrompt(trimmed);
