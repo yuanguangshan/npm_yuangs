@@ -14,7 +14,7 @@
   ],
   "scripts": {
     "dev": "ts-node src/cli.ts",
-    "build": "tsc",
+    "build": "tsc && chmod +x dist/cli.js",
     "prepare": "npm run build",
     "prepublishOnly": "npm run build",
     "test": "jest",
