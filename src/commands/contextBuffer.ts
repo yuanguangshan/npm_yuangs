@@ -59,20 +59,26 @@ export class ContextBuffer {
     }
 
     buildPrompt(userInput: string): string {
+        if (this.isEmpty()) return userInput;
+
         const contextBlock = this.items.map(item => {
             const title = item.alias
-                ? `${item.type}：${item.alias} (${item.path})`
-                : `${item.type}：${item.path}`;
+                ? `[Context Item] ${item.type}: ${item.alias} (${item.path})`
+                : `[Context Item] ${item.type}: ${item.path}`;
 
             const body = item.summary ?? item.content;
 
-            return `${title}\n\`\`\`\n${body}\n\`\`\``;
+            return `${title}\n---\n${body}\n---`;
         }).join('\n\n');
 
         return `
-你正在基于以下上下文回答问题：
+# 知识上下文 (Knowledge Context)
+你目前的会话已加载以下参考资料。在回答用户问题时，请优先参考这些内容：
 
 ${contextBlock}
+
+# 任务说明
+基于上述提供的上下文（如果有），回答用户的问题。如果上下文中包含源码，请将其视为你当前的“真理来源”。
 
 用户问题：
 ${userInput}

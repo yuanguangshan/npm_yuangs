@@ -387,11 +387,14 @@ ${stderr}
                         continue;
                     }
                     const contentMap = (0, fileReader_1.readFilesContent)(filePaths);
-                    const prompt = (0, fileReader_1.buildPromptWithFileContent)(`目录: ${dirPath}\n找到 ${filePaths.length} 个文件`, filePaths.map(p => path_1.default.relative(process.cwd(), p)), contentMap, '');
+                    // 构造简洁的内容格式，避免嵌套反引号
+                    const combinedContent = Array.from(contentMap.entries())
+                        .map(([p, c]) => `--- File: ${p} ---\n${c}`)
+                        .join('\n\n');
                     contextBuffer.add({
                         type: 'directory',
                         path: dirPath,
-                        content: prompt
+                        content: combinedContent
                     });
                     await (0, contextStorage_1.saveContext)(contextBuffer.export());
                     console.log(chalk_1.default.green(`✅ 已加入目录上下文: ${dirPath}\n`));
@@ -518,8 +521,8 @@ ${finalPrompt}
             try {
                 rl.pause();
                 await askOnceStream(finalPrompt, model);
-                contextBuffer.clear();
-                await (0, contextStorage_1.saveContext)([]);
+                // IMPORTANT: Removed auto-clearing of contextBuffer.
+                // Keeping it for follow-up questions until :clear is called.
             }
             catch (err) {
                 const message = err instanceof Error ? err.message : String(err);

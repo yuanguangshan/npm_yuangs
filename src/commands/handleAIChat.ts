@@ -461,17 +461,16 @@ ${stderr}
                     }
 
                     const contentMap = readFilesContent(filePaths);
-                    const prompt = buildPromptWithFileContent(
-                        `目录: ${dirPath}\n找到 ${filePaths.length} 个文件`,
-                        filePaths.map(p => path.relative(process.cwd(), p)),
-                        contentMap,
-                        ''
-                    );
+                    
+                    // 构造简洁的内容格式，避免嵌套反引号
+                    const combinedContent = Array.from(contentMap.entries())
+                        .map(([p, c]) => `--- File: ${p} ---\n${c}`)
+                        .join('\n\n');
 
                     contextBuffer.add({
                         type: 'directory',
                         path: dirPath,
-                        content: prompt
+                        content: combinedContent
                     });
 
                     await saveContext(contextBuffer.export());
@@ -604,8 +603,8 @@ ${finalPrompt}
                 rl.pause();
                 await askOnceStream(finalPrompt, model);
 
-                contextBuffer.clear();
-                await saveContext([]);
+                // IMPORTANT: Removed auto-clearing of contextBuffer.
+                // Keeping it for follow-up questions until :clear is called.
             } catch (err: unknown) {
                 const message = err instanceof Error ? err.message : String(err);
                 console.error(chalk.red(`\n[AI execution error]: ${message}`));
