@@ -1,783 +1,1201 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
-    <title>ULW Minecraft 2.0 - Survival</title>
+    <title>ULW Minecraft 3.0 - Survival Complete</title>
     <style>
-        body { margin: 0; overflow: hidden; font-family: 'Minecraft', 'Courier New', monospace; user-select: none; background: #000; }
-        
-        /* 十字准星 */
-        #crosshair {
-            position: absolute; top: 50%; left: 50%; width: 24px; height: 24px;
-            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M12 0v24M0 12h24" stroke="rgba(255,255,255,0.8)" stroke-width="2"/></svg>') no-repeat center;
-            transform: translate(-50%, -50%); pointer-events: none; z-index: 10;
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Minecraft', monospace;
+            user-select: none;
+            background: #000;
         }
 
-        /* UI 层 */
-        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-        
-        /* 状态栏 */
-        #stats { position: absolute; top: 10px; left: 10px; color: white; text-shadow: 2px 2px 0 #000; font-size: 14px; }
+        /* UI 覆盖层 */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        /* 准星 */
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            clip-path: polygon(40% 0, 60% 0, 60% 40%, 100% 40%, 100% 60%, 60% 60%, 60% 100%, 40% 100%, 40% 60%, 0 60%, 0 40%, 40% 40%);
+            transform: translate(-50%, -50%);
+            mix-blend-mode: difference;
+        }
+
+        /* 状态条 (血量/饥饿) */
+        #status-bars {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 200px;
+            width: 600px;
+            justify-content: center;
+        }
+
+        .bar-container {
+            display: flex;
+            flex-direction: row-reverse;
+            gap: 2px;
+        }
+
+        /* 居中布局 */
+        .heart,
+        .food {
+            width: 20px;
+            height: 20px;
+            background-size: contain;
+            display: inline-block;
+        }
+
+        .heart {
+            background-color: red;
+            mask: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>') no-repeat center;
+            -webkit-mask: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>') no-repeat center;
+        }
+
+        .food {
+            background-color: orange;
+            mask: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10"/></svg>') no-repeat center;
+            -webkit-mask: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10"/></svg>') no-repeat center;
+        }
 
         /* 快捷栏 */
-        #hotbar-container {
-            position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
-            display: flex; align-items: center; gap: 10px; pointer-events: auto;
-        }
         #hotbar {
-            display: flex; gap: 4px; background: rgba(0,0,0,0.6); padding: 4px; border: 2px solid #333;
-        }
-        #inventory-btn {
-            width: 40px; height: 40px; background: #4caf50; border: 2px solid #fff; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 4px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px;
+            border-radius: 4px;
+            pointer-events: auto;
         }
 
         .slot {
-            width: 50px; height: 50px; border: 2px solid #555; background: #8b8b8b;
-            display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer;
+            width: 50px;
+            height: 50px;
+            background: #333;
+            border: 2px solid #555;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .slot.active {
+            border-color: white;
+            transform: scale(1.1);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        .slot img {
+            width: 32px;
+            height: 32px;
             image-rendering: pixelated;
         }
-        .slot.active { border-color: #fff; box-shadow: 0 0 5px white; }
-        .slot img { width: 32px; height: 32px; image-rendering: pixelated; }
-        .slot .count { position: absolute; bottom: 2px; right: 2px; color: white; font-size: 12px; text-shadow: 1px 1px 0 #000; }
 
-        /* 大背包界面 */
+        .slot .count {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            text-shadow: 1px 1px 0 #000;
+        }
+
+        /* 背包/合成 UI */
         #inventory-screen {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.85); padding: 20px; border-radius: 5px; display: none; pointer-events: auto; color: white;
-            width: 600px; height: 500px; border: 4px solid #555;
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 700px;
+            height: 500px;
+            background: #c6c6c6;
+            border: 4px solid #333;
+            pointer-events: auto;
+            box-shadow: 0 0 20px #000;
+            padding: 20px;
+            font-family: monospace;
         }
-        #inventory-grid {
-            display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; margin-top: 10px; height: 300px; overflow-y: auto;
+
+        h3 {
+            margin: 0 0 10px 0;
+            color: #333;
         }
-        #crafting-area {
-            border-bottom: 2px solid #555; padding-bottom: 10px; margin-bottom: 10px; display: flex; gap: 10px; overflow-x: auto;
+
+        #craft-list {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #777;
+            margin-bottom: 10px;
         }
-        .craft-btn {
-            background: #333; color: #ddd; border: 1px solid #777; padding: 5px 10px; cursor: pointer; min-width: 80px;
+
+        .craft-item {
+            background: #8b8b8b;
+            padding: 5px;
+            border: 2px solid #555;
+            cursor: pointer;
+            min-width: 60px;
+            text-align: center;
+            font-size: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
-        .craft-btn:hover { background: #555; }
-        
-        /* 提示信息 */
-        #message {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -100px);
-            color: yellow; text-shadow: 2px 2px 0 #000; font-size: 20px; opacity: 0; transition: opacity 0.5s;
+
+        .craft-item:hover {
+            background: #a0a0a0;
+        }
+
+        .craft-item.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            filter: grayscale(1);
+        }
+
+        #inv-grid {
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            gap: 5px;
+            height: 300px;
+            overflow-y: auto;
+            background: #8b8b8b;
+            padding: 5px;
+            border: inset 2px;
+        }
+
+        #damage-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: red;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.1s;
+        }
+
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            text-shadow: 1px 1px 0 #000;
+        }
+
+        /* 简单图标生成canvas隐藏 */
+        #texture-gen {
+            display: none;
         }
     </style>
 </head>
+
 <body>
 
-<div id="crosshair"></div>
-<div id="message"></div>
-<div id="ui-layer">
-    <div id="stats">FPS: 60 | Y: 64</div>
-    
-    <div id="hotbar-container">
+    <div id="damage-overlay"></div>
+    <div id="crosshair"></div>
+    <div id="ui-layer">
+        <div id="info">FPS: 60</div>
+        <div id="status-bars">
+            <div id="health-bar" class="bar-container"></div>
+            <div style="flex:1"></div>
+            <div id="food-bar" class="bar-container"></div>
+        </div>
         <div id="hotbar"></div>
-        <div id="inventory-btn" onclick="toggleInventory()">背包</div>
+        <div id="inventory-screen">
+            <h3>合成 (点击合成)</h3>
+            <div id="craft-list"></div>
+            <h3>背包 (点击选中 -> 点击快捷栏装备)</h3>
+            <div id="inv-grid"></div>
+            <button onclick="toggleInventory()" style="margin-top:10px; padding:5px 20px;">关闭 (E)</button>
+        </div>
     </div>
 
-    <div id="inventory-screen">
-        <h3>合成区</h3>
-        <div id="crafting-area"></div>
-        <h3>背包 (64格) - 点击物品再点击快捷栏可装备</h3>
-        <div id="inventory-grid"></div>
-    </div>
-</div>
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
 
-<!-- Three.js & Plugins -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
+    <script>
+        // --- 游戏配置 ---
+        const CONF = {
+            CHUNK_SIZE: 16,
+            RENDER_DIST: 3,
+            WORLD_HEIGHT: 256, // 增加到256层，建立深层地下世界
+            SURFACE_LEVEL: 128,
+            WATER_LEVEL: 124,
+            CAVE_START: 80
+        };
 
-<script>
-    // --- 核心常量配置 ---
-    const RENDER_DISTANCE = 3; 
-    const CHUNK_SIZE = 16;
-    const WORLD_HEIGHT = 64; 
-    const WATER_LEVEL = 12;
-    
-    // 方块ID定义
-    const B = {
-        AIR: 0,
-        GRASS: 1, DIRT: 2, STONE: 3, BEDROCK: 4,
-        LOG: 5, LEAVES: 6, WATER: 7, SAND: 8,
-        COAL_ORE: 9, IRON_ORE: 10, DIAMOND_ORE: 11, LAVA: 12,
-        PLANKS: 13, CRAFTING_TABLE: 14, COBBLESTONE: 15,
-        SWORD: 100, STICK: 101 // 物品ID
-    };
+        // --- ID定义 ---
+        const B = {
+            AIR: 0,
+            GRASS: 1, DIRT: 2, STONE: 3, BEDROCK: 4,
+            LOG: 5, LEAVES: 6, PLANKS: 7,
+            COAL_ORE: 8, IRON_ORE: 9, DIAMOND_ORE: 10,
+            WATER: 11, LAVA: 12, SAND: 13,
+            CRAFTING_TABLE: 14, COBBLESTONE: 15, BRICK: 16,
+            // 物品ID
+            MEAT: 100, COOKED_MEAT: 101, SWORD: 102
+        };
 
-    // 方块颜色/材质定义 (程序化生成贴图)
-    const COLORS = {
-        [B.GRASS]: '#567d46', [B.DIRT]: '#5d4037', [B.STONE]: '#757575', [B.BEDROCK]: '#000000',
-        [B.LOG]: '#3e2723', [B.LEAVES]: '#2e7d32', [B.WATER]: '#2196f3', [B.SAND]: '#fff59d',
-        [B.COAL_ORE]: '#212121', [B.IRON_ORE]: '#d7ccc8', [B.DIAMOND_ORE]: '#00e5ff', [B.LAVA]: '#ff3d00',
-        [B.PLANKS]: '#bcaaa4', [B.CRAFTING_TABLE]: '#8d6e63', [B.COBBLESTONE]: '#616161',
-        [B.SWORD]: '#4caf50', [B.STICK]: '#8d6e63'
-    };
+        // --- 资源生成 ---
+        const TEX_SIZE = 64;
+        const textures = {};
+        const iconUrls = {};
 
-    // --- 资源生成器 ---
-    function createTexture(color, type) {
-        const canvas = document.createElement('canvas');
-        canvas.width = 64; canvas.height = 64;
-        const ctx = canvas.getContext('2d');
+        function genColor(hex) { return hex; }
         
-        // 基础填充
-        ctx.fillStyle = color;
-        ctx.fillRect(0,0,64,64);
-        
-        // 杂色纹理
-        for(let i=0; i<300; i++) {
-            ctx.fillStyle = Math.random()>0.5 ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
-            ctx.fillRect(Math.floor(Math.random()*64), Math.floor(Math.random()*64), 2, 2);
+        // 调整颜色的辅助函数
+        function adjustColor(hex, amount) {
+            // 解析hex颜色并调整亮度
+            const num = parseInt(hex.replace('#', ''), 16);
+            const r = Math.min(255, Math.max(0, (num >> 16) + amount));
+            const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + amount));
+            const b = Math.min(255, Math.max(0, (num & 0x0000FF) + amount));
+            return `rgb(${r},${g},${b})`;
         }
 
-        // 特殊纹理处理
-        if(type === 'ore') {
-            ctx.fillStyle = color; // 矿点
-            for(let i=0; i<8; i++) {
-                let x = Math.random()*50, y = Math.random()*50;
-                ctx.fillRect(x, y, 8, 8);
+        // 增强的方块纹理生成
+        function createTexture(color, type) {
+            const c = document.createElement('canvas');
+            c.width = c.height = TEX_SIZE;
+            const ctx = c.getContext('2d'); 
+            
+            // 基础渐变（增加立体感）
+            const gradient = ctx.createLinearGradient(0, 0, 0, TEX_SIZE);
+            gradient.addColorStop(0, color);
+            gradient.addColorStop(1, adjustColor(color, -30)); // 底部更深
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, TEX_SIZE, TEX_SIZE); 
+            
+            // 细致噪声纹理
+            for (let i = 0; i < 500; i++) {
+                const shade = Math.random() > 0.5 ? 1.1 : 0.9;
+                ctx.fillStyle = `rgba(0,0,0,${Math.random() * 0.15})`;
+                const s = Math.random() * 4 + 1;
+                ctx.fillRect(Math.random() * TEX_SIZE, Math.random() * TEX_SIZE, s, s);
             }
-            ctx.fillStyle = '#666'; // 石头底色需混合(简化直接覆盖)
-        }
-        if (type === 'log') {
+            
+            // 边缘阴影（增强立体感）
             ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-            ctx.lineWidth = 4;
-            for(let i=0; i<64; i+=8) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,64); ctx.stroke(); }
+            ctx.lineWidth = 2;
+            ctx.strokeRect(1, 1, TEX_SIZE - 2, TEX_SIZE - 2);
+
+            if (type === 'ore') {
+                // 矿石亮点效果
+                ctx.fillStyle = adjustColor(color, 50); // 更亮的矿点
+                for (let i = 0; i < 12; i++) {
+                    const ox = Math.random() * 54 + 5;
+                    const oy = Math.random() * 54 + 5;
+                    const size = Math.random() * 4 + 2;
+                    ctx.beginPath();
+                    ctx.arc(ox, oy, size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            if (type === 'log') {
+                // 木纹效果
+                ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+                ctx.lineWidth = 3;
+                for (let i = 8; i < TEX_SIZE; i += 8) {
+                    ctx.beginPath();
+                    ctx.moveTo(i, 0);
+                    ctx.quadraticCurveTo(i + 2, TEX_SIZE / 2, i, TEX_SIZE);
+                    ctx.stroke();
+                }
+            }
+            if (type === 'brick') {
+                ctx.strokeStyle = '#ccc'; ctx.lineWidth = 2;
+                ctx.strokeRect(0, 0, TEX_SIZE, TEX_SIZE / 2);
+                ctx.strokeRect(0, TEX_SIZE / 2, TEX_SIZE, TEX_SIZE / 2);
+            }
+            if (type === 'leaves') {
+                // 树叶纹理
+                ctx.fillStyle = 'rgba(0,50,0,0.4)';
+                for (let i = 0; i < 100; i++) {
+                    ctx.fillRect(Math.random() * 60, Math.random() * 60, 4, 4);
+                }
+            }
+
+            iconUrls[color] = c.toDataURL(); // 保存图标用于UI
+            const tex = new THREE.CanvasTexture(c);
+            tex.magFilter = THREE.NearestFilter;
+            return tex;
         }
 
-        const tex = new THREE.CanvasTexture(canvas);
-        tex.magFilter = THREE.NearestFilter;
-        return tex;
-    }
+        // 材质库
+        const mats = {};
+        const cols = {
+            [B.GRASS]: '#559040', [B.DIRT]: '#5d4037', [B.STONE]: '#757575', [B.BEDROCK]: '#000',
+            [B.LOG]: '#4e342e', [B.LEAVES]: '#2e7d32', [B.PLANKS]: '#d7ccc8',
+            [B.WATER]: '#2196f3', [B.LAVA]: '#ff5722', [B.SAND]: '#fff9c4',
+            [B.COAL_ORE]: '#212121', [B.IRON_ORE]: '#bcaaa4', [B.DIAMOND_ORE]: '#00bcd4',
+            [B.CRAFTING_TABLE]: '#8d6e63', [B.COBBLESTONE]: '#616161', [B.BRICK]: '#8d6e63',
+            [B.MEAT]: '#e57373', [B.SWORD]: '#4caf50'
+        };
 
-    const materials = {};
-    for (let k in B) {
-        const id = B[k];
-        if (id === 0) continue;
-        const isTransparent = (id === B.WATER || id === B.LEAVES);
-        const isEmissive = (id === B.LAVA);
+        for (let k in B) {
+            const id = B[k];
+            if (id === 0 || id >= 100) continue;
+            const col = cols[id] || '#ff00ff';
+            const isFluid = (id === B.WATER || id === B.LAVA);
+            const isLeaf = id === B.LEAVES;
+
+            mats[id] = new THREE.MeshLambertMaterial({
+                map: createTexture(col, k.includes('ORE') ? 'ore' : (k === 'LOG' ? 'log' : (k === 'BRICK' ? 'brick' : 'base'))),
+                transparent: isFluid || isLeaf,
+                opacity: isFluid ? 0.7 : 1.0,
+                color: (id === B.GRASS) ? 0xaaaaaa : 0xffffff // 简单的色调调整
+            });
+            if (id === B.LAVA) mats[id].emissive = 0xff0000;
+
+            // 记录图标
+            if (cols[id]) iconUrls[id] = iconUrls[cols[id]];
+        }
+        // 物品图标
+        iconUrls[B.MEAT] = iconUrls[cols[B.MEAT]]; // 简化
+        iconUrls[B.SWORD] = iconUrls[cols[B.SWORD]];
+
+        // --- 引擎初始化 ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB);
+        scene.fog = new THREE.Fog(0x87CEEB, 20, 50);
+
+        const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.shadowMap.autoUpdate = false;
+        document.body.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        scene.add(ambientLight);
         
-        materials[id] = new THREE.MeshLambertMaterial({
-            map: createTexture(COLORS[id], (id>=9 && id<=11) ? 'ore' : (id===B.LOG?'log':'standard')),
-            transparent: isTransparent,
-            opacity: isTransparent ? (id===B.WATER ? 0.6 : 0.8) : 1.0,
-            side: THREE.FrontSide,
-            emissive: isEmissive ? 0xff4400 : 0x000000,
-            emissiveIntensity: isEmissive ? 0.8 : 0
-        });
-    }
-    // 剑的材质
-    materials[B.SWORD] = new THREE.MeshBasicMaterial({ color: COLORS[B.SWORD] });
+        // 半球光（增强环境光照）
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+        scene.add(hemiLight);
+        
+        // 方向光（太阳光，带阴影）
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(50, 200, 50);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.camera.near = 0.5;
+        dirLight.shadow.camera.far = 500;
+        dirLight.shadow.camera.left = -100;
+        dirLight.shadow.camera.right = 100;
+        dirLight.shadow.camera.top = 100;
+        dirLight.shadow.camera.bottom = -100;
+        scene.add(dirLight);
 
-    // --- 游戏引擎初始化 ---
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87CEEB);
-    scene.fog = new THREE.Fog(0x87CEEB, 20, RENDER_DISTANCE * CHUNK_SIZE - 5);
+        // --- 数据 ---
+        const world = {}; // "x,y,z" -> ID
+        const chunks = {};
+        const simplex = new SimplexNoise();
 
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ antialias: false });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = true;
-    document.body.appendChild(renderer.domElement);
+        // 玩家状态
+        const player = {
+            hp: 20, maxHp: 20,
+            food: 20, maxFood: 20,
+            inv: new Array(36).fill(null),
+            hotbar: [null, null, null, null, null], // 指向inv的索引
+            selSlot: 0,
+            handObj: null,
+            mode: 'survival'
+        };
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-    scene.add(ambientLight);
-    const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    sunLight.position.set(100, 200, 100);
-    sunLight.castShadow = true;
-    scene.add(sunLight);
+        // 手部模型
+        const handGroup = new THREE.Group();
+        camera.add(handGroup);
+        scene.add(camera);
 
-    // --- 数据结构 ---
-    const worldData = {}; // "x,y,z" -> blockId
-    const chunks = {};    // "cx,cz" -> MeshGroup
-    const simplex = new SimplexNoise();
-    
-    // 玩家数据
-    const player = {
-        inventory: new Array(64).fill(null), // {id, count}
-        hotbar: [null, null, null, null, null], // 存的是 inventory 的索引
-        selectedSlot: 0,
-        hp: 20
-    };
+        // 空手(肉色手臂)
+        const armGeo = new THREE.BoxGeometry(0.3, 0.3, 1.0);
+        const armMat = new THREE.MeshLambertMaterial({ color: 0xeebb99 });
+        const armMesh = new THREE.Mesh(armGeo, armMat);
+        armMesh.position.set(0.4, -0.4, -0.5);
+        handGroup.add(armMesh);
 
-    // 手持模型
-    const handGroup = new THREE.Group();
-    camera.add(handGroup);
-    scene.add(camera);
-    
-    const handMesh = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), materials[B.DIRT]);
-    handMesh.position.set(0.5, -0.4, -0.8);
-    handGroup.add(handMesh);
-    
-    const swordMesh = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.8, 0.1), materials[B.SWORD]);
-    swordMesh.position.set(0.6, -0.3, -0.8);
-    swordMesh.rotation.x = Math.PI / 4;
-    swordMesh.visible = false;
-    handGroup.add(swordMesh);
+        // 物品模型 holder
+        const itemMesh = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), mats[B.DIRT]);
+        itemMesh.position.set(0.4, -0.3, -0.8);
+        itemMesh.visible = false;
+        handGroup.add(itemMesh);
 
-    // --- 世界生成算法 ---
-    function generateWorld(cx, cz) {
-        for (let x = 0; x < CHUNK_SIZE; x++) {
-            for (let z = 0; z < CHUNK_SIZE; z++) {
-                const wx = cx * CHUNK_SIZE + x;
-                const wz = cz * CHUNK_SIZE + z;
-                
-                // 地形噪声
-                let n = simplex.noise2D(wx / 50, wz / 50);
-                let height = Math.floor(n * 10 + 20); // 基础高度 10-30
+        // --- 世界生成 ---
+        function getHeight(x, z) {
+            let n = simplex.noise2D(x / 60, z / 60);
+            return Math.floor(n * 30 + CONF.SURFACE_LEVEL);
+        }
 
-                // 填下方块
-                for (let y = 0; y < WORLD_HEIGHT; y++) {
-                    let type = B.AIR;
+        function genChunk(cx, cz) {
+            const updates = {};
+            let hasVillage = Math.random() > 0.95; // 5%概率生成房子
+            let villageY = 0;
+
+            for (let x = 0; x < 16; x++) {
+                for (let z = 0; z < 16; z++) {
+                    const wx = cx * 16 + x, wz = cz * 16 + z;
+                    const h = getHeight(wx, wz);
+                    if (x === 8 && z === 8) villageY = h; 
                     
-                    if (y === 0) type = B.BEDROCK;
-                    else if (y < height - 3) {
-                        // 矿石生成
-                        if (Math.random() > 0.99) type = B.DIAMOND_ORE;
-                        else if (Math.random() > 0.98) type = B.IRON_ORE;
-                        else if (Math.random() > 0.96) type = B.COAL_ORE;
-                        else type = B.STONE;
+                    // 基础地形生成
+                    for (let y = 0; y <= CONF.WORLD_HEIGHT; y++) {
+                        let id = B.AIR;
+                        if (y === 0) id = B.BEDROCK;
+                        else if (y < h - 4) {
+                            // 地下层，后续洞穴生成会雕刻
+                            id = B.STONE;
+                        }
+                        else if (y < h) id = B.DIRT;
+                        else if (y === h) id = (h <= CONF.WATER_LEVEL) ? B.SAND : B.GRASS;
+                        else if (y <= CONF.WATER_LEVEL) id = B.WATER;
+
+                        if (id !== B.AIR) {
+                            world[`${wx},${y},${wz}`] = id;
+                            updates[`${wx},${y},${wz}`] = id;
+                        }
+                    }
+
+                    // 生成洞穴系统 (3D噪声)
+            for (let x = 0; x < 16; x++) {
+                for (let z = 0; z < 16; z++) {
+                    const wx = cx * 16 + x, wz = cz * 16 + z;
+                    
+                    for (let y = CONF.CAVE_START; y < CONF.WORLD_HEIGHT - 10; y++) {
+                        // 多层噪声叠加
+                        let caveNoise = 0;
+                        caveNoise += simplex.noise3D(wx / 30, y / 30, wz / 30) * 1.0;
+                        caveNoise += simplex.noise3D(wx / 60, y / 60, wz / 60) * 0.5;
+                        caveNoise += simplex.noise3D(wx / 120, y / 120, wz / 120) * 0.25;
                         
-                        // 岩浆池
-                        if (y < 8 && simplex.noise3D(wx/10, y/10, wz/10) > 0.6) type = B.LAVA;
-                    } 
-                    else if (y < height) type = B.DIRT;
-                    else if (y === height) type = (height <= WATER_LEVEL + 1) ? B.SAND : B.GRASS;
-                    else if (y <= WATER_LEVEL) type = B.WATER;
-
-                    if (type !== B.AIR) worldData[`${wx},${y},${wz}`] = type;
-                }
-
-                // 树木生成 (森林噪声)
-                const forestNoise = simplex.noise2D(wx/200, wz/200);
-                if (height > WATER_LEVEL && forestNoise > 0.3) {
-                    if (Math.random() > 0.95) createTree(wx, height + 1, wz);
+                        // 雕刻洞穴
+                        if (caveNoise > 0.6) {
+                            world[`${wx},${y},${wz}`] = B.AIR;
+                        }
+                    }
                 }
             }
-        }
-    }
+            
+            // 矿石分布 (按深度分布矿脉)
+            const ORE_DISTRIBUTION = {
+                [B.COAL_ORE]: { min: 5, max: 120, freq: 0.02, size: 8 },
+                [B.IRON_ORE]: { min: 5, max: 64, freq: 0.01, size: 6 },
+                [B.GOLD_ORE]: { min: 5, max: 32, freq: 0.005, size: 4 },
+                [B.DIAMOND_ORE]: { min: 5, max: 16, freq: 0.002, size: 3 }
+            };
+            
+            for (let y = CONF.CAVE_START; y < CONF.WORLD_HEIGHT; y++) {
+                for (let oreType in ORE_DISTRIBUTION) {
+                    const ore = ORE_DISTRIBUTION[oreType];
+                    const oreId = parseInt(oreType);
+                    
+                    // 只在有效深度生成
+                    if (y >= ore.min && y <= ore.max && Math.random() < ore.freq) {
+                        // 生成矿脉中心
+                        const veinX = cx * 16 + 8 + Math.floor(Math.random() * 6 - 3);
+                        const veinZ = cz * 16 + 8 + Math.floor(Math.random() * 6 - 3);
+                        
+                        // 放置矿石块
+                        for (let i = 0; i < ore.size; i++) {
+                            const ox = veinX + Math.floor(Math.random() * 6 - 3);
+                            const oz = veinZ + Math.floor(Math.random() * 6 - 3);
+                            const oy = y + Math.floor(Math.random() * 6 - 3);
+                            
+                            const key = `${ox},${oy},${oz}`;
+                            if (world[key] === B.STONE) {
+                                world[key] = oreId;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 地下水/岩浆池
+            for (let y = 10; y < 50; y += 10) {
+                const poolNoise = simplex.noise3D(cx * 0.1, y * 0.1, cz * 0.1);
+                if (poolNoise > 0.7) {
+                    // 生成岩浆池 3x3x2
+                    for (let px = 6; px < 10; px++) {
+                        for (let pz = 6; pz < 10; pz++) {
+                            for (let py = y; py < y + 2; py++) {
+                                const wx = cx * 16 + px;
+                                const wz = cz * 16 + pz;
+                                world[`${wx},${py},${wz}`] = B.LAVA;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 树木生成 (增强版)
+            const forestNoise = simplex.noise2D(wx / 150, wz / 150);
+            const biomeNoise = simplex.noise2D(wx / 300, wz / 300);
+            
+            // 森林判定
+            const isForest = forestNoise > 0.2 && biomeNoise < 0.5;
+            
+            if (h > CONF.WATER_LEVEL + 1 && isForest && Math.random() > 0.85) {
+                // 根据生物群系选择树型
+                let treeType;
+                if (biomeNoise < -0.2) {
+                    // 松木 (寒带)
+                    genTreePine(wx, h + 1, wz);
+                } else if (biomeNoise > 0.2) {
+                    // 桦木 (温暖)
+                    genTreeBirch(wx, h + 1, wz);
+                } else {
+                    // 橡木 (温带)
+                    genTreeOak(wx, h + 1, wz);
+                }
+            }
+                }
+            }
 
-    function createTree(x, y, z) {
-        // 树干
-        for (let i = 0; i < 5; i++) worldData[`${x},${y+i},${z}`] = B.LOG;
-        // 树叶
-        for (let lx = -2; lx <= 2; lx++) {
-            for (let lz = -2; lz <= 2; lz++) {
-                for (let ly = 3; ly <= 5; ly++) {
-                    if (Math.abs(lx) + Math.abs(lz) < 3) {
-                        const k = `${x+lx},${y+ly},${z+lz}`;
-                        if (!worldData[k]) worldData[k] = B.LEAVES;
+            // 简单的房子
+            if (hasVillage && villageY > CONF.WATER_LEVEL) {
+                genHouse(cx * 16 + 8, villageY + 1, cz * 16 + 8);
+                spawnEntity('villager', cx * 16 + 8, villageY + 1, cz * 16 + 8);
+            }
+
+            // 生物生成
+            if (Math.random() > 0.8) spawnEntity('pig', cx * 16 + 8, getHeight(cx * 16 + 8, cz * 16 + 8) + 2, cz * 16 + 8);
+            if (Math.random() > 0.9) spawnEntity('zombie', cx * 16 + 10, getHeight(cx * 16 + 10, cz * 16 + 10) + 2, cz * 16 + 10);
+        }
+
+        function genTree(x, y, z) {
+            for (let i = 0; i < 5; i++) world[`${x},${y + i},${z}`] = B.LOG;
+            for (let lx = -2; lx <= 2; lx++)
+                for (let lz = -2; lz <= 2; lz++)
+                    for (let ly = 3; ly <= 5; ly++)
+                        if (!world[`${x + lx},${y + ly},${z + lz}`]) world[`${x + lx},${y + ly},${z + lz}`] = B.LEAVES;
+        }
+        
+        // 橡木 (圆形树叶)
+        function genTreeOak(x, y, z) {
+            const height = Math.floor(Math.random() * 4) + 4;
+            for (let i = 0; i < height; i++) world[`${x},${y + i},${z}`] = B.LOG;
+            
+            // 圆形树叶
+            for (let ly = height - 2; ly <= height + 1; ly++) {
+                const radius = (ly === height) ? 1 : (ly === height + 1 ? 2 : 3);
+                for (let lx = -radius; lx <= radius; lx++) {
+                    for (let lz = -radius; lz <= radius; lz++) {
+                        if (Math.abs(lx) + Math.abs(lz) <= radius + 1) {
+                            const k = `${x + lx},${y + ly},${z + lz}`;
+                            if (!world[k]) world[k] = B.LEAVES;
+                        }
                     }
                 }
             }
         }
-    }
-
-    // --- 区块渲染 ---
-    function updateChunk(cx, cz) {
-        const key = `${cx},${cz}`;
-        if (chunks[key]) { scene.remove(chunks[key]); delete chunks[key]; }
-
-        const group = new THREE.Group();
-        const geometries = {};
-        const matrices = {};
-
-        for(let x=0; x<CHUNK_SIZE; x++){
-            for(let z=0; z<CHUNK_SIZE; z++){
-                const wx = cx*CHUNK_SIZE+x;
-                const wz = cz*CHUNK_SIZE+z;
-                for(let y=0; y<WORLD_HEIGHT; y++){
-                    const id = worldData[`${wx},${y},${wz}`];
-                    if(id && id !== B.AIR){
-                        // 极简剔除：如果上下左右前后都有不透明方块，则不渲染
-                        // 为性能优化，这里仅做InstancedMesh归类
-                        if(!geometries[id]) { geometries[id] = 0; matrices[id] = []; }
-                        
-                        const matrix = new THREE.Matrix4().makeTranslation(wx, y, wz);
-                        matrices[id].push(matrix);
-                        geometries[id]++;
+        
+        // 桦木 (椭圆形树叶，更高)
+        function genTreeBirch(x, y, z) {
+            const height = Math.floor(Math.random() * 5) + 5;
+            for (let i = 0; i < height; i++) world[`${x},${y + i},${z}`] = B.LOG;
+            
+            // 紧凑椭圆树叶
+            for (let ly = height - 3; ly <= height; ly++) {
+                const radius = (ly === height) ? 1 : 2;
+                for (let lx = -radius; lx <= radius; lx++) {
+                    for (let lz = -1; lz <= 2; lz++) {
+                        const k = `${x + lx},${y + ly},${z + lz}`;
+                        if (!world[k]) world[k] = B.LEAVES;
+                    }
+                }
+            }
+        }
+        
+        // 松木 (金字塔形树叶，最高)
+        function genTreePine(x, y, z) {
+            const height = Math.floor(Math.random() * 5) + 8;
+            for (let i = 0; i < height; i++) world[`${x},${y + i},${z}`] = B.LOG;
+            
+            // 金字塔树叶
+            for (let ly = height; ly <= height + 3; ly++) {
+                const radius = 3 - (ly - height);
+                for (let lx = -radius; lx <= radius; lx++) {
+                    for (let lz = -radius; lz <= radius; lz++) {
+                        if (Math.abs(lx) + Math.abs(lz) <= radius) {
+                            const k = `${x + lx},${y + ly},${z + lz}`;
+                            if (!world[k]) world[k] = B.LEAVES;
+                        }
                     }
                 }
             }
         }
 
-        const baseGeo = new THREE.BoxGeometry(1,1,1);
-        for(let id in geometries){
-            if(materials[id]){
-                const mesh = new THREE.InstancedMesh(baseGeo, materials[id], geometries[id]);
-                const mats = matrices[id];
-                for(let i=0; i<mats.length; i++) mesh.setMatrixAt(i, mats[i]);
-                mesh.castShadow = true; 
+        function genHouse(x, y, z) {
+            for (let dx = -2; dx <= 2; dx++)
+                for (let dz = -2; dz <= 2; dz++)
+                    for (let dy = 0; dy < 4; dy++) {
+                        const k = `${x + dx},${y + dy},${z + dz}`;
+                        if (Math.abs(dx) === 2 || Math.abs(dz) === 2 || dy === 0 || dy === 3) {
+                            if (!(dx === 0 && dz === 2 && dy < 2)) // 门
+                                world[k] = B.PLANKS;
+                        } else world[k] = B.AIR;
+                    }
+        }
+
+        // --- 渲染 ---
+        function updateChunkMesh(cx, cz) {
+            const key = `${cx},${cz}`;
+            if (chunks[key]) { scene.remove(chunks[key]); delete chunks[key]; }
+
+            const group = new THREE.Group();
+            const geometries = {};
+            const matrices = {};
+
+            for (let x = 0; x < 16; x++) {
+                for (let z = 0; z < 16; z++) {
+                    const wx = cx * 16 + x, wz = cz * 16 + z;
+                    // 从底向上渲染，减少遍历
+                    for (let y = 0; y <= CONF.WORLD_HEIGHT + 5; y++) {
+                        const id = world[`${wx},${y},${wz}`];
+                        if (id && id !== B.AIR) {
+                            // 简单剔除: 上下左右前后都有方块则不画
+                            // 为了性能简化，这里只做instancing
+                            if (!geometries[id]) { geometries[id] = 0; matrices[id] = []; }
+                            const m = new THREE.Matrix4().makeTranslation(wx, y, wz);
+                            matrices[id].push(m);
+                            geometries[id]++;
+                        }
+                    }
+                }
+            }
+
+            const box = new THREE.BoxGeometry(1, 1, 1);
+            for (let id in geometries) {
+                if (!mats[id]) continue;
+                const mesh = new THREE.InstancedMesh(box, mats[id], geometries[id]);
+                const arr = matrices[id];
+                for (let i = 0; i < arr.length; i++) mesh.setMatrixAt(i, arr[i]);
+                mesh.castShadow = true;
                 mesh.receiveShadow = true;
                 group.add(mesh);
             }
-        }
-        group.userData = {cx, cz};
-        scene.add(group);
-        chunks[key] = group;
-    }
-
-    // --- 实体系统 (怪物/动物) ---
-    const entities = [];
-    function spawnEntity(type, x, y, z) {
-        const mat = type === 'zombie' ? new THREE.MeshLambertMaterial({color: 0x008800}) : new THREE.MeshLambertMaterial({color: 0xffaaaa});
-        const geo = new THREE.BoxGeometry(0.6, 1.8, 0.6);
-        const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.set(x, y, z);
-        scene.add(mesh);
-        entities.push({ mesh, type, hp: type==='zombie'?20:10, vel: new THREE.Vector3() });
-    }
-
-    // --- 交互与物理 ---
-    const controls = new THREE.PointerLockControls(camera, document.body);
-    const raycaster = new THREE.Raycaster();
-    const vel = new THREE.Vector3();
-    let onGround = false;
-    let isInventoryOpen = false;
-    let selectedInvIndex = -1; // 在背包中选中的物品索引
-
-    // 移动控制
-    const keys = {};
-    document.addEventListener('keydown', e => { keys[e.code] = true; });
-    document.addEventListener('keyup', e => { keys[e.code] = false; });
-    
-    // 快捷键 1-5
-    document.addEventListener('keydown', e => {
-        if(e.key >= '1' && e.key <= '5') {
-            player.selectedSlot = parseInt(e.key) - 1;
-            updateHand();
-            updateUI();
-        }
-        if(e.code === 'KeyE') toggleInventory();
-    });
-
-    // 鼠标点击
-    document.addEventListener('mousedown', e => {
-        if(isInventoryOpen) return;
-        if(!controls.isLocked) { controls.lock(); return; }
-        
-        // 挥动动画
-        if(handGroup.children[0].visible || handGroup.children[1].visible) {
-            const item = handGroup.children[1].visible ? handGroup.children[1] : handGroup.children[0];
-            item.rotation.x -= 1;
-            setTimeout(() => item.rotation.x += 1, 150);
+            chunks[key] = group;
+            scene.add(group);
         }
 
-        if(e.button === 0) { // 左键：破坏 / 攻击
-            attackOrBreak();
-        } else if (e.button === 2) { // 右键：放置
-            placeBlock();
-        }
-    });
+        // --- 实体系统 ---
+        const entities = [];
+        function spawnEntity(type, x, y, z) {
+            let col = 0xffffff;
+            if (type === 'pig') col = 0xf06292; // 粉
+            if (type === 'zombie') col = 0x2e7d32; // 绿
+            if (type === 'villager') col = 0x8d6e63; // 褐
 
-    function getLookingAt() {
-        // 简单的步进检测
-        const pos = camera.position.clone();
-        const dir = new THREE.Vector3();
-        camera.getWorldDirection(dir);
-        
-        for(let i=0; i<60; i++) { // 6格距离
-            pos.addScaledVector(dir, 0.1);
-            const x = Math.round(pos.x), y = Math.round(pos.y), z = Math.round(pos.z);
-            const id = worldData[`${x},${y},${z}`];
-            if(id && id !== B.AIR && id !== B.WATER) {
-                // 计算面
-                const prev = pos.clone().addScaledVector(dir, -0.1);
-                const px=Math.round(prev.x), py=Math.round(prev.y), pz=Math.round(prev.z);
-                return { x, y, z, id, face: {x:px-x, y:py-y, z:pz-z} };
-            }
-        }
-        return null;
-    }
+            const mat = new THREE.MeshLambertMaterial({ color: col });
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.6, type === 'pig' ? 0.6 : 1.8, 0.6), mat);
+            mesh.position.set(x, y, z);
+            scene.add(mesh);
 
-    function attackOrBreak() {
-        // 1. 检测怪物
-        const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
-        let hitEntity = null;
-        for(let ent of entities) {
-            if(ent.mesh.position.distanceTo(camera.position) < 4) {
-                // 简化判定：距离够近就算打中
-                hitEntity = ent; 
-                break;
+            entities.push({
+                type, mesh, hp: type === 'zombie' ? 20 : 10,
+                vel: new THREE.Vector3(),
+                timer: Math.random()
+            });
+        }
+
+        function updateEntities(dt) {
+            const pPos = camera.position;
+            for (let i = entities.length - 1; i >= 0; i--) {
+                const e = entities[i];
+
+                // 简单的AI
+                e.timer -= dt;
+                if (e.timer <= 0) {
+                    e.timer = 1 + Math.random();
+                    if (e.type === 'zombie') {
+                        const dist = e.mesh.position.distanceTo(pPos);
+                        if (dist < 15) {
+                            const dir = pPos.clone().sub(e.mesh.position).normalize();
+                            e.vel.x = dir.x * 3;
+                            e.vel.z = dir.z * 3;
+                            // 攻击判定
+                            if (dist < 1.5) takeDamage(1);
+                        } else {
+                            e.vel.x = (Math.random() - 0.5) * 2; e.vel.z = (Math.random() - 0.5) * 2;
+                        }
+                    } else {
+                        e.vel.x = (Math.random() - 0.5) * 2; e.vel.z = (Math.random() - 0.5) * 2;
+                    }
+                    if (Math.random() > 0.8) e.vel.y = 5;
+                }
+
+                // 物理
+                e.vel.y -= 20 * dt; // Gravity
+                e.mesh.position.addScaledVector(e.vel, dt);
+
+                // 碰撞地面
+                const ex = Math.round(e.mesh.position.x);
+                const ey = Math.round(e.mesh.position.y - (e.type === 'pig' ? 0.3 : 0.9));
+                const ez = Math.round(e.mesh.position.z);
+                if (world[`${ex},${ey},${ez}`]) {
+                    e.mesh.position.y = ey + 1 + (e.type === 'pig' ? 0.3 : 0.9);
+                    e.vel.y = 0;
+                }
+
+                // 移除死亡
+                if (e.hp <= 0) {
+                    scene.remove(e.mesh);
+                    if (e.type === 'pig') addToInv(B.MEAT, 1);
+                    entities.splice(i, 1);
+                }
             }
         }
 
-        if(hitEntity) {
-            const heldIdx = player.hotbar[player.selectedSlot];
-            const heldItem = heldIdx !== null ? player.inventory[heldIdx] : null;
-            const dmg = (heldItem && heldItem.id === B.SWORD) ? 5 : 1;
-            hitEntity.hp -= dmg;
-            hitEntity.mesh.material.color.setHex(0xff0000); // 受击变红
-            setTimeout(() => hitEntity.mesh.material.color.setHex(hitEntity.type==='zombie'?0x008800:0xffaaaa), 200);
-            
-            // 击退
-            hitEntity.vel.add(dir.multiplyScalar(5));
-            hitEntity.vel.y = 3;
+        // --- 玩家逻辑 ---
+        const controls = new THREE.PointerLockControls(camera, document.body);
+        const vel = new THREE.Vector3();
+        const keys = {};
 
-            if(hitEntity.hp <= 0) {
-                scene.remove(hitEntity.mesh);
-                entities.splice(entities.indexOf(hitEntity), 1);
-                showMsg("击杀怪物!");
-            }
-            return;
-        }
-
-        // 2. 破坏方块
-        const hit = getLookingAt();
-        if(hit) {
-            delete worldData[`${hit.x},${hit.y},${hit.z}`];
-            
-            // 掉落物品逻辑
-            let drop = hit.id;
-            if(drop === B.STONE) drop = B.COBBLESTONE;
-            if(drop === B.LEAVES || drop === B.GRASS) drop = null; // 简单处理不掉落
-            if(drop === B.COAL_ORE) drop = B.COAL_ORE; // 实际mc掉煤炭，这里掉矿石简化
-            if(drop === B.DIAMOND_ORE) drop = B.DIAMOND_ORE;
-
-            if(drop) addItemToInventory(drop, 1);
-            
-            rebuildChunk(hit.x, hit.z);
-        }
-    }
-
-    function placeBlock() {
-        const hit = getLookingAt();
-        if(hit) {
-            const heldIdx = player.hotbar[player.selectedSlot];
-            if(heldIdx === null) return;
-            const item = player.inventory[heldIdx];
-            if(!item || !B[getKeyByValue(B, item.id)]) return; // 只有方块能放
-            if(item.id >= 100) return; // 工具不能放
-
-            const tx = hit.x + hit.face.x;
-            const ty = hit.y + hit.face.y;
-            const tz = hit.z + hit.face.z;
-
-            // 碰撞检测：不能插在自己身体里
-            if(Math.abs(camera.position.x - tx) < 0.8 && Math.abs(camera.position.z - tz) < 0.8 && Math.abs(camera.position.y - ty) < 1.8) return;
-
-            worldData[`${tx},${ty},${tz}`] = item.id;
-            
-            // 扣除物品
-            item.count--;
-            if(item.count <= 0) player.inventory[heldIdx] = null;
-            
-            rebuildChunk(tx, tz);
-            updateUI();
-            updateHand();
-        }
-    }
-
-    function rebuildChunk(x, z) {
-        const cx = Math.floor(x/CHUNK_SIZE), cz = Math.floor(z/CHUNK_SIZE);
-        updateChunk(cx, cz);
-        // 边界更新
-        if(x % CHUNK_SIZE === 0) updateChunk(cx-1, cz);
-        if(x % CHUNK_SIZE === 15) updateChunk(cx+1, cz);
-        if(z % CHUNK_SIZE === 0) updateChunk(cx, cz-1);
-        if(z % CHUNK_SIZE === 15) updateChunk(cx, cz+1);
-    }
-
-    // --- 背包与合成系统 ---
-    const RECIPES = [
-        { out: B.PLANKS, count: 4, in: { [B.LOG]: 1 } },
-        { out: B.STICK, count: 4, in: { [B.PLANKS]: 2 } },
-        { out: B.CRAFTING_TABLE, count: 1, in: { [B.PLANKS]: 4 } },
-        { out: B.SWORD, count: 1, in: { [B.STICK]: 1, [B.PLANKS]: 2 } }, // 木剑
-        { out: B.SWORD, count: 1, in: { [B.STICK]: 1, [B.COBBLESTONE]: 2 } }, // 石剑
-        { out: B.SWORD, count: 1, in: { [B.STICK]: 1, [B.IRON_ORE]: 2 } }, // 铁剑(简化用矿合成)
-        { out: B.SWORD, count: 1, in: { [B.STICK]: 1, [B.DIAMOND_ORE]: 2 } } // 钻剑
-    ];
-
-    function addItemToInventory(id, count) {
-        // 堆叠
-        for(let i=0; i<64; i++) {
-            if(player.inventory[i] && player.inventory[i].id === id && player.inventory[i].count < 64) {
-                player.inventory[i].count += count;
-                updateUI();
-                return;
-            }
-        }
-        // 空位
-        for(let i=0; i<64; i++) {
-            if(!player.inventory[i]) {
-                player.inventory[i] = { id, count };
-                updateUI();
-                return;
-            }
-        }
-        showMsg("背包已满!");
-    }
-
-    function toggleInventory() {
-        isInventoryOpen = !isInventoryOpen;
-        const s = document.getElementById('inventory-screen');
-        s.style.display = isInventoryOpen ? 'block' : 'none';
-        if(isInventoryOpen) {
-            controls.unlock();
-            renderInventoryUI();
-        } else {
-            controls.lock();
-        }
-    }
-
-    function renderInventoryUI() {
-        const grid = document.getElementById('inventory-grid');
-        grid.innerHTML = '';
-        player.inventory.forEach((item, idx) => {
-            const div = document.createElement('div');
-            div.className = 'slot' + (selectedInvIndex === idx ? ' active' : '');
-            if(item) {
-                div.innerHTML = `<div style="width:20px;height:20px;background:${COLORS[item.id]||'#fff'}"></div><span class="count">${item.count}</span>`;
-            }
-            div.onclick = () => {
-                selectedInvIndex = idx;
-                renderInventoryUI();
-                renderHotbarUI(); // 更新下方选择状态
-            };
-            grid.appendChild(div);
+        document.addEventListener('keydown', e => keys[e.code] = true);
+        document.addEventListener('keyup', e => keys[e.code] = false);
+        document.addEventListener('click', () => {
+            if (!document.getElementById('inventory-screen').style.display || document.getElementById('inventory-screen').style.display === 'none')
+                controls.lock();
         });
 
-        // 合成区
-        const craftDiv = document.getElementById('crafting-area');
-        craftDiv.innerHTML = '';
-        RECIPES.forEach(r => {
-            const btn = document.createElement('button');
-            btn.className = 'craft-btn';
-            const outName = getKeyByValue(B, r.out);
-            btn.innerHTML = `${outName} <div style="width:10px;height:10px;background:${COLORS[r.out]};display:inline-block"></div>`;
-            
-            btn.onclick = () => {
+        // 交互
+        document.addEventListener('mousedown', e => {
+            if (!controls.isLocked) return;
+            if (e.button === 0) doAction('hit'); // 左键
+            if (e.button === 2) doAction('use'); // 右键
+        });
+
+        document.addEventListener('keydown', e => {
+            if (e.code === 'KeyE') toggleInventory();
+            if (e.key >= '1' && e.key <= '5') {
+                player.selSlot = parseInt(e.key) - 1;
+                updateHand();
+                renderHotbar();
+            }
+        });
+
+        // 防止右键菜单
+        document.oncontextmenu = () => false;
+
+        function getRay() {
+            const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
+            const pos = camera.position.clone();
+            for (let i = 0; i < 100; i++) { // 5 blocks dist
+                pos.addScaledVector(dir, 0.05);
+                const ix = Math.round(pos.x), iy = Math.round(pos.y), iz = Math.round(pos.z);
+                const id = world[`${ix},${iy},${iz}`];
+                if (id && id !== B.AIR && id !== B.WATER && id !== B.LAVA) {
+                    // 找到之前的一个空气格作为面
+                    const prev = pos.clone().addScaledVector(dir, -0.05);
+                    return { x: ix, y: iy, z: iz, id, face: { x: Math.round(prev.x) - ix, y: Math.round(prev.y) - iy, z: Math.round(prev.z) - iz } };
+                }
+            }
+            return null;
+        }
+
+        function doAction(act) {
+            // 挥手动画
+            armMesh.rotation.x = -1;
+            itemMesh.rotation.x = -1;
+            setTimeout(() => { armMesh.rotation.x = 0; itemMesh.rotation.x = 0; }, 200);
+
+            // 攻击实体
+            if (act === 'hit') {
+                let hitEnt = null;
+                entities.forEach(e => {
+                    if (e.mesh.position.distanceTo(camera.position) < 3) hitEnt = e;
+                });
+                if (hitEnt) {
+                    hitEnt.hp -= 3;
+                    hitEnt.mesh.material.color.setHex(0xff0000);
+                    setTimeout(() => hitEnt.mesh.material.color.setHex(hitEnt.type === 'zombie' ? 0x2e7d32 : (hitEnt.type === 'pig' ? 0xf06292 : 0x8d6e63)), 100);
+                    hitEnt.vel.y += 2;
+                    return;
+                }
+            }
+
+            const target = getRay();
+            const heldId = getHeldId();
+
+            if (act === 'hit' && target) {
+                // 不能撸水和岩浆 (已经在getRay里过滤，或者在这里双重检查)
+                if (target.id === B.BEDROCK) return;
+
+                delete world[`${target.x},${target.y},${target.z}`];
+                rebuild(target.x, target.z);
+
+                // 掉落逻辑
+                let drop = target.id;
+                if (drop === B.STONE) drop = B.COBBLESTONE;
+                if (drop === B.GRASS) drop = B.DIRT;
+                if (drop === B.LEAVES) drop = Math.random() > 0.8 ? B.PLANKS : null; // 树叶掉木棍(简化为木板)或者没东西
+                if (drop) addToInv(drop, 1);
+
+                // 消耗饱食
+                player.food = Math.max(0, player.food - 0.1);
+                updateStats();
+            }
+
+            if (act === 'use') {
+                // 吃东西
+                if (heldId === B.MEAT) {
+                    consumeHeld();
+                    player.food = Math.min(20, player.food + 4);
+                    player.hp = Math.min(20, player.hp + 2);
+                    updateStats();
+                    return;
+                }
+
+                // 放方块
+                if (target && heldId && heldId < 100) {
+                    const tx = target.x + target.face.x;
+                    const ty = target.y + target.face.y;
+                    const tz = target.z + target.face.z;
+
+                    // 碰撞检测
+                    if (Math.abs(camera.position.x - tx) < 0.8 && Math.abs(camera.position.y - ty) < 1.8 && Math.abs(camera.position.z - tz) < 0.8) return;
+
+                    world[`${tx},${ty},${tz}`] = heldId;
+                    consumeHeld();
+                    rebuild(tx, tz);
+                }
+            }
+        }
+
+        function rebuild(x, z) {
+            updateChunkMesh(Math.floor(x / 16), Math.floor(z / 16));
+        }
+
+        function getHeldId() {
+            const idx = player.hotbar[player.selSlot];
+            return (idx !== null && player.inv[idx]) ? player.inv[idx].id : null;
+        }
+
+        function consumeHeld() {
+            const idx = player.hotbar[player.selSlot];
+            if (idx !== null && player.inv[idx]) {
+                player.inv[idx].count--;
+                if (player.inv[idx].count <= 0) player.inv[idx] = null;
+                renderHotbar();
+                updateHand();
+                renderInv();
+            }
+        }
+
+        function addToInv(id, count) {
+            // 堆叠
+            for (let i = 0; i < player.inv.length; i++) {
+                if (player.inv[i] && player.inv[i].id === id && player.inv[i].count < 64) {
+                    player.inv[i].count += count;
+                    renderHotbar();
+                    renderInv();
+                    return;
+                }
+            }
+            // 空位
+            for (let i = 0; i < player.inv.length; i++) {
+                if (!player.inv[i]) {
+                    player.inv[i] = { id, count };
+                    renderHotbar();
+                    renderInv();
+                    updateHand();
+                    return;
+                }
+            }
+        }
+
+        // --- UI 系统 ---
+        function updateStats() {
+            const hBar = document.getElementById('health-bar');
+            const fBar = document.getElementById('food-bar');
+            hBar.innerHTML = ''; fBar.innerHTML = '';
+
+            for (let i = 0; i < Math.ceil(player.hp / 2); i++) hBar.innerHTML += '<div class="heart"></div>';
+            for (let i = 0; i < Math.ceil(player.food / 2); i++) fBar.innerHTML += '<div class="food"></div>';
+        }
+
+        function takeDamage(amt) {
+            player.hp -= amt;
+            updateStats();
+            const ol = document.getElementById('damage-overlay');
+            ol.style.opacity = 0.5;
+            setTimeout(() => ol.style.opacity = 0, 200);
+            if (player.hp <= 0) {
+                // 重生
+                player.hp = 20; player.food = 20;
+                camera.position.set(0, 60, 0);
+                vel.set(0, 0, 0);
+                updateStats();
+            }
+        }
+
+        // 合成表
+        const RECIPES = [
+            { out: B.PLANKS, n: 4, in: { [B.LOG]: 1 } },
+            { out: B.CRAFTING_TABLE, n: 1, in: { [B.PLANKS]: 4 } },
+            { out: B.SWORD, n: 1, in: { [B.PLANKS]: 2 } },
+            { out: B.BRICK, n: 1, in: { [B.STONE]: 1 } }
+        ];
+
+        let isInvOpen = false;
+        let selectedInvIndex = -1;
+
+        function toggleInventory() {
+            isInvOpen = !isInvOpen;
+            const scr = document.getElementById('inventory-screen');
+            scr.style.display = isInvOpen ? 'block' : 'none';
+            if (isInvOpen) {
+                controls.unlock();
+                renderInv();
+            } else {
+                controls.lock();
+            }
+        }
+
+        function renderInv() {
+            const grid = document.getElementById('inv-grid');
+            grid.innerHTML = '';
+            player.inv.forEach((item, i) => {
+                const el = document.createElement('div');
+                el.className = 'slot' + (selectedInvIndex === i ? ' active' : '');
+                if (item) {
+                    // 生成图像
+                    const icon = iconUrls[item.id] || '';
+                    el.innerHTML = `<img src="${icon}"><span class="count">${item.count}</span>`;
+                }
+                el.onclick = (e) => {
+                    e.stopPropagation(); // 防止传递到game click
+                    selectedInvIndex = i; renderInv();
+                };
+                grid.appendChild(el);
+            });
+
+            const cList = document.getElementById('craft-list');
+            cList.innerHTML = '';
+            RECIPES.forEach(r => {
+                const btn = document.createElement('div');
+                btn.className = 'craft-item';
+
                 // 检查材料
-                const cost = {};
-                for(let k in r.in) cost[k] = r.in[k];
-                
-                // 验证
-                let tempInv = JSON.parse(JSON.stringify(player.inventory));
-                for(let reqId in cost) {
-                    let needed = cost[reqId];
-                    for(let i=0; i<64; i++) {
-                        if(tempInv[i] && tempInv[i].id == reqId) {
-                            const take = Math.min(tempInv[i].count, needed);
-                            tempInv[i].count -= take;
-                            needed -= take;
-                            if(tempInv[i].count === 0) tempInv[i] = null;
+                let canCraft = true;
+                for (let id in r.in) {
+                    const need = r.in[id];
+                    let has = 0;
+                    player.inv.forEach(it => { if (it && it.id == id) has += it.count; });
+                    if (has < need) canCraft = false;
+                }
+
+                if (!canCraft) btn.classList.add('disabled');
+
+                btn.innerHTML = `<img src="${iconUrls[r.out]}" width="32"><br>${r.n}个`;
+
+                btn.onclick = () => {
+                    if (!canCraft) return;
+                    // 扣除
+                    for (let id in r.in) {
+                        let cost = r.in[id];
+                        for (let i = 0; i < player.inv.length; i++) {
+                            if (player.inv[i] && player.inv[i].id == id) {
+                                const take = Math.min(cost, player.inv[i].count);
+                                player.inv[i].count -= take;
+                                cost -= take;
+                                if (player.inv[i].count === 0) player.inv[i] = null;
+                                if (cost <= 0) break;
+                            }
                         }
                     }
-                    if(needed > 0) { showMsg("材料不足: " + getKeyByValue(B, parseInt(reqId))); return; }
+                    addToInv(r.out, r.n);
+                    renderInv();
+                };
+                cList.appendChild(btn);
+            });
+        }
+
+        function renderHotbar() {
+            const bar = document.getElementById('hotbar');
+            bar.innerHTML = '';
+            for (let i = 0; i < 5; i++) {
+                const idx = player.hotbar[i];
+                const item = (idx !== null) ? player.inv[idx] : null;
+                const el = document.createElement('div');
+                el.className = 'slot ' + (player.selSlot === i ? 'active' : '');
+                if (item) {
+                    el.innerHTML = `<img src="${iconUrls[item.id]}"><span class="count">${item.count}</span>`;
                 }
-                
-                // 实际扣除
-                player.inventory = tempInv;
-                addItemToInventory(r.out, r.count);
-                renderInventoryUI();
-            };
-            craftDiv.appendChild(btn);
-        });
-    }
-
-    function renderHotbarUI() {
-        const bar = document.getElementById('hotbar');
-        bar.innerHTML = '';
-        for(let i=0; i<5; i++) {
-            const slot = document.createElement('div');
-            slot.className = 'slot' + (i === player.selectedSlot ? ' active' : '');
-            const invIdx = player.hotbar[i];
-            
-            if(invIdx !== null && player.inventory[invIdx]) {
-                const item = player.inventory[invIdx];
-                slot.innerHTML = `<div style="width:20px;height:20px;background:${COLORS[item.id]}"></div><span class="count">${item.count}</span>`;
-            } else {
-                slot.innerHTML = '<span style="color:#555">'+(i+1)+'</span>';
+                // 点击背包里的东西再点快捷栏，绑定
+                el.onclick = (e) => {
+                    e.stopPropagation();
+                    if (isInvOpen && selectedInvIndex !== -1) {
+                        player.hotbar[i] = selectedInvIndex;
+                        selectedInvIndex = -1;
+                        renderInv();
+                        renderHotbar();
+                        updateHand();
+                    } else {
+                        player.selSlot = i;
+                        renderHotbar();
+                        updateHand();
+                    }
+                };
+                bar.appendChild(el);
             }
+        }
 
-            // 点击快捷栏：如果有选中的背包物品，则绑定
-            slot.onclick = () => {
-                if(selectedInvIndex !== -1) {
-                    player.hotbar[i] = selectedInvIndex;
-                    selectedInvIndex = -1; // 重置选择
-                    renderInventoryUI();
-                    renderHotbarUI();
-                    updateHand();
+        function updateHand() {
+            const id = getHeldId();
+            if (id) {
+                armMesh.visible = false;
+                itemMesh.visible = true;
+                if (id === B.SWORD) {
+                    itemMesh.geometry = new THREE.BoxGeometry(0.1, 0.8, 0.1);
+                    itemMesh.rotation.set(Math.PI / 4, 0, 0);
                 } else {
-                    player.selectedSlot = i;
-                    renderHotbarUI();
-                    updateHand();
+                    itemMesh.geometry = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+                    itemMesh.rotation.set(0, 0, 0);
                 }
-            };
-            bar.appendChild(slot);
-        }
-    }
-
-    function updateUI() {
-        if(isInventoryOpen) renderInventoryUI();
-        renderHotbarUI();
-        const y = Math.floor(camera.position.y);
-        document.getElementById('stats').innerText = `XYZ: ${Math.floor(camera.position.x)}, ${y}, ${Math.floor(camera.position.z)} | HP: ${player.hp} | Biome: ${y<40?'Cave':'Surface'}`;
-    }
-
-    function updateHand() {
-        const idx = player.hotbar[player.selectedSlot];
-        const item = idx!==null ? player.inventory[idx] : null;
-        
-        handMesh.visible = false;
-        swordMesh.visible = false;
-
-        if(item) {
-            if(item.id === B.SWORD) {
-                swordMesh.visible = true;
+                itemMesh.material = mats[id] || mats[B.DIRT];
             } else {
-                handMesh.visible = true;
-                handMesh.material = materials[item.id] || materials[B.DIRT];
+                armMesh.visible = true;
+                itemMesh.visible = false;
             }
         }
-    }
 
-    function showMsg(txt) {
-        const m = document.getElementById('message');
-        m.innerText = txt;
-        m.style.opacity = 1;
-        setTimeout(()=>m.style.opacity=0, 2000);
-    }
+        // --- 游戏主循环 ---
+        const clock = new THREE.Clock();
+        let lastCx = -999, lastCz = -999;
+        camera.position.y = 50;
 
-    function getKeyByValue(obj, val) { return Object.keys(obj).find(key => obj[key] === val); }
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = Math.min(clock.getDelta(), 0.1);
 
-    // --- 游戏循环 ---
-    const clock = new THREE.Clock();
-    let lastChunkX = -999, lastChunkZ = -999;
-    
-    // 初始化位置
-    camera.position.set(0, 50, 0);
+            if (controls.isLocked) {
+                // 环境检测
+                const cx = Math.round(camera.position.x);
+                const cy = Math.round(camera.position.y);
+                const cz = Math.round(camera.position.z);
+                const bodyId = world[`${cx},${cy},${cz}`];
+                const feetId = world[`${cx},${cy - 1},${cz}`];
 
-    function animate() {
-        requestAnimationFrame(animate);
-        const dt = Math.min(clock.getDelta(), 0.1);
+                const inWater = (bodyId === B.WATER || feetId === B.WATER);
+                const inLava = (bodyId === B.LAVA || feetId === B.LAVA);
 
-        // 玩家物理
-        if (controls.isLocked) {
-            // 阻力
-            const inWater = worldData[`${Math.round(camera.position.x)},${Math.round(camera.position.y)},${Math.round(camera.position.z)}`] === B.WATER;
-            const drag = inWater ? 2.0 : 10.0;
-            const moveSpeed = inWater ? 10.0 : 40.0;
+                if (inLava) takeDamage(0.5); // 岩浆伤害
 
-            vel.x -= vel.x * drag * dt;
-            vel.z -= vel.z * drag * dt;
-            vel.y -= 25.0 * dt; // Gravity
+                // 物理移动
+                const speed = inWater ? 10 : 40;
+                vel.x -= vel.x * 10.0 * dt;
+                vel.z -= vel.z * 10.0 * dt;
+                vel.y -= 30.0 * dt; // 重力
 
-            const dir = new THREE.Vector3();
-            const front = Number(keys['KeyW']) - Number(keys['KeyS']);
-            const side = Number(keys['KeyD']) - Number(keys['KeyA']);
-            dir.z = front; dir.x = side;
-            dir.normalize();
+                const dir = new THREE.Vector3();
+                const fwd = (keys['KeyW'] ? 1 : 0) - (keys['KeyS'] ? 1 : 0);
+                const side = (keys['KeyD'] ? 1 : 0) - (keys['KeyA'] ? 1 : 0);
+                if (fwd || side) {
+                    dir.z = fwd; dir.x = side; dir.normalize();
+                    vel.z -= dir.z * speed * dt;
+                    vel.x -= dir.x * speed * dt;
 
-            if (keys['KeyW'] || keys['KeyS']) vel.z -= dir.z * moveSpeed * dt;
-            if (keys['KeyA'] || keys['KeyD']) vel.x -= dir.x * moveSpeed * dt;
-            
-            // 跳跃
-            if (keys['Space'] && onGround) vel.y = inWater ? 5 : 8;
+                    // 走路消耗饱食
+                    if (Math.random() > 0.99) {
+                        player.food = Math.max(0, player.food - 0.05);
+                        updateStats();
+                    }
+                }
 
-            controls.moveRight(-vel.x * dt);
-            controls.moveForward(-vel.z * dt);
-            camera.position.y += vel.y * dt;
+                if (keys['Space'] && (onGround || inWater)) {
+                    vel.y = inWater ? 5 : 9;
+                }
 
-            // 碰撞检测 (简单脚下碰撞)
-            const px = Math.round(camera.position.x);
-            const py = Math.round(camera.position.y - 1.6);
-            const pz = Math.round(camera.position.z);
-            
-            // 简单的地面碰撞处理
+                controls.moveRight(-vel.x * dt);
+                controls.moveForward(-vel.z * dt);
+                camera.position.y += vel.y * dt;
+
+                // 碰撞
+                checkCollisions();
+
+                // 饥饿扣血
+                if (player.food <= 0 && Math.random() > 0.99) takeDamage(0.5);
+            }
+
+            // 区块加载
+            const curCx = Math.floor(camera.position.x / 16);
+            const curCz = Math.floor(camera.position.z / 16);
+            if (curCx !== lastCx || curCz !== lastCz) {
+                for (let x = -CONF.RENDER_DIST; x <= CONF.RENDER_DIST; x++)
+                    for (let z = -CONF.RENDER_DIST; z <= CONF.RENDER_DIST; z++) {
+                        const k = `${curCx + x},${curCz + z}`;
+                        if (!chunks[k]) { genChunk(curCx + x, curCz + z); updateChunkMesh(curCx + x, curCz + z); }
+                    }
+                lastCx = curCx; lastCz = curCz;
+            }
+
+            updateEntities(dt);
+            renderer.render(scene, camera);
+        }
+
+        let onGround = false;
+        function checkCollisions() {
+            const x = Math.round(camera.position.x);
+            const z = Math.round(camera.position.z);
+            // 简单地面碰撞
             let groundY = -100;
-            // 检查脚下及下方方块
-            for(let y=py+1; y>=py-2; y--) {
-                const id = worldData[`${px},${y},${pz}`];
-                if(id && id !== B.AIR && id !== B.WATER && id !== B.LAVA) {
+            for (let y = Math.round(camera.position.y + 2); y > Math.round(camera.position.y - 5); y--) {
+                const id = world[`${x},${y},${z}`];
+                if (id && id !== B.AIR && id !== B.WATER && id !== B.LAVA) { // 液体无碰撞
                     groundY = y;
                     break;
                 }
             }
-
-            if (camera.position.y < groundY + 2.6) { // 1(block) + 1.6(height)
-                vel.y = Math.max(0, vel.y);
+            if (camera.position.y < groundY + 2.6) {
                 camera.position.y = groundY + 2.6;
+                vel.y = 0;
                 onGround = true;
             } else {
                 onGround = false;
             }
-
-            // 死亡重置
-            if(camera.position.y < -10) {
-                camera.position.set(0, 80, 0);
-                vel.set(0,0,0);
-                player.hp = 20;
-            }
         }
 
-        // 区块加载
-        const cx = Math.floor(camera.position.x / CHUNK_SIZE);
-        const cz = Math.floor(camera.position.z / CHUNK_SIZE);
-        
-        if(cx !== lastChunkX || cz !== lastChunkZ) {
-            for(let x = -RENDER_DISTANCE; x <= RENDER_DISTANCE; x++){
-                for(let z = -RENDER_DISTANCE; z <= RENDER_DISTANCE; z++){
-                    const ncx = cx + x, ncz = cz + z;
-                    const key = `${ncx},${ncz}`;
-                    if(!chunks[key]) {
-                        generateWorld(ncx, ncz);
-                        updateChunk(ncx, ncz);
-                        // 随机生成怪物
-                        if(Math.random() > 0.98) spawnEntity('zombie', ncx*16+8, 50, ncz*16+8);
-                    }
-                }
-            }
-            lastChunkX = cx; lastChunkZ = cz;
-        }
+        updateStats();
+        renderHotbar();
+        animate();
 
-        // 实体逻辑
-        entities.forEach(ent => {
-            // 重力
-            ent.vel.y -= 25.0 * dt;
-            // 怪物AI
-            if(ent.type === 'zombie') {
-                const dist = ent.mesh.position.distanceTo(camera.position);
-                if(dist < 20 && dist > 1) {
-                    const dx = camera.position.x - ent.mesh.position.x;
-                    const dz = camera.position.z - ent.mesh.position.z;
-                    ent.vel.x = (dx/dist) * 3;
-                    ent.vel.z = (dz/dist) * 3;
-                    ent.mesh.lookAt(camera.position.x, ent.mesh.position.y, camera.position.z);
-                } else {
-                    ent.vel.x = 0; ent.vel.z = 0;
-                }
-            }
+        window.onresize = () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        };
 
-            ent.mesh.position.addScaledVector(ent.vel, dt);
-
-            // 实体碰撞
-            const ex = Math.round(ent.mesh.position.x);
-            const ey = Math.round(ent.mesh.position.y - 1);
-            const ez = Math.round(ent.mesh.position.z);
-            if(worldData[`${ex},${ey},${ez}`]) {
-                ent.mesh.position.y = ey + 1.9;
-                ent.vel.y = 0;
-            }
-        });
-
-        renderer.render(scene, camera);
-    }
-    
-    // Resize
-    window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-
-    // 初始UI
-    updateUI();
-    animate();
-
-</script>
+    </script>
 </body>
+
 </html>
