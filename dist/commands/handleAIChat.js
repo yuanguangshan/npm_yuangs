@@ -52,6 +52,24 @@ const contextBuffer_1 = require("./contextBuffer");
 const contextStorage_1 = require("./contextStorage");
 const gitContext_1 = require("./gitContext");
 const execAsync = (0, util_1.promisify)(child_process_1.exec);
+function findCommonPrefix(strings) {
+    if (strings.length === 0)
+        return '';
+    if (strings.length === 1)
+        return strings[0];
+    let common = '';
+    const first = strings[0];
+    for (let i = 0; i < first.length; i++) {
+        const char = first[i];
+        if (strings.every(s => s[i] === char)) {
+            common += char;
+        }
+        else {
+            break;
+        }
+    }
+    return common;
+}
 async function showFileSelector(rl) {
     return new Promise((resolve) => {
         try {
@@ -178,7 +196,66 @@ async function handleAIChat(initialQuestion, model) {
     const rl = readline_1.default.createInterface({
         input: process.stdin,
         output: process.stdout,
-        terminal: true
+        terminal: true,
+        completer: (line) => {
+            if (!line.startsWith('@') && !line.startsWith('#')) {
+                return [[], line];
+            }
+            const isFileMode = line.startsWith('@');
+            const prefix = isFileMode ? '@ ' : '# ';
+            const inputAfterPrefix = line.substring(prefix.length);
+            if (!inputAfterPrefix) {
+                const currentDir = process.cwd();
+                const files = fs_1.default.readdirSync(currentDir);
+                const completions = isFileMode
+                    ? files.filter(f => {
+                        const fullPath = path_1.default.join(currentDir, f);
+                        return fs_1.default.statSync(fullPath).isFile();
+                    })
+                    : files.filter(f => {
+                        const fullPath = path_1.default.join(currentDir, f);
+                        return fs_1.default.statSync(fullPath).isDirectory();
+                    });
+                return [completions.map(c => prefix + c), prefix];
+            }
+            const parts = inputAfterPrefix.split(path_1.default.sep);
+            const partialName = parts[parts.length - 1];
+            const basePath = parts.slice(0, -1).join(path_1.default.sep);
+            const searchPath = basePath ? path_1.default.resolve(basePath) : process.cwd();
+            if (!fs_1.default.existsSync(searchPath) || !fs_1.default.statSync(searchPath).isDirectory()) {
+                return [[], line];
+            }
+            const files = fs_1.default.readdirSync(searchPath);
+            const completions = files
+                .filter(f => {
+                const fullPath = path_1.default.join(searchPath, f);
+                const isDir = fs_1.default.statSync(fullPath).isDirectory();
+                const matchesPrefix = f.toLowerCase().startsWith(partialName.toLowerCase());
+                if (isFileMode) {
+                    return matchesPrefix && !isDir;
+                }
+                else {
+                    return matchesPrefix && isDir;
+                }
+            })
+                .map(f => {
+                const fullPath = path_1.default.join(searchPath, f);
+                const isDir = fs_1.default.statSync(fullPath).isDirectory();
+                return isDir ? f + path_1.default.sep : f;
+            });
+            const commonPrefix = completions.length === 1
+                ? completions[0]
+                : findCommonPrefix(completions);
+            const newLine = basePath
+                ? prefix + basePath + path_1.default.sep + commonPrefix
+                : prefix + commonPrefix;
+            return [completions.map(c => {
+                    const fullCompletion = basePath
+                        ? prefix + basePath + path_1.default.sep + c
+                        : prefix + c;
+                    return fullCompletion;
+                }), newLine];
+        }
     });
     // Helper to wrap rl.question in a Promise
     const ask = (query) => {
