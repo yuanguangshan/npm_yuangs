@@ -1,6 +1,6 @@
 import { ExecutionRecord } from './record';
 import { runLLM } from './llm';
-import { interpretResult } from './interpret';
+import { interpretResultToPlan } from './interpret';
 import { AgentIntent } from './types';
 
 export async function replay(record: ExecutionRecord) {
@@ -23,5 +23,5 @@ export async function replay(record: ExecutionRecord) {
         capabilities: {},
     };
 
-    return interpretResult(result, intent, record.mode);
+    return interpretResultToPlan(result, intent, record.mode);
 }

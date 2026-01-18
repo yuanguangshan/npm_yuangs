@@ -4,18 +4,21 @@ import { AgentPlan } from './plan';
 export function interpretResultToPlan(
     result: LLMResult,
     intent: AgentIntent,
-    mode: AgentMode
+    mode: AgentMode,
+    alreadyStreamed: boolean = false
 ): AgentPlan {
     if (mode === 'chat') {
+        const tasks = alreadyStreamed ? [] : [{
+            id: 'chat-response',
+            description: '输出 AI 回答',
+            type: 'custom' as const,
+            status: 'pending' as const,
+            payload: { kind: 'print', text: result.rawText }
+        }];
+
         return {
             goal: '回答用户咨询',
-            tasks: [{
-                id: 'chat-response',
-                description: '输出 AI 回答',
-                type: 'custom',
-                status: 'pending',
-                payload: { kind: 'print', text: result.rawText }
-            }]
+            tasks: tasks
         };
     }
 

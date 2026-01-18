@@ -414,17 +414,21 @@ async function askOnceStream(question, model) {
         // 3. 向上清除相应行数
         // 4. 输出渲染后的 Markdown 内容
         const screenWidth = process.stdout.columns || 80;
-        // 模拟前缀+内容的完整字符串，用于计算高度
-        // 注意：getVisualLineCount 会去除 ANSI，所以这里用带 '🤖 AI：' 的普通字符串即可
-        const totalContent = '🤖 AI：' + fullResponse;
-        const lineCount = getVisualLineCount(totalContent, screenWidth);
+        const totalContent = BOT_PREFIX + fullResponse;
+        let lineCount = getVisualLineCount(totalContent, screenWidth);
+        // 如果 Raw 内容正好填满最后一行，光标可能在下一行开头。
+        // 我们通过输出一个换行符来确保光标位置可预测（虽然这会增加一行，但更安全）
+        // 或者我们直接尝试清理更多的行。
         // 清除 Raw Output
-        process.stdout.write('\r');
-        for (let i = 0; i < lineCount; i++) {
+        // 移至当前行开头并清除
+        process.stdout.write('\r\x1b[K');
+        // 向上移动并清除
+        for (let i = 0; i < lineCount - 1; i++) {
             process.stdout.write('\x1b[A\x1b[K');
         }
-        const formatted = marked.parse(fullResponse, { async: false }).trimEnd();
-        process.stdout.write('\r');
+        // 关键修复：如果计算出的行数不足以覆盖实际渲染的视觉行（常见于恰好填满屏幕宽度的行），
+        // 这种手动清除很难十全十美。我们采取“先清后印”的原则。
+        const formatted = marked.parse(fullResponse, { async: false }).trim();
         process.stdout.write(BOT_PREFIX + formatted + '\n');
         (0, client_1.addToConversationHistory)('user', question);
         (0, client_1.addToConversationHistory)('assistant', fullResponse);
@@ -439,17 +443,18 @@ async function askOnceStream(question, model) {
     }
 }
 function getVisualLineCount(text, screenWidth) {
-    // Basic ANSI strip regex
     const stripAnsi = (str) => str.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
-    // Split by newlines
     const lines = text.split('\n');
     let totalLines = 0;
     for (const line of lines) {
-        const cleanLine = stripAnsi(line);
+        // Expand tabs (assuming 8 spaces)
+        const expandedLine = line.replace(/\t/g, '        ');
+        const cleanLine = stripAnsi(expandedLine);
         let lineWidth = 0;
-        for (let i = 0; i < cleanLine.length; i++) {
-            // Very simple width check: > 255 -> 2, else 1
-            lineWidth += cleanLine.charCodeAt(i) > 255 ? 2 : 1;
+        for (const char of cleanLine) {
+            const code = char.codePointAt(0) || 0;
+            // Most characters > 255 are 2 cells (CJK, Emojis, etc.)
+            lineWidth += code > 255 ? 2 : 1;
         }
         if (lineWidth === 0) {
             totalLines += 1;

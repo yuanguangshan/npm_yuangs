@@ -41,7 +41,8 @@ export class AgentPipeline {
         });
 
         // 6. Result Interpretation -> Plan
-        const plan = interpretResultToPlan(result, intent, mode);
+        const isStreaming = mode === 'chat';
+        const plan = interpretResultToPlan(result, intent, mode, isStreaming);
         result.plan = plan; // Attach plan to result for recording
 
         // 7. Save Execution Record (before execution for safety)

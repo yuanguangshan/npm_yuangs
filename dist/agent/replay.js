@@ -20,6 +20,6 @@ async function replay(record) {
         type: record.mode === 'chat' ? 'chat' : 'shell',
         capabilities: {},
     };
-    return (0, interpret_1.interpretResult)(result, intent, record.mode);
+    return (0, interpret_1.interpretResultToPlan)(result, intent, record.mode);
 }
 //# sourceMappingURL=replay.js.map

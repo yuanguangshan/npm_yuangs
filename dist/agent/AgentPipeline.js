@@ -7,8 +7,9 @@ const prompt_1 = require("./prompt");
 const selectModel_1 = require("./selectModel");
 const llm_1 = require("./llm");
 const interpret_1 = require("./interpret");
-const actions_1 = require("./actions");
+const planExecutor_1 = require("./planExecutor");
 const record_1 = require("./record");
+const skills_1 = require("./skills");
 const crypto_1 = require("crypto");
 class AgentPipeline {
     async run(input, mode) {
@@ -30,8 +31,10 @@ class AgentPipeline {
                 ? (s) => process.stdout.write(s)
                 : undefined,
         });
-        // 6. Result Interpretation
-        const action = (0, interpret_1.interpretResult)(result, intent, mode);
+        // 6. Result Interpretation -> Plan
+        const isStreaming = mode === 'chat';
+        const plan = (0, interpret_1.interpretResultToPlan)(result, intent, mode, isStreaming);
+        result.plan = plan; // Attach plan to result for recording
         // 7. Save Execution Record (before execution for safety)
         (0, record_1.saveRecord)({
             id,
@@ -41,10 +44,29 @@ class AgentPipeline {
             prompt,
             model,
             llmResult: result,
-            action,
+            action: plan.tasks[0]?.type === 'shell' ? {
+                type: 'execute',
+                command: plan.tasks[0].payload.command,
+                risk: plan.tasks[0].payload.risk
+            } : { type: 'print', content: result.rawText }, // For backward compatibility with record.action
         });
-        // 8. Action Execution
-        await (0, actions_1.executeAction)(action, input.options);
+        // 8. Plan Execution
+        const summary = await (0, planExecutor_1.executePlan)(plan, input.options);
+        // 9. Post-execution: Learn Skill if successful
+        (0, skills_1.learnSkillFromRecord)({
+            id,
+            timestamp: Date.now(),
+            mode,
+            input,
+            prompt,
+            model,
+            llmResult: result,
+            action: plan.tasks[0]?.type === 'shell' ? {
+                type: 'execute',
+                command: plan.tasks[0].payload.command,
+                risk: plan.tasks[0].payload.risk
+            } : { type: 'print', content: result.rawText },
+        }, summary.success);
         // Log execution metrics if verbose
         if (input.options?.verbose) {
             console.log(`\n${'-'.repeat(50)}`);

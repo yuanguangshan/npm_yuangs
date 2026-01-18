@@ -1,4 +1,5 @@
 import type { AIRequestMessage } from '../core/validation';
+import { AgentPlan } from './plan';
 export type AgentMode = 'chat' | 'command' | 'command+exec';
 export interface AgentInput {
     rawInput: string;
@@ -36,6 +37,7 @@ export interface AgentPrompt {
 export interface LLMResult {
     rawText: string;
     parsed?: any;
+    plan?: AgentPlan;
     latencyMs: number;
     tokens?: {
         prompt: number;
