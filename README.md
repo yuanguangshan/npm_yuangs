@@ -225,13 +225,33 @@ yuangs 会根据你的输入自动判断执行模式：
 #src/agent/
 ```
 
-##### 命令补全（PATH 自动扫描）
+##### 命令补全（PATH 自动扫描 + Shell 内置命令）
+
+**内置命令列表**（v2.11.0+）：
+- `cd`, `pwd`, `ls`, `mkdir`, `rmdir`, `rm`, `cp`, `mv`, `cat`
+- `echo`, `grep`, `find`, `head`, `tail`, `less`, `more`
+- `chmod`, `chown`, `touch`, `ln`, `df`, `du`, `free`
+- `ps`, `top`, `kill`, `killall`, `bg`, `fg`, `jobs`
+- `export`, `unset`, `env`, `alias`, `unalias`
+- `history`, `type`, `which`, `whereis`, `man`
+- `sleep`, `wait`, `date`, `cal`, `uptime`, `uname`
+- `tar`, `gzip`, `gunzip`, `zip`, `unzip`
+- `curl`, `wget`, `ssh`, `scp`, `rsync`
+
 ```bash
 你：gi<Tab>
 # 显示：
 git
 gio
 ginstall-info
+
+你：c<Tab>
+# 显示：
+cd, cp, cat, chmod, chown, cal, curl, ccr, claude, codebuddy...
+
+你：l<Tab>
+# 显示：
+ls, less, ln, litellm, litellm-proxy, ldattach, ldconfig, ldconfig.real, locale-gen, logrotate...
 ```
 
 ##### 参数补全（git 等）
