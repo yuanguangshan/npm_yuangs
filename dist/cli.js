@@ -379,6 +379,10 @@ async function main() {
     const firstArg = args[0];
     const isKnownCommand = firstArg && knownCommands.includes(firstArg);
     const isGlobalFlag = firstArg && globalFlags.includes(firstArg);
+    if (args.length === 0 && !await readStdin()) {
+        program.outputHelp();
+        process.exit(0);
+    }
     if (!isKnownCommand && !isGlobalFlag) {
         const stdinData = await readStdin();
         if (stdinData || args.length > 0) {
