@@ -13,6 +13,8 @@ import { getMacros, runMacro } from '../core/macros';
 import { CapabilitySystem } from '../core/capabilitySystem';
 import { inferCapabilityRequirement } from '../core/capabilityInference';
 import { CapabilityMatchResult } from '../core/modelMatcher';
+import { ContextBuffer } from './contextBuffer';
+import { loadContext, saveContext } from './contextStorage';
 
 function validateAIPlan(obj: any): obj is AICommandPlan {
     return (
@@ -55,8 +57,14 @@ export async function handleAICommand(
         }
 
         spinner.stop();
+        
+        // Load context
+        const contextBuffer = new ContextBuffer();
+        const persistedContext = await loadContext();
+        contextBuffer.import(persistedContext);
+        const contextStr = contextBuffer.isEmpty() ? '' : contextBuffer.buildPrompt('');
 
-        const prompt = buildCommandPrompt(userInput, os, macros);
+        const prompt = buildCommandPrompt(userInput, os, macros, contextStr);
         const raw = await askAI(prompt, selectedModel);
 
         const { aiCommandPlanSchema } = require('../core/validation');
@@ -205,6 +213,9 @@ export async function handleAICommand(
                     commandToExecute
                 );
             }
+
+            // Clear context after successful one-shot command execution
+            await saveContext([]);
         }
 
         return result;

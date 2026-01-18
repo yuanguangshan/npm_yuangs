@@ -4,7 +4,7 @@ exports.ContextBuffer = void 0;
 const estimateTokens = (text) => Math.ceil(text.length / 4);
 class ContextBuffer {
     items = [];
-    maxTokens = 8000;
+    maxTokens = 32000; // 约 12.8 万字符
     add(item, bypassTokenLimit = false) {
         const tokens = estimateTokens(item.content);
         this.items.push({ ...item, tokens });

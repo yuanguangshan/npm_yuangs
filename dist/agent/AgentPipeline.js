@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AgentPipeline = void 0;
+const contextBuffer_1 = require("../commands/contextBuffer");
 const intent_1 = require("./intent");
 const context_1 = require("./context");
 const prompt_1 = require("./prompt");
@@ -18,12 +19,13 @@ const renderer_1 = require("../utils/renderer"); // Import renderer
 const ora_1 = __importDefault(require("ora"));
 const chalk_1 = __importDefault(require("chalk"));
 class AgentPipeline {
+    contextBuffer = new contextBuffer_1.ContextBuffer();
     async run(input, mode) {
         const id = (0, crypto_1.randomUUID)();
         // 1. Intent Analysis
         const intent = (0, intent_1.inferIntent)(input, mode);
         // 2. Context Assembly
-        const context = (0, context_1.buildContext)(input);
+        const context = (0, context_1.buildContext)(input, this.contextBuffer);
         // 3. Prompt Construction
         const prompt = (0, prompt_1.buildPrompt)(intent, context, mode, input.rawInput);
         // 4. Model Selection

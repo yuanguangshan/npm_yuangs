@@ -4,7 +4,8 @@ import type { Macro } from '../core/validation';
 export function buildCommandPrompt(
     userInput: string,
     os: OSProfile,
-    macros?: Record<string, Macro>
+    macros?: Record<string, Macro>,
+    context?: string
 ): string {
     const macroContext = macros && Object.keys(macros).length > 0
         ? `
@@ -50,6 +51,9 @@ ${macroContext}
   "macro": "要复用的 Macro 名称（优先使用，与 command 二选一）",
   "risk": "low | medium | high"
 }
+
+【上下文信息】
+${context || '无'}
 
 【用户需求】
 ${userInput}

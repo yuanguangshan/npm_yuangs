@@ -3,6 +3,8 @@ import {
     AgentMode,
 } from './types';
 
+import { ContextBuffer } from '../commands/contextBuffer';
+
 import { inferIntent } from './intent';
 import { buildContext } from './context';
 import { buildPrompt } from './prompt';
@@ -18,6 +20,8 @@ import ora, { Ora } from 'ora';
 import chalk from 'chalk';
 
 export class AgentPipeline {
+    private contextBuffer: ContextBuffer = new ContextBuffer();
+
     async run(input: AgentInput, mode: AgentMode): Promise<void> {
         const id = randomUUID();
 
@@ -25,7 +29,7 @@ export class AgentPipeline {
         const intent = inferIntent(input, mode);
 
         // 2. Context Assembly
-        const context = buildContext(input);
+        const context = buildContext(input, this.contextBuffer);
 
         // 3. Prompt Construction
         const prompt = buildPrompt(intent, context, mode, input.rawInput);

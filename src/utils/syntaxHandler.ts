@@ -115,6 +115,19 @@ async function handleFileReference(filePath: string, startLine: number | null = 
         const contentMap = new Map<string, string>();
         contentMap.set(filePath, content);
 
+        // 持久化到上下文
+        const contextBuffer = new ContextBuffer();
+        const persisted = await loadContext();
+        contextBuffer.import(persisted);
+
+        contextBuffer.add({
+            type: 'file',
+            path: filePath + (startLine !== null ? `:${startLine}${endLine ? `-${endLine}` : ''}` : ''),
+            content: content
+        });
+
+        await saveContext(contextBuffer.export());
+
         const prompt = buildPromptWithFileContent(
             `文件: ${filePath}${startLine !== null ? `:${startLine}${endLine ? `-${endLine}` : ''}` : ''}`,
             [filePath],
@@ -157,6 +170,19 @@ async function handleDirectoryReference(dirPath: string, question?: string): Pro
         }
 
         const contentMap = readFilesContent(filePaths);
+
+        // 持久化到上下文
+        const contextBuffer = new ContextBuffer();
+        const persisted = await loadContext();
+        contextBuffer.import(persisted);
+
+        contextBuffer.add({
+            type: 'directory',
+            path: dirPath,
+            content: Array.from(contentMap.entries()).map(([p, c]) => `--- ${p} ---\n${c}`).join('\n\n')
+        });
+
+        await saveContext(contextBuffer.export());
 
         const prompt = buildPromptWithFileContent(
             `目录: ${dirPath}\n找到 ${filePaths.length} 个文件`,

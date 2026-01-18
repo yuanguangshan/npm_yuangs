@@ -1,12 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildContext = buildContext;
-exports.getAgentContextBuffer = getAgentContextBuffer;
-const contextBuffer_1 = require("../commands/contextBuffer");
-// Create a singleton instance for the agent
-const globalContextBuffer = new contextBuffer_1.ContextBuffer();
-function buildContext(input) {
-    const items = globalContextBuffer.export();
+function buildContext(input, contextBuffer) {
+    const items = contextBuffer.export();
     return {
         files: items.map(item => ({
             path: item.path,
@@ -15,8 +11,5 @@ function buildContext(input) {
         gitDiff: undefined, // Will be enhanced later
         history: [], // Will be populated from conversation history
     };
-}
-function getAgentContextBuffer() {
-    return globalContextBuffer;
 }
 //# sourceMappingURL=context.js.map

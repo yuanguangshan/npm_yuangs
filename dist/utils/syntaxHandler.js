@@ -100,6 +100,16 @@ async function handleFileReference(filePath, startLine = null, endLine = null, q
         }
         const contentMap = new Map();
         contentMap.set(filePath, content);
+        // 持久化到上下文
+        const contextBuffer = new contextBuffer_1.ContextBuffer();
+        const persisted = await (0, contextStorage_1.loadContext)();
+        contextBuffer.import(persisted);
+        contextBuffer.add({
+            type: 'file',
+            path: filePath + (startLine !== null ? `:${startLine}${endLine ? `-${endLine}` : ''}` : ''),
+            content: content
+        });
+        await (0, contextStorage_1.saveContext)(contextBuffer.export());
         const prompt = (0, fileReader_1.buildPromptWithFileContent)(`文件: ${filePath}${startLine !== null ? `:${startLine}${endLine ? `-${endLine}` : ''}` : ''}`, [filePath], contentMap, question || `请分析文件: ${filePath}`);
         return { processed: true, result: prompt };
     }
@@ -131,6 +141,16 @@ async function handleDirectoryReference(dirPath, question) {
             };
         }
         const contentMap = (0, fileReader_1.readFilesContent)(filePaths);
+        // 持久化到上下文
+        const contextBuffer = new contextBuffer_1.ContextBuffer();
+        const persisted = await (0, contextStorage_1.loadContext)();
+        contextBuffer.import(persisted);
+        contextBuffer.add({
+            type: 'directory',
+            path: dirPath,
+            content: Array.from(contentMap.entries()).map(([p, c]) => `--- ${p} ---\n${c}`).join('\n\n')
+        });
+        await (0, contextStorage_1.saveContext)(contextBuffer.export());
         const prompt = (0, fileReader_1.buildPromptWithFileContent)(`目录: ${dirPath}\n找到 ${filePaths.length} 个文件`, filePaths.map(p => path_1.default.relative(process.cwd(), p)), contentMap, question);
         return { processed: true, result: prompt };
     }

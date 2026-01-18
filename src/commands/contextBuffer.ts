@@ -11,7 +11,7 @@ const estimateTokens = (text: string) => Math.ceil(text.length / 4);
 
 export class ContextBuffer {
     private items: ContextItem[] = [];
-    private maxTokens = 8000;
+    private maxTokens = 32000; // 约 12.8 万字符
 
     add(item: Omit<ContextItem, 'tokens'>, bypassTokenLimit: boolean = false) {
         const tokens = estimateTokens(item.content);

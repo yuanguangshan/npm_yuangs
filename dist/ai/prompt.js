@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildCommandPrompt = buildCommandPrompt;
 exports.buildFixPrompt = buildFixPrompt;
-function buildCommandPrompt(userInput, os, macros) {
+function buildCommandPrompt(userInput, os, macros, context) {
     const macroContext = macros && Object.keys(macros).length > 0
         ? `
 【可复用的快捷指令 (Macros)】
@@ -46,6 +46,9 @@ ${macroContext}
   "macro": "要复用的 Macro 名称（优先使用，与 command 二选一）",
   "risk": "low | medium | high"
 }
+
+【上下文信息】
+${context || '无'}
 
 【用户需求】
 ${userInput}

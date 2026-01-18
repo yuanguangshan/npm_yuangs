@@ -18,6 +18,8 @@ const validation_1 = require("../core/validation");
 const macros_1 = require("../core/macros");
 const capabilitySystem_1 = require("../core/capabilitySystem");
 const capabilityInference_1 = require("../core/capabilityInference");
+const contextBuffer_1 = require("./contextBuffer");
+const contextStorage_1 = require("./contextStorage");
 function validateAIPlan(obj) {
     return (typeof obj === 'object' &&
         obj !== null &&
@@ -48,7 +50,12 @@ async function handleAICommand(userInput, options) {
             selectedModel = matchResult.selected?.name || 'gemini-2.5-flash-lite';
         }
         spinner.stop();
-        const prompt = (0, prompt_1.buildCommandPrompt)(userInput, os, macros);
+        // Load context
+        const contextBuffer = new contextBuffer_1.ContextBuffer();
+        const persistedContext = await (0, contextStorage_1.loadContext)();
+        contextBuffer.import(persistedContext);
+        const contextStr = contextBuffer.isEmpty() ? '' : contextBuffer.buildPrompt('');
+        const prompt = (0, prompt_1.buildCommandPrompt)(userInput, os, macros, contextStr);
         const raw = await (0, client_1.askAI)(prompt, selectedModel);
         const { aiCommandPlanSchema } = require('../core/validation');
         const parseResult = (0, validation_1.safeParseJSON)(raw, aiCommandPlanSchema, {});
@@ -165,6 +172,8 @@ async function handleAICommand(userInput, options) {
             if (!isUsingMacro) {
                 capabilitySystem.createAndSaveExecutionRecord('ai-command', requirement, matchResult, commandToExecute);
             }
+            // Clear context after successful one-shot command execution
+            await (0, contextStorage_1.saveContext)([]);
         }
         return result;
     }
