@@ -474,20 +474,35 @@ ${stderr}
                     }
 
                     const contentMap = readFilesContent(filePaths);
-                    
-                    // 构造简洁的内容格式，避免嵌套反引号
-                    const combinedContent = Array.from(contentMap.entries())
-                        .map(([p, c]) => `--- File: ${p} ---\n${c}`)
-                        .join('\n\n');
 
-                    contextBuffer.add({
-                        type: 'directory',
-                        path: dirPath,
-                        content: combinedContent
-                    });
+                    // 逐个添加文件，而不是将所有内容合并为一个大的目录项
+                    // 这样可以更好地控制token使用，并保留之前的上下文
+                    let addedCount = 0;
+                    for (const [filePath, content] of contentMap) {
+                        // 检查单个文件大小，如果太大则跳过
+                        const fileTokens = Math.ceil(content.length / 4);
+                        if (fileTokens > 2000) { // 限制单个文件不超过2000 tokens
+                            console.log(chalk.yellow(`⚠️  跳过大文件: ${filePath} (太大)`));
+                            continue;
+                        }
+
+                        contextBuffer.add({
+                            type: 'file',  // 改为file类型，因为实际上是单个文件
+                            path: filePath,
+                            content: content
+                        });
+                        addedCount++;
+
+                        // 检查是否达到token限制，如果达到则停止添加更多文件
+                        // 我们需要手动计算总tokens，因为totalTokens是私有方法
+                        const totalTokens = contextBuffer.export().reduce((sum, item) => sum + item.tokens, 0);
+                        if (totalTokens > 30000) { // 留2000 token余量
+                            console.log(chalk.yellow(`⚠️  达到token限制，停止添加更多文件`));
+                            break;
+                        }
+                    }
 
                     await saveContext(contextBuffer.export());
-                    console.log(chalk.green(`✅ 已加入目录上下文: ${dirPath}\n`));
                 } catch (err: unknown) {
                     const message = err instanceof Error ? err.message : String(err);
                     console.error(chalk.red(`\n[处理错误]: ${message}\n`));
