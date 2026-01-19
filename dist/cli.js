@@ -64,6 +64,7 @@ program
     .name('yuangs')
     .description('苑广山的个人命令行工具')
     .version(version, '-V, --version');
+(0, completion_1.setProgramInstance)(program);
 async function readStdin() {
     if (process.stdin.isTTY)
         return '';
@@ -348,18 +349,21 @@ program
     }
 });
 program
-    .command('_complete_subcommand <command>')
-    .description('(内部命令) 获取子命令或参数')
-    .action((command) => {
-    const subcommands = (0, completion_1.getCommandSubcommands)(program, command);
-    console.log(subcommands.join(' '));
-});
-program
-    .command('_describe <command>')
-    .description('(内部命令) 获取命令描述')
-    .action((command) => {
-    const description = (0, completion_1.getCommandDescription)(program, command);
-    console.log(description);
+    .command('_complete')
+    .description('(internal) unified completion entry')
+    .option('--words <json>', 'JSON encoded argv')
+    .option('--current <index>', 'Current word index')
+    .action(async (options) => {
+    try {
+        const words = JSON.parse(options.words);
+        const currentIndex = Number(options.current);
+        const res = await (0, completion_1.complete)({ words, currentIndex });
+        console.log(res.items.map(i => i.label).join(' '));
+    }
+    catch {
+        console.log('');
+        process.exit(0);
+    }
 });
 (0, capabilityCommands_1.registerCapabilityCommands)(program);
 program

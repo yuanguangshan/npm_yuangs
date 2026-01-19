@@ -8,7 +8,7 @@ import { handleAICommand } from './commands/handleAICommand';
 import { handleAIChat } from './commands/handleAIChat';
 import { handleConfig } from './commands/handleConfig';
 import { registerCapabilityCommands } from './commands/capabilityCommands';
-import { getAllCommands, getCommandSubcommands, getCommandDescription, installBashCompletion, installZshCompletion } from './core/completion';
+import { getAllCommands, getCommandSubcommands, getCommandDescription, installBashCompletion, installZshCompletion, complete, setProgramInstance } from './core/completion';
 import { loadAppsConfig, openUrl, DEFAULT_APPS } from './core/apps';
 import { getMacros, saveMacro, runMacro } from './core/macros';
 import { getCommandHistory } from './utils/history';
@@ -30,6 +30,8 @@ program
     .name('yuangs')
     .description('苑广山的个人命令行工具')
     .version(version, '-V, --version');
+
+setProgramInstance(program);
 
 async function readStdin(): Promise<string> {
     if (process.stdin.isTTY) return '';
@@ -326,19 +328,22 @@ program
     });
 
 program
-    .command('_complete_subcommand <command>')
-    .description('(内部命令) 获取子命令或参数')
-    .action((command) => {
-        const subcommands = getCommandSubcommands(program, command);
-        console.log(subcommands.join(' '));
-    });
+    .command('_complete')
+    .description('(internal) unified completion entry')
+    .option('--words <json>', 'JSON encoded argv')
+    .option('--current <index>', 'Current word index')
+    .action(async (options) => {
+        try {
+            const words = JSON.parse(options.words);
+            const currentIndex = Number(options.current);
 
-program
-    .command('_describe <command>')
-    .description('(内部命令) 获取命令描述')
-    .action((command) => {
-        const description = getCommandDescription(program, command);
-        console.log(description);
+            const res = await complete({ words, currentIndex });
+
+            console.log(res.items.map(i => i.label).join(' '));
+        } catch {
+            console.log('');
+            process.exit(0);
+        }
     });
 
 registerCapabilityCommands(program);
