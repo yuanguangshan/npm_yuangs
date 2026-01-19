@@ -43,6 +43,7 @@
     "marked": "^15.0.12",
     "marked-terminal": "^7.3.0",
     "ora": "^6.3.1",
+    "yuangs": "^2.29.0",
     "zod": "^4.3.5"
   },
   "devDependencies": {
