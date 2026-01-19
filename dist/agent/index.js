@@ -31,4 +31,5 @@ var executor_1 = require("./executor");
 Object.defineProperty(exports, "ToolExecutor", { enumerable: true, get: function () { return executor_1.ToolExecutor; } });
 var contextManager_1 = require("./contextManager");
 Object.defineProperty(exports, "ContextManager", { enumerable: true, get: function () { return contextManager_1.ContextManager; } });
+__exportStar(require("./policy"), exports);
 //# sourceMappingURL=index.js.map
