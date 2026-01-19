@@ -21,7 +21,7 @@ export type AIResponse = {
     }>;
 };
 export declare const DEFAULT_AI_PROXY_URL = "https://aiproxy.want.biz/v1/chat/completions";
-export declare const DEFAULT_MODEL = "gemini-2.5-flash-lite";
+export declare const DEFAULT_MODEL = "Assistant";
 export declare const DEFAULT_ACCOUNT_TYPE: "free";
 export declare const DEFAULT_APPS: {
     readonly shici: "https://wealth.want.biz/shici/index.html";

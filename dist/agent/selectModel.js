@@ -1,19 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.selectModel = selectModel;
+const client_1 = require("../ai/client");
 function selectModel(intent, override) {
     if (override)
         return override;
-    const caps = intent.capabilities;
-    // Long context + reasoning = most powerful model
-    if (caps.longContext && caps.reasoning) {
-        return 'gemini-2.0-flash-exp';
-    }
-    // Code-focused tasks
-    if (caps.code) {
-        return 'gemini-2.5-flash-lite';
-    }
-    // Default to balanced model
-    return 'gemini-2.5-flash-lite';
+    const config = (0, client_1.getUserConfig)();
+    const defaultModel = config.defaultModel || 'gemini-2.5-flash-lite';
+    return defaultModel;
 }
 //# sourceMappingURL=selectModel.js.map
