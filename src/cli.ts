@@ -13,6 +13,7 @@ import { loadAppsConfig, openUrl, DEFAULT_APPS } from './core/apps';
 import { getMacros, saveMacro, runMacro } from './core/macros';
 import { getCommandHistory } from './utils/history';
 import { handleSpecialSyntax } from './utils/syntaxHandler';
+import { registerRegistryCommands } from './commands/registryCommands';
 
 // Mandatory Node.js version check
 const majorVersion = Number(process.versions.node.split('.')[0]);
@@ -347,6 +348,7 @@ program
     });
 
 registerCapabilityCommands(program);
+registerRegistryCommands(program);
 
 program
     .command('help')
@@ -364,6 +366,7 @@ program
         console.log(`  ${chalk.green('macros')}            查看所有快捷指令`);
         console.log(`  ${chalk.green('save')} <名称>      保存快捷指令`);
         console.log(`  ${chalk.green('run')} <名称>        执行快捷指令`);
+        console.log(`  ${chalk.green('registry')}          Macro Registry 管理`);
         console.log(`  ${chalk.green('help')}              显示帮助信息\n`);
     });
 
@@ -409,7 +412,7 @@ program
 async function main() {
     const args = process.argv.slice(2);
 
-    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities', 'completion', '_complete_subcommand', '_describe'];
+    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities', 'completion', '_complete_subcommand', '_describe', 'registry'];
     const globalFlags = ['-h', '--help', '-V', '--version', '-v'];
     const firstArg = args[0];
     const isKnownCommand = firstArg && knownCommands.includes(firstArg);

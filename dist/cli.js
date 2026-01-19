@@ -51,6 +51,7 @@ const apps_1 = require("./core/apps");
 const macros_1 = require("./core/macros");
 const history_1 = require("./utils/history");
 const syntaxHandler_1 = require("./utils/syntaxHandler");
+const registryCommands_1 = require("./commands/registryCommands");
 // Mandatory Node.js version check
 const majorVersion = Number(process.versions.node.split('.')[0]);
 if (majorVersion < 18) {
@@ -366,6 +367,7 @@ program
     }
 });
 (0, capabilityCommands_1.registerCapabilityCommands)(program);
+(0, registryCommands_1.registerRegistryCommands)(program);
 program
     .command('help')
     .description('显示帮助信息')
@@ -382,6 +384,7 @@ program
     console.log(`  ${chalk_1.default.green('macros')}            查看所有快捷指令`);
     console.log(`  ${chalk_1.default.green('save')} <名称>      保存快捷指令`);
     console.log(`  ${chalk_1.default.green('run')} <名称>        执行快捷指令`);
+    console.log(`  ${chalk_1.default.green('registry')}          Macro Registry 管理`);
     console.log(`  ${chalk_1.default.green('help')}              显示帮助信息\n`);
 });
 const apps = (0, apps_1.loadAppsConfig)();
@@ -421,7 +424,7 @@ program
 });
 async function main() {
     const args = process.argv.slice(2);
-    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities', 'completion', '_complete_subcommand', '_describe'];
+    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities', 'completion', '_complete_subcommand', '_describe', 'registry'];
     const globalFlags = ['-h', '--help', '-V', '--version', '-v'];
     const firstArg = args[0];
     const isKnownCommand = firstArg && knownCommands.includes(firstArg);
