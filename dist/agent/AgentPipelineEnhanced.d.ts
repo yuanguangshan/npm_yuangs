@@ -1,6 +1,6 @@
 import { AgentInput, AgentMode } from './types';
 import { ModelRegistry } from '../policy/model/ModelRegistry';
-export declare class AgentPipeline {
+export declare class AgentPipelineEnhanced {
     private contextBuffer;
     private modelRegistry;
     private policy;

@@ -11,21 +11,19 @@ jest.mock('fs/promises');
 describe('TokenEstimator - T2: Concurrent Estimate with Failures', () => {
     test('单项 ENOENT 错误应转为 warning', async () => {
         const error = new Error('ENOENT: /test/file.txt');
-        (error as any).code = 'ENOENT';
         const item: PendingContextItem = {
             id: '/test/file.txt',
             type: 'file',
             originalToken: '@/test/file.txt',
             samplingStrategy: 'none',
-            estimate: async () => { throw error },
-            resolve: async () => ({ content: '', byteSize: 0 })
+            estimate: async () => { throw error }
         };
 
         const result = await TokenEstimator.estimate([item]);
 
         expect(result.estimatedTokens).toBe(0);
         expect(result.warnings).toHaveLength(1);
-        expect(result.warnings[0].message).toContain('File not found');
+        expect(result.warnings[0].message).toContain('ENOENT: /test/file.txt');
         expect(result.blockingError).toBeUndefined();
     });
 
@@ -37,8 +35,7 @@ describe('TokenEstimator - T2: Concurrent Estimate with Failures', () => {
             type: 'file',
             originalToken: '@/test/file.txt',
             samplingStrategy: 'none',
-            estimate: async () => { throw error },
-            resolve: async () => ({ content: '', byteSize: 0 })
+            estimate: async () => { throw error }
         };
 
         const result = await TokenEstimator.estimate([item]);
@@ -56,8 +53,7 @@ describe('TokenEstimator - T2: Concurrent Estimate with Failures', () => {
                 type: 'file',
                 originalToken: '@/test/file1.txt',
                 samplingStrategy: 'none',
-                estimate: async () => ({ byteSize: 100 }),
-                resolve: async () => ({ content: '', byteSize: 0 })
+                estimate: async () => ({ byteSize: 100 })
             },
             {
                 id: '/test/file2.txt',
@@ -65,11 +61,8 @@ describe('TokenEstimator - T2: Concurrent Estimate with Failures', () => {
                 originalToken: '@/test/file2.txt',
                 samplingStrategy: 'none',
                 estimate: async () => {
-                    const error = new Error('ENOENT: /test/file2.txt');
-                    (error as any).code = 'ENOENT';
-                    throw error;
-                },
-                resolve: async () => ({ content: '', byteSize: 0 })
+                    throw new Error('ENOENT: /test/file2.txt');
+                }
             }
         ];
 

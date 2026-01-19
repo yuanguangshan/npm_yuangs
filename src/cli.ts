@@ -362,6 +362,13 @@ async function main() {
     const isKnownCommand = firstArg && knownCommands.includes(firstArg);
     const isGlobalFlag = firstArg && globalFlags.includes(firstArg);
 
+    if (args.length === 0 && !await readStdin()) {
+        console.log(chalk.bold.cyan('\n🎨 苑广山的个人应用启动器 (Modular TS版)\n'));
+        console.log(chalk.yellow(`当前版本: ${version}`));
+        program.outputHelp();
+        process.exit(0);
+    }
+
     if (!isKnownCommand && !isGlobalFlag) {
         const stdinData = await readStdin();
 
@@ -373,11 +380,11 @@ async function main() {
                 // 检查 stdin 数据是否是特殊语法
                 const stdinTrimmed = stdinData.trim();
                 const isStdinSpecialSyntax = stdinTrimmed.startsWith('@') ||
-                                           stdinTrimmed.startsWith('#') ||
-                                           stdinTrimmed === ':ls' ||
-                                           stdinTrimmed === ':clear' ||
-                                           stdinTrimmed === ':cat' ||
-                                           stdinTrimmed.startsWith(':cat ');
+                    stdinTrimmed.startsWith('#') ||
+                    stdinTrimmed === ':ls' ||
+                    stdinTrimmed === ':clear' ||
+                    stdinTrimmed === ':cat' ||
+                    stdinTrimmed.startsWith(':cat ');
 
                 if (isStdinSpecialSyntax) {
                     const result = await handleSpecialSyntax(stdinData, '');
@@ -432,10 +439,10 @@ async function main() {
                         if (result.result) {
                             // 检查是否是管理命令（如 :ls, :clear, :cat），这些命令的结果应该直接输出
                             const trimmedQuestion = question.trim();
-                            const isManagementCommand = trimmedQuestion === ':ls' || 
-                                                       trimmedQuestion === ':clear' || 
-                                                       trimmedQuestion === ':cat' || 
-                                                       trimmedQuestion.startsWith(':cat ');
+                            const isManagementCommand = trimmedQuestion === ':ls' ||
+                                trimmedQuestion === ':clear' ||
+                                trimmedQuestion === ':cat' ||
+                                trimmedQuestion.startsWith(':cat ');
 
                             if (isManagementCommand) {
                                 // 直接输出结果并退出

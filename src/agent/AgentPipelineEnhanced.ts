@@ -23,7 +23,7 @@ import { ContextSampler } from '../policy/sampler';
 
 const MAX_PIPELINE_ITERATIONS = 3;
 
-export class AgentPipeline {
+export class AgentPipelineEnhanced {
     private contextBuffer: ContextBuffer = new ContextBuffer();
     private modelRegistry: ModelRegistry;
     private policy: DefaultTokenPolicy;
@@ -39,11 +39,14 @@ export class AgentPipeline {
         try {
             await this.runWithTokenPolicy(input, mode, id);
         } catch (error: any) {
-            if (error.name === 'MaxIterationsExceeded') {
+            if (error.message === 'MaxIterationsExceeded') {
                 console.log(chalk.yellow('\n⚠️  已达到最大迭代次数，操作终止'));
+            } else if (error.message === 'UserAborted') {
+                console.log(chalk.yellow('\n⚠️  用户已取消操作'));
             } else {
                 console.log(chalk.red(`\n❌ Pipeline 错误: ${error.message}`));
             }
+            throw error;
         }
 
         PolicyPresenter.clearSuppressCache();
@@ -155,7 +158,7 @@ export class AgentPipeline {
                 return true;
 
             case 'abort':
-                return false;
+                throw new Error('UserAborted');
 
             case 'switch_model':
                 if (decision.targetModel) {

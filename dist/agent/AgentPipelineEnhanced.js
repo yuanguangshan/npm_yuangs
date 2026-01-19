@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AgentPipeline = void 0;
+exports.AgentPipelineEnhanced = void 0;
 const contextBuffer_1 = require("../commands/contextBuffer");
 const intent_1 = require("./intent");
 const context_1 = require("./context");
@@ -23,7 +23,7 @@ const syntaxHandler_1 = require("../policy/syntaxHandler");
 const PolicyPresenter_1 = require("../ui/PolicyPresenter");
 const sampler_1 = require("../policy/sampler");
 const MAX_PIPELINE_ITERATIONS = 3;
-class AgentPipeline {
+class AgentPipelineEnhanced {
     contextBuffer = new contextBuffer_1.ContextBuffer();
     modelRegistry;
     policy;
@@ -37,12 +37,16 @@ class AgentPipeline {
             await this.runWithTokenPolicy(input, mode, id);
         }
         catch (error) {
-            if (error.name === 'MaxIterationsExceeded') {
+            if (error.message === 'MaxIterationsExceeded') {
                 console.log(chalk_1.default.yellow('\n⚠️  已达到最大迭代次数，操作终止'));
+            }
+            else if (error.message === 'UserAborted') {
+                console.log(chalk_1.default.yellow('\n⚠️  用户已取消操作'));
             }
             else {
                 console.log(chalk_1.default.red(`\n❌ Pipeline 错误: ${error.message}`));
             }
+            throw error;
         }
         PolicyPresenter_1.PolicyPresenter.clearSuppressCache();
     }
@@ -112,7 +116,7 @@ class AgentPipeline {
             case 'continue':
                 return true;
             case 'abort':
-                return false;
+                throw new Error('UserAborted');
             case 'switch_model':
                 if (decision.targetModel) {
                     const newModel = this.modelRegistry.get(decision.targetModel);
@@ -225,5 +229,5 @@ class AgentPipeline {
         return mode; // command 默认为 command
     }
 }
-exports.AgentPipeline = AgentPipeline;
+exports.AgentPipelineEnhanced = AgentPipelineEnhanced;
 //# sourceMappingURL=AgentPipelineEnhanced.js.map

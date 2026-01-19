@@ -379,6 +379,12 @@ async function main() {
     const firstArg = args[0];
     const isKnownCommand = firstArg && knownCommands.includes(firstArg);
     const isGlobalFlag = firstArg && globalFlags.includes(firstArg);
+    if (args.length === 0 && !await readStdin()) {
+        console.log(chalk_1.default.bold.cyan('\n🎨 苑广山的个人应用启动器 (Modular TS版)\n'));
+        console.log(chalk_1.default.yellow(`当前版本: ${version}`));
+        program.outputHelp();
+        process.exit(0);
+    }
     if (!isKnownCommand && !isGlobalFlag) {
         const stdinData = await readStdin();
         if (stdinData || args.length > 0) {

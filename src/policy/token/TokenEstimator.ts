@@ -81,7 +81,7 @@ export class TokenEstimator {
 
         return results;
     }
- 
+
     /**
      * 错误分类处理
 
@@ -109,7 +109,7 @@ export class TokenEstimator {
             case 'ENOENT':
                 summary.warnings.push({
                     item: item.id,
-                    message: `File not found: ${item.id}`
+                    message: `ENOENT: ${error.message || `File not found: ${item.id}`}`
                 });
                 break;
 
