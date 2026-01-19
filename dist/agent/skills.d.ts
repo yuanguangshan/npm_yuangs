@@ -11,7 +11,12 @@ export interface Skill {
     confidence: number;
     lastUsed: number;
     createdAt: number;
+    enabled: boolean;
 }
+/**
+ * 计算技能分 (0 ~ 1)
+ */
+export declare function computeSkillScore(skill: Skill, now?: number): number;
 /**
  * 更新技能状态 (执行后调用)
  */

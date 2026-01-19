@@ -1,12 +1,17 @@
 import { MergedConfig } from './configMerge';
 import { ModelCapabilities, CapabilityMatchExplanation } from './modelMatcher';
 import { CapabilityRequirement } from './modelMatcher';
+import { Skill } from '../agent/skills';
 
 export interface ExecutionMeta {
   commandName: string;
   timestamp: string;
   toolVersion: string;
   projectPath: string;
+  args?: any;
+  rawInput?: string;
+  replayable?: boolean;
+  version?: string;
 }
 
 export interface CapabilityIntent {
@@ -20,6 +25,9 @@ export interface ModelDecision {
   selectedModel: ModelCapabilities | null;
   usedFallback: boolean;
   fallbackReason?: string;
+  strategy?: string;
+  reason?: string;
+  skills?: Skill[];
 }
 
 export interface ExecutionOutcome {
@@ -60,6 +68,8 @@ export function createExecutionRecord(
       timestamp: new Date().toISOString(),
       toolVersion: version,
       projectPath: process.cwd(),
+      version,
+      replayable: true,
     },
     intent: {
       required: requirement.required.map(String),

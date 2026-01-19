@@ -16,6 +16,8 @@ function createExecutionRecord(commandName, requirement, config, matchResult, ou
             timestamp: new Date().toISOString(),
             toolVersion: version,
             projectPath: process.cwd(),
+            version,
+            replayable: true,
         },
         intent: {
             required: requirement.required.map(String),

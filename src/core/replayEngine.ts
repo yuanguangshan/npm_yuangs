@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import { ExecutionRecord } from './executionRecord';
 import { loadExecutionRecord } from './executionStore';
+import { explainExecution } from './explain';
 
 export type ReplayMode = 'strict' | 'compatible' | 're-evaluate';
 
@@ -8,6 +9,9 @@ export interface ReplayOptions {
   mode: ReplayMode;
   skipAI?: boolean;
   verbose?: boolean;
+  dry?: boolean;
+  explain?: boolean;
+  diff?: boolean;
 }
 
 export interface ReplayResult {
@@ -28,6 +32,23 @@ export class ReplayEngine {
       };
     }
 
+    // NOTE: --diff implicitly enables --explain
+    if (options.diff) {
+      options.explain = true;
+    }
+
+    if (options.explain) {
+      console.log(explainExecution(record));
+      console.log('');
+
+      if (options.dry) {
+        return {
+          success: true,
+          message: '[Explain + Dry] Explanation shown, no execution',
+        };
+      }
+    }
+
     if (options.mode === 'strict') {
       return this.strictReplay(record, options);
     }
@@ -45,12 +66,20 @@ export class ReplayEngine {
   ): Promise<ReplayResult> {
     const selectedModel = record.decision.selectedModel;
 
-    if (options.verbose) {
+    if (options.verbose || options.dry) {
       console.log(chalk.cyan('[Strict Replay]'));
       console.log(chalk.gray(`  Original Model: ${selectedModel?.name || 'N/A'}`));
       console.log(chalk.gray(`  Original Provider: ${selectedModel?.provider || 'N/A'}`));
       console.log(chalk.gray(`  Original Timestamp: ${record.meta.timestamp}`));
       console.log(chalk.gray(`  Original Command: ${record.meta.commandName}`));
+    }
+
+    if (options.dry) {
+      return {
+        success: true,
+        message: '[Dry Replay] Command not executed',
+        executedModel: selectedModel?.name ?? undefined,
+      };
     }
 
     if (options.skipAI) {

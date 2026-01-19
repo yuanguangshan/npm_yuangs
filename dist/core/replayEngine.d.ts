@@ -3,6 +3,9 @@ export interface ReplayOptions {
     mode: ReplayMode;
     skipAI?: boolean;
     verbose?: boolean;
+    dry?: boolean;
+    explain?: boolean;
+    diff?: boolean;
 }
 export interface ReplayResult {
     success: boolean;

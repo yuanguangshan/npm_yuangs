@@ -52,6 +52,9 @@ const macros_1 = require("./core/macros");
 const history_1 = require("./utils/history");
 const syntaxHandler_1 = require("./utils/syntaxHandler");
 const registryCommands_1 = require("./commands/registryCommands");
+const explainCommands_1 = require("./commands/explainCommands");
+const replayCommands_1 = require("./commands/replayCommands");
+const skillsCommands_1 = require("./commands/skillsCommands");
 // Mandatory Node.js version check
 const majorVersion = Number(process.versions.node.split('.')[0]);
 if (majorVersion < 18) {
@@ -368,6 +371,9 @@ program
 });
 (0, capabilityCommands_1.registerCapabilityCommands)(program);
 (0, registryCommands_1.registerRegistryCommands)(program);
+(0, explainCommands_1.registerExplainCommands)(program);
+(0, replayCommands_1.registerReplayCommands)(program);
+(0, skillsCommands_1.registerSkillsCommands)(program);
 program
     .command('help')
     .description('显示帮助信息')
@@ -424,7 +430,7 @@ program
 });
 async function main() {
     const args = process.argv.slice(2);
-    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities', 'completion', '_complete_subcommand', '_describe', 'registry'];
+    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities', 'completion', '_complete_subcommand', '_describe', 'registry', 'explain', 'replay', 'skills'];
     const globalFlags = ['-h', '--help', '-V', '--version', '-v'];
     const firstArg = args[0];
     const isKnownCommand = firstArg && knownCommands.includes(firstArg);

@@ -639,6 +639,296 @@ The core governance model is stable; interfaces are still sharpening.
 
 Contributions, ideas, and principled criticism are welcome.
 
+> **"AI should never appear smarter than input unless explicitly asked."**
+
+---
+
+# Phase 2: Explainability & Governance (v1)
+
+## 🎯 Overview
+
+Phase 2 introduces **system observability and control** without changing core behavior:
+- ✅ Explainability: Human-readable execution explanations
+- ✅ Replay++: Dry-run, explain, and diff capabilities
+- ✅ Skill Control: Enable/disable skills for fine-grained control
+
+---
+
+## 📦 New Commands
+
+### `yuangs explain [id | last]`
+
+**Purpose**: Explain why the system made a decision
+
+**Usage**:
+```bash
+# Explain the most recent execution
+yuangs explain last
+
+# Explain a specific execution by ID
+yuangs explain exec_1768820380225_rgts34981
+```
+
+**Output Format (v1)**:
+```
+=== Execution Explanation ===
+[1] Command
+- Name: ai-command
+- Args: echo "hello"
+
+[2] Decision
+- Strategy: capability-match
+- Selected Model: gemini-2.5-flash-lite
+- Reason: Capability-based selection with fallback support
+
+[3] Model
+- Name: gemini-2.5-flash-lite
+- Provider: aiproxy
+- Context Window: 8000
+- Cost Profile: low
+
+[4] Skills
+- (none)
+
+[5] Meta
+- Execution ID: exec_1768820380225_rgts34981
+- Timestamp: 2026-01-19T10:59:40.225Z
+- Replayable: true
+- Version: unknown
+=============================
+```
+
+**Key Features**:
+- ✅ Pure read-only operation (no side effects)
+- ✅ Stable, snapshot-able output
+- ✅ Future-proof for diff/audit workflows
+
+---
+
+### `yuangs replay <id> [options]`
+
+**Purpose**: Replay an execution with control flags
+
+**Options**:
+| Option | Description |
+|--------|-------------|
+| `-s, --strict` | Strict replay (use exact model) |
+| `-c, --compatible` | Compatible replay (allow fallback) |
+| `-r, --re-evaluate` | Re-evaluate with current config |
+| `-v, --verbose` | Verbose output |
+| `--dry` | Dry run - show what would happen without executing |
+| `--explain` | Show explanation before replay |
+| `--diff` | Show diff between original and current config |
+
+**Usage Examples**:
+```bash
+# Dry run with explanation
+yuangs replay exec_1768820380225_rgts34981 --dry --explain
+
+# Show diff only (no execution)
+yuangs replay exec_1768820380225_rgts34981 --diff --dry
+
+# Full replay with diff
+yuangs replay exec_1768820380225_rgts34981 --diff
+```
+
+**Replay Behavior Matrix**:
+| explain | dry | strict | Behavior |
+|--------|-----|--------|----------|
+| ✅ | ✅ | any | Explain only, no execution |
+| ✅ | ❌ | ✅ | Explain → Replay |
+| ❌ | ✅ | ✅ | Print strict info → Exit |
+| ❌ | ❌ | ✅ | Normal replay |
+
+**Diff Output**:
+```
+=== Replay Diff ===
+[Decision]
+- no change
+
+[Model]
+- no change
+
+[Skills]
+- no change
+===================
+```
+
+---
+
+### `yuangs skills <subcommand>`
+
+**Purpose**: Manage skill library
+
+**Subcommands**:
+```bash
+# List all skills with scores
+yuangs skills list
+
+# Explain a specific skill
+yuangs skills explain <skill-name>
+
+# Disable a skill
+yuangs skills disable <skill-name>
+
+# Enable a skill
+yuangs skills enable <skill-name>
+```
+
+**Output Example** (`skills list`):
+```
+📦 Skills (3)
+
+✔ deploy-production
+  Confidence: 72%
+  Success: 8 / Failure: 1
+  Last used: 2 days ago
+
+✔ cleanup-logs
+  Confidence: 41%
+  Success: 5 / Failure: 7
+  Last used: 1 day ago
+
+⊘ legacy-search (disabled)
+  Confidence: 23%
+  Success: 2 / Failure: 6
+  Last used: 7 days ago
+```
+
+**Key Features**:
+- ✅ Skills can be disabled without deletion
+- ✅ Skills are scored and sorted by relevance
+- ✅ Disabled skills don't affect new decisions
+- ✅ All skills remain visible in `explain` output
+
+---
+
+## 🧭 Explain Output Spec v1
+
+The explain output follows a strict format designed for:
+- ✅ Human readability
+- ✅ Stability and snapshot compatibility
+- ✅ Future diff/audit workflows
+- ✅ No implementation coupling
+
+**Structure** (5 sections, immutable order):
+1. `[1] Command` - User input layer
+2. `[2] Decision` - Decision-making core
+3. `[3] Model` - Execution environment
+4. `[4] Skills` - Skills that influenced decision
+5. `[5] Meta` - Audit/replay metadata
+
+**Important Notes**:
+- ⚠️ Do NOT change format without bumping spec version
+- ✅ Output is pure text (no color for snapshots)
+- ✅ Same execution record = 100% reproducible output
+
+---
+
+## 🔒 Skills & Enabled State
+
+Skills now have an `enabled` field that controls their participation in new decisions:
+
+**Default Behavior**:
+- ✅ New skills: `enabled: true`
+- ✅ Legacy skills: `enabled: true` (if field missing)
+- ❌ Disabled skills: Not included in `getRelevantSkills()`
+
+**Use Cases**:
+1. **Governance**: Temporarily disable risky skills
+2. **A/B Testing**: Compare different skill configurations
+3. **Rollback**: Disable a newly-added skill without deletion
+4. **Audit**: View disabled skills in explain output
+
+**CLI Commands**:
+```bash
+# Disable a skill
+yuangs skills disable risky-operation
+
+# List to verify
+yuangs skills list
+
+# Re-enable if needed
+yuangs skills enable risky-operation
+```
+
+---
+
+## 🧪 Testing & Snapshots
+
+### Creating Explain Snapshots
+
+```bash
+# Create a snapshot of the last execution
+yuangs replay exec_1768820380225_rgts34981 --explain --dry > snapshot.txt
+```
+
+Snapshots are useful for:
+- ✅ Regression testing
+- ✅ Output format verification
+- ✅ Documentation examples
+- ✅ Audit trails
+
+---
+
+## 📝 Implementation Notes
+
+### Explain Output v1
+
+**File**: `src/core/explain.ts`
+
+**Key Design**:
+- Pure function (no side effects)
+- No external dependencies on global state
+- Uses existing `ExecutionRecord` structure
+- Stable formatting (versioned)
+
+---
+
+### Replay Diff
+
+**File**: `src/core/replayDiff.ts`
+
+**Key Design**:
+- Compares Decision, Model, and Skills layers
+- Shows added/removed/changed skills
+- Semantic diff (not token-level)
+- Compatible with Explain v1 format
+
+---
+
+### Skills Control
+
+**File**: `src/agent/skills.ts`
+
+**Key Changes**:
+- Added `enabled: boolean` field to `Skill` interface
+- Exported `computeSkillScore()` for CLI usage
+- `getRelevantSkills()` filters disabled skills
+
+---
+
+## ✅ Phase 2 Completion
+
+All Phase 2 objectives are complete:
+
+- [x] Explainability (ExecutionRecord-level)
+- [x] Replay dry / explain / strict
+- [x] Skill scoring & enable flag
+- [x] CLI wiring for all three
+- [x] Replay diff implementation
+- [x] Skills enabled filtering
+- [x] Explain v1 specification
+- [x] Snapshot testing capability
+
+**Next Phase**: Phase 3 - Advanced governance & project-level intelligence
+
+
+`yuangs` is actively evolving.  
+The core governance model is stable; interfaces are still sharpening.
+
+Contributions, ideas, and principled criticism are welcome.
+
 
 > **“AI should never appear smarter than the input unless explicitly asked.”**
 

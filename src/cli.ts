@@ -14,6 +14,9 @@ import { getMacros, saveMacro, runMacro } from './core/macros';
 import { getCommandHistory } from './utils/history';
 import { handleSpecialSyntax } from './utils/syntaxHandler';
 import { registerRegistryCommands } from './commands/registryCommands';
+import { registerExplainCommands } from './commands/explainCommands';
+import { registerReplayCommands } from './commands/replayCommands';
+import { registerSkillsCommands } from './commands/skillsCommands';
 
 // Mandatory Node.js version check
 const majorVersion = Number(process.versions.node.split('.')[0]);
@@ -349,6 +352,9 @@ program
 
 registerCapabilityCommands(program);
 registerRegistryCommands(program);
+registerExplainCommands(program);
+registerReplayCommands(program);
+registerSkillsCommands(program);
 
 program
     .command('help')
@@ -412,7 +418,7 @@ program
 async function main() {
     const args = process.argv.slice(2);
 
-    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities', 'completion', '_complete_subcommand', '_describe', 'registry'];
+    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities', 'completion', '_complete_subcommand', '_describe', 'registry', 'explain', 'replay', 'skills'];
     const globalFlags = ['-h', '--help', '-V', '--version', '-v'];
     const firstArg = args[0];
     const isKnownCommand = firstArg && knownCommands.includes(firstArg);

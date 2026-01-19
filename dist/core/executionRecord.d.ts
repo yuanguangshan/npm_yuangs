@@ -1,11 +1,16 @@
 import { MergedConfig } from './configMerge';
 import { ModelCapabilities, CapabilityMatchExplanation } from './modelMatcher';
 import { CapabilityRequirement } from './modelMatcher';
+import { Skill } from '../agent/skills';
 export interface ExecutionMeta {
     commandName: string;
     timestamp: string;
     toolVersion: string;
     projectPath: string;
+    args?: any;
+    rawInput?: string;
+    replayable?: boolean;
+    version?: string;
 }
 export interface CapabilityIntent {
     required: string[];
@@ -17,6 +22,9 @@ export interface ModelDecision {
     selectedModel: ModelCapabilities | null;
     usedFallback: boolean;
     fallbackReason?: string;
+    strategy?: string;
+    reason?: string;
+    skills?: Skill[];
 }
 export interface ExecutionOutcome {
     success: boolean;

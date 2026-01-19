@@ -20,6 +20,9 @@ export interface Skill {
     // 时间戳
     lastUsed: number;
     createdAt: number;
+
+    // 是否启用
+    enabled: boolean;
 }
 
 const SKILLS_FILE = path.join(os.homedir(), '.yuangs_skills.json');
@@ -55,7 +58,7 @@ loadSkills();
 /**
  * 计算技能分 (0 ~ 1)
  */
-function computeSkillScore(skill: Skill, now: number = Date.now()): number {
+export function computeSkillScore(skill: Skill, now: number = Date.now()): number {
     const totalUses = skill.successCount + skill.failureCount;
     const successRate = totalUses === 0 ? 0.5 : skill.successCount / totalUses;
 
@@ -115,7 +118,8 @@ export function learnSkillFromRecord(record: ExecutionRecord, success: boolean =
         failureCount: 0,
         confidence: 0.5,
         lastUsed: now,
-        createdAt: now
+        createdAt: now,
+        enabled: true
     });
 
     // 每学习一次，尝试清理一次“冷”技能
@@ -133,9 +137,11 @@ export function getRelevantSkills(input: string, limit: number = 3): Skill[] {
     return skillLibrary
         // 1. 基础筛选: 剔除评分过低的技能 (硬淘汰阈值 0.3)
         .filter(s => computeSkillScore(s, now) >= 0.3)
-        // 2. 排序: 按综合分排序
+        // 2. 过滤已禁用的技能
+        .filter(s => s.enabled !== false)
+        // 3. 排序: 按综合分排序
         .sort((a, b) => computeSkillScore(b, now) - computeSkillScore(a, now))
-        // 3. 取上限
+        // 4. 取上限
         .slice(0, limit);
 }
 

@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.computeSkillScore = computeSkillScore;
 exports.updateSkillStatus = updateSkillStatus;
 exports.learnSkillFromRecord = learnSkillFromRecord;
 exports.getRelevantSkills = getRelevantSkills;
@@ -95,7 +96,8 @@ function learnSkillFromRecord(record, success = true) {
         failureCount: 0,
         confidence: 0.5,
         lastUsed: now,
-        createdAt: now
+        createdAt: now,
+        enabled: true
     });
     // 每学习一次，尝试清理一次“冷”技能
     reapColdSkills();
@@ -109,9 +111,11 @@ function getRelevantSkills(input, limit = 3) {
     return skillLibrary
         // 1. 基础筛选: 剔除评分过低的技能 (硬淘汰阈值 0.3)
         .filter(s => computeSkillScore(s, now) >= 0.3)
-        // 2. 排序: 按综合分排序
+        // 2. 过滤已禁用的技能
+        .filter(s => s.enabled !== false)
+        // 3. 排序: 按综合分排序
         .sort((a, b) => computeSkillScore(b, now) - computeSkillScore(a, now))
-        // 3. 取上限
+        // 4. 取上限
         .slice(0, limit);
 }
 /**

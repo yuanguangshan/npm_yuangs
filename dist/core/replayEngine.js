@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.replayEngine = exports.ReplayEngine = void 0;
 const chalk_1 = __importDefault(require("chalk"));
 const executionStore_1 = require("./executionStore");
+const explain_1 = require("./explain");
 class ReplayEngine {
     async replay(recordId, options = { mode: 'strict' }) {
         const record = (0, executionStore_1.loadExecutionRecord)(recordId);
@@ -14,6 +15,20 @@ class ReplayEngine {
                 success: false,
                 message: `Execution record ${recordId} not found`,
             };
+        }
+        // NOTE: --diff implicitly enables --explain
+        if (options.diff) {
+            options.explain = true;
+        }
+        if (options.explain) {
+            console.log((0, explain_1.explainExecution)(record));
+            console.log('');
+            if (options.dry) {
+                return {
+                    success: true,
+                    message: '[Explain + Dry] Explanation shown, no execution',
+                };
+            }
         }
         if (options.mode === 'strict') {
             return this.strictReplay(record, options);
@@ -25,12 +40,19 @@ class ReplayEngine {
     }
     async strictReplay(record, options) {
         const selectedModel = record.decision.selectedModel;
-        if (options.verbose) {
+        if (options.verbose || options.dry) {
             console.log(chalk_1.default.cyan('[Strict Replay]'));
             console.log(chalk_1.default.gray(`  Original Model: ${selectedModel?.name || 'N/A'}`));
             console.log(chalk_1.default.gray(`  Original Provider: ${selectedModel?.provider || 'N/A'}`));
             console.log(chalk_1.default.gray(`  Original Timestamp: ${record.meta.timestamp}`));
             console.log(chalk_1.default.gray(`  Original Command: ${record.meta.commandName}`));
+        }
+        if (options.dry) {
+            return {
+                success: true,
+                message: '[Dry Replay] Command not executed',
+                executedModel: selectedModel?.name ?? undefined,
+            };
         }
         if (options.skipAI) {
             return {
