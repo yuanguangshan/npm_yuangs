@@ -403,10 +403,128 @@ git diff | yuangs ai "推测背后的设计考量"
 
 ---
 
-# 五、给你一句“封印咒语”
+### Why yuangs
 
-如果你只记一句话，把这句贴在项目里：
+> **A governed AI runtime for the terminal.**  
+> *No OOM. No surprises. Human in the loop — always.*
+
+`yuangs` is a Unix‑style AI tool for developers who live in the terminal and **refuse black boxes**.
+
+It does **not** try to replace your shell.  
+It does **not** hide decisions behind magic prompts.  
+Instead, it answers a harder question:
+
+> **When uncontrollable AI meets a terminal built on control — how do we restore order?**
+
+---
+
+## Philosophy
+
+### 🧩 Do one thing, and do it well
+
+`yuangs` is not a browser plugin, not a GUI assistant, and not a “chatbot in disguise”.
+
+It is a **context governor**.
+
+You explicitly decide:
+- what files enter the context
+- how much token budget is allowed
+- when sampling happens
+- when execution is permitted
+
+Files, directories, and AI logic are connected through **syntax**, not clicks.
+
+```bash
+ai "@src/**/*.ts #docs"
+```
+
+This is Unix philosophy applied to AI:
+**syntax is power**.
+
+---
+
+### 🛡️ Developer sovereignty, by default
+
+Most AI CLI tools optimize for convenience — at the cost of trust.
+
+They:
+- upload silently
+- truncate context implicitly
+- execute plans opaquely
+
+`yuangs` does the opposite.
+
+- **Swiss‑cheese sampling preview** — see *exactly* what will be sent
+- **TokenPolicy** — estimate before resolve, always
+- **Human‑in‑the‑loop decisions** — model switches, sampling, execution
+
+Your terminal.  
+Your data.  
+Your choice.
+
+---
+
+### 🧠 A programmable Agent runtime — not a prompt wrapper
+
+Publishing `yuangs` to npm doesn’t give you just a command.  
+It gives you **an agent runtime you can compose**.
+
+Core primitives:
+- `PendingContextItem`
+- token estimation vs resolution
+- capability‑aware execution
+- replayable execution records
+
+You don’t get a black box.  
+You get **LEGO with instructions**.
+
+Build your own:
+- repo analyzers
+- log‑to‑AI pipelines
+- controlled refactoring agents
+- auditable automation
+
+---
+
+## What makes it different
+
+✅ **No OOM, no surprise**  
+Large repos, massive logs — nothing is fully loaded or sent without confirmation.
+
+✅ **Human in the loop, always**  
+AI never escalates privileges or cost silently.
+
+✅ **Power of syntax**  
+`@file`, `#dir`, intent‑driven commands — faster than any drag‑and‑drop UI.
+
+✅ **Replay & audit**  
+Every AI action is inspectable, reproducible, and debuggable.
+
+---
+
+## Who is this for?
+
+- Terminal‑first developers  
+- Linux / Unix philosophy believers  
+- Engineers burned by opaque AI tools  
+- Anyone who wants **control before convenience**
+
+If you believe:
+> *“AI is powerful — and that’s exactly why it must be governed.”*
+
+Then `yuangs` is for you.
+
+---
+
+## Status
+
+`yuangs` is actively evolving.  
+The core governance model is stable; interfaces are still sharpening.
+
+Contributions, ideas, and principled criticism are welcome.
+
 
 > **“AI should never appear smarter than the input unless explicitly asked.”**
 
-你现在其实已经走在一条**非常少有人走对的路**上了。
+
+
