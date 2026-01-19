@@ -1,4 +1,4 @@
-const { createCompleter, detectMode } = require('./dist/commands/shellCompletions.js');
+const { createCompleter, detectMode } = require('../dist/commands/shellCompletions.js');
 
 // Comprehensive test of all completion features
 console.log('Running comprehensive completion functionality tests...\n');

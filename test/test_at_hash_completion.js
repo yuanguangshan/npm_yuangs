@@ -1,4 +1,4 @@
-const { createCompleter } = require('./dist/commands/shellCompletions.js');
+const { createCompleter } = require('../dist/commands/shellCompletions.js');
 
 // Test the @ and # completion functionality specifically
 console.log('Testing @ and # completion functionality...\n');

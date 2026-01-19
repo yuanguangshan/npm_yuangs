@@ -1,9 +1,32 @@
-const { createCompleter, detectMode } = require('./dist/commands/shellCompletions.js');
+const { createCompleter, detectMode, splitToken } = require('../dist/commands/shellCompletions.js');
 
 // Test the readline integration aspects of completion
 console.log('Testing readline integration for completion functionality...\n');
 
 const completer = createCompleter();
+
+// Test the splitToken function behavior
+console.log('=== SPLIT TOKEN BEHAVIOR ===');
+const splitTestCases = [
+    '@',
+    '@ ',
+    '@ README',
+    '@ README.md',
+    '#',
+    '# src',
+    '# src/',
+    '$ ls -l',
+    'normal chat text'
+];
+
+splitTestCases.forEach(testCase => {
+    const { prefix, token } = splitToken(testCase);
+    console.log(`Input: "${testCase}"`);
+    console.log(`  Prefix: "${prefix}"`);
+    console.log(`  Token: "${token}"`);
+    console.log(`  Mode: ${detectMode(testCase)}`);
+    console.log('');
+});
 
 // Test actual completion behavior with various inputs
 console.log('=== ACTUAL COMPLETION BEHAVIOR ===');
@@ -22,6 +45,8 @@ completionTestCases.forEach(testCase => {
     console.log(`Input: "${testCase}"`);
     try {
         const [completions, line] = completer(testCase);
+        const { prefix, token } = splitToken(testCase);
+        console.log(`  Split: prefix="${prefix}", token="${token}"`);
         console.log(`  Mode: ${detectMode(testCase)}`);
         console.log(`  Completions: ${completions.length}`);
         console.log(`  Returned line: "${line}"`);

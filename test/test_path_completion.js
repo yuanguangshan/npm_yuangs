@@ -1,4 +1,4 @@
-const { createCompleter, detectMode } = require('./dist/commands/shellCompletions.js');
+const { createCompleter, detectMode } = require('../dist/commands/shellCompletions.js');
 
 // Test path completion without spaces
 console.log('Testing path completion without spaces...\n');
