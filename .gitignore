@@ -12,3 +12,4 @@ node_modules/
 # AI / temp workflow drafts
 # .github/workflows/*.ai/
 .ai/context.json
+.DS_Store

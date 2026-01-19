@@ -35,7 +35,7 @@ If the task is complete and no more actions are needed, output:
         };
         // Use configured model from user settings
         const config = (0, client_1.getUserConfig)();
-        const model = config.defaultModel || 'gemini-2.5-flash-lite';
+        const model = config.defaultModel || 'Assistant';
         const result = await (0, llm_1.runLLM)({
             prompt,
             model,

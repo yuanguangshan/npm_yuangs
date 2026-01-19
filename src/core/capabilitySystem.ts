@@ -49,8 +49,8 @@ export class CapabilitySystem {
   loadMergedConfig(): MergedConfig {
     const builtin = {
       aiProxyUrl: 'https://aiproxy.want.biz/v1/chat/completions',
-      defaultModel: 'gemini-2.5-flash-lite',
-      accountType: 'free',
+      defaultModel: 'Assistant',
+      accountType: 'paid',
     };
 
     const filePaths = getConfigFilePaths();

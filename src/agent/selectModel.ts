@@ -8,7 +8,7 @@ export function selectModel(
     if (override) return override;
 
     const config = getUserConfig();
-    const defaultModel = config.defaultModel || 'gemini-2.5-flash-lite';
+    const defaultModel = config.defaultModel || 'Assistant';
 
     return defaultModel;
 }

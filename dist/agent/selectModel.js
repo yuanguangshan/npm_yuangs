@@ -6,7 +6,7 @@ function selectModel(intent, override) {
     if (override)
         return override;
     const config = (0, client_1.getUserConfig)();
-    const defaultModel = config.defaultModel || 'gemini-2.5-flash-lite';
+    const defaultModel = config.defaultModel || 'Assistant';
     return defaultModel;
 }
 //# sourceMappingURL=selectModel.js.map
