@@ -46,6 +46,7 @@ const handleAICommand_1 = require("./commands/handleAICommand");
 const handleAIChat_1 = require("./commands/handleAIChat");
 const handleConfig_1 = require("./commands/handleConfig");
 const capabilityCommands_1 = require("./commands/capabilityCommands");
+const completion_1 = require("./core/completion");
 const apps_1 = require("./core/apps");
 const macros_1 = require("./core/macros");
 const history_1 = require("./utils/history");
@@ -318,6 +319,48 @@ program
         console.log(chalk_1.default.red(`错误: 快捷指令 "${name}" 不存在`));
     }
 });
+program
+    .command('completion [shell]')
+    .description('生成并安装 Shell 补全脚本')
+    .action(async (shell) => {
+    const shellType = shell || process.env.SHELL?.split('/').pop() || 'bash';
+    if (!['bash', 'zsh'].includes(shellType)) {
+        console.log(chalk_1.default.red('错误: 不支持的 shell 类型'));
+        console.log(chalk_1.default.gray('支持的类型: bash, zsh'));
+        process.exit(1);
+    }
+    console.log(chalk_1.default.cyan(`\n正在为 ${shellType} 安装 yuangs 补全...\n`));
+    let success = false;
+    if (shellType === 'bash') {
+        success = await (0, completion_1.installBashCompletion)(program);
+    }
+    else if (shellType === 'zsh') {
+        success = await (0, completion_1.installZshCompletion)(program);
+    }
+    if (success) {
+        console.log(chalk_1.default.green('✓ 补全安装成功！\n'));
+        console.log(chalk_1.default.yellow('请重新加载 shell 配置:'));
+        console.log(chalk_1.default.gray(`  ${shellType === 'bash' ? 'source ~/.bashrc' : 'source ~/.zshrc'}\n`));
+    }
+    else {
+        console.log(chalk_1.default.red('✗ 补全安装失败\n'));
+        process.exit(1);
+    }
+});
+program
+    .command('_complete_subcommand <command>')
+    .description('(内部命令) 获取子命令或参数')
+    .action((command) => {
+    const subcommands = (0, completion_1.getCommandSubcommands)(program, command);
+    console.log(subcommands.join(' '));
+});
+program
+    .command('_describe <command>')
+    .description('(内部命令) 获取命令描述')
+    .action((command) => {
+    const description = (0, completion_1.getCommandDescription)(program, command);
+    console.log(description);
+});
 (0, capabilityCommands_1.registerCapabilityCommands)(program);
 program
     .command('help')
@@ -374,7 +417,7 @@ program
 });
 async function main() {
     const args = process.argv.slice(2);
-    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities'];
+    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities', 'completion', '_complete_subcommand', '_describe'];
     const globalFlags = ['-h', '--help', '-V', '--version', '-v'];
     const firstArg = args[0];
     const isKnownCommand = firstArg && knownCommands.includes(firstArg);

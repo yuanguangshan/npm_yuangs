@@ -8,6 +8,7 @@ import { handleAICommand } from './commands/handleAICommand';
 import { handleAIChat } from './commands/handleAIChat';
 import { handleConfig } from './commands/handleConfig';
 import { registerCapabilityCommands } from './commands/capabilityCommands';
+import { getAllCommands, getCommandSubcommands, getCommandDescription, installBashCompletion, installZshCompletion } from './core/completion';
 import { loadAppsConfig, openUrl, DEFAULT_APPS } from './core/apps';
 import { getMacros, saveMacro, runMacro } from './core/macros';
 import { getCommandHistory } from './utils/history';
@@ -293,6 +294,53 @@ program
         }
     });
 
+program
+    .command('completion [shell]')
+    .description('生成并安装 Shell 补全脚本')
+    .action(async (shell) => {
+        const shellType = shell || process.env.SHELL?.split('/').pop() || 'bash';
+
+        if (!['bash', 'zsh'].includes(shellType)) {
+            console.log(chalk.red('错误: 不支持的 shell 类型'));
+            console.log(chalk.gray('支持的类型: bash, zsh'));
+            process.exit(1);
+        }
+
+        console.log(chalk.cyan(`\n正在为 ${shellType} 安装 yuangs 补全...\n`));
+
+        let success = false;
+        if (shellType === 'bash') {
+            success = await installBashCompletion(program);
+        } else if (shellType === 'zsh') {
+            success = await installZshCompletion(program);
+        }
+
+        if (success) {
+            console.log(chalk.green('✓ 补全安装成功！\n'));
+            console.log(chalk.yellow('请重新加载 shell 配置:'));
+            console.log(chalk.gray(`  ${shellType === 'bash' ? 'source ~/.bashrc' : 'source ~/.zshrc'}\n`));
+        } else {
+            console.log(chalk.red('✗ 补全安装失败\n'));
+            process.exit(1);
+        }
+    });
+
+program
+    .command('_complete_subcommand <command>')
+    .description('(内部命令) 获取子命令或参数')
+    .action((command) => {
+        const subcommands = getCommandSubcommands(program, command);
+        console.log(subcommands.join(' '));
+    });
+
+program
+    .command('_describe <command>')
+    .description('(内部命令) 获取命令描述')
+    .action((command) => {
+        const description = getCommandDescription(program, command);
+        console.log(description);
+    });
+
 registerCapabilityCommands(program);
 
 program
@@ -356,7 +404,7 @@ program
 async function main() {
     const args = process.argv.slice(2);
 
-    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities'];
+    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities', 'completion', '_complete_subcommand', '_describe'];
     const globalFlags = ['-h', '--help', '-V', '--version', '-v'];
     const firstArg = args[0];
     const isKnownCommand = firstArg && knownCommands.includes(firstArg);
