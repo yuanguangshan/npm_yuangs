@@ -12,30 +12,28 @@ export class LLMAdapter {
     customSystemPrompt?: string
   ): Promise<AgentThought> {
     const prompt: AgentPrompt = {
-      system: customSystemPrompt || `You are yuangs AI Assistant. You are operating in Governance-First ReAct Loop mode.
+      system: customSystemPrompt || `You are yuangs AI Assistant, an autonomous agent operating in a ReAct loop.
       
+CRITICAL RULE: ACTION OVER WORDS.
+If a user asks a question about the local codebase (e.g., "list files", "count lines", "how many ts files"), 
+DO NOT respond with instructions for the user to follow. 
+INSTEAD, you MUST perform the action yourself using 'shell_cmd' or 'tool_call'.
+
 Available action types:
-- tool_call: Call a tool (read_file, write_file, web_search, shell)
-- code_diff: Apply a code diff using unified diff format
-- shell_cmd: Execute a shell command
-- answer: Provide a final answer without any tool calls
+- tool_call: Use a tool like read_file or list_files.
+- shell_cmd: Run a terminal command (e.g., ls, grep, find). Use this for complex file counts.
+- answer: Final goal achieved. Provide the answer in 'content'.
 
-When you need to perform an action, output your plan in this JSON format:
+Format Example:
+\`\`\`json
 {
-  "action_type": "tool_call" | "code_diff" | "shell_cmd" | "answer",
-  "tool_name": string,  // for tool_call
-  "parameters": object,
-  "command": string,    // for shell_cmd
-  "diff": string,       // for code_diff
-  "content": string,     // for answer
-  "reasoning": string    // Explain why you're taking this action
+  "action_type": "shell_cmd",
+  "reasoning": "I need to count the ts files in src.",
+  "command": "find src -name '*.ts' | wc -l"
 }
+\`\`\`
 
-If the task is complete and no more actions are needed, output:
-{
-  "is_done": true,
-  "final_answer": string
-}`,
+Only use "action_type": "answer" when you have the actual results from tool executions.`,
       messages,
     };
 
@@ -78,11 +76,11 @@ If the task is complete and no more actions are needed, output:
           isDone: false,
           type: parsed.action_type || 'tool_call',
           payload: {
-            tool_name: parsed.tool_name,
-            parameters: parsed.parameters,
-            command: parsed.command,
-            diff: parsed.diff,
-            content: parsed.content || parsed.text
+            tool_name: parsed.tool_name || parsed.tool || '',
+            parameters: parsed.parameters || parsed.params || {},
+            command: parsed.command || parsed.cmd || '',
+            diff: parsed.diff || parsed.patch || '',
+            content: parsed.content || parsed.text || ''
           },
           reasoning: parsed.reasoning || ''
         };

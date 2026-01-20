@@ -45,10 +45,12 @@ class AgentRuntime {
                 console.log(chalk_1.default.gray(`\n🤔 Reasoning: ${action.reasoning}`));
             }
             // 如果 LLM 认为已经完成或者当前的动作就是回答
-            if (thought.isDone || action.type === 'answer') {
+            if (thought.isDone || action.type === "answer") {
                 const result = await executor_1.ToolExecutor.execute(action);
-                console.log(chalk_1.default.green(`\n🤖 AI：${result.output}\n`));
-                console.log(chalk_1.default.green('✅ Goal satisfied.'));
+                if (!onChunk) {
+                    console.log(chalk_1.default.green(`\n🤖 AI：${result.output}\n`));
+                }
+                this.context.addMessage("assistant", result.output);
                 break;
             }
             // === 预检 (Pre-flight) ===

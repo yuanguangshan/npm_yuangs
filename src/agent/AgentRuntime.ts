@@ -62,10 +62,12 @@ export class AgentRuntime {
       }
 
       // 如果 LLM 认为已经完成或者当前的动作就是回答
-      if (thought.isDone || action.type === 'answer') {
+      if (thought.isDone || action.type === "answer") {
         const result = await ToolExecutor.execute(action as any);
-        console.log(chalk.green(`\n🤖 AI：${result.output}\n`));
-        console.log(chalk.green('✅ Goal satisfied.'));
+        if (!onChunk) {
+          console.log(chalk.green(`\n🤖 AI：${result.output}\n`));
+        }
+        this.context.addMessage("assistant", result.output);
         break;
       }
 
