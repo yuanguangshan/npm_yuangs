@@ -63,7 +63,7 @@ export declare const userConfigSchema: z.ZodObject<{
     contextWindow: z.ZodOptional<z.ZodNumber>;
     maxFileTokens: z.ZodOptional<z.ZodNumber>;
     maxTotalTokens: z.ZodOptional<z.ZodNumber>;
-}, z.core.$strip>;
+}, z.core.$loose>;
 export declare const appsConfigSchema: z.ZodRecord<z.ZodString, z.ZodString>;
 export declare const macroSchema: z.ZodObject<{
     commands: z.ZodString;

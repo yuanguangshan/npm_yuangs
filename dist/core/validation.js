@@ -36,7 +36,7 @@ exports.userConfigSchema = zod_1.z.object({
     contextWindow: zod_1.z.number().optional(),
     maxFileTokens: zod_1.z.number().optional(),
     maxTotalTokens: zod_1.z.number().optional()
-});
+}).passthrough();
 exports.appsConfigSchema = zod_1.z.record(zod_1.z.string(), zod_1.z.string());
 exports.macroSchema = zod_1.z.object({
     commands: zod_1.z.string(),

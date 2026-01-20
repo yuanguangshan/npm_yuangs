@@ -64,7 +64,7 @@ export const userConfigSchema = z.object({
     contextWindow: z.number().optional(),
     maxFileTokens: z.number().optional(),
     maxTotalTokens: z.number().optional()
-});
+}).passthrough();
 
 export const appsConfigSchema = z.record(z.string(), z.string());
 
