@@ -7,6 +7,7 @@ exports.createDiffEditCommand = createDiffEditCommand;
 const commander_1 = require("commander");
 const chalk_1 = __importDefault(require("chalk"));
 const fs_1 = __importDefault(require("fs"));
+const child_process_1 = require("child_process");
 const GovernanceEngine_1 = require("../GovernanceEngine");
 const CodeChangeAction_1 = require("../actions/CodeChangeAction");
 const diffParser_1 = require("../review/diffParser");
@@ -15,11 +16,48 @@ const sandbox_1 = require("../execution/sandbox");
 const store_1 = require("../storage/store");
 const engine = new GovernanceEngine_1.GovernanceEngine();
 (0, store_1.auditActions)((0, store_1.loadActions)());
+function collectGitResult(commitHash) {
+    try {
+        const output = (0, child_process_1.execSync)(`git show --stat --oneline ${commitHash}`, {
+            encoding: "utf-8",
+        });
+        const files = [];
+        let insertions = 0;
+        let deletions = 0;
+        for (const line of output.split("\n")) {
+            const fileMatch = line.match(/^\s*(.+?)\s+\|\s+\d+/);
+            if (fileMatch) {
+                files.push(fileMatch[1].trim());
+            }
+            const insMatch = line.match(/(\d+)\s+insertions?\(\+\)/);
+            const delMatch = line.match(/(\d+)\s+deletions?\(-\)/);
+            if (insMatch)
+                insertions = parseInt(insMatch[1], 10);
+            if (delMatch)
+                deletions = parseInt(delMatch[1], 10);
+        }
+        return {
+            commits: commitHash ? 1 : 0,
+            files,
+            insertions,
+            deletions,
+        };
+    }
+    catch {
+        return {
+            commits: 1,
+            files: [],
+            insertions: 0,
+            deletions: 0,
+            warning: "Unable to derive git stats",
+        };
+    }
+}
 class GitExecutor {
     async applyDiff(diff) {
-        const { execSync } = require("child_process");
+        // execSync is imported at top level
         try {
-            execSync("git apply --index", {
+            (0, child_process_1.execSync)("git apply --index", {
                 input: diff,
                 stdio: "pipe",
             });
@@ -130,83 +168,46 @@ function createDiffEditCommand() {
         const executor = new GitExecutor();
         const ctx = { executor, snapshot: snapshot.id };
         try {
+            // === PRE-EXEC: Snapshot Validation ===
             await executor.applyDiff(action.payload.diff);
             const changedFiles = (0, sandbox_1.getChangedFiles)();
             (0, sandbox_1.assertNoExtraChanges)(action.payload.files, changedFiles);
+            const snapshotResult = {
+                changedFiles,
+                unexpectedFiles: changedFiles.filter((f) => !action.payload.files.includes(f)),
+                matchedBySandbox: changedFiles.length === action.payload.files.length,
+            };
+            // === EXEC: Commit ===
             (0, sandbox_1.commitChanges)(`EXECUTED action ${id}`, snapshot.id);
+            const commitHash = (0, child_process_1.execSync)("git rev-parse HEAD", {
+                encoding: "utf-8",
+            }).trim();
             action.state = "EXECUTED";
             action.executedAt = Date.now();
             (0, store_1.saveActions)(actions);
-            // 获取Git提交结果
-            const { execSync } = require("child_process");
-            let gitDiffResult = "";
-            let insertions = 0;
-            let deletions = 0;
-            try {
-                gitDiffResult = execSync("git diff --stat HEAD~1", { encoding: "utf-8" }).trim();
-                // 解析插入和删除行数
-                const statsMatch = gitDiffResult.match(/(\d+) insertions?\(\+\), (\d+) deletions?\(-\)/);
-                if (statsMatch) {
-                    insertions = parseInt(statsMatch[1]) || 0;
-                    deletions = parseInt(statsMatch[2]) || 0;
-                }
-                else {
-                    // 如果没有上一个提交，则获取当前工作区的差异
-                    const currentDiff = execSync("git diff --stat", { encoding: "utf-8" }).trim();
-                    const currentStatsMatch = currentDiff.match(/(\d+) insertions?\(\+\), (\d+) deletions?\(-\)/);
-                    if (currentStatsMatch) {
-                        insertions = parseInt(currentStatsMatch[1]) || 0;
-                        deletions = parseInt(currentStatsMatch[2]) || 0;
-                    }
-                }
-            }
-            catch (e) {
-                // 如果无法获取git diff统计信息，尝试另一种方法
-                try {
-                    const fullDiff = execSync("git diff", { encoding: "utf-8" });
-                    for (const line of fullDiff.split('\n')) {
-                        if (line.startsWith('+') && !line.startsWith('+++'))
-                            insertions++;
-                        if (line.startsWith('-') && !line.startsWith('---'))
-                            deletions++;
-                    }
-                }
-                catch (e2) {
-                    // 如果仍然失败，使用diff文件中的统计信息
-                    const parsedDiff = (0, diffParser_1.parseUnifiedDiff)(action.payload.diff);
-                    for (const file of parsedDiff) {
-                        insertions += file.additions;
-                        deletions += file.deletions;
-                    }
-                }
-            }
-            // 输出符合推荐规范的EXECUTED状态信息（详细版）
-            console.log(chalk_1.default.green('\n[EXECUTED]'));
+            // === POST-EXEC: Reporting ===
+            const gitResult = collectGitResult(commitHash);
+            console.log(chalk_1.default.green("\n[EXECUTED]"));
             console.log(chalk_1.default.green(`Action ID: ${id}`));
-            console.log(chalk_1.default.cyan('\nGit Result:'));
-            console.log(chalk_1.default.cyan(`  - Commits created: 1`));
-            console.log(chalk_1.default.cyan(`  - Files changed: ${changedFiles.length}`));
-            for (const file of changedFiles) {
-                console.log(chalk_1.default.cyan(`    - ${file}`));
+            console.log(chalk_1.default.cyan("\nSnapshot Verification (pre-commit):"));
+            console.log(chalk_1.default.cyan(`  - Files changed: ${snapshotResult.changedFiles.length}`));
+            for (const f of snapshotResult.changedFiles) {
+                console.log(chalk_1.default.cyan(`    - ${f}`));
             }
-            console.log(chalk_1.default.cyan(`  - Insertions: ${insertions}`));
-            console.log(chalk_1.default.cyan(`  - Deletions: ${deletions}`));
-            console.log(chalk_1.default.cyan('\nPatch Execution:'));
-            console.log(chalk_1.default.cyan(`  - Patch applied successfully ✅`));
-            console.log(chalk_1.default.cyan(`  - Patch was not previously present`));
-            console.log(chalk_1.default.cyan('\nSnapshot Comparison:'));
-            console.log(chalk_1.default.cyan(`  - Snapshot diff files: 0`));
-            console.log(chalk_1.default.cyan(`  - Reason: Working tree already matched expected patch result`));
-            console.log(chalk_1.default.green('\nStatus:'));
-            console.log(chalk_1.default.green(`  ✅ EXECUTED (Git state updated)`));
-            // 同时提供精简版输出（可选）
-            console.log(chalk_1.default.cyan('\n--- Compact View ---'));
-            console.log(chalk_1.default.green(`[EXECUTED] ✅`));
-            console.log(chalk_1.default.green(`Action: ${id}`));
-            console.log(chalk_1.default.cyan(`Git:     ${changedFiles.length} file(s) changed (+${insertions} −${deletions})`));
-            console.log(chalk_1.default.cyan(`Patch:   Applied successfully`));
-            console.log(chalk_1.default.cyan(`Snapshot: 0 files (already matched)`));
-            console.log(chalk_1.default.green(`Result: ✅ Changes committed`));
+            if (snapshotResult.unexpectedFiles.length > 0) {
+                console.log(chalk_1.default.yellow("  - Unexpected files:"));
+                for (const f of snapshotResult.unexpectedFiles) {
+                    console.log(chalk_1.default.yellow(`    - ${f}`));
+                }
+            }
+            console.log(chalk_1.default.cyan(`  - Status: ${snapshotResult.matchedBySandbox ? "✅ MATCHED" : "⚠️ DEVIATION"}`));
+            console.log(chalk_1.default.cyan("\nGit Result:"));
+            console.log(chalk_1.default.cyan(`  - Commit: ${commitHash.substring(0, 7)}`));
+            console.log(chalk_1.default.cyan(`  - Files changed: ${gitResult.files.length}`));
+            console.log(chalk_1.default.cyan(`  - Insertions: ${gitResult.insertions}`));
+            console.log(chalk_1.default.cyan(`  - Deletions: ${gitResult.deletions}`));
+            console.log(chalk_1.default.green("\nStatus:"));
+            console.log(chalk_1.default.green("  ✅ EXECUTED (validated + committed)"));
         }
         catch (error) {
             console.error(chalk_1.default.red(`\n[FAILED] ${error}`));

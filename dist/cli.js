@@ -42,8 +42,6 @@ const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
 const os_1 = __importDefault(require("os"));
 const commander_1 = require("commander");
-const handleAICommand_1 = require("./commands/handleAICommand");
-const handleAIChat_1 = require("./commands/handleAIChat");
 const handleConfig_1 = require("./commands/handleConfig");
 const capabilityCommands_1 = require("./commands/capabilityCommands");
 const completion_1 = require("./core/completion");
@@ -56,6 +54,7 @@ const explainCommands_1 = require("./commands/explainCommands");
 const replayCommands_1 = require("./commands/replayCommands");
 const skillsCommands_1 = require("./commands/skillsCommands");
 const diffEdit_1 = require("./governance/commands/diffEdit");
+const AgentRuntime_1 = require("./agent/AgentRuntime");
 // Mandatory Node.js version check
 const majorVersion = Number(process.versions.node.split('.')[0]);
 if (majorVersion < 18) {
@@ -140,10 +139,12 @@ program
     if (options.l)
         model = 'Assistant';
     if (options.exec) {
-        await (0, handleAICommand_1.handleAICommand)(question, { execute: false, model, verbose: options.verbose });
+        const runtime = new AgentRuntime_1.AgentRuntime({ input: question, mode: 'command', history: [] });
+        await runtime.run(question, 'command');
     }
     else {
-        await (0, handleAIChat_1.handleAIChat)(question || null, model);
+        const runtime = new AgentRuntime_1.AgentRuntime({ input: question, mode: 'chat', history: [] });
+        await runtime.run(question, 'chat');
     }
 });
 program
@@ -540,10 +541,12 @@ async function main() {
             }
             let model = options.model;
             if (options.exec) {
-                await (0, handleAICommand_1.handleAICommand)(question, { execute: false, model, verbose: options.withContent });
+                const runtime = new AgentRuntime_1.AgentRuntime({ input: question, mode: 'command', history: [] });
+                await runtime.run(question, 'command');
             }
             else {
-                await (0, handleAIChat_1.handleAIChat)(question || null, model);
+                const runtime = new AgentRuntime_1.AgentRuntime({ input: question, mode: 'chat', history: [] });
+                await runtime.run(question, 'chat');
             }
             process.exit(0);
         }

@@ -58,7 +58,7 @@ function commitChanges(message, snapshotId) {
     }
 }
 function getChangedFiles() {
-    const output = (0, child_process_1.execSync)("git diff --name-only", {
+    const output = (0, child_process_1.execSync)("git diff --name-only HEAD", {
         encoding: "utf-8",
     });
     return output

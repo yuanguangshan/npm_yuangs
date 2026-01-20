@@ -1,11 +1,14 @@
-import { ProposedAction, ToolExecutionResult } from './state';
 export declare class ToolExecutor {
-    static execute(action: ProposedAction): Promise<ToolExecutionResult>;
-    private static executeTool;
-    private static toolReadFile;
-    private static toolWriteFile;
-    private static toolListFiles;
-    private static getFiles;
-    private static executeShell;
-    private static executeDiff;
+    static execute(action: {
+        type: string;
+        payload: any;
+    }): Promise<{
+        success: boolean;
+        output: string;
+        error?: undefined;
+    } | {
+        success: boolean;
+        error: any;
+        output?: undefined;
+    }>;
 }
