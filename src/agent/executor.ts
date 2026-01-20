@@ -24,7 +24,7 @@ export class ToolExecutor {
         case 'answer':
           return {
             success: true,
-            output: payload.content || '',
+            output: payload.content || payload.text || '',
             artifacts: []
           };
         

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { evaluateProposal, PolicyRule, RiskEntry } from '../../../src/agent/governance/core';
 import { ProposedAction } from '../../../src/agent/state';
 

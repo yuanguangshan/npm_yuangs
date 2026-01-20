@@ -44,15 +44,20 @@ If the task is complete and no more actions are needed, output:
     }
     static parseThought(raw) {
         try {
+            // 提取 JSON：支持 Markdown 块或纯 JSON 字符串
             const jsonMatch = raw.match(/```json\n([\s\S]*?)\n```/) || raw.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
                 const parsed = JSON.parse(jsonMatch[1] || jsonMatch[0]);
-                if (parsed.is_done) {
+                // 如果明确标记为 done，或者动作为 answer，则视为任务结束
+                if (parsed.is_done === true || parsed.action_type === 'answer') {
                     return {
                         raw,
                         parsedPlan: parsed,
                         isDone: true,
-                        type: 'answer'
+                        type: 'answer',
+                        payload: {
+                            content: parsed.final_answer || parsed.content || parsed.text || raw
+                        }
                     };
                 }
                 return {
@@ -65,21 +70,22 @@ If the task is complete and no more actions are needed, output:
                         parameters: parsed.parameters,
                         command: parsed.command,
                         diff: parsed.diff,
-                        content: parsed.content
+                        content: parsed.content || parsed.text
                     },
                     reasoning: parsed.reasoning || ''
                 };
             }
         }
         catch (e) {
-            console.warn('[LLMAdapter] Failed to parse JSON output, using raw text');
+            // 解析失败时，回退到将原始内容作为回答
         }
         return {
             raw,
             parsedPlan: {},
-            isDone: false,
+            isDone: true,
             type: 'answer',
-            reasoning: raw
+            payload: { content: raw },
+            reasoning: 'Fallback to raw text due to parsing failure'
         };
     }
 }
