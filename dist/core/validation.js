@@ -32,7 +32,10 @@ exports.aiFixPlanSchema = zod_1.z.object({
 exports.userConfigSchema = zod_1.z.object({
     defaultModel: zod_1.z.string().optional(),
     aiProxyUrl: zod_1.z.string().url().optional(),
-    accountType: zod_1.z.enum(['free', 'pro']).optional()
+    accountType: zod_1.z.enum(['free', 'pro', 'paid']).optional(),
+    contextWindow: zod_1.z.number().optional(),
+    maxFileTokens: zod_1.z.number().optional(),
+    maxTotalTokens: zod_1.z.number().optional()
 });
 exports.appsConfigSchema = zod_1.z.record(zod_1.z.string(), zod_1.z.string());
 exports.macroSchema = zod_1.z.object({

@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import ora from 'ora';
 import readline from 'readline';
-import { callAI_Stream, getConversationHistory, addToConversationHistory, clearConversationHistory } from '../ai/client';
+import { callAI_Stream, getConversationHistory, addToConversationHistory, clearConversationHistory, getUserConfig } from '../ai/client';
 import fs from 'fs';
 import path from 'path';
 import { buildPromptWithFileContent, readFilesContent } from '../core/fileReader';
@@ -489,6 +489,9 @@ ${stderr}
                         continue;
                     }
 
+                    const userConfig = getUserConfig();
+                    const maxFileTokens = userConfig.maxFileTokens || 20000;
+                    const maxTotalTokensLimit = userConfig.maxTotalTokens || 200000;
                     const contentMap = readFilesContent(filePaths);
 
                     // 逐个添加文件，而不是将所有内容合并为一个大的目录项
@@ -497,7 +500,7 @@ ${stderr}
                     for (const [filePath, content] of contentMap) {
                         // 检查单个文件大小，如果太大则跳过
                         const fileTokens = Math.ceil(content.length / 4);
-                        if (fileTokens > 2000) { // 限制单个文件不超过2000 tokens
+                        if (fileTokens > maxFileTokens) { // 使用配置的文件上限
                             console.log(chalk.yellow(`⚠️  跳过大文件: ${filePath} (太大)`));
                             continue;
                         }
@@ -511,8 +514,8 @@ ${stderr}
 
                         // 检查是否达到token限制，如果达到则停止添加更多文件
                         // 我们需要手动计算总tokens，因为totalTokens是私有方法
-                        const totalTokens = contextBuffer.export().reduce((sum, item) => sum + item.tokens, 0);
-                        if (totalTokens > 30000) { // 留2000 token余量
+                        const currentTotalTokens = contextBuffer.export().reduce((sum, item) => sum + item.tokens, 0);
+                        if (currentTotalTokens > maxTotalTokensLimit) { // 使用总上下文上限
                             console.log(chalk.yellow(`⚠️  达到token限制，停止添加更多文件`));
                             break;
                         }

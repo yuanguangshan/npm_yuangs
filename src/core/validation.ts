@@ -3,8 +3,11 @@ import { z } from 'zod';
 export type UserConfig = {
     defaultModel?: string;
     aiProxyUrl?: string;
-    accountType?: 'free' | 'pro';
-    [key: string]: string | undefined;
+    accountType?: 'free' | 'pro' | 'paid';
+    contextWindow?: number;
+    maxFileTokens?: number;
+    maxTotalTokens?: number;
+    [key: string]: any;
 };
 
 export type AppsConfig = Record<string, string>;
@@ -57,7 +60,10 @@ export type AIFixPlan = z.infer<typeof aiFixPlanSchema>;
 export const userConfigSchema = z.object({
     defaultModel: z.string().optional(),
     aiProxyUrl: z.string().url().optional(),
-    accountType: z.enum(['free', 'pro']).optional()
+    accountType: z.enum(['free', 'pro', 'paid']).optional(),
+    contextWindow: z.number().optional(),
+    maxFileTokens: z.number().optional(),
+    maxTotalTokens: z.number().optional()
 });
 
 export const appsConfigSchema = z.record(z.string(), z.string());

@@ -442,6 +442,9 @@ ${stderr}
                         rl.resume();
                         continue;
                     }
+                    const userConfig = (0, client_1.getUserConfig)();
+                    const maxFileTokens = userConfig.maxFileTokens || 20000;
+                    const maxTotalTokensLimit = userConfig.maxTotalTokens || 200000;
                     const contentMap = (0, fileReader_1.readFilesContent)(filePaths);
                     // 逐个添加文件，而不是将所有内容合并为一个大的目录项
                     // 这样可以更好地控制token使用，并保留之前的上下文
@@ -449,7 +452,7 @@ ${stderr}
                     for (const [filePath, content] of contentMap) {
                         // 检查单个文件大小，如果太大则跳过
                         const fileTokens = Math.ceil(content.length / 4);
-                        if (fileTokens > 2000) { // 限制单个文件不超过2000 tokens
+                        if (fileTokens > maxFileTokens) { // 使用配置的文件上限
                             console.log(chalk_1.default.yellow(`⚠️  跳过大文件: ${filePath} (太大)`));
                             continue;
                         }
@@ -461,8 +464,8 @@ ${stderr}
                         addedCount++;
                         // 检查是否达到token限制，如果达到则停止添加更多文件
                         // 我们需要手动计算总tokens，因为totalTokens是私有方法
-                        const totalTokens = contextBuffer.export().reduce((sum, item) => sum + item.tokens, 0);
-                        if (totalTokens > 30000) { // 留2000 token余量
+                        const currentTotalTokens = contextBuffer.export().reduce((sum, item) => sum + item.tokens, 0);
+                        if (currentTotalTokens > maxTotalTokensLimit) { // 使用总上下文上限
                             console.log(chalk_1.default.yellow(`⚠️  达到token限制，停止添加更多文件`));
                             break;
                         }

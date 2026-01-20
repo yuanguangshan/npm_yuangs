@@ -2,8 +2,11 @@ import { z } from 'zod';
 export type UserConfig = {
     defaultModel?: string;
     aiProxyUrl?: string;
-    accountType?: 'free' | 'pro';
-    [key: string]: string | undefined;
+    accountType?: 'free' | 'pro' | 'paid';
+    contextWindow?: number;
+    maxFileTokens?: number;
+    maxTotalTokens?: number;
+    [key: string]: any;
 };
 export type AppsConfig = Record<string, string>;
 export type AIRequestMessage = {
@@ -55,7 +58,11 @@ export declare const userConfigSchema: z.ZodObject<{
     accountType: z.ZodOptional<z.ZodEnum<{
         free: "free";
         pro: "pro";
+        paid: "paid";
     }>>;
+    contextWindow: z.ZodOptional<z.ZodNumber>;
+    maxFileTokens: z.ZodOptional<z.ZodNumber>;
+    maxTotalTokens: z.ZodOptional<z.ZodNumber>;
 }, z.core.$strip>;
 export declare const appsConfigSchema: z.ZodRecord<z.ZodString, z.ZodString>;
 export declare const macroSchema: z.ZodObject<{
