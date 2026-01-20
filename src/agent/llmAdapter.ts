@@ -9,37 +9,42 @@ export class LLMAdapter {
     messages: AIRequestMessage[],
     mode: 'chat' | 'command' | 'command+exec' = 'chat',
     onChunk?: (chunk: string) => void,
+    model?: string,
     customSystemPrompt?: string
   ): Promise<AgentThought> {
     const prompt: AgentPrompt = {
-      system: customSystemPrompt || `You are yuangs AI Assistant, an autonomous agent operating in a ReAct loop.
-      
-CRITICAL: NO TALK BEFORE JSON. 
-Your response MUST start with the character '{' and end with '}'. 
+      system: customSystemPrompt || `[SYSTEM PROTOCOL V2]
+- ROLE: AUTOMATED EXECUTION AGENT
+- OUTPUT: STRICT JSON ONLY
+- TALK: FORBIDDEN
+- MODE: REACT (THINK -> ACTION -> PERCEIVE)
 
-If you need to perform an action (read, list, count files), use 'shell_cmd' or 'tool_call'.
-Only use 'answer' when you have the results.
-
-Action JSON Format:
+JSON SCHEMA:
 {
   "action_type": "tool_call" | "shell_cmd" | "answer",
-  "reasoning": "Explain WHY you take this action",
-  "tool_name": "...",
+  "reasoning": "thought process",
+  "tool_name": "list_files" | "read_file",
   "parameters": {},
-  "command": "...",
-  "content": "..."
+  "command": "shell string",
+  "content": "final answer string"
 }
 
-Remember: Action over words. Just do it.`,
+EXECUTION RULES:
+1. If data is unknown (e.g. file list), use 'shell_cmd' or 'tool_call'.
+2. NEVER explain how to do it. JUST EXECUTE.
+3. Your output MUST start with '{' and end with '}'.
+
+Example Task: "count files"
+Your Output: {"action_type":"shell_cmd","reasoning":"count files","command":"ls | wc -l"}`,
       messages,
     };
 
     const config = getUserConfig();
-    const model = config.defaultModel || 'Assistant';
+    const finalModel = model || config.defaultModel || 'Assistant';
 
     const result = await runLLM({
       prompt,
-      model,
+      model: finalModel,
       stream: !!onChunk,
       onChunk
     });

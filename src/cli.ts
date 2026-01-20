@@ -116,9 +116,10 @@ program
         }
 
         const { AgentRuntime } = await import('./agent');
+        console.log(chalk.magenta('--- RUNNING WITH NEW AGENT ENGINE ---'));
         const runtime = new AgentRuntime(await import('./ai/client').then(m => m.getConversationHistory()));
 
-        await runtime.run(question || '', options.exec ? 'command' : 'chat');
+        await runtime.run(question || '', options.exec ? 'command' : 'chat', undefined, model);
     });
 
 program

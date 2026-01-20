@@ -18,7 +18,7 @@ class AgentRuntime {
         this.context = new contextManager_1.ContextManager(initialContext);
         this.executionId = (0, crypto_1.randomUUID)();
     }
-    async run(userInput, mode = "chat", onChunk) {
+    async run(userInput, mode = "chat", onChunk, model) {
         let turnCount = 0;
         const maxTurns = 10;
         if (userInput) {
@@ -33,7 +33,7 @@ class AgentRuntime {
                 role: (msg.role === "tool" ? "system" : msg.role),
                 content: msg.content,
             }));
-            const thought = await llmAdapter_1.LLMAdapter.think(messages, mode, onChunk, governance_1.GovernanceService.getPolicyManual());
+            const thought = await llmAdapter_1.LLMAdapter.think(messages, mode, onChunk, model, governance_1.GovernanceService.getPolicyManual());
             const action = {
                 id: (0, crypto_1.randomUUID)(),
                 type: thought.type || "answer",

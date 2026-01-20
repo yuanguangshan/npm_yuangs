@@ -144,8 +144,9 @@ program
         return;
     }
     const { AgentRuntime } = await Promise.resolve().then(() => __importStar(require('./agent')));
+    console.log(chalk_1.default.magenta('--- RUNNING WITH NEW AGENT ENGINE ---'));
     const runtime = new AgentRuntime(await Promise.resolve().then(() => __importStar(require('./ai/client'))).then(m => m.getConversationHistory()));
-    await runtime.run(question || '', options.exec ? 'command' : 'chat');
+    await runtime.run(question || '', options.exec ? 'command' : 'chat', undefined, model);
 });
 program
     .command('list')
