@@ -17,6 +17,7 @@ import { registerRegistryCommands } from './commands/registryCommands';
 import { registerExplainCommands } from './commands/explainCommands';
 import { registerReplayCommands } from './commands/replayCommands';
 import { registerSkillsCommands } from './commands/skillsCommands';
+import { createDiffEditCommand } from './governance/commands/diffEdit';
 
 // Mandatory Node.js version check
 const majorVersion = Number(process.versions.node.split('.')[0]);
@@ -356,6 +357,10 @@ registerExplainCommands(program);
 registerReplayCommands(program);
 registerSkillsCommands(program);
 
+// Add governance diff-edit command
+const diffEditCmd = createDiffEditCommand();
+program.addCommand(diffEditCmd);
+
 program
     .command('help')
     .description('显示帮助信息')
@@ -373,6 +378,7 @@ program
         console.log(`  ${chalk.green('save')} <名称>      保存快捷指令`);
         console.log(`  ${chalk.green('run')} <名称>        执行快捷指令`);
         console.log(`  ${chalk.green('registry')}          Macro Registry 管理`);
+        console.log(`  ${chalk.green('diff-edit')}         代码变更治理 (propose/approve/exec/list/status)`);
         console.log(`  ${chalk.green('help')}              显示帮助信息\n`);
     });
 
@@ -418,7 +424,7 @@ program
 async function main() {
     const args = process.argv.slice(2);
 
-    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities', 'completion', '_complete_subcommand', '_describe', 'registry', 'explain', 'replay', 'skills'];
+    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities', 'completion', '_complete_subcommand', '_describe', 'registry', 'explain', 'replay', 'skills', 'diff-edit'];
     const globalFlags = ['-h', '--help', '-V', '--version', '-v'];
     const firstArg = args[0];
     const isKnownCommand = firstArg && knownCommands.includes(firstArg);
