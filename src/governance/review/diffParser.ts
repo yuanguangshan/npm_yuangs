@@ -37,7 +37,7 @@ export function parseUnifiedDiff(diff: string): DiffFile[] {
 
 export function extractFilesFromDiff(diff: string): string[] {
   const files: string[] = [];
-  const filePattern = /^\+\+\+ b\/(.+)$/m;
+  const filePattern = /^\+\+\+ b\/(.+)$/gm;
 
   for (const match of diff.matchAll(filePattern)) {
     files.push(match[1]);

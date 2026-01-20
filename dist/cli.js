@@ -55,6 +55,7 @@ const registryCommands_1 = require("./commands/registryCommands");
 const explainCommands_1 = require("./commands/explainCommands");
 const replayCommands_1 = require("./commands/replayCommands");
 const skillsCommands_1 = require("./commands/skillsCommands");
+const diffEdit_1 = require("./governance/commands/diffEdit");
 // Mandatory Node.js version check
 const majorVersion = Number(process.versions.node.split('.')[0]);
 if (majorVersion < 18) {
@@ -374,6 +375,9 @@ program
 (0, explainCommands_1.registerExplainCommands)(program);
 (0, replayCommands_1.registerReplayCommands)(program);
 (0, skillsCommands_1.registerSkillsCommands)(program);
+// Add governance diff-edit command
+const diffEditCmd = (0, diffEdit_1.createDiffEditCommand)();
+program.addCommand(diffEditCmd);
 program
     .command('help')
     .description('显示帮助信息')
@@ -391,6 +395,7 @@ program
     console.log(`  ${chalk_1.default.green('save')} <名称>      保存快捷指令`);
     console.log(`  ${chalk_1.default.green('run')} <名称>        执行快捷指令`);
     console.log(`  ${chalk_1.default.green('registry')}          Macro Registry 管理`);
+    console.log(`  ${chalk_1.default.green('diff-edit')}         代码变更治理 (propose/approve/exec/list/status)`);
     console.log(`  ${chalk_1.default.green('help')}              显示帮助信息\n`);
 });
 const apps = (0, apps_1.loadAppsConfig)();
@@ -430,7 +435,7 @@ program
 });
 async function main() {
     const args = process.argv.slice(2);
-    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities', 'completion', '_complete_subcommand', '_describe', 'registry', 'explain', 'replay', 'skills'];
+    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities', 'completion', '_complete_subcommand', '_describe', 'registry', 'explain', 'replay', 'skills', 'diff-edit'];
     const globalFlags = ['-h', '--help', '-V', '--version', '-v'];
     const firstArg = args[0];
     const isKnownCommand = firstArg && knownCommands.includes(firstArg);
