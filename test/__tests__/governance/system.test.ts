@@ -29,11 +29,11 @@ describe("Governance System", () => {
       expect(action.state).toBe("PROPOSED");
     });
 
-    it("should reject invalid state transitions", () => {
+    it("should reject invalid state transitions", async () => {
       const action = createTestAction();
 
       expect(() => action.approve("human")).toThrow();
-      expect(() => action.execute({} as any)).toThrow();
+      await expect(action.execute({} as any)).rejects.toThrow();
     });
 
     it("should approve from PROPOSED to APPROVED", () => {
