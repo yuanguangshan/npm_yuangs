@@ -110,12 +110,13 @@ program
         if (options.f) model = 'Assistant';
         if (options.l) model = 'Assistant';
 
+        if (!question && !stdinData) {
+            await handleAIChat(null, model);
+            return;
+        }
+
         const { AgentRuntime } = await import('./agent');
-        const runtime = new AgentRuntime({
-            input: question,
-            mode: options.exec ? 'command' : 'chat',
-            model: model || 'Assistant'
-        });
+        const runtime = new AgentRuntime(await import('./ai/client').then(m => m.getConversationHistory()));
 
         await runtime.run(question || '', options.exec ? 'command' : 'chat');
     });

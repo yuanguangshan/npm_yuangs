@@ -18,20 +18,22 @@ class AgentRuntime {
         this.context = new contextManager_1.ContextManager(initialContext);
         this.executionId = (0, crypto_1.randomUUID)();
     }
-    async run(userInput, mode = "chat") {
+    async run(userInput, mode = "chat", onChunk) {
         let turnCount = 0;
         const maxTurns = 10;
-        console.log(chalk_1.default.cyan(`\n🚀 Agent Runtime v2.0 Starting (Execution ID: ${this.executionId})`));
-        this.context.addMessage("user", userInput);
+        if (userInput) {
+            this.context.addMessage("user", userInput);
+        }
         while (turnCount < maxTurns) {
-            console.log(chalk_1.default.blue(`\n--- Turn ${++turnCount} ---`));
-            const model = "Assistant";
-            // 处理类型不兼容：将 tool role 映射为 system
+            const currentTurn = ++turnCount;
+            if (currentTurn > 1) {
+                console.log(chalk_1.default.blue(`\n--- Turn ${currentTurn} ---`));
+            }
             const messages = this.context.getMessages().map((msg) => ({
                 role: (msg.role === "tool" ? "system" : msg.role),
                 content: msg.content,
             }));
-            const thought = await llmAdapter_1.LLMAdapter.think(messages, mode, undefined, governance_1.GovernanceService.getPolicyManual());
+            const thought = await llmAdapter_1.LLMAdapter.think(messages, mode, onChunk, governance_1.GovernanceService.getPolicyManual());
             const action = {
                 id: (0, crypto_1.randomUUID)(),
                 type: thought.type || "answer",
@@ -39,7 +41,7 @@ class AgentRuntime {
                 riskLevel: "low",
                 reasoning: thought.reasoning || "",
             };
-            if (action.reasoning) {
+            if (action.reasoning && !onChunk) {
                 console.log(chalk_1.default.gray(`\n🤔 Reasoning: ${action.reasoning}`));
             }
             // 如果 LLM 认为已经完成或者当前的动作就是回答

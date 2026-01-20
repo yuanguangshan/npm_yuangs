@@ -139,12 +139,12 @@ program
         model = 'Assistant';
     if (options.l)
         model = 'Assistant';
+    if (!question && !stdinData) {
+        await (0, handleAIChat_1.handleAIChat)(null, model);
+        return;
+    }
     const { AgentRuntime } = await Promise.resolve().then(() => __importStar(require('./agent')));
-    const runtime = new AgentRuntime({
-        input: question,
-        mode: options.exec ? 'command' : 'chat',
-        model: model || 'Assistant'
-    });
+    const runtime = new AgentRuntime(await Promise.resolve().then(() => __importStar(require('./ai/client'))).then(m => m.getConversationHistory()));
     await runtime.run(question || '', options.exec ? 'command' : 'chat');
 });
 program

@@ -220,7 +220,19 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
         }
         
         // 不是特殊语法，正常发给 AI
-        await askOnceStream(initialQuestion, model);
+        const { AgentRuntime } = await import('../agent');
+        const runtime = new AgentRuntime(getConversationHistory());
+        
+        const spinner = ora(chalk.cyan('AI 正在思考...')).start();
+        const renderer = new StreamMarkdownRenderer(chalk.bold.blue('🤖 AI：'), spinner);
+
+        await runtime.run(initialQuestion, model as any, (chunk) => {
+            renderer.onChunk(chunk);
+        });
+
+        const fullResponse = renderer.finish();
+        addToConversationHistory('user', initialQuestion);
+        addToConversationHistory('assistant', fullResponse);
         return;
     }
 
@@ -233,6 +245,10 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
     if (persisted.length > 0) {
         console.log(chalk.yellow(`📦 已恢复 ${persisted.length} 条上下文\n`));
     }
+
+    // 初始化 AgentRuntime (v2.0 引擎)
+    const { AgentRuntime } = await import('../agent');
+    const runtime = new AgentRuntime(getConversationHistory());
 
     const rl = readline.createInterface({
         input: process.stdin,
@@ -629,10 +645,20 @@ ${finalPrompt}
 
             try {
                 rl.pause();
-                await askOnceStream(finalPrompt, model);
+                
+                // 使用 AgentRuntime 执行提问
+                const spinner = ora(chalk.cyan('AI 正在思考...')).start();
+                const renderer = new StreamMarkdownRenderer(chalk.bold.blue('🤖 AI：'), spinner);
 
-                // IMPORTANT: Removed auto-clearing of contextBuffer.
-                // Keeping it for follow-up questions until :clear is called.
+                await runtime.run(finalPrompt, model as any, (chunk) => {
+                    renderer.onChunk(chunk);
+                });
+
+                const fullResponse = renderer.finish();
+
+                // 同步上下文到全局历史（为了兼容性）
+                addToConversationHistory('user', finalPrompt);
+                addToConversationHistory('assistant', fullResponse);
             } catch (err: unknown) {
                 const message = err instanceof Error ? err.message : String(err);
                 console.error(chalk.red(`\n[AI execution error]: ${message}`));

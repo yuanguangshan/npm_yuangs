@@ -214,7 +214,16 @@ async function handleAIChat(initialQuestion, model) {
             return;
         }
         // 不是特殊语法，正常发给 AI
-        await askOnceStream(initialQuestion, model);
+        const { AgentRuntime } = await Promise.resolve().then(() => __importStar(require('../agent')));
+        const runtime = new AgentRuntime((0, client_1.getConversationHistory)());
+        const spinner = (0, ora_1.default)(chalk_1.default.cyan('AI 正在思考...')).start();
+        const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bold.blue('🤖 AI：'), spinner);
+        await runtime.run(initialQuestion, model, (chunk) => {
+            renderer.onChunk(chunk);
+        });
+        const fullResponse = renderer.finish();
+        (0, client_1.addToConversationHistory)('user', initialQuestion);
+        (0, client_1.addToConversationHistory)('assistant', fullResponse);
         return;
     }
     console.log(chalk_1.default.bold.cyan('\n🤖 进入 AI 交互模式 (输入 exit 退出)\n'));
@@ -224,6 +233,9 @@ async function handleAIChat(initialQuestion, model) {
     if (persisted.length > 0) {
         console.log(chalk_1.default.yellow(`📦 已恢复 ${persisted.length} 条上下文\n`));
     }
+    // 初始化 AgentRuntime (v2.0 引擎)
+    const { AgentRuntime } = await Promise.resolve().then(() => __importStar(require('../agent')));
+    const runtime = new AgentRuntime((0, client_1.getConversationHistory)());
     const rl = readline_1.default.createInterface({
         input: process.stdin,
         output: process.stdout,
@@ -578,9 +590,16 @@ ${finalPrompt}
             }
             try {
                 rl.pause();
-                await askOnceStream(finalPrompt, model);
-                // IMPORTANT: Removed auto-clearing of contextBuffer.
-                // Keeping it for follow-up questions until :clear is called.
+                // 使用 AgentRuntime 执行提问
+                const spinner = (0, ora_1.default)(chalk_1.default.cyan('AI 正在思考...')).start();
+                const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bold.blue('🤖 AI：'), spinner);
+                await runtime.run(finalPrompt, model, (chunk) => {
+                    renderer.onChunk(chunk);
+                });
+                const fullResponse = renderer.finish();
+                // 同步上下文到全局历史（为了兼容性）
+                (0, client_1.addToConversationHistory)('user', finalPrompt);
+                (0, client_1.addToConversationHistory)('assistant', fullResponse);
             }
             catch (err) {
                 const message = err instanceof Error ? err.message : String(err);

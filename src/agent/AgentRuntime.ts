@@ -16,23 +16,24 @@ export class AgentRuntime {
     this.executionId = randomUUID();
   }
 
-  async run(userInput: string, mode: "chat" | "command" = "chat") {
+  async run(
+    userInput: string,
+    mode: "chat" | "command" = "chat",
+    onChunk?: (chunk: string) => void,
+  ) {
     let turnCount = 0;
     const maxTurns = 10;
 
-    console.log(
-      chalk.cyan(
-        `\n🚀 Agent Runtime v2.0 Starting (Execution ID: ${this.executionId})`,
-      ),
-    );
-    this.context.addMessage("user", userInput);
+    if (userInput) {
+      this.context.addMessage("user", userInput);
+    }
 
     while (turnCount < maxTurns) {
-      console.log(chalk.blue(`\n--- Turn ${++turnCount} ---`));
+      const currentTurn = ++turnCount;
+      if (currentTurn > 1) {
+        console.log(chalk.blue(`\n--- Turn ${currentTurn} ---`));
+      }
 
-      const model = "Assistant";
-
-      // 处理类型不兼容：将 tool role 映射为 system
       const messages = this.context.getMessages().map((msg) => ({
         role: (msg.role === "tool" ? "system" : msg.role) as
           | "system"
@@ -44,7 +45,7 @@ export class AgentRuntime {
       const thought = await LLMAdapter.think(
         messages,
         mode as any,
-        undefined,
+        onChunk,
         GovernanceService.getPolicyManual(),
       );
 
@@ -56,7 +57,7 @@ export class AgentRuntime {
         reasoning: thought.reasoning || "",
       };
 
-      if (action.reasoning) {
+      if (action.reasoning && !onChunk) {
         console.log(chalk.gray(`\n🤔 Reasoning: ${action.reasoning}`));
       }
 
