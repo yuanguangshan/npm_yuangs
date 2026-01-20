@@ -65,7 +65,7 @@ describe('Completion Types', () => {
 
       expect(item.label).toBe('gemini-2.5-flash-lite');
       expect(item.insertText).toBe('gemini-2.5-flash-lite');
-      expect(item.detail).toBe('Fast AI');
+      expect(item.detail).toBe('Fast AI model');
     });
   });
 
