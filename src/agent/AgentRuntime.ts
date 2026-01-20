@@ -20,6 +20,7 @@ export class AgentRuntime {
     userInput: string,
     mode: "chat" | "command" = "chat",
     onChunk?: (chunk: string) => void,
+    model?: string,
   ) {
     let turnCount = 0;
     const maxTurns = 10;
@@ -46,6 +47,7 @@ export class AgentRuntime {
         messages,
         mode as any,
         onChunk,
+        model,
         GovernanceService.getPolicyManual(),
       );
 

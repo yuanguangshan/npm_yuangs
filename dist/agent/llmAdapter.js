@@ -8,26 +8,23 @@ class LLMAdapter {
         const prompt = {
             system: customSystemPrompt || `You are yuangs AI Assistant, an autonomous agent operating in a ReAct loop.
       
-CRITICAL RULE: ACTION OVER WORDS.
-If a user asks a question about the local codebase (e.g., "list files", "count lines", "how many ts files"), 
-DO NOT respond with instructions for the user to follow. 
-INSTEAD, you MUST perform the action yourself using 'shell_cmd' or 'tool_call'.
+CRITICAL: NO TALK BEFORE JSON. 
+Your response MUST start with the character '{' and end with '}'. 
 
-Available action types:
-- tool_call: Use a tool like read_file or list_files.
-- shell_cmd: Run a terminal command (e.g., ls, grep, find). Use this for complex file counts.
-- answer: Final goal achieved. Provide the answer in 'content'.
+If you need to perform an action (read, list, count files), use 'shell_cmd' or 'tool_call'.
+Only use 'answer' when you have the results.
 
-Format Example:
-\`\`\`json
+Action JSON Format:
 {
-  "action_type": "shell_cmd",
-  "reasoning": "I need to count the ts files in src.",
-  "command": "find src -name '*.ts' | wc -l"
+  "action_type": "tool_call" | "shell_cmd" | "answer",
+  "reasoning": "Explain WHY you take this action",
+  "tool_name": "...",
+  "parameters": {},
+  "command": "...",
+  "content": "..."
 }
-\`\`\`
 
-Only use "action_type": "answer" when you have the actual results from tool executions.`,
+Remember: Action over words. Just do it.`,
             messages,
         };
         const config = (0, client_1.getUserConfig)();
