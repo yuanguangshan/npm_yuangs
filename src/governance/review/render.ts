@@ -67,6 +67,19 @@ export function renderRiskAssessment(
 }
 
 export function promptForApproval(): Promise<boolean> {
-  console.log(chalk.bold.yellow('\n(Auto-approving for demo)'));
-  return Promise.resolve(true);
+  const readline = require("readline");
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise((resolve) => {
+    rl.question(
+      chalk.bold.yellow('\nType "YES" to approve, anything else to reject: '),
+      (answer: string) => {
+        rl.close();
+        resolve(answer.trim() === "YES");
+      }
+    );
+  });
 }
