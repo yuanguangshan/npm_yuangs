@@ -58,15 +58,7 @@ function collectGitResult(commitHash: string) {
   }
 }
 
-function collectSnapshotResult(expectedFiles: string[]) {
-  const changedFiles = getChangedFiles();
 
-  return {
-    changedFiles,
-    unexpectedFiles: changedFiles.filter((f) => !expectedFiles.includes(f)),
-    matchedBySandbox: changedFiles.length === 0,
-  };
-}
 
 class GitExecutor implements ActionExecutor {
   async applyDiff(diff: string): Promise<void> {
@@ -229,41 +221,46 @@ export function createDiffEditCommand(): Command {
       const ctx: ExecutionContext = { executor, snapshot: snapshot.id };
 
       try {
+        // === PRE-EXEC: Snapshot Validation ===
         await executor.applyDiff(action.payload.diff);
 
         const changedFiles = getChangedFiles();
         assertNoExtraChanges(action.payload.files, changedFiles);
 
+        const snapshotResult = {
+          changedFiles,
+          unexpectedFiles: changedFiles.filter(
+            (f) => !action.payload.files.includes(f)
+          ),
+          matchedBySandbox: changedFiles.length === action.payload.files.length,
+        };
+
+        // === EXEC: Commit ===
         commitChanges(`EXECUTED action ${id}`, snapshot.id);
+
+        const commitHash = execSync("git rev-parse HEAD", {
+          encoding: "utf-8",
+        }).trim();
 
         action.state = "EXECUTED";
         action.executedAt = Date.now();
         saveActions(actions);
 
-        const commitHash = execSync("git rev-parse HEAD", {
-          encoding: "utf-8",
-        }).trim();
+        // === POST-EXEC: Reporting ===
         const gitResult = collectGitResult(commitHash);
-        const snapshotResult = collectSnapshotResult(action.payload.files);
 
         console.log(chalk.green("\n[EXECUTED]"));
         console.log(chalk.green(`Action ID: ${id}`));
 
-        console.log(chalk.cyan("\nGit Result:"));
-        console.log(chalk.cyan(`  - Commits created: ${gitResult.commits}`));
-        console.log(chalk.cyan(`  - Files changed: ${gitResult.files.length}`));
-        for (const f of gitResult.files) {
-          console.log(chalk.cyan(`    - ${f}`));
-        }
-        console.log(chalk.cyan(`  - Insertions: ${gitResult.insertions}`));
-        console.log(chalk.cyan(`  - Deletions: ${gitResult.deletions}`));
-
-        console.log(chalk.cyan("\nSnapshot Verification:"));
+        console.log(chalk.cyan("\nSnapshot Verification (pre-commit):"));
         console.log(
           chalk.cyan(
-            `  - Snapshot diff files: ${snapshotResult.changedFiles.length}`
+            `  - Files changed: ${snapshotResult.changedFiles.length}`
           )
         );
+        for (const f of snapshotResult.changedFiles) {
+          console.log(chalk.cyan(`    - ${f}`));
+        }
         if (snapshotResult.unexpectedFiles.length > 0) {
           console.log(chalk.yellow("  - Unexpected files:"));
           for (const f of snapshotResult.unexpectedFiles) {
@@ -272,15 +269,19 @@ export function createDiffEditCommand(): Command {
         }
         console.log(
           chalk.cyan(
-            `  - Status: ${snapshotResult.matchedBySandbox
-              ? "✅ MATCHED (sandbox validation)"
-              : "⚠️ DEVIATION"
+            `  - Status: ${snapshotResult.matchedBySandbox ? "✅ MATCHED" : "⚠️ DEVIATION"
             }`
           )
         );
 
+        console.log(chalk.cyan("\nGit Result:"));
+        console.log(chalk.cyan(`  - Commit: ${commitHash.substring(0, 7)}`));
+        console.log(chalk.cyan(`  - Files changed: ${gitResult.files.length}`));
+        console.log(chalk.cyan(`  - Insertions: ${gitResult.insertions}`));
+        console.log(chalk.cyan(`  - Deletions: ${gitResult.deletions}`));
+
         console.log(chalk.green("\nStatus:"));
-        console.log(chalk.green("  ✅ EXECUTED (Git state updated)"));
+        console.log(chalk.green("  ✅ EXECUTED (validated + committed)"));
       } catch (error) {
         console.error(chalk.red(`\n[FAILED] ${error}`));
 
