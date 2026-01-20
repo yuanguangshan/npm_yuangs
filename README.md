@@ -527,6 +527,10 @@ yuangs config accountType pro
 
 ## 🗓️ 近期更新（Changelog）
 
+- **v2.40.0** (2026‑01‑20)
+  - **Governance Refactor**: 实现三阶段执行模型（Pre-Exec 验证 -> Exec 提交 -> Post-Exec 报告）
+  - **语义级事实源**: 确保 `Git Result` 与 `Snapshot Verification` 物理分区，消除语义歧义
+  - **鲁棒性修复**: 修复了 Git 统计解析及暂存区变更检测失效的 Bug
 - **v2.29.0** (2026‑01‑20)
   - 新增 Explainability 功能（`explain` 命令）
   - 新增 Replay++ 支持（`--dry`, `--explain`, `--diff`）
@@ -600,11 +604,11 @@ The governance system provides safe, auditable code changes with human oversight
 
 ### Key Features
 
+- ✅ **Three-Phase Model**: 物理分区 Pre-Exec (验证), Exec (提交), Post-Exec (审计)
 - ✅ **Proposal-First**: All changes start as proposals, no execution without review
 - ✅ **Human-in-the-Loop**: Explicit approval with diff preview and risk assessment
 - ✅ **Snapshot Safety**: Automatic rollback on failure
-- ✅ **State Machine Invariants**: Illegal transitions are blocked
-- ✅ **Atomic Persistence**: Crash-safe writes with validation
+- ✅ **Strict Truth Sources**: 明确区分 Patch Truth, Snapshot Truth 与 Git Truth
 - ✅ **Audit Trail**: Complete lifecycle tracking for every action
 
 ### Demo Summary
