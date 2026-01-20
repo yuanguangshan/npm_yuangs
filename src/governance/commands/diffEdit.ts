@@ -32,13 +32,10 @@ function collectGitResult(commitHash: string) {
         files.push(fileMatch[1].trim());
       }
 
-      const statMatch = line.match(
-        /(\d+)\s+insertions?\(\+\).*?(\d+)\s+deletions?\(-\)/
-      );
-      if (statMatch) {
-        insertions = parseInt(statMatch[1], 10);
-        deletions = parseInt(statMatch[2], 10);
-      }
+      const insMatch = line.match(/(\d+)\s+insertions?\(\+\)/);
+      const delMatch = line.match(/(\d+)\s+deletions?\(-\)/);
+      if (insMatch) insertions = parseInt(insMatch[1], 10);
+      if (delMatch) deletions = parseInt(delMatch[1], 10);
     }
 
     return {
