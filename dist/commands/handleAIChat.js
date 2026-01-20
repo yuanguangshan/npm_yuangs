@@ -471,6 +471,7 @@ ${stderr}
                         }
                     }
                     await (0, contextStorage_1.saveContext)(contextBuffer.export());
+                    console.log(chalk_1.default.green(`✓ 已成功加入 ${addedCount} 个文件到上下文\n`));
                 }
                 catch (err) {
                     const message = err instanceof Error ? err.message : String(err);

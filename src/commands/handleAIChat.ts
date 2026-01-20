@@ -522,6 +522,7 @@ ${stderr}
                     }
 
                     await saveContext(contextBuffer.export());
+                    console.log(chalk.green(`✓ 已成功加入 ${addedCount} 个文件到上下文\n`));
                 } catch (err: unknown) {
                     const message = err instanceof Error ? err.message : String(err);
                     console.error(chalk.red(`\n[处理错误]: ${message}\n`));
