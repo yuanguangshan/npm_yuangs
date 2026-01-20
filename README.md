@@ -591,3 +591,71 @@ yuangs config accountType pro
 欢迎贡献、想法和有原则的批评。
 
 > **"AI 除非被明确要求，否则不应该比输入看起来更聪明。"**
+
+---
+
+## 🔐 Code Change Governance System
+
+The governance system provides safe, auditable code changes with human oversight. All features follow constitutional principles and have been fully verified.
+
+### Key Features
+
+- ✅ **Proposal-First**: All changes start as proposals, no execution without review
+- ✅ **Human-in-the-Loop**: Explicit approval with diff preview and risk assessment
+- ✅ **Snapshot Safety**: Automatic rollback on failure
+- ✅ **State Machine Invariants**: Illegal transitions are blocked
+- ✅ **Atomic Persistence**: Crash-safe writes with validation
+- ✅ **Audit Trail**: Complete lifecycle tracking for every action
+
+### Demo Summary
+
+| Demo # | Feature | Status |
+--------|---------|--------|
+| 1 | Diff creation | ✅ Working |
+| 2 | Proposal | ✅ Working |
+| 3 | List actions | ✅ Working |
+| 4 | Approval with review | ✅ Working |
+| 5 | Execution with snapshot | ✅ Working |
+| 6 | Failure and rollback | ✅ Working |
+| 7 | Action status | ✅ Working |
+| 8 | Full workflow | ✅ Working |
+| 9 | State invariants | ✅ Working |
+| 10 | Capability tokens | ✅ Working |
+| 11 | Crash recovery | ✅ Working |
+| 12 | Persistence audit | ✅ Working |
+| 13 | Risk assessment | ✅ Working |
+
+### Quick Start
+
+```bash
+# Propose a code change
+yuangs diff-edit propose /path/to/patch.patch --rationale "Your rationale"
+
+# List pending actions
+yuangs diff-edit list
+
+# Review and approve
+yuangs diff-edit approve <action-id>
+
+# Execute with safety
+yuangs diff-edit exec <action-id>
+```
+
+### Documentation
+
+- 📖 **Complete Demo Guide**: [DEMO.md](DEMO.md) - Detailed runnable examples for all features
+- ✅ **Verification Report**: [VERIFICATION_REPORT.md](VERIFICATION_REPORT.md) - Implementation status confirmation
+
+### Available Commands
+
+```bash
+yuangs diff-edit propose <file>     # Submit a diff for review
+yuangs diff-edit list               # View all actions
+yuangs diff-edit approve <id>       # Review and approve
+yuangs diff-edit exec <id>          # Execute approved action
+yuangs diff-edit status <id>        # Check action status
+```
+
+---
+
+*此内容由插件自主更新*
