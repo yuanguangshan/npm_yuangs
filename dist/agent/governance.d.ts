@@ -1,17 +1,13 @@
 import { ProposedAction, GovernanceDecision } from './state';
-import { PolicyRule } from './governance/core';
+import { PolicyRule, RiskEntry } from './governance/core';
 export declare class GovernanceService {
-    private static engine;
+    private static rules;
     private static ledger;
-    private static wasmBridge;
-    private static wasmInited;
-    /**
-     * 将复杂的 YAML 规则简化为 AI 可理解的陈述句
-     */
-    static getPolicyManual(): string;
+    private static initialized;
+    static init(): Promise<void>;
+    private static loadPolicy;
     static getRules(): PolicyRule[];
-    static getLedgerSnapshot(): import("./governance/core").RiskEntry[];
+    static getLedgerSnapshot(): RiskEntry[];
+    static getPolicyManual(): string;
     static adjudicate(action: ProposedAction): Promise<GovernanceDecision>;
-    static evaluateRisk(action: any): 'low' | 'medium' | 'high';
-    private static ask;
 }

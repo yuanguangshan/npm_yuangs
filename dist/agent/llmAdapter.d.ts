@@ -1,11 +1,6 @@
+import { AgentThought } from './state';
+import type { AIRequestMessage } from '../core/validation';
 export declare class LLMAdapter {
-    static think(messages: any[], model: string, onChunk?: (s: string) => void, customSystemPrompt?: string): Promise<{
-        raw: string;
-        isDone: any;
-        type: any;
-        payload: any;
-        reasoning: any;
-        parsedPlan: any;
-    }>;
+    static think(messages: AIRequestMessage[], mode?: 'chat' | 'command' | 'command+exec', onChunk?: (chunk: string) => void, customSystemPrompt?: string): Promise<AgentThought>;
     private static parseThought;
 }

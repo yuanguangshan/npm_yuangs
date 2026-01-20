@@ -17,7 +17,7 @@ import { registerRegistryCommands } from './commands/registryCommands';
 import { registerExplainCommands } from './commands/explainCommands';
 import { registerReplayCommands } from './commands/replayCommands';
 import { registerSkillsCommands } from './commands/skillsCommands';
-import { createDiffEditCommand } from './governance/commands/diffEdit';
+// import { createDiffEditCommand } from './governance/commands/diffEdit';
 
 // Mandatory Node.js version check
 const majorVersion = Number(process.versions.node.split('.')[0]);
@@ -110,11 +110,14 @@ program
         if (options.f) model = 'Assistant';
         if (options.l) model = 'Assistant';
 
-        if (options.exec) {
-            await handleAICommand(question, { execute: false, model, verbose: options.verbose });
-        } else {
-            await handleAIChat(question || null, model);
-        }
+        const { AgentRuntime } = await import('./agent');
+        const runtime = new AgentRuntime({
+            input: question,
+            mode: options.exec ? 'command' : 'chat',
+            model: model || 'Assistant'
+        });
+
+        await runtime.run(question || '', options.exec ? 'command' : 'chat');
     });
 
 program
@@ -358,8 +361,8 @@ registerReplayCommands(program);
 registerSkillsCommands(program);
 
 // Add governance diff-edit command
-const diffEditCmd = createDiffEditCommand();
-program.addCommand(diffEditCmd);
+// const diffEditCmd = createDiffEditCommand();
+// program.addCommand(diffEditCmd);
 
 program
     .command('help')

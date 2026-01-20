@@ -1,22 +1,22 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.RiskLedger = void 0;
-class RiskLedger {
-    entries = [];
-    record(actionType) {
+import { RiskEntry } from './core';
+
+export class RiskLedger {
+    private entries: RiskEntry[] = [];
+
+    record(actionType: string): void {
         this.entries.push({
             ts: Date.now(),
             actionType
         });
         this.cleanup();
     }
-    getSnapshot() {
+
+    getSnapshot(): RiskEntry[] {
         return [...this.entries];
     }
-    cleanup() {
+
+    private cleanup(): void {
         const oneHourAgo = Date.now() - 3600000;
         this.entries = this.entries.filter(e => e.ts > oneHourAgo);
     }
 }
-exports.RiskLedger = RiskLedger;
-//# sourceMappingURL=ledger.js.map

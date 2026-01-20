@@ -1,11 +1,9 @@
-import { AgentPlan } from './plan';
-import { ExecutionRecord } from './record';
 export interface Skill {
     id: string;
     name: string;
     description: string;
     whenToUse: string;
-    planTemplate: AgentPlan;
+    planTemplate: any;
     successCount: number;
     failureCount: number;
     confidence: number;
@@ -24,7 +22,7 @@ export declare function updateSkillStatus(skillId: string, success: boolean): vo
 /**
  * 自动学习新技能
  */
-export declare function learnSkillFromRecord(record: ExecutionRecord, success?: boolean): void;
+export declare function learnSkillFromRecord(record: any, success?: boolean): void;
 /**
  * 筛选并排序技能 (用于注入 Prompt)
  */

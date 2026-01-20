@@ -6,39 +6,32 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.WasmGovernanceBridge = void 0;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
-const loader_1 = __importDefault(require("@assemblyscript/loader"));
 class WasmGovernanceBridge {
-    wasmInstance = null;
-    async init() {
-        const wasmPath = path_1.default.join(process.cwd(), 'build/governance.release.wasm');
-        if (!fs_1.default.existsSync(wasmPath)) {
-            // 如果不存在，尝试加载 debug 版本作为兜底（或者报错提示用户编译）
-            const debugPath = path_1.default.join(process.cwd(), 'build/governance.debug.wasm');
-            if (!fs_1.default.existsSync(debugPath)) {
-                throw new Error(`WASM 模块未找到，请先运行 npm run asbuild. 路径: ${wasmPath}`);
+    static instance = null;
+    static async init() {
+        try {
+            const loader = require('@assemblyscript/loader');
+            const wasmPath = path_1.default.join(process.cwd(), 'build', 'release.wasm');
+            if (!fs_1.default.existsSync(wasmPath)) {
+                return false;
             }
-            this.wasmInstance = await loader_1.default.instantiate(fs_1.default.readFileSync(debugPath), {});
+            const wasmModule = await loader.instantiate(fs_1.default.readFileSync(wasmPath));
+            this.instance = wasmModule.exports;
+            return true;
         }
-        else {
-            const wasmModule = fs_1.default.readFileSync(wasmPath);
-            // 实例化 WASM，并注入必要的运行时支持
-            this.wasmInstance = await loader_1.default.instantiate(wasmModule, {});
+        catch (e) {
+            return false;
         }
-        console.log('✅ WASM 治理沙盒已加载并激活。');
     }
-    evaluate(action, rules, ledger) {
-        if (!this.wasmInstance)
-            throw new Error("WASM 沙盒未初始化");
-        const { __newString, __getString, evaluate } = this.wasmInstance.exports;
-        // 将数据封箱送入沙盒内存
-        const proposalPtr = __newString(JSON.stringify(action));
-        const rulesPtr = __newString(JSON.stringify(rules));
-        const ledgerPtr = __newString(JSON.stringify(ledger));
-        // 在沙盒内执行计算
-        const resultPtr = evaluate(proposalPtr, rulesPtr, ledgerPtr);
-        // 从沙盒提取计算结果
-        const resultJson = __getString(resultPtr);
-        return JSON.parse(resultJson);
+    static evaluate(proposal, rules, ledger) {
+        if (!this.instance)
+            return { effect: 'error', reason: 'WASM not initialized' };
+        const { __newString, __getString, evaluate } = this.instance;
+        const pPtr = __newString(JSON.stringify(proposal));
+        const rPtr = __newString(JSON.stringify(rules));
+        const lPtr = __newString(JSON.stringify(ledger));
+        const resultPtr = evaluate(pPtr, rPtr, lPtr);
+        return JSON.parse(__getString(resultPtr));
     }
 }
 exports.WasmGovernanceBridge = WasmGovernanceBridge;

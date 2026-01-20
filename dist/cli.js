@@ -42,6 +42,8 @@ const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
 const os_1 = __importDefault(require("os"));
 const commander_1 = require("commander");
+const handleAICommand_1 = require("./commands/handleAICommand");
+const handleAIChat_1 = require("./commands/handleAIChat");
 const handleConfig_1 = require("./commands/handleConfig");
 const capabilityCommands_1 = require("./commands/capabilityCommands");
 const completion_1 = require("./core/completion");
@@ -53,8 +55,7 @@ const registryCommands_1 = require("./commands/registryCommands");
 const explainCommands_1 = require("./commands/explainCommands");
 const replayCommands_1 = require("./commands/replayCommands");
 const skillsCommands_1 = require("./commands/skillsCommands");
-const diffEdit_1 = require("./governance/commands/diffEdit");
-const AgentRuntime_1 = require("./agent/AgentRuntime");
+// import { createDiffEditCommand } from './governance/commands/diffEdit';
 // Mandatory Node.js version check
 const majorVersion = Number(process.versions.node.split('.')[0]);
 if (majorVersion < 18) {
@@ -138,14 +139,13 @@ program
         model = 'Assistant';
     if (options.l)
         model = 'Assistant';
-    if (options.exec) {
-        const runtime = new AgentRuntime_1.AgentRuntime({ input: question, mode: 'command', history: [] });
-        await runtime.run(question, 'command');
-    }
-    else {
-        const runtime = new AgentRuntime_1.AgentRuntime({ input: question, mode: 'chat', history: [] });
-        await runtime.run(question, 'chat');
-    }
+    const { AgentRuntime } = await Promise.resolve().then(() => __importStar(require('./agent')));
+    const runtime = new AgentRuntime({
+        input: question,
+        mode: options.exec ? 'command' : 'chat',
+        model: model || 'Assistant'
+    });
+    await runtime.run(question || '', options.exec ? 'command' : 'chat');
 });
 program
     .command('list')
@@ -377,8 +377,8 @@ program
 (0, replayCommands_1.registerReplayCommands)(program);
 (0, skillsCommands_1.registerSkillsCommands)(program);
 // Add governance diff-edit command
-const diffEditCmd = (0, diffEdit_1.createDiffEditCommand)();
-program.addCommand(diffEditCmd);
+// const diffEditCmd = createDiffEditCommand();
+// program.addCommand(diffEditCmd);
 program
     .command('help')
     .description('显示帮助信息')
@@ -541,12 +541,10 @@ async function main() {
             }
             let model = options.model;
             if (options.exec) {
-                const runtime = new AgentRuntime_1.AgentRuntime({ input: question, mode: 'command', history: [] });
-                await runtime.run(question, 'command');
+                await (0, handleAICommand_1.handleAICommand)(question, { execute: false, model, verbose: options.withContent });
             }
             else {
-                const runtime = new AgentRuntime_1.AgentRuntime({ input: question, mode: 'chat', history: [] });
-                await runtime.run(question, 'chat');
+                await (0, handleAIChat_1.handleAIChat)(question || null, model);
             }
             process.exit(0);
         }

@@ -1,8 +1,6 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { AgentPlan } from './plan';
-import { ExecutionRecord } from './record';
 import chalk from 'chalk';
 
 export interface Skill {
@@ -10,7 +8,7 @@ export interface Skill {
     name: string;
     description: string;
     whenToUse: string; // 触发场景描述
-    planTemplate: AgentPlan;
+    planTemplate: any;
 
     // 评价指标
     successCount: number;
@@ -87,14 +85,14 @@ export function updateSkillStatus(skillId: string, success: boolean) {
         // 失败惩罚: 惩罚力度大于奖励，防止系统“自嗨”
         skill.confidence = Math.max(0, skill.confidence - 0.1);
     }
-    
+
     saveSkills(); // Persist changes
 }
 
 /**
  * 自动学习新技能
  */
-export function learnSkillFromRecord(record: ExecutionRecord, success: boolean = true) {
+export function learnSkillFromRecord(record: any, success: boolean = true) {
     if (record.mode === 'chat' || !record.llmResult.plan) return;
 
     const existingSkill = skillLibrary.find(s => s.name === record.llmResult.plan?.goal);
@@ -124,7 +122,7 @@ export function learnSkillFromRecord(record: ExecutionRecord, success: boolean =
 
     // 每学习一次，尝试清理一次“冷”技能
     reapColdSkills();
-    
+
     saveSkills(); // Persist changes
 }
 
@@ -171,7 +169,7 @@ export function reapColdSkills() {
         skillLibrary.sort((a, b) => computeSkillScore(a, now) - computeSkillScore(b, now));
         skillLibrary.shift();
     }
-    
+
     if (skillLibrary.length !== initialCount) {
         saveSkills(); // Persist if changes happened
     }

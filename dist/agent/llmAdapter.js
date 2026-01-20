@@ -1,46 +1,86 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.LLMAdapter = void 0;
 const llm_1 = require("./llm");
-const validation_1 = require("../core/validation");
-const chalk_1 = __importDefault(require("chalk"));
+const client_1 = require("../ai/client");
 class LLMAdapter {
-    static async think(messages, model, onChunk, customSystemPrompt) {
-        const systemPrompt = customSystemPrompt || `You are a Governed AI. Output JSON format: 
-        { "action_type": "...", "payload": {...}, "reasoning": "...", "is_done": false }`;
+    static async think(messages, mode = 'chat', onChunk, customSystemPrompt) {
+        const prompt = {
+            system: customSystemPrompt || `You are yuangs AI Assistant. You are operating in Governance-First ReAct Loop mode.
+      
+Available action types:
+- tool_call: Call a tool (read_file, write_file, web_search, shell)
+- code_diff: Apply a code diff using unified diff format
+- shell_cmd: Execute a shell command
+- answer: Provide a final answer without any tool calls
+
+When you need to perform an action, output your plan in this JSON format:
+{
+  "action_type": "tool_call" | "code_diff" | "shell_cmd" | "answer",
+  "tool_name": string,  // for tool_call
+  "parameters": object,
+  "command": string,    // for shell_cmd
+  "diff": string,       // for code_diff
+  "content": string,     // for answer
+  "reasoning": string    // Explain why you're taking this action
+}
+
+If the task is complete and no more actions are needed, output:
+{
+  "is_done": true,
+  "final_answer": string
+}`,
+            messages,
+        };
+        const config = (0, client_1.getUserConfig)();
+        const model = config.defaultModel || 'Assistant';
         const result = await (0, llm_1.runLLM)({
-            prompt: { messages: [{ role: 'system', content: systemPrompt }, ...messages] },
-            model: model,
+            prompt,
+            model,
             stream: !!onChunk,
-            onChunk: onChunk
+            onChunk
         });
         return this.parseThought(result.rawText);
     }
     static parseThought(raw) {
         try {
-            const jsonStr = (0, validation_1.extractJSON)(raw);
-            const parsed = JSON.parse(jsonStr);
-            return {
-                raw,
-                isDone: parsed.is_done || false,
-                type: parsed.action_type || 'answer',
-                payload: parsed.payload || {},
-                reasoning: parsed.reasoning || '',
-                parsedPlan: parsed
-            };
+            const jsonMatch = raw.match(/```json\n([\s\S]*?)\n```/) || raw.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                const parsed = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+                if (parsed.is_done) {
+                    return {
+                        raw,
+                        parsedPlan: parsed,
+                        isDone: true,
+                        type: 'answer'
+                    };
+                }
+                return {
+                    raw,
+                    parsedPlan: parsed,
+                    isDone: false,
+                    type: parsed.action_type || 'tool_call',
+                    payload: {
+                        tool_name: parsed.tool_name,
+                        parameters: parsed.parameters,
+                        command: parsed.command,
+                        diff: parsed.diff,
+                        content: parsed.content
+                    },
+                    reasoning: parsed.reasoning || ''
+                };
+            }
         }
         catch (e) {
-            console.warn(chalk_1.default.yellow(`[Adapter] JSON 解析失败，正在反馈给 AI 修正...`));
-            // 返回一个带有错误的“伪思想”，让 Runtime 引导 AI 修正
-            return {
-                raw, isDone: false, type: 'answer',
-                reasoning: `My last output was not valid JSON: ${e.message}. I will fix the format.`,
-                payload: {}, parsedPlan: null
-            };
+            console.warn('[LLMAdapter] Failed to parse JSON output, using raw text');
         }
+        return {
+            raw,
+            parsedPlan: {},
+            isDone: false,
+            type: 'answer',
+            reasoning: raw
+        };
     }
 }
 exports.LLMAdapter = LLMAdapter;

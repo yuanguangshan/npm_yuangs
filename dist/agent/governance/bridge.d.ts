@@ -1,8 +1,5 @@
 export declare class WasmGovernanceBridge {
-    private wasmInstance;
-    init(): Promise<void>;
-    evaluate(action: any, rules: any[], ledger: any[]): {
-        effect: string;
-        reason?: string;
-    };
+    private static instance;
+    static init(): Promise<boolean>;
+    static evaluate(proposal: any, rules: any, ledger: any): any;
 }

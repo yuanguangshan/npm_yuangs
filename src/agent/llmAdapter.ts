@@ -7,11 +7,12 @@ import { getUserConfig } from '../ai/client';
 export class LLMAdapter {
   static async think(
     messages: AIRequestMessage[],
-    mode: 'chat' | 'command' | 'command+exec',
-    outputSchema?: any
+    mode: 'chat' | 'command' | 'command+exec' = 'chat',
+    onChunk?: (chunk: string) => void,
+    customSystemPrompt?: string
   ): Promise<AgentThought> {
     const prompt: AgentPrompt = {
-      system: `You are yuangs AI Assistant. You are operating in Governance-First ReAct Loop mode.
+      system: customSystemPrompt || `You are yuangs AI Assistant. You are operating in Governance-First ReAct Loop mode.
       
 Available action types:
 - tool_call: Call a tool (read_file, write_file, web_search, shell)
@@ -36,17 +37,16 @@ If the task is complete and no more actions are needed, output:
   "final_answer": string
 }`,
       messages,
-      outputSchema
     };
 
-    // Use configured model from user settings
     const config = getUserConfig();
     const model = config.defaultModel || 'Assistant';
 
     const result = await runLLM({
       prompt,
       model,
-      stream: false
+      stream: !!onChunk,
+      onChunk
     });
 
     return this.parseThought(result.rawText);
@@ -57,7 +57,7 @@ If the task is complete and no more actions are needed, output:
       const jsonMatch = raw.match(/```json\n([\s\S]*?)\n```/) || raw.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[1] || jsonMatch[0]);
-        
+
         if (parsed.is_done) {
           return {
             raw,
