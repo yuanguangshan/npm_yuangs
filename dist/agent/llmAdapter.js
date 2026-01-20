@@ -58,11 +58,23 @@ Only use "action_type": "answer" when you have the actual results from tool exec
                         }
                     };
                 }
+                // 智能推断动作类型：如果 AI 没给 action_type，我们根据字段猜测
+                let inferredType = parsed.action_type;
+                if (!inferredType) {
+                    if (parsed.tool_name || parsed.tool)
+                        inferredType = 'tool_call';
+                    else if (parsed.command || parsed.cmd)
+                        inferredType = 'shell_cmd';
+                    else if (parsed.diff || parsed.patch)
+                        inferredType = 'code_diff';
+                    else
+                        inferredType = 'answer';
+                }
                 return {
                     raw,
                     parsedPlan: parsed,
-                    isDone: false,
-                    type: parsed.action_type || 'tool_call',
+                    isDone: inferredType === 'answer' || parsed.is_done === true,
+                    type: inferredType,
                     payload: {
                         tool_name: parsed.tool_name || parsed.tool || '',
                         parameters: parsed.parameters || parsed.params || {},
@@ -83,7 +95,7 @@ Only use "action_type": "answer" when you have the actual results from tool exec
             isDone: true,
             type: 'answer',
             payload: { content: raw },
-            reasoning: 'Fallback to raw text due to parsing failure'
+            reasoning: ''
         };
     }
 }
