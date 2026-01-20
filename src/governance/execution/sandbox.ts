@@ -68,7 +68,7 @@ export function commitChanges(message: string, snapshotId: string): void {
 }
 
 export function getChangedFiles(): string[] {
-  const output = execSync("git diff --name-only", {
+  const output = execSync("git diff --name-only HEAD", {
     encoding: "utf-8",
   });
 
