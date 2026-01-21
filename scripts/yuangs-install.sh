@@ -110,28 +110,33 @@ if [[ -n "$ZSH_VERSION" ]]; then
     fi
   }
 
-  yu_accept_line() {
-    [[ "$AI_OFF" == "1" ]] && zle .accept-line && return
+yu_accept_line() {
+  # ✅ 关键：局部关闭 glob
+  emulate -L zsh
+  setopt localoptions noglob
 
-    local line="$BUFFER"
+  [[ "$AI_OFF" == "1" ]] && zle .accept-line && return
 
-    if [[ "$line" == "?? "* ]]; then
-      BUFFER=""
-      yu_ai "${line#?? }"
-      zle reset-prompt
-      return
-    fi
+  local line="$BUFFER"
 
-    if [[ -z "$line" && $__YU_AI_PENDING -eq 1 ]]; then
-      BUFFER=""
-      yu_ai "$__YU_LAST_CMD"
-      __YU_AI_PENDING=0
-      zle reset-prompt
-      return
-    fi
+  # ✅ 支持 ??（不要求空格）
+  if [[ "$line" == "??"* ]]; then
+    BUFFER=""
+    yu_ai "${line#??}"
+    zle reset-prompt
+    return
+  fi
 
-    zle .accept-line
-  }
+  if [[ -z "$line" && $__YU_AI_PENDING -eq 1 ]]; then
+    BUFFER=""
+    yu_ai "$__YU_LAST_CMD"
+    __YU_AI_PENDING=0
+    zle reset-prompt
+    return
+  fi
+
+  zle .accept-line
+}
 
   zle -N yu_accept_line
   bindkey '^M' yu_accept_line
