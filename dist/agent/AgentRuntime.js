@@ -6,6 +6,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AgentRuntime = void 0;
 const chalk_1 = __importDefault(require("chalk"));
 const crypto_1 = require("crypto");
+const marked_1 = require("marked");
+const marked_terminal_1 = __importDefault(require("marked-terminal"));
+// Configure marked
+marked_1.marked.setOptions({
+    renderer: new marked_terminal_1.default()
+});
 const llmAdapter_1 = require("./llmAdapter");
 const governance_1 = require("./governance");
 const executor_1 = require("./executor");
@@ -48,7 +54,8 @@ class AgentRuntime {
             if (thought.isDone || action.type === "answer") {
                 const result = await executor_1.ToolExecutor.execute(action);
                 if (!onChunk) {
-                    console.log(chalk_1.default.green(`\n🤖 AI：${result.output}\n`));
+                    const rendered = (0, marked_1.marked)(result.output);
+                    console.log(chalk_1.default.green(`\n🤖 AI：\n`) + rendered);
                 }
                 this.context.addMessage("assistant", result.output);
                 break;

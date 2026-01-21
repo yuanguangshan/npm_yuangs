@@ -1,8 +1,12 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.LLMAdapter = void 0;
 const llm_1 = require("./llm");
 const client_1 = require("../ai/client");
+const json5_1 = __importDefault(require("json5"));
 class LLMAdapter {
     static async think(messages, mode = 'chat', onChunk, model, customSystemPrompt) {
         let protocol = `[SYSTEM PROTOCOL V2]
@@ -53,7 +57,7 @@ Your Output: {"action_type":"shell_cmd","reasoning":"count files","command":"ls 
             // 提取 JSON：支持 Markdown 块或纯 JSON 字符串
             const jsonMatch = raw.match(/```json\n([\s\S]*?)\n```/) || raw.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
-                const parsed = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+                const parsed = json5_1.default.parse(jsonMatch[1] || jsonMatch[0]);
                 // 如果明确标记为 done，或者动作为 answer，则视为任务结束
                 if (parsed.is_done === true || parsed.action_type === 'answer') {
                     return {

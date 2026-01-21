@@ -1,5 +1,12 @@
 import chalk from "chalk";
 import { randomUUID } from "crypto";
+import { marked } from "marked";
+import TerminalRenderer from "marked-terminal";
+
+// Configure marked
+marked.setOptions({
+  renderer: new TerminalRenderer()
+});
 import { LLMAdapter } from "./llmAdapter";
 import { GovernanceService } from "./governance";
 import { ToolExecutor } from "./executor";
@@ -67,7 +74,8 @@ export class AgentRuntime {
       if (thought.isDone || action.type === "answer") {
         const result = await ToolExecutor.execute(action as any);
         if (!onChunk) {
-          console.log(chalk.green(`\n🤖 AI：${result.output}\n`));
+          const rendered = marked(result.output);
+          console.log(chalk.green(`\n🤖 AI：\n`) + rendered);
         }
         this.context.addMessage("assistant", result.output);
         break;
@@ -107,8 +115,8 @@ export class AgentRuntime {
 
       if (result.success) {
         this.context.addToolResult(action.type, result.output);
-        const preview = result.output.length > 300 
-          ? result.output.substring(0, 300) + '...' 
+        const preview = result.output.length > 300
+          ? result.output.substring(0, 300) + '...'
           : result.output;
         console.log(chalk.green(`[SUCCESS] Result:\n${preview}`));
       } else {

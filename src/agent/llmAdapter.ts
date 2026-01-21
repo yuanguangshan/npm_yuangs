@@ -3,6 +3,7 @@ import { runLLM } from './llm';
 import { AgentPrompt } from './types';
 import type { AIRequestMessage } from '../core/validation';
 import { getUserConfig } from '../ai/client';
+import JSON5 from 'json5';
 
 export class LLMAdapter {
   static async think(
@@ -66,7 +67,7 @@ Your Output: {"action_type":"shell_cmd","reasoning":"count files","command":"ls 
       // 提取 JSON：支持 Markdown 块或纯 JSON 字符串
       const jsonMatch = raw.match(/```json\n([\s\S]*?)\n```/) || raw.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+        const parsed = JSON5.parse(jsonMatch[1] || jsonMatch[0]);
 
         // 如果明确标记为 done，或者动作为 answer，则视为任务结束
         if (parsed.is_done === true || parsed.action_type === 'answer') {
