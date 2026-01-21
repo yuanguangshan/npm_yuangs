@@ -173,6 +173,40 @@ yuangs ai
 
 ---
 
+### 1.5 yuangs Zero-Mode (极简 Shell AI 增强)
+
+如果你不想进入专门的交互模式，`yuangs` 提供了一个"零侵入"的集成方案，让你在原本的 Bash/Zsh 中保持心流：
+
+#### 📦 安装与卸载
+
+```bash
+# 安装
+bash ./scripts/yuangs-install.sh
+
+# 卸载
+bash ./scripts/yuangs-install.sh --uninstall
+```
+安装后请执行 `source ~/.zshrc` (或 `.bashrc`)。
+
+#### 🚀 核心玩法
+
+1. **`?? <问题>` (即时咨询)**
+   在任何时候，只需输入 `??` 加空格，即可向 AI 提问。
+   ```bash
+   ?? 怎么解压一个 .tar.gz 文件到指定目录？
+   ```
+
+2. **回车即救急 (Failed-Command Help)**
+   当你执行一个命令失败时（例如 `git push` 被拒绝），终端会提示：
+   `↳ Need help? Press Enter`
+   此时**直接按回车**，AI 会通过 `yuangs` 的上下文治理能力，自动分析错误原因并给出修复方案。
+
+3. **开关自如**
+   - `ai_off`: 临时禁用 AI 触发逻辑。
+   - `ai_on`: 重新启用 AI 增强。
+
+---
+
 ### 2. 精准上下文管理（ContextBuffer）
 
 #### 管道模式（Pipe Mode）
