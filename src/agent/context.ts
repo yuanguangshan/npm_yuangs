@@ -7,7 +7,7 @@ export function buildContext(input: AgentInput, contextBuffer: ContextBuffer): A
     return {
         files: items.map(item => ({
             path: item.path,
-            content: item.content,
+            content: item.content ?? item.summary ?? '',
         })),
         gitDiff: undefined, // Will be enhanced later
         history: [], // Will be populated from conversation history

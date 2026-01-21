@@ -165,6 +165,29 @@ export async function handleAICommand(
         const latencyMs = Date.now() - startTime;
 
         if (!isUsingMacro && result.code !== 0 && result.code !== null) {
+            // === Anti-Pattern Memory ===
+            const failBuffer = new ContextBuffer();
+            const persistedFailContext = await loadContext();
+            failBuffer.import(persistedFailContext);
+
+            failBuffer.add({
+                type: 'antipattern',
+                path: `fail:${userInput}`,
+                content: `
+Intent:
+${userInput}
+
+Command:
+${commandToExecute}
+
+Error:
+${result.stderr}
+`,
+                tags: ['failure', 'command']
+            });
+
+            await saveContext(failBuffer.export());
+
             console.log(chalk.red('\n❌ 执行失败，尝试自动修复...'));
             const fixedPlan = await autoFixCommand(
                 commandToExecute,
@@ -205,6 +228,11 @@ export async function handleAICommand(
                 console.log(chalk.green('\n✓ 执行成功并已存入历史库'));
             }
 
+            const reward =
+                result.code === 0
+                    ? latencyMs < 500 ? 1 : 0.5
+                    : -1;
+
             if (!isUsingMacro) {
                 capabilitySystem.createAndSaveExecutionRecord(
                     'ai-command',
@@ -212,6 +240,47 @@ export async function handleAICommand(
                     matchResult,
                     commandToExecute
                 );
+
+                const { listExecutionRecords, saveExecutionRecord } = await import('../core/executionStore');
+                const records = listExecutionRecords(1);
+                if (records.length > 0) {
+                    const lastRecord = records[0];
+                    lastRecord.outcome.reward = reward;
+                    saveExecutionRecord(lastRecord);
+                }
+            }
+
+            // === Execution Result to Context ===
+            const successBuffer = new ContextBuffer();
+            const persistedContext = await loadContext();
+            successBuffer.import(persistedContext);
+
+            successBuffer.add({
+                type: 'memory',
+                path: `Execution: ${commandToExecute}`,
+                alias: 'Last Successful Execution',
+                content: `
+Command:
+${commandToExecute}
+
+Stdout:
+${result.stdout ?? ''}
+
+Stderr:
+${result.stderr ?? ''}
+`
+            }, true);
+
+            await saveContext(successBuffer.export());
+
+            // === Trigger Reflection ===
+            if (Math.random() < 0.1) {
+                try {
+                    const { ReflectionAgent } = await import('../agent/ReflectionAgent');
+                    await ReflectionAgent.run();
+                } catch (error) {
+                    // Reflection is optional, fail silently
+                }
             }
 
             // Clear context after successful one-shot command execution

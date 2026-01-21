@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -138,6 +171,26 @@ async function handleAICommand(userInput, options) {
         }
         const latencyMs = Date.now() - startTime;
         if (!isUsingMacro && result.code !== 0 && result.code !== null) {
+            // === Anti-Pattern Memory ===
+            const failBuffer = new contextBuffer_1.ContextBuffer();
+            const persistedFailContext = await (0, contextStorage_1.loadContext)();
+            failBuffer.import(persistedFailContext);
+            failBuffer.add({
+                type: 'antipattern',
+                path: `fail:${userInput}`,
+                content: `
+Intent:
+${userInput}
+
+Command:
+${commandToExecute}
+
+Error:
+${result.stderr}
+`,
+                tags: ['failure', 'command']
+            });
+            await (0, contextStorage_1.saveContext)(failBuffer.export());
             console.log(chalk_1.default.red('\n❌ 执行失败，尝试自动修复...'));
             const fixedPlan = await (0, autofix_1.autoFixCommand)(commandToExecute, result.stderr, os, selectedModel);
             if (fixedPlan && fixedPlan.command) {
@@ -169,8 +222,48 @@ async function handleAICommand(userInput, options) {
             else {
                 console.log(chalk_1.default.green('\n✓ 执行成功并已存入历史库'));
             }
+            const reward = result.code === 0
+                ? latencyMs < 500 ? 1 : 0.5
+                : -1;
             if (!isUsingMacro) {
                 capabilitySystem.createAndSaveExecutionRecord('ai-command', requirement, matchResult, commandToExecute);
+                const { listExecutionRecords, saveExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionStore')));
+                const records = listExecutionRecords(1);
+                if (records.length > 0) {
+                    const lastRecord = records[0];
+                    lastRecord.outcome.reward = reward;
+                    saveExecutionRecord(lastRecord);
+                }
+            }
+            // === Execution Result to Context ===
+            const successBuffer = new contextBuffer_1.ContextBuffer();
+            const persistedContext = await (0, contextStorage_1.loadContext)();
+            successBuffer.import(persistedContext);
+            successBuffer.add({
+                type: 'memory',
+                path: `Execution: ${commandToExecute}`,
+                alias: 'Last Successful Execution',
+                content: `
+Command:
+${commandToExecute}
+
+Stdout:
+${result.stdout ?? ''}
+
+Stderr:
+${result.stderr ?? ''}
+`
+            }, true);
+            await (0, contextStorage_1.saveContext)(successBuffer.export());
+            // === Trigger Reflection ===
+            if (Math.random() < 0.1) {
+                try {
+                    const { ReflectionAgent } = await Promise.resolve().then(() => __importStar(require('../agent/ReflectionAgent')));
+                    await ReflectionAgent.run();
+                }
+                catch (error) {
+                    // Reflection is optional, fail silently
+                }
             }
             // Clear context after successful one-shot command execution
             await (0, contextStorage_1.saveContext)([]);

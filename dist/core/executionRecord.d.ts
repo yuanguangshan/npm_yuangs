@@ -31,6 +31,7 @@ export interface ExecutionOutcome {
     failureReason?: 'capability-mismatch' | 'provider-error' | 'user-abort' | 'timeout' | 'other';
     tokenCount?: number;
     latencyMs?: number;
+    reward?: number;
 }
 export interface ExecutionRecord {
     id: string;
