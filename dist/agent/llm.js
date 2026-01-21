@@ -26,7 +26,8 @@ async function runLLM({ prompt, model, stream, onChunk, }) {
     const start = Date.now();
     if (stream) {
         let raw = '';
-        await (0, client_1.callAI_Stream)(prompt.messages, model, (chunk) => {
+        const messages = prompt.system ? [{ role: 'system', content: prompt.system }, ...prompt.messages] : prompt.messages;
+        await (0, client_1.callAI_Stream)(messages, model, (chunk) => {
             raw += chunk;
             onChunk?.(chunk);
         });
@@ -49,7 +50,7 @@ async function runLLM({ prompt, model, stream, onChunk, }) {
     };
     const data = {
         model: model || config.defaultModel || validation_1.DEFAULT_MODEL,
-        messages: prompt.messages,
+        messages: prompt.system ? [{ role: 'system', content: prompt.system }, ...prompt.messages] : prompt.messages,
         stream: false
     };
     try {

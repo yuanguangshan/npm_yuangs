@@ -1,3 +1,4 @@
+import chalk from 'chalk';
 import { ProposedAction, GovernanceDecision } from './state';
 import { evaluateProposal, PolicyRule, RiskEntry } from './governance/core';
 import { RiskLedger } from './governance/ledger';
@@ -63,7 +64,22 @@ export class GovernanceService {
       return { status: 'approved', by: 'policy', timestamp: Date.now() };
     }
 
-    // 3. 人工干预兜底 (模拟)
-    return { status: 'approved', by: 'human', timestamp: Date.now() };
+    // 3. 人工干预兜底
+    console.log(chalk.yellow(`\n⚠️  Governance: Explicit approval required for ${action.type}`));
+    if (action.type === 'shell_cmd') {
+      console.log(chalk.bold.green('💻 Proposed Command: ') + chalk.yellow(action.payload.command));
+    } else if (action.type === 'tool_call') {
+      console.log(chalk.bold.green('🛠️  Tool: ') + chalk.cyan(`${action.payload.tool_name}(${JSON.stringify(action.payload.parameters)})`));
+    }
+
+    const { confirm } = await import('../utils/confirm');
+    const ok = await confirm(`Do you want to proceed with this action?`);
+
+    if (ok) {
+      this.ledger.record(action.type);
+      return { status: 'approved', by: 'human', timestamp: Date.now() };
+    } else {
+      return { status: 'rejected', by: 'human', reason: 'User declined execution', timestamp: Date.now() };
+    }
   }
 }

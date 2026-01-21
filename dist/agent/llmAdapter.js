@@ -5,8 +5,7 @@ const llm_1 = require("./llm");
 const client_1 = require("../ai/client");
 class LLMAdapter {
     static async think(messages, mode = 'chat', onChunk, model, customSystemPrompt) {
-        const prompt = {
-            system: customSystemPrompt || `[SYSTEM PROTOCOL V2]
+        let protocol = `[SYSTEM PROTOCOL V2]
 - ROLE: AUTOMATED EXECUTION AGENT
 - OUTPUT: STRICT JSON ONLY
 - TALK: FORBIDDEN
@@ -28,7 +27,15 @@ EXECUTION RULES:
 3. Your output MUST start with '{' and end with '}'.
 
 Example Task: "count files"
-Your Output: {"action_type":"shell_cmd","reasoning":"count files","command":"ls | wc -l"}`,
+Your Output: {"action_type":"shell_cmd","reasoning":"count files","command":"ls | wc -l"}`;
+        if (mode === 'command' || mode === 'command+exec') {
+            protocol += `\n\nCOMMAND MODE ACTIVE:
+- Prioritize "shell_cmd" for any terminal-based task.
+- Minimize "answer" type unless the task is purely conversational.
+- Direct execution is expected.`;
+        }
+        const prompt = {
+            system: customSystemPrompt ? `${protocol}\n\nGOVERNANCE POLICY:\n${customSystemPrompt}` : protocol,
             messages,
         };
         const config = (0, client_1.getUserConfig)();

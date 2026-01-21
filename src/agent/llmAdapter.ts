@@ -12,8 +12,7 @@ export class LLMAdapter {
     model?: string,
     customSystemPrompt?: string
   ): Promise<AgentThought> {
-    const prompt: AgentPrompt = {
-      system: customSystemPrompt || `[SYSTEM PROTOCOL V2]
+    let protocol = `[SYSTEM PROTOCOL V2]
 - ROLE: AUTOMATED EXECUTION AGENT
 - OUTPUT: STRICT JSON ONLY
 - TALK: FORBIDDEN
@@ -35,7 +34,17 @@ EXECUTION RULES:
 3. Your output MUST start with '{' and end with '}'.
 
 Example Task: "count files"
-Your Output: {"action_type":"shell_cmd","reasoning":"count files","command":"ls | wc -l"}`,
+Your Output: {"action_type":"shell_cmd","reasoning":"count files","command":"ls | wc -l"}`;
+
+    if (mode === 'command' || mode === 'command+exec') {
+      protocol += `\n\nCOMMAND MODE ACTIVE:
+- Prioritize "shell_cmd" for any terminal-based task.
+- Minimize "answer" type unless the task is purely conversational.
+- Direct execution is expected.`;
+    }
+
+    const prompt: AgentPrompt = {
+      system: customSystemPrompt ? `${protocol}\n\nGOVERNANCE POLICY:\n${customSystemPrompt}` : protocol,
       messages,
     };
 

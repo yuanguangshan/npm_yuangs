@@ -34,7 +34,8 @@ export async function runLLM({
 
     if (stream) {
         let raw = '';
-        await callAI_Stream(prompt.messages, model, (chunk) => {
+        const messages = prompt.system ? [{ role: 'system', content: prompt.system } as any, ...prompt.messages] : prompt.messages;
+        await callAI_Stream(messages, model, (chunk) => {
             raw += chunk;
             onChunk?.(chunk);
         });
@@ -60,7 +61,7 @@ export async function runLLM({
 
     const data = {
         model: model || config.defaultModel || DEFAULT_MODEL,
-        messages: prompt.messages,
+        messages: prompt.system ? [{ role: 'system', content: prompt.system }, ...prompt.messages] : prompt.messages,
         stream: false
     };
 
