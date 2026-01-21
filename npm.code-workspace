@@ -1,6 +1,10 @@
 {
 	"folders": [
 		{
+			"name": "yuangs-vscode",
+			"path": "../yuangs-vscode"
+		},
+		{
 			"name": "npm_yuangs",
 			"path": "."
 		}
