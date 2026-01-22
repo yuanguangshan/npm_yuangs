@@ -50,6 +50,7 @@ const contextBuffer_1 = require("./contextBuffer");
 const contextStorage_1 = require("./contextStorage");
 const gitContext_1 = require("./gitContext");
 const shellCompletions_1 = require("./shellCompletions");
+const macros_1 = require("../core/macros");
 const renderer_1 = require("../utils/renderer");
 const execAsync = (0, util_1.promisify)(child_process_1.exec);
 function findCommonPrefix(strings) {
@@ -557,6 +558,35 @@ ${stderr}
                     console.log(chalk_1.default.cyan('已加载的插件:\n'));
                     plugins.forEach(p => console.log(chalk_1.default.green(`  - ${p}`)));
                     console.log();
+                }
+                continue;
+            }
+            // 检测 yuangs macro 命令，透传执行不经过AI
+            if (trimmed.startsWith('yuangs macro') || trimmed.startsWith('ygs macro')) {
+                rl.pause();
+                try {
+                    const parts = trimmed.split(/\s+/);
+                    if (parts.length >= 3) { // 至少有 'yuangs', 'macro', 'name'
+                        const macroName = parts[2];
+                        console.log(chalk_1.default.cyan(`\n🔄 执行宏: ${macroName}\n`));
+                        const success = (0, macros_1.runMacro)(macroName);
+                        if (success) {
+                            console.log(chalk_1.default.green(`✓ 宏 "${macroName}" 执行完成\n`));
+                        }
+                        else {
+                            console.log(chalk_1.default.red(`✗ 宏 "${macroName}" 不存在或执行失败\n`));
+                        }
+                    }
+                    else {
+                        console.log(chalk_1.default.yellow('用法: yuangs macro <name> 或 ygs macro <name>\n'));
+                    }
+                }
+                catch (err) {
+                    const message = err instanceof Error ? err.message : String(err);
+                    console.error(chalk_1.default.red(`\n[Macro Error]: ${message}`));
+                }
+                finally {
+                    rl.resume();
                 }
                 continue;
             }

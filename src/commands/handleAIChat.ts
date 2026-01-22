@@ -17,6 +17,7 @@ import {
     executeCommand as shellExecuteCommand,
     listPlugins
 } from './shellCompletions';
+import { runMacro } from '../core/macros';
 import { StreamMarkdownRenderer } from '../utils/renderer';
 const execAsync = promisify(exec);
 
@@ -608,6 +609,33 @@ ${stderr}
                     console.log(chalk.cyan('已加载的插件:\n'));
                     plugins.forEach(p => console.log(chalk.green(`  - ${p}`)));
                     console.log();
+                }
+                continue;
+            }
+
+            // 检测 yuangs macro 命令，透传执行不经过AI
+            if (trimmed.startsWith('yuangs macro') || trimmed.startsWith('ygs macro')) {
+                rl.pause();
+                try {
+                    const parts = trimmed.split(/\s+/);
+                    if (parts.length >= 3) { // 至少有 'yuangs', 'macro', 'name'
+                        const macroName = parts[2];
+                        console.log(chalk.cyan(`\n🔄 执行宏: ${macroName}\n`));
+
+                        const success = runMacro(macroName);
+                        if (success) {
+                            console.log(chalk.green(`✓ 宏 "${macroName}" 执行完成\n`));
+                        } else {
+                            console.log(chalk.red(`✗ 宏 "${macroName}" 不存在或执行失败\n`));
+                        }
+                    } else {
+                        console.log(chalk.yellow('用法: yuangs macro <name> 或 ygs macro <name>\n'));
+                    }
+                } catch (err: unknown) {
+                    const message = err instanceof Error ? err.message : String(err);
+                    console.error(chalk.red(`\n[Macro Error]: ${message}`));
+                } finally {
+                    rl.resume();
                 }
                 continue;
             }
