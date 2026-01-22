@@ -2,6 +2,10 @@
 node_modules/
 **/*.map
 
+# build output
+dist/
+*.tgz
+
 # editor
 .vscode/
 
