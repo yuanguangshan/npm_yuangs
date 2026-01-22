@@ -3,13 +3,59 @@ import * as marked from 'marked';
 import TerminalRenderer from 'marked-terminal';
 import ora, { Ora } from 'ora';
 
+// 自定义 TerminalRenderer 配置，设置不同 Markdown 元素的颜色
+const customRenderer = new TerminalRenderer({
+    tab: 2,
+    width: process.stdout.columns || 80,
+    showSectionPrefix: false,
+    // 自定义标题颜色
+    heading: (text: string, level: number) => {
+        switch(level) {
+            case 1:
+                return chalk.bold.hex('#FF6B6B')(text); // 一级标题：红色
+            case 2:
+                return chalk.bold.hex('#4ECDC4')(text); // 二级标题：青色
+            case 3:
+                return chalk.bold.hex('#45B7D1')(text); // 三级标题：蓝色
+            case 4:
+                return chalk.bold.hex('#96CEB4')(text); // 四级标题：绿色
+            case 5:
+                return chalk.bold.hex('#FFEAA7')(text); // 五级标题：黄色
+            case 6:
+                return chalk.bold.hex('#DDA0DD')(text); // 六级标题：紫色
+            default:
+                return chalk.bold.hex('#4ECDC4')(text); // 默认标题：青色
+        }
+    },
+    // 自定义加粗文本颜色
+    strong: (text: string) => {
+        return chalk.hex('#F06560')(text); // 加粗文本：橙红色
+    },
+    // 自定义强调文本颜色
+    em: (text: string) => {
+        return chalk.italic.hex('#C7B8EA')(text); // 斜体文本：淡紫色
+    },
+    // 自定义代码块样式
+    code: (text: string, lang: string | undefined, escaped: boolean) => {
+        return chalk.bgHex('#2D3748').hex('#CBD5E0')(text);
+    },
+    // 自定义行内代码样式
+    codespan: (text: string) => {
+        return chalk.bgHex('#4A5568').hex('#E2E8F0')(text);
+    },
+    // 自定义链接样式
+    link: (href: string, title: string | null, text: string) => {
+        return chalk.underline.hex('#63B3ED')(text);
+    },
+    // 自定义引用样式
+    blockquote: (text: string) => {
+        return chalk.hex('#A0AEC0')(text);
+    }
+}) as any;
+
 // 初始化 marked 配置
 marked.setOptions({
-    renderer: new TerminalRenderer({
-        tab: 2,
-        width: process.stdout.columns || 80,
-        showSectionPrefix: false
-    }) as any
+    renderer: customRenderer
 });
 
 export class StreamMarkdownRenderer {

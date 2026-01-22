@@ -40,13 +40,58 @@ exports.StreamMarkdownRenderer = void 0;
 const chalk_1 = __importDefault(require("chalk"));
 const marked = __importStar(require("marked"));
 const marked_terminal_1 = __importDefault(require("marked-terminal"));
+// 自定义 TerminalRenderer 配置，设置不同 Markdown 元素的颜色
+const customRenderer = new marked_terminal_1.default({
+    tab: 2,
+    width: process.stdout.columns || 80,
+    showSectionPrefix: false,
+    // 自定义标题颜色
+    heading: (text, level) => {
+        switch (level) {
+            case 1:
+                return chalk_1.default.bold.hex('#FF6B6B')(text); // 一级标题：红色
+            case 2:
+                return chalk_1.default.bold.hex('#4ECDC4')(text); // 二级标题：青色
+            case 3:
+                return chalk_1.default.bold.hex('#45B7D1')(text); // 三级标题：蓝色
+            case 4:
+                return chalk_1.default.bold.hex('#96CEB4')(text); // 四级标题：绿色
+            case 5:
+                return chalk_1.default.bold.hex('#FFEAA7')(text); // 五级标题：黄色
+            case 6:
+                return chalk_1.default.bold.hex('#DDA0DD')(text); // 六级标题：紫色
+            default:
+                return chalk_1.default.bold.hex('#4ECDC4')(text); // 默认标题：青色
+        }
+    },
+    // 自定义加粗文本颜色
+    strong: (text) => {
+        return chalk_1.default.hex('#F06560')(text); // 加粗文本：橙红色
+    },
+    // 自定义强调文本颜色
+    em: (text) => {
+        return chalk_1.default.italic.hex('#C7B8EA')(text); // 斜体文本：淡紫色
+    },
+    // 自定义代码块样式
+    code: (text, lang, escaped) => {
+        return chalk_1.default.bgHex('#2D3748').hex('#CBD5E0')(text);
+    },
+    // 自定义行内代码样式
+    codespan: (text) => {
+        return chalk_1.default.bgHex('#4A5568').hex('#E2E8F0')(text);
+    },
+    // 自定义链接样式
+    link: (href, title, text) => {
+        return chalk_1.default.underline.hex('#63B3ED')(text);
+    },
+    // 自定义引用样式
+    blockquote: (text) => {
+        return chalk_1.default.hex('#A0AEC0')(text);
+    }
+});
 // 初始化 marked 配置
 marked.setOptions({
-    renderer: new marked_terminal_1.default({
-        tab: 2,
-        width: process.stdout.columns || 80,
-        showSectionPrefix: false
-    })
+    renderer: customRenderer
 });
 class StreamMarkdownRenderer {
     fullResponse = '';
