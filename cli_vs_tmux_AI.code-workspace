@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"path": "../Tmux-FSM"
+		},
+		{
+			"path": "../yuangs-vscode"
+		},
+		{
+			"path": "."
+		},
+		{
+			"path": "../poeapi_go"
+		}
+	],
+	"settings": {}
+}
