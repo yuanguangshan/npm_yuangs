@@ -224,7 +224,7 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
         const runtime = new AgentRuntime(getConversationHistory());
         
         const spinner = ora(chalk.cyan('AI 正在思考...')).start();
-        const renderer = new StreamMarkdownRenderer(chalk.bold.blue('🤖 AI：'), spinner);
+        const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
 
         await runtime.run(initialQuestion, model as any, (chunk) => {
             renderer.onChunk(chunk);
@@ -652,7 +652,7 @@ ${finalPrompt}
                 
                 // 使用 AgentRuntime 执行提问
                 const spinner = ora(chalk.cyan('AI 正在思考...')).start();
-                const renderer = new StreamMarkdownRenderer(chalk.bold.blue('🤖 AI：'), spinner);
+                const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
 
                 await runtime.run(finalPrompt, model as any, (chunk) => {
                     renderer.onChunk(chunk);
@@ -685,7 +685,7 @@ async function askOnceStream(question: string, model?: string) {
     const spinner = ora(chalk.cyan('AI 正在思考...')).start();
     
     // 初始化渲染器
-    const renderer = new StreamMarkdownRenderer(chalk.bold.blue('🤖 AI：'), spinner);
+    const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
 
     try {
         await callAI_Stream(messages, model, (chunk) => {

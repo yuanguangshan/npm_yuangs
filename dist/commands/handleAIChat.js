@@ -217,7 +217,7 @@ async function handleAIChat(initialQuestion, model) {
         const { AgentRuntime } = await Promise.resolve().then(() => __importStar(require('../agent')));
         const runtime = new AgentRuntime((0, client_1.getConversationHistory)());
         const spinner = (0, ora_1.default)(chalk_1.default.cyan('AI 正在思考...')).start();
-        const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bold.blue('🤖 AI：'), spinner);
+        const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
         await runtime.run(initialQuestion, model, (chunk) => {
             renderer.onChunk(chunk);
         });
@@ -596,7 +596,7 @@ ${finalPrompt}
                 rl.pause();
                 // 使用 AgentRuntime 执行提问
                 const spinner = (0, ora_1.default)(chalk_1.default.cyan('AI 正在思考...')).start();
-                const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bold.blue('🤖 AI：'), spinner);
+                const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
                 await runtime.run(finalPrompt, model, (chunk) => {
                     renderer.onChunk(chunk);
                 });
@@ -627,7 +627,7 @@ async function askOnceStream(question, model) {
     messages.push({ role: 'user', content: question });
     const spinner = (0, ora_1.default)(chalk_1.default.cyan('AI 正在思考...')).start();
     // 初始化渲染器
-    const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bold.blue('🤖 AI：'), spinner);
+    const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
     try {
         await (0, client_1.callAI_Stream)(messages, model, (chunk) => {
             renderer.onChunk(chunk);
