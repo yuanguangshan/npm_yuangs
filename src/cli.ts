@@ -17,6 +17,7 @@ import { registerRegistryCommands } from './commands/registryCommands';
 import { registerExplainCommands } from './commands/explainCommands';
 import { registerReplayCommands } from './commands/replayCommands';
 import { registerSkillsCommands } from './commands/skillsCommands';
+import { wouldExpandAsGlob } from './utils/globDetector';
 // import { createDiffEditCommand } from './governance/commands/diffEdit';
 
 // Mandatory Node.js version check
@@ -452,6 +453,21 @@ async function main() {
             if (stdinData) {
                 // 检查 stdin 数据是否是特殊语法
                 const stdinTrimmed = stdinData.trim();
+
+                // Check for ?? pattern which could be expanded by shell glob
+                if (stdinTrimmed === '??') {
+                    const globMatches = wouldExpandAsGlob(stdinTrimmed, process.cwd());
+                    if (globMatches.wouldExpand) {
+                        console.log(chalk.yellow('⚠️  Zero‑Mode 触发符 \'??\' 在当前目录可能被解释为文件名展开：'));
+                        console.log(chalk.gray('匹配到：'));
+                        globMatches.matches.forEach(match => {
+                            console.log(chalk.gray(`- ${match}`));
+                        });
+                        console.log(chalk.gray('\n请使用 \':ai\' 或空行 + Enter 进入 Zero‑Mode'));
+                        process.exit(1);
+                    }
+                }
+
                 const isStdinSpecialSyntax = stdinTrimmed.startsWith('@') ||
                     stdinTrimmed.startsWith('#') ||
                     stdinTrimmed === ':ls' ||
@@ -494,6 +510,21 @@ async function main() {
                 }
             }
 
+            // If question starts with ??, check for glob expansion
+            const questionTrimmed = (question || '').trim();
+            if (questionTrimmed.startsWith('??')) {
+                const globMatches = wouldExpandAsGlob('??', process.cwd());
+                if (globMatches.wouldExpand) {
+                    console.log(chalk.yellow('⚠️  Zero‑Mode 触发符 \'??\' 在当前目录可能被解释为文件名展开：'));
+                    console.log(chalk.gray('匹配到：'));
+                    globMatches.matches.forEach(match => {
+                        console.log(chalk.gray(`- ${match}`));
+                    });
+                    console.log(chalk.gray('\n请使用 \':ai\' 或空行 + Enter 进入 Zero‑Mode'));
+                    process.exit(1);
+                }
+            }
+
             // 如果 question 本身包含特殊语法（没有 stdin 或 stdin 不是特殊语法）
             const isSpecialSyntaxPrefix = (q: string) => {
                 const t = q.trim();
@@ -501,7 +532,6 @@ async function main() {
             };
 
             if (!stdinData || !isSpecialSyntaxPrefix(stdinData)) {
-                const questionTrimmed = (question || '').trim();
                 const isQuestionSpecialSyntax = isSpecialSyntaxPrefix(questionTrimmed);
 
                 if (isQuestionSpecialSyntax) {

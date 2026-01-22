@@ -19,6 +19,7 @@ import {
 } from './shellCompletions';
 import { runMacro } from '../core/macros';
 import { StreamMarkdownRenderer } from '../utils/renderer';
+import { wouldExpandAsGlob } from '../utils/globDetector';
 const execAsync = promisify(exec);
 
 function findCommonPrefix(strings: string[]): string {
@@ -640,7 +641,83 @@ ${stderr}
                 continue;
             }
 
-            if (!trimmed) continue;
+            // Alternative Zero-Mode entry: :ai command
+            if (trimmed === ':ai') {
+                rl.pause();
+                try {
+                    console.log(chalk.cyan('AI 模式启动...\n'));
+
+                    // Use empty context or current context for AI interaction
+                    let finalPrompt = contextBuffer.isEmpty()
+                        ? '你好，请开始对话'
+                        : contextBuffer.buildPrompt('你好，请基于以上上下文开始对话');
+
+                    const spinner = ora(chalk.cyan('AI 正在思考...')).start();
+                    const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
+
+                    await runtime.run(finalPrompt, model as any, (chunk) => {
+                        renderer.onChunk(chunk);
+                    });
+
+                    const fullResponse = renderer.finish();
+
+                    // 同步上下文到全局历史（为了兼容性）
+                    addToConversationHistory('user', finalPrompt);
+                    addToConversationHistory('assistant', fullResponse);
+                } catch (err: unknown) {
+                    const message = err instanceof Error ? err.message : String(err);
+                    console.error(chalk.red(`\n[AI execution error]: ${message}`));
+                } finally {
+                    rl.resume();
+                }
+                continue;
+            }
+
+            if (!trimmed) {
+                // Empty line + Enter as alternative to ?? for Zero-Mode
+                rl.pause();
+                try {
+                    console.log(chalk.cyan('AI 模式启动 (空行触发)...\n'));
+
+                    // Use empty context or current context for AI interaction
+                    let finalPrompt = contextBuffer.isEmpty()
+                        ? '你好，请开始对话'
+                        : contextBuffer.buildPrompt('你好，请基于以上上下文开始对话');
+
+                    const spinner = ora(chalk.cyan('AI 正在思考...')).start();
+                    const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
+
+                    await runtime.run(finalPrompt, model as any, (chunk) => {
+                        renderer.onChunk(chunk);
+                    });
+
+                    const fullResponse = renderer.finish();
+
+                    // 同步上下文到全局历史（为了兼容性）
+                    addToConversationHistory('user', finalPrompt);
+                    addToConversationHistory('assistant', fullResponse);
+                } catch (err: unknown) {
+                    const message = err instanceof Error ? err.message : String(err);
+                    console.error(chalk.red(`\n[AI execution error]: ${message}`));
+                } finally {
+                    rl.resume();
+                }
+                continue;
+            }
+
+            // Check for ?? pattern which could be expanded by shell glob
+            if (trimmed === '??' || trimmed.startsWith('?? ')) {
+                const globMatches = wouldExpandAsGlob('??', process.cwd());
+                if (globMatches.wouldExpand) {
+                    console.log(chalk.yellow('⚠️  Zero‑Mode 触发符 \'??\' 在当前目录可能被解释为文件名展开：'));
+                    console.log(chalk.gray('匹配到：'));
+                    globMatches.matches.forEach(match => {
+                        console.log(chalk.gray(`- ${match}`));
+                    });
+                    console.log(chalk.gray('\n请使用 \':ai\' 或空行 + Enter 进入 Zero‑Mode'));
+                    continue; // Skip processing and go to next input
+                }
+            }
 
             const mode = detectMode(trimmed);
 

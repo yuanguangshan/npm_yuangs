@@ -197,12 +197,19 @@ bash ./scripts/yuangs-install.sh --uninstall
    ?? 怎么解压一个 .tar.gz 文件到指定目录？
    ```
 
-2. **回车即救急 (Failed-Command Help)**
+   ⚠️ **安全提醒**：如果当前目录存在恰好为2个字符的文件/目录（如 `ab`、`go`、`db` 等），Shell 的 glob 展开会将 `??` 替换为这些文件名，导致 Zero-Mode 无法正常触发。此时系统会给出警告并建议使用其他方式进入 Zero-Mode。
+
+2. **替代入口 (安全备用)**
+   为避免 glob 展开问题，提供以下替代入口：
+   - **`:ai` 命令**：在交互模式下输入 `:ai` 进入 AI 问答
+   - **空行 + Enter**：在交互模式下直接按回车（无输入）进入 AI 问答
+
+3. **回车即救急 (Failed-Command Help)**
    当你执行一个命令失败时（例如 `git push` 被拒绝），终端会提示：
    `↳ Need help? Press Enter`
    此时**直接按回车**，AI 会通过 `yuangs` 的上下文治理能力，自动分析错误原因并给出修复方案。
 
-3. **开关自如**
+4. **开关自如**
    - `ai_off`: 临时禁用 AI 触发逻辑。
    - `ai_on`: 重新启用 AI 增强。
 
