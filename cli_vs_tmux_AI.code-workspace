@@ -1,15 +1,19 @@
 {
 	"folders": [
 		{
-			"path": "../Tmux-FSM"
-		},
-		{
+			"name": "yuangs-vscode",
 			"path": "../yuangs-vscode"
 		},
 		{
+			"name": "Tmux-FSM",
+			"path": "../Tmux-FSM"
+		},
+		{
+			"name": "npm_yuangs",
 			"path": "."
 		},
 		{
+			"name": "poeapi_go",
 			"path": "../poeapi_go"
 		}
 	],
