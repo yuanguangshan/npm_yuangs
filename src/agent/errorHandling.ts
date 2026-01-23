@@ -233,3 +233,9 @@ export function createAlternativeStrategy<T>(
   description: string,
   execute: () => Promise<T>
 ): AlternativeStrategy<T> {
+  return {
+    name,
+    description,
+    execute
+  };
+}

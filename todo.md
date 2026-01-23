@@ -1119,16 +1119,16 @@ find /var/log -name '*.log' -mtime +30 -delete
 4. ✅ Native Structured Output（6.2）
 
 #### P1 (短期实施 - 2-4周)
-5. 动态Prompt注入（6.3）
-6. AST/Symbol级代码摘要（6.1）
-7. 增强Human-in-the-loop风险告知（6.5）
-8. 错误处理和重试机制（原建议4）
+5. ✅ 动态Prompt注入（6.3）
+6. ✅ AST/Symbol级代码摘要（6.1）
+7. ✅ 增强Human-in-the-loop风险告知（6.5）
+8. ✅ 错误处理和重试机制（原建议4）
 
 #### P2 (中期实施 - 1-2月)
-9. 双Prompt模式：Planner vs Executor（6.4）
-10. 智能上下文摘要（原建议6）
-11. 用户偏好配置（原建议8）
-12. 相关性排序算法
+9. ✅ 双Prompt模式：Planner vs Executor（6.4）
+10. ✅ 智能上下文摘要（原建议6）
+11. ✅ 用户偏好配置（原建议8）
+12. ✅ 相关性排序算法
 
 #### P3 (长期优化 - 2-3月)
 13. 分层上下文策略（原建议7）

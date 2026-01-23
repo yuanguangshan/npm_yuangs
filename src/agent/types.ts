@@ -54,3 +54,20 @@ export type AgentAction =
     | { type: 'print'; content: string }
     | { type: 'confirm'; next: AgentAction }
     | { type: 'execute'; command: string; risk: 'low' | 'medium' | 'high' };
+
+export interface TaskStep {
+  id: string;
+  description: string;
+  type: 'shell_cmd' | 'tool_call' | 'code_diff' | 'answer';
+  command?: string;
+  tool_name?: string;
+  parameters?: Record<string, any>;
+  risk_level: 'low' | 'medium' | 'high';
+  dependencies: string[];
+}
+
+export interface TaskPlan {
+  plan: string;
+  steps: TaskStep[];
+  estimated_time: string;
+}

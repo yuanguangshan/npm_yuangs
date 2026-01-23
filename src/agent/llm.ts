@@ -6,8 +6,47 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { safeParseJSON } from '../core/validation';
+import { z } from 'zod';
 
 const CONFIG_FILE = path.join(os.homedir(), '.yuangs.json');
+
+// Agent Action Schema for Native Structured Output
+export { supportsStructuredOutput };
+
+export const AgentActionSchema = z.object({
+  action_type: z.enum(['tool_call', 'shell_cmd', 'answer', 'code_diff']),
+  tool_name: z.string().optional(),
+  parameters: z.record(z.string(), z.any()).optional(),
+  command: z.string().optional(),
+  diff: z.string().optional(),
+  risk_level: z.enum(['low', 'medium', 'high']),
+  risk_explanation: z.string().optional(),
+  content: z.string().optional(),
+  is_done: z.boolean().optional()
+});
+
+export type AgentAction = z.infer<typeof AgentActionSchema>;
+
+// Models that support native structured output
+const STRUCTURED_OUTPUT_MODELS = [
+  'gpt-4o',
+  'gpt-4o-mini',
+  'gpt-4-turbo',
+  'claude-3.5-sonnet',
+  'claude-3.5-haiku',
+  'gemini-1.5-pro',
+  'gemini-1.5-flash'
+];
+
+/**
+ * Check if a model supports native structured output
+ */
+function supportsStructuredOutput(model: string): boolean {
+  const modelName = model.toLowerCase();
+  return STRUCTURED_OUTPUT_MODELS.some(supported => 
+    modelName.includes(supported.toLowerCase())
+  );
+}
 
 function getUserConfig(): any {
     if (fs.existsSync(CONFIG_FILE)) {
@@ -59,14 +98,65 @@ export async function runLLM({
         'Accept': 'application/json'
     };
 
-    const data = {
-        model: model || config.defaultModel || DEFAULT_MODEL,
+    // Native Structured Output: Check if model supports it and we're in Agent mode
+    const modelUsed = model || config.defaultModel || DEFAULT_MODEL;
+    const useStructuredOutput = supportsStructuredOutput(modelUsed) && !stream;
+
+    let responseData: any = {
+        model: modelUsed,
         messages: prompt.system ? [{ role: 'system', content: prompt.system }, ...prompt.messages] : prompt.messages,
         stream: false
     };
 
+    if (useStructuredOutput && prompt.system?.includes('SYSTEM PROTOCOL')) {
+        responseData.response_format = {
+            type: 'json_schema',
+            json_schema: {
+                name: 'agent_action',
+                description: 'Agent action following REACT protocol',
+                strict: true,
+                schema: {
+                    type: 'object',
+                    properties: {
+                        action_type: {
+                            type: 'string',
+                            enum: ['tool_call', 'shell_cmd', 'answer', 'code_diff']
+                        },
+                        tool_name: {
+                            type: 'string'
+                        },
+                        parameters: {
+                            type: 'object',
+                            additionalProperties: true
+                        },
+                        command: {
+                            type: 'string'
+                        },
+                        diff: {
+                            type: 'string'
+                        },
+                        risk_level: {
+                            type: 'string',
+                            enum: ['low', 'medium', 'high']
+                        },
+                        risk_explanation: {
+                            type: 'string'
+                        },
+                        content: {
+                            type: 'string'
+                        },
+                        is_done: {
+                            type: 'boolean'
+                        }
+                    },
+                    required: ['action_type', 'risk_level']
+                }
+            }
+        };
+    }
+
     try {
-        const response = await axios.post(url, data, { headers });
+        const response = await axios.post(url, responseData, { headers });
         const rawText = response.data.choices[0]?.message?.content || '';
 
         let parsed = undefined;
