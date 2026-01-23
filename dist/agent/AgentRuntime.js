@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -49,7 +82,7 @@ class AgentRuntime {
             const basePrompt = governance_1.GovernanceService.getPolicyManual();
             // 注入动态上下文
             const enhancedPrompt = (0, dynamicPrompt_1.injectDynamicContext)(basePrompt, dynamicContext);
-            const thought = await llmAdapter_1.LLMAdapter.think(messages, mode, onChunk, model, enhancedPrompt);
+            const thought = await llmAdapter_1.LLMAdapter.think(messages, mode, onChunk, model, enhancedPrompt, this.context);
             const action = {
                 id: (0, crypto_1.randomUUID)(),
                 type: thought.type || "answer",
@@ -70,6 +103,21 @@ class AgentRuntime {
                 this.context.addMessage("assistant", result.output);
                 break;
             }
+            // === 强制 ACK 校验（Causal Lock） ===
+            const lastObs = this.context.getLastAckableObservation();
+            const ackText = thought.parsedPlan?.acknowledged_observation;
+            if (lastObs && ackText && ackText !== 'NONE') {
+                const actualContent = lastObs.content.trim();
+                const ackedContent = ackText.trim();
+                if (actualContent !== ackedContent) {
+                    console.log(chalk_1.default.red(`[CAUSAL BREAK] ❌ ACK mismatch!`));
+                    console.log(chalk_1.default.red(`  Expected: ${actualContent.substring(0, 100)}...`));
+                    console.log(chalk_1.default.red(`  Received: ${ackedContent.substring(0, 100)}...`));
+                    this.context.addMessage("system", `CAUSAL BREAK: ACK does not match physical Observation. Cannot proceed without acknowledging reality.`);
+                    continue;
+                }
+                console.log(chalk_1.default.green(`[CAUSAL LOCK] ✅ ACK verified`));
+            }
             // === 预检 (Pre-flight) ===
             const preCheck = (0, core_1.evaluateProposal)(action, governance_1.GovernanceService.getRules(), governance_1.GovernanceService.getLedgerSnapshot());
             if (preCheck.effect === "deny") {
@@ -83,6 +131,25 @@ class AgentRuntime {
                 console.log(chalk_1.default.red(`[GOVERNANCE] ❌ Rejected: ${decision.reason}`));
                 this.context.addMessage("system", `Rejected by Governance: ${decision.reason}`);
                 continue;
+            }
+            // === 记录因果边到 KG ===
+            if (lastObs && lastObs.metadata?.obsId && ackText && ackText !== 'NONE') {
+                try {
+                    const { recordEdge } = await Promise.resolve().then(() => __importStar(require('../engine/agent/knowledgeGraph')));
+                    recordEdge({
+                        from: lastObs.metadata.obsId,
+                        to: action.id,
+                        type: 'ACKNOWLEDGED_BY',
+                        metadata: {
+                            verified: true,
+                            timestamp: Date.now()
+                        }
+                    });
+                    console.log(chalk_1.default.gray(`[KG] ⚓ Causal edge recorded`));
+                }
+                catch (error) {
+                    console.warn(chalk_1.default.yellow(`[KG] Warning: Failed to record causal edge: ${error.message}`));
+                }
             }
             // === 执行 ===
             console.log(chalk_1.default.yellow(`[EXECUTING] ⚙️ ${action.type}...`));

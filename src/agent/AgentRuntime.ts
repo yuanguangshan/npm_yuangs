@@ -74,6 +74,7 @@ export class AgentRuntime {
         onChunk,
         model,
         enhancedPrompt,
+        this.context,
       );
 
       const action: ProposedAction = {
@@ -97,6 +98,30 @@ export class AgentRuntime {
         }
         this.context.addMessage("assistant", result.output);
         break;
+      }
+
+      // === 强制 ACK 校验（Causal Lock） ===
+      const lastObs = this.context.getLastAckableObservation();
+      const ackText = thought.parsedPlan?.acknowledged_observation;
+
+      if (lastObs && ackText && ackText !== 'NONE') {
+        const actualContent = lastObs.content.trim();
+        const ackedContent = ackText.trim();
+
+        if (actualContent !== ackedContent) {
+          console.log(
+            chalk.red(`[CAUSAL BREAK] ❌ ACK mismatch!`),
+          );
+          console.log(chalk.red(`  Expected: ${actualContent.substring(0, 100)}...`));
+          console.log(chalk.red(`  Received: ${ackedContent.substring(0, 100)}...`));
+          this.context.addMessage(
+            "system",
+            `CAUSAL BREAK: ACK does not match physical Observation. Cannot proceed without acknowledging reality.`,
+          );
+          continue;
+        }
+
+        console.log(chalk.green(`[CAUSAL LOCK] ✅ ACK verified`));
       }
 
       // === 预检 (Pre-flight) ===
@@ -125,6 +150,25 @@ export class AgentRuntime {
           `Rejected by Governance: ${decision.reason}`,
         );
         continue;
+      }
+
+      // === 记录因果边到 KG ===
+      if (lastObs && lastObs.metadata?.obsId && ackText && ackText !== 'NONE') {
+        try {
+          const { recordEdge } = await import('../engine/agent/knowledgeGraph');
+          recordEdge({
+            from: lastObs.metadata.obsId,
+            to: action.id,
+            type: 'ACKNOWLEDGED_BY' as any,
+            metadata: {
+              verified: true,
+              timestamp: Date.now()
+            }
+          });
+          console.log(chalk.gray(`[KG] ⚓ Causal edge recorded`));
+        } catch (error: any) {
+          console.warn(chalk.yellow(`[KG] Warning: Failed to record causal edge: ${error.message}`));
+        }
       }
 
       // === 执行 ===

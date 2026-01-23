@@ -8,7 +8,7 @@ const llm_1 = require("./llm");
 const client_1 = require("../ai/client");
 const json5_1 = __importDefault(require("json5"));
 class LLMAdapter {
-    static async think(messages, mode = 'chat', onChunk, model, customSystemPrompt) {
+    static async think(messages, mode = 'chat', onChunk, model, customSystemPrompt, contextManager) {
         // SYSTEM PROTOCOL V2.2 - CoT (Chain of Thought) 显式分离
         let protocol = `[SYSTEM PROTOCOL V2.2]
 - ROLE: AUTOMATED EXECUTION AGENT

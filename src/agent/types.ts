@@ -1,7 +1,13 @@
 import type { AIRequestMessage } from '../core/validation';
-// import { AgentPlan } from './plan';
 
 export type AgentMode = 'chat' | 'command' | 'command+exec';
+
+export type ObservationKind =
+  | 'tool_result'
+  | 'system_note'
+  | 'manual_input'
+  | 'error'
+  | 'none';
 
 export interface AgentInput {
     rawInput: string;

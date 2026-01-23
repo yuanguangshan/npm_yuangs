@@ -33,8 +33,23 @@ class ContextManager {
         const content = `Tool ${toolName} returned:\n${result}`;
         this.addMessage('tool', content);
     }
-    addObservation(observation) {
+    addObservation(observation, kind = 'system_note', originatingActionId) {
+        const obsId = `obs_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
         this.addMessage('system', observation);
+        this.messages[this.messages.length - 1].metadata = { kind, obsId };
+        return obsId;
+    }
+    getLastAckableObservation() {
+        for (let i = this.messages.length - 1; i >= 0; i--) {
+            const msg = this.messages[i];
+            if (msg.role === 'system' && msg.metadata?.obsId) {
+                return {
+                    content: msg.content,
+                    metadata: msg.metadata
+                };
+            }
+        }
+        return null;
     }
     getMessages() {
         return this.messages.map(({ role, content }) => ({

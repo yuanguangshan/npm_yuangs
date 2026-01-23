@@ -4,6 +4,7 @@ import { AgentPrompt } from './types';
 import type { AIRequestMessage } from '../core/validation';
 import { getUserConfig } from '../ai/client';
 import JSON5 from 'json5';
+import { ContextManager } from './contextManager';
 
 export class LLMAdapter {
   static async think(
@@ -11,7 +12,8 @@ export class LLMAdapter {
     mode: 'chat' | 'command' | 'command+exec' = 'chat',
     onChunk?: (chunk: string) => void,
     model?: string,
-    customSystemPrompt?: string
+    customSystemPrompt?: string,
+    contextManager?: ContextManager
   ): Promise<AgentThought> {
     // SYSTEM PROTOCOL V2.2 - CoT (Chain of Thought) 显式分离
     let protocol = `[SYSTEM PROTOCOL V2.2]
