@@ -52,6 +52,7 @@ const gitContext_1 = require("./gitContext");
 const shellCompletions_1 = require("./shellCompletions");
 const macros_1 = require("../core/macros");
 const renderer_1 = require("../utils/renderer");
+const globDetector_1 = require("../utils/globDetector");
 const execAsync = (0, util_1.promisify)(child_process_1.exec);
 function findCommonPrefix(strings) {
     if (strings.length === 0)
@@ -590,8 +591,75 @@ ${stderr}
                 }
                 continue;
             }
-            if (!trimmed)
+            // Alternative Zero-Mode entry: :ai command
+            if (trimmed === ':ai') {
+                rl.pause();
+                try {
+                    console.log(chalk_1.default.cyan('AI 模式启动...\n'));
+                    // Use empty context or current context for AI interaction
+                    let finalPrompt = contextBuffer.isEmpty()
+                        ? '你好，请开始对话'
+                        : contextBuffer.buildPrompt('你好，请基于以上上下文开始对话');
+                    const spinner = (0, ora_1.default)(chalk_1.default.cyan('AI 正在思考...')).start();
+                    const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
+                    await runtime.run(finalPrompt, model, (chunk) => {
+                        renderer.onChunk(chunk);
+                    });
+                    const fullResponse = renderer.finish();
+                    // 同步上下文到全局历史（为了兼容性）
+                    (0, client_1.addToConversationHistory)('user', finalPrompt);
+                    (0, client_1.addToConversationHistory)('assistant', fullResponse);
+                }
+                catch (err) {
+                    const message = err instanceof Error ? err.message : String(err);
+                    console.error(chalk_1.default.red(`\n[AI execution error]: ${message}`));
+                }
+                finally {
+                    rl.resume();
+                }
                 continue;
+            }
+            if (!trimmed) {
+                // Empty line + Enter as alternative to ?? for Zero-Mode
+                rl.pause();
+                try {
+                    console.log(chalk_1.default.cyan('AI 模式启动 (空行触发)...\n'));
+                    // Use empty context or current context for AI interaction
+                    let finalPrompt = contextBuffer.isEmpty()
+                        ? '你好，请开始对话'
+                        : contextBuffer.buildPrompt('你好，请基于以上上下文开始对话');
+                    const spinner = (0, ora_1.default)(chalk_1.default.cyan('AI 正在思考...')).start();
+                    const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
+                    await runtime.run(finalPrompt, model, (chunk) => {
+                        renderer.onChunk(chunk);
+                    });
+                    const fullResponse = renderer.finish();
+                    // 同步上下文到全局历史（为了兼容性）
+                    (0, client_1.addToConversationHistory)('user', finalPrompt);
+                    (0, client_1.addToConversationHistory)('assistant', fullResponse);
+                }
+                catch (err) {
+                    const message = err instanceof Error ? err.message : String(err);
+                    console.error(chalk_1.default.red(`\n[AI execution error]: ${message}`));
+                }
+                finally {
+                    rl.resume();
+                }
+                continue;
+            }
+            // Check for ?? pattern which could be expanded by shell glob
+            if (trimmed === '??' || trimmed.startsWith('?? ')) {
+                const globMatches = (0, globDetector_1.wouldExpandAsGlob)('??', process.cwd());
+                if (globMatches.wouldExpand) {
+                    console.log(chalk_1.default.yellow('⚠️  Zero‑Mode 触发符 \'??\' 在当前目录可能被解释为文件名展开：'));
+                    console.log(chalk_1.default.gray('匹配到：'));
+                    globMatches.matches.forEach(match => {
+                        console.log(chalk_1.default.gray(`- ${match}`));
+                    });
+                    console.log(chalk_1.default.gray('\n请使用 \':ai\' 或空行 + Enter 进入 Zero‑Mode'));
+                    continue; // Skip processing and go to next input
+                }
+            }
             const mode = (0, shellCompletions_1.detectMode)(trimmed);
             if (mode === 'command') {
                 rl.pause();

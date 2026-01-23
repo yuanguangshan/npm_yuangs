@@ -9,29 +9,57 @@ const client_1 = require("../ai/client");
 const json5_1 = __importDefault(require("json5"));
 class LLMAdapter {
     static async think(messages, mode = 'chat', onChunk, model, customSystemPrompt) {
-        let protocol = `[SYSTEM PROTOCOL V2]
+        // SYSTEM PROTOCOL V2.2 - CoT (Chain of Thought) 显式分离
+        let protocol = `[SYSTEM PROTOCOL V2.2]
 - ROLE: AUTOMATED EXECUTION AGENT
-- OUTPUT: STRICT JSON ONLY
-- TALK: FORBIDDEN
 - MODE: REACT (THINK -> ACTION -> PERCEIVE)
+- OUTPUT: CoT Block + JSON Block
 
-JSON SCHEMA:
+# EXECUTION PROTOCOL
+1. **THINK**: First, analyze the user's request, the current context, and previous history. Plan your next step.
+2. **ACT**: Generate a structured JSON action.
+3. **OBSERVE**: Wait for the tool output.
+
+# OUTPUT FORMAT
+You must output a "Thought Block" followed by a "JSON Action Block".
+
+[THOUGHT]
+Explain your reasoning here. 
+- Why are you choosing this tool? 
+- If the previous step failed, how are you fixing it?
+- If using a file, mention lines you are interested in.
+[/THOUGHT]
+
+\`\`\`json
 {
   "action_type": "tool_call" | "shell_cmd" | "answer",
-  "reasoning": "thought process",
-  "tool_name": "list_files" | "read_file",
-  "parameters": {},
-  "command": "shell string",
-  "content": "final answer string"
+  "tool_name": "...", 
+  "parameters": { ... },
+  "command": "...",
+  "risk_level": "low" | "medium" | "high",
+  "risk_explanation": "Required if risk is medium/high"
 }
+\`\`\`
 
-EXECUTION RULES:
-1. If data is unknown (e.g. file list), use 'shell_cmd' or 'tool_call'.
-2. NEVER explain how to do it. JUST EXECUTE.
-3. Your output MUST start with '{' and end with '}'.
+# GUIDELINES
+- **Silence**: Do not output conversational filler outside the [THOUGHT] block.
+- **Safety**: If you must run a destructive command (rm, dd), set risk_level to "high".
+- **Context**: You have access to files in context.
+- **Formatting**: When answering (action_type="answer"), use standard Markdown.
 
-Example Task: "count files"
-Your Output: {"action_type":"shell_cmd","reasoning":"count files","command":"ls | wc -l"}`;
+Example Task: "count files in /tmp"
+
+[THOUGHT]
+User wants to count files in /tmp directory. I'll use ls to list files and pipe to wc -l to count them. This is a safe operation with low risk.
+[/THOUGHT]
+
+\`\`\`json
+{
+  "action_type": "shell_cmd",
+  "command": "ls /tmp | wc -l",
+  "risk_level": "low"
+}
+\`\`\``;
         if (mode === 'command' || mode === 'command+exec') {
             protocol += `\n\nCOMMAND MODE ACTIVE:
 - Prioritize "shell_cmd" for any terminal-based task.
@@ -54,10 +82,13 @@ Your Output: {"action_type":"shell_cmd","reasoning":"count files","command":"ls 
     }
     static parseThought(raw) {
         try {
-            // 提取 JSON：支持 Markdown 块或纯 JSON 字符串
+            // CoT V2.2: 分别提取 [THOUGHT] 块和 JSON 块
+            const thoughtMatch = raw.match(/\[THOUGHT\]([\s\S]*?)\[\/THOUGHT\]/);
             const jsonMatch = raw.match(/```json\n([\s\S]*?)\n```/) || raw.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
                 const parsed = json5_1.default.parse(jsonMatch[1] || jsonMatch[0]);
+                // 从 THOUGHT 块提取思考内容
+                const thoughtContent = thoughtMatch ? thoughtMatch[1].trim() : '';
                 // 如果明确标记为 done，或者动作为 answer，则视为任务结束
                 if (parsed.is_done === true || parsed.action_type === 'answer') {
                     return {
@@ -67,7 +98,8 @@ Your Output: {"action_type":"shell_cmd","reasoning":"count files","command":"ls 
                         type: 'answer',
                         payload: {
                             content: parsed.final_answer || parsed.content || parsed.text || raw
-                        }
+                        },
+                        reasoning: thoughtContent
                     };
                 }
                 // 智能推断动作类型：如果 AI 没给 action_type，我们根据字段猜测
@@ -92,9 +124,11 @@ Your Output: {"action_type":"shell_cmd","reasoning":"count files","command":"ls 
                         parameters: parsed.parameters || parsed.params || {},
                         command: parsed.command || parsed.cmd || '',
                         diff: parsed.diff || parsed.patch || '',
-                        content: parsed.content || parsed.text || ''
+                        content: parsed.content || parsed.text || '',
+                        risk_level: parsed.risk_level || 'low',
+                        risk_explanation: parsed.risk_explanation || ''
                     },
-                    reasoning: parsed.reasoning || ''
+                    reasoning: thoughtContent // 从 THOUGHT 块提取
                 };
             }
         }
