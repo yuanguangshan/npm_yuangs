@@ -17,6 +17,7 @@ const governance_1 = require("./governance");
 const executor_1 = require("./executor");
 const contextManager_1 = require("./contextManager");
 const core_1 = require("./governance/core");
+const dynamicPrompt_1 = require("./dynamicPrompt");
 class AgentRuntime {
     context;
     executionId;
@@ -27,6 +28,9 @@ class AgentRuntime {
     async run(userInput, mode = "chat", onChunk, model) {
         let turnCount = 0;
         const maxTurns = 10;
+        let lastError;
+        // 构建初始动态上下文
+        const initialDynamicContext = await (0, dynamicPrompt_1.buildDynamicContext)();
         if (userInput) {
             this.context.addMessage("user", userInput);
         }
@@ -35,11 +39,17 @@ class AgentRuntime {
             if (currentTurn > 1) {
                 console.log(chalk_1.default.blue(`\n--- Turn ${currentTurn} ---`));
             }
+            // 构建动态上下文（如果上一步有错误）
+            const dynamicContext = await (0, dynamicPrompt_1.buildDynamicContext)(lastError);
             const messages = this.context.getMessages().map((msg) => ({
                 role: (msg.role === "tool" ? "system" : msg.role),
                 content: msg.content,
             }));
-            const thought = await llmAdapter_1.LLMAdapter.think(messages, mode, onChunk, model, governance_1.GovernanceService.getPolicyManual());
+            // 构建基础prompt（包括治理策略）
+            const basePrompt = governance_1.GovernanceService.getPolicyManual();
+            // 注入动态上下文
+            const enhancedPrompt = (0, dynamicPrompt_1.injectDynamicContext)(basePrompt, dynamicContext);
+            const thought = await llmAdapter_1.LLMAdapter.think(messages, mode, onChunk, model, enhancedPrompt);
             const action = {
                 id: (0, crypto_1.randomUUID)(),
                 type: thought.type || "answer",
@@ -78,6 +88,8 @@ class AgentRuntime {
             console.log(chalk_1.default.yellow(`[EXECUTING] ⚙️ ${action.type}...`));
             const result = await executor_1.ToolExecutor.execute(action);
             if (result.success) {
+                // 成功时清除错误状态
+                lastError = undefined;
                 this.context.addToolResult(action.type, result.output);
                 const preview = result.output.length > 300
                     ? result.output.substring(0, 300) + '...'
@@ -85,6 +97,8 @@ class AgentRuntime {
                 console.log(chalk_1.default.green(`[SUCCESS] Result:\n${preview}`));
             }
             else {
+                // 失败时记录错误，下次循环会注入错误恢复指导
+                lastError = result.error;
                 this.context.addToolResult(action.type, `Error: ${result.error}`);
                 console.log(chalk_1.default.red(`[ERROR] ${result.error}`));
             }

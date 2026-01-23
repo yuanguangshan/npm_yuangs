@@ -13,6 +13,11 @@ import { ToolExecutor } from "./executor";
 import { ContextManager } from "./contextManager";
 import { evaluateProposal } from "./governance/core";
 import { ProposedAction } from "./state";
+import {
+  buildDynamicContext,
+  injectDynamicContext,
+  DynamicContext
+} from "./dynamicPrompt";
 
 export class AgentRuntime {
   private context: ContextManager;
@@ -31,6 +36,10 @@ export class AgentRuntime {
   ) {
     let turnCount = 0;
     const maxTurns = 10;
+    let lastError: string | undefined;
+
+    // 构建初始动态上下文
+    const initialDynamicContext = await buildDynamicContext();
 
     if (userInput) {
       this.context.addMessage("user", userInput);
@@ -42,6 +51,9 @@ export class AgentRuntime {
         console.log(chalk.blue(`\n--- Turn ${currentTurn} ---`));
       }
 
+      // 构建动态上下文（如果上一步有错误）
+      const dynamicContext = await buildDynamicContext(lastError);
+
       const messages = this.context.getMessages().map((msg) => ({
         role: (msg.role === "tool" ? "system" : msg.role) as
           | "system"
@@ -50,12 +62,18 @@ export class AgentRuntime {
         content: msg.content,
       }));
 
+      // 构建基础prompt（包括治理策略）
+      const basePrompt = GovernanceService.getPolicyManual();
+
+      // 注入动态上下文
+      const enhancedPrompt = injectDynamicContext(basePrompt, dynamicContext);
+
       const thought = await LLMAdapter.think(
         messages,
         mode as any,
         onChunk,
         model,
-        GovernanceService.getPolicyManual(),
+        enhancedPrompt,
       );
 
       const action: ProposedAction = {
@@ -114,12 +132,16 @@ export class AgentRuntime {
       const result = await ToolExecutor.execute(action as any);
 
       if (result.success) {
+        // 成功时清除错误状态
+        lastError = undefined;
         this.context.addToolResult(action.type, result.output);
         const preview = result.output.length > 300
           ? result.output.substring(0, 300) + '...'
           : result.output;
         console.log(chalk.green(`[SUCCESS] Result:\n${preview}`));
       } else {
+        // 失败时记录错误，下次循环会注入错误恢复指导
+        lastError = result.error;
         this.context.addToolResult(action.type, `Error: ${result.error}`);
         console.log(chalk.red(`[ERROR] ${result.error}`));
       }
