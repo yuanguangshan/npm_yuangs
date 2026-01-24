@@ -265,9 +265,9 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
         const spinner = ora(chalk.cyan('AI 正在思考...')).start();
         const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
 
-        await runtime.run(initialQuestion, model as any, (chunk) => {
+        await runtime.run(initialQuestion, 'chat' as any, (chunk) => {
             renderer.onChunk(chunk);
-        });
+        }, model, renderer);
 
         const fullResponse = renderer.finish();
         addToConversationHistory('user', initialQuestion);
@@ -723,9 +723,9 @@ ${stderr}
                     const spinner = ora(chalk.cyan('AI 正在思考...')).start();
                     const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
 
-                    await runtime.run(finalPrompt, model as any, (chunk) => {
+                    await runtime.run(finalPrompt, 'chat' as any, (chunk) => {
                         renderer.onChunk(chunk);
-                    });
+                    }, model, renderer);
 
                     const fullResponse = renderer.finish();
 
@@ -755,9 +755,9 @@ ${stderr}
                     const spinner = ora(chalk.cyan('AI 正在思考...')).start();
                     const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
 
-                    await runtime.run(finalPrompt, model as any, (chunk) => {
+                    await runtime.run(finalPrompt, 'chat' as any, (chunk) => {
                         renderer.onChunk(chunk);
-                    });
+                    }, model, renderer);
 
                     const fullResponse = renderer.finish();
 
