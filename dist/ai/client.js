@@ -124,9 +124,10 @@ async function callAI_Stream(messages, model, onChunk) {
                     }
                     try {
                         const parsed = JSON.parse(data);
-                        const content = parsed.choices[0]?.delta?.content || '';
-                        if (content)
+                        const content = parsed.choices?.[0]?.delta?.content || '';
+                        if (content) {
                             onChunk(content);
+                        }
                     }
                     catch (e) { }
                 }

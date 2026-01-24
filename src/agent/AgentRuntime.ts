@@ -135,19 +135,20 @@ export class AgentRuntime {
       if (thought.isDone || action.type === "answer") {
         const result = await ToolExecutor.execute(action as any);
 
-        if (!onChunk) {
-          if (agentRenderer) {
-            // Stream final answer through renderer
-            for (let i = 0; i < result.output.length; i += 10) {
-              const chunk = result.output.slice(i, i + 10);
-              agentRenderer.onChunk(chunk);
-            }
-            agentRenderer.finish();
-          } else {
-            const rendered = marked.parse(result.output);
-            console.log(chalk.green(`\n🤖 AI：\n`) + rendered);
+        // 如果没有 renderer，使用内部创建的
+        if (!renderer && agentRenderer) {
+          // Stream final answer through internal renderer
+          for (let i = 0; i < result.output.length; i += 10) {
+            const chunk = result.output.slice(i, i + 10);
+            agentRenderer.onChunk(chunk);
           }
+          agentRenderer.finish();
+        } else if (!renderer) {
+          // Fallback to marked if no renderer
+          const rendered = marked.parse(result.output);
+          console.log(chalk.green(`\n🤖 AI：\n`) + rendered);
         }
+        // 如果外部传入了 renderer，由外部调用 finish()
 
         this.context.addMessage("assistant", result.output);
 

@@ -1,6 +1,10 @@
 {
   "name": "yuangs",
+<<<<<<< HEAD
   "version": "3.35.0",
+=======
+  "version": "3.46.0",
+>>>>>>> 3ffd1de35828e0b609c45d0da4e3c39f98c8e122
   "description": "苑广山的个人应用集合 CLI（彩色版）",
   "author": "苑广山",
   "license": "ISC",
@@ -38,9 +42,11 @@
     "axios": "^1.13.2",
     "better-sqlite3": "^12.6.2",
     "chalk": "^4.1.2",
+    "cli-table3": "^0.6.5",
     "commander": "^13.1.0",
     "js-yaml": "^4.1.0",
     "json5": "^2.2.3",
+    "markdown-it": "^14.1.0",
     "marked": "^15.0.12",
     "marked-terminal": "^7.3.0",
     "ora": "^5.4.1",
@@ -54,6 +60,7 @@
     "@types/jest": "^30.0.0",
     "@types/js-yaml": "^4.0.9",
     "@types/json5": "^0.0.30",
+    "@types/markdown-it": "^14.1.2",
     "@types/marked": "^5.0.2",
     "@types/marked-terminal": "^6.1.1",
     "@types/node": "^20.11.30",

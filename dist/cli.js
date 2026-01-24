@@ -44,7 +44,6 @@ const os_1 = __importDefault(require("os"));
 const commander_1 = require("commander");
 const handleAICommand_1 = require("./commands/handleAICommand");
 const handleAIChat_1 = require("./commands/handleAIChat");
-const handleConfig_1 = require("./commands/handleConfig");
 const capabilityCommands_1 = require("./commands/capabilityCommands");
 const completion_1 = require("./core/completion");
 const apps_1 = require("./core/apps");
@@ -56,6 +55,7 @@ const explainCommands_1 = require("./commands/explainCommands");
 const replayCommands_1 = require("./commands/replayCommands");
 const skillsCommands_1 = require("./commands/skillsCommands");
 const preferencesCommands_1 = require("./commands/preferencesCommands");
+const config_1 = require("./commands/config");
 const globDetector_1 = require("./utils/globDetector");
 // import { createDiffEditCommand } from './governance/commands/diffEdit';
 // Mandatory Node.js version check
@@ -273,13 +273,7 @@ program
         }
     }
 });
-program
-    .command('config')
-    .description('管理本地配置 (~/.yuangs.json)')
-    .argument('[action]', 'get, set, list')
-    .argument('[key]', '配置项名称')
-    .argument('[value]', '配置项值')
-    .action(handleConfig_1.handleConfig);
+program;
 program
     .command('macros')
     .description('查看所有快捷指令')
@@ -408,6 +402,7 @@ program
 (0, replayCommands_1.registerReplayCommands)(program);
 (0, skillsCommands_1.registerSkillsCommands)(program);
 (0, preferencesCommands_1.registerPreferencesCommands)(program);
+(0, config_1.registerConfigCommands)(program);
 // Add governance diff-edit command
 // const diffEditCmd = createDiffEditCommand();
 // program.addCommand(diffEditCmd);
@@ -459,7 +454,12 @@ program
 program
     .argument('[command]', '自定义应用命令')
     .action((command) => {
-    if (command && apps[command]) {
+    // 先检查是否是 macro
+    const macros = (0, macros_1.getMacros)();
+    if (command && macros[command]) {
+        (0, macros_1.runMacro)(command);
+    }
+    else if (command && apps[command]) {
         (0, apps_1.openUrl)(apps[command]);
     }
     else {
@@ -468,7 +468,7 @@ program
 });
 async function main() {
     const args = process.argv.slice(2);
-    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities', 'completion', '_complete_subcommand', '_describe', 'registry', 'explain', 'replay', 'skills', 'diff-edit'];
+    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities', 'completion', '_complete_subcommand', '_describe', 'registry', 'explain', 'replay', 'skills', 'diff-edit', 'ny', 'ni', 'll', 'gdoc', 'install', 'update'];
     const globalFlags = ['-h', '--help', '-V', '--version', '-v'];
     const firstArg = args[0];
     const isKnownCommand = firstArg && knownCommands.includes(firstArg);

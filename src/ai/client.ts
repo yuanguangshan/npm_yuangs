@@ -111,6 +111,7 @@ export async function callAI_Stream(messages: AIRequestMessage[], model: string 
 
     return new Promise((resolve, reject) => {
         let buffer = '';
+        
         response.data.on('data', (chunk: Buffer) => {
             buffer += chunk.toString();
             let lines = buffer.split('\n');
@@ -126,8 +127,10 @@ export async function callAI_Stream(messages: AIRequestMessage[], model: string 
                     }
                     try {
                         const parsed = JSON.parse(data);
-                        const content = parsed.choices[0]?.delta?.content || '';
-                        if (content) onChunk(content);
+                        const content = parsed.choices?.[0]?.delta?.content || '';
+                        if (content) {
+                            onChunk(content);
+                        }
                     } catch (e) { }
                 }
             }

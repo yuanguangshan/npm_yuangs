@@ -6,7 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { buildPromptWithFileContent, readFilesContent } from '../core/fileReader';
-import { exec } from 'child_process';
+import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 import { ContextBuffer } from './contextBuffer';
 import { ContextStore, ContextAssembler, ContextItem } from './context';
@@ -23,6 +23,10 @@ import { runMacro } from '../core/macros';
 import { StreamMarkdownRenderer } from '../utils/renderer';
 import { wouldExpandAsGlob } from '../utils/globDetector';
 const execAsync = promisify(exec);
+
+// 全局变量：存储最后的 AI 输出内容，用于快速插入
+let lastAIOutput: string = '';
+let clipboardContent: string = '';
 
 function findCommonPrefix(strings: string[]): string {
     if (strings.length === 0) return '';
@@ -224,7 +228,7 @@ async function handleDirectoryReference(input: string): Promise<string> {
                     enhancedContext.rankedItems.slice(0, 10).forEach((item, i) => {
                         const relevancePercent = (item.relevance * 100).toFixed(0);
                         const color = item.relevance > 0.8 ? chalk.green :
-                                    item.relevance > 0.5 ? chalk.yellow : chalk.gray;
+                            item.relevance > 0.5 ? chalk.yellow : chalk.gray;
                         console.log(`  ${i + 1}. ${color(item.path)} ${chalk.gray(`(${relevancePercent}%)`)}`);
                         if (item.matchReasons.length > 0) {
                             console.log(`     ${chalk.gray(item.matchReasons.join(', '))}`);
@@ -249,7 +253,7 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
         // 先检查是否为特殊语法
         const { handleSpecialSyntax } = await import('../utils/syntaxHandler');
         const result = await handleSpecialSyntax(initialQuestion);
-        
+
         if (result.processed) {
             // 如果是管理命令（:ls, :cat, :clear），直接输出结果
             if (result.result) {
@@ -257,7 +261,7 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
             }
             return;
         }
-        
+
         // 不是特殊语法，正常发给 AI
         const { AgentRuntime } = await import('../agent');
         const runtime = new AgentRuntime(getConversationHistory());
@@ -265,13 +269,14 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
         const spinner = ora(chalk.cyan('AI 正在思考...')).start();
         const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
 
-        await runtime.run(initialQuestion, model as any, (chunk) => {
+        await runtime.run(initialQuestion, 'chat' as any, (chunk) => {
             renderer.onChunk(chunk);
-        });
+        }, model, renderer);
 
         const fullResponse = renderer.finish();
+        lastAIOutput = fullResponse;
         addToConversationHistory('user', initialQuestion);
-        addToConversationHistory('assistant', fullResponse);
+        addToConversationHistory('assistant', fullResponse || '');
         return;
     }
 
@@ -303,6 +308,11 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
     process.stdin.on('keypress', (str, key) => {
         if (key.ctrl && key.name === 'r') {
             rl.write(null, { ctrl: true, name: 'r' });
+        }
+        // Ctrl+Y: 插入最后一条 AI 输出到命令行
+        if (key.ctrl && key.name === 'y') {
+            rl.write(lastAIOutput);
+            console.log(chalk.gray('\n[已插入最后一条 AI 输出]'));
         }
     });
 
@@ -370,9 +380,9 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
                         console.log(chalk.green(`✓ 已加入文件上下文: ${displayName}\n`));
 
                         await saveContext(contextStore.export());
-                        
+
                         console.log(chalk.cyan(`⚡️  正在执行: ${commandStr}\n`));
-                        
+
                         const { stdout, stderr } = await exec(commandStr, { cwd: path.dirname(filePath) });
                         console.log(stdout);
                         if (stderr) console.error(chalk.red(stderr));
@@ -392,9 +402,9 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
                         if (fs.existsSync(fullPath)) {
                             // 1. 读取源码
                             const sourceContent = await readFileContent(filePath);
-                            
+
                             console.log(chalk.cyan(`⚡️ 正在执行并捕获: ${filePath}\n`));
-                            
+
                             // 2. 执行并捕获
                             const { stdout, stderr } = await execAsync(`chmod +x "${fullPath}" && "${fullPath}"`, { cwd: process.cwd() });
                             console.log(stdout); // 实时打印给用户看
@@ -721,13 +731,14 @@ ${stderr}
                         : contextAssembler.assemble(contextStore, '你好，请基于以上上下文开始对话');
 
                     const spinner = ora(chalk.cyan('AI 正在思考...')).start();
-                    const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
+                    const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
 
-                    await runtime.run(finalPrompt, model as any, (chunk) => {
+                    await runtime.run(finalPrompt, 'chat' as any, (chunk) => {
                         renderer.onChunk(chunk);
-                    });
+                    }, model, renderer);
 
                     const fullResponse = renderer.finish();
+                    lastAIOutput = fullResponse;
 
                     // 同步上下文到全局历史（为了兼容性）
                     addToConversationHistory('user', finalPrompt);
@@ -753,13 +764,14 @@ ${stderr}
                         : contextAssembler.assemble(contextStore, '你好，请基于以上上下文开始对话');
 
                     const spinner = ora(chalk.cyan('AI 正在思考...')).start();
-                    const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
+                    const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
 
-                    await runtime.run(finalPrompt, model as any, (chunk) => {
+                    await runtime.run(finalPrompt, 'chat' as any, (chunk) => {
                         renderer.onChunk(chunk);
-                    });
+                    }, model, renderer);
 
                     const fullResponse = renderer.finish();
+                    lastAIOutput = fullResponse;
 
                     // 同步上下文到全局历史（为了兼容性）
                     addToConversationHistory('user', finalPrompt);
@@ -822,16 +834,17 @@ ${finalPrompt}
 
             try {
                 rl.pause();
-                
-                // 使用 AgentRuntime 执行提问
-                    const spinner = ora(chalk.cyan('AI 正在思考...')).start();
-                    const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
 
-                    await runtime.run(finalPrompt, model as any, (chunk) => {
-                        renderer.onChunk(chunk);
-                    });
+                // 使用 AgentRuntime 执行提问
+                const spinner = ora(chalk.cyan('AI 正在思考...')).start();
+                const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
+
+                await runtime.run(finalPrompt, 'chat' as any, (chunk) => {
+                    renderer.onChunk(chunk);
+                }, model, renderer);
 
                     const fullResponse = renderer.finish();
+                    lastAIOutput = fullResponse;
 
                 // 同步上下文到全局历史（为了兼容性）
                 addToConversationHistory('user', finalPrompt);
@@ -856,9 +869,9 @@ async function askOnceStream(question: string, model?: string) {
     messages.push({ role: 'user', content: question });
 
     const spinner = ora(chalk.cyan('AI 正在思考...')).start();
-    
+
     // 初始化渲染器
-    const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
+    const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
 
     try {
         await callAI_Stream(messages, model, (chunk) => {
@@ -866,6 +879,7 @@ async function askOnceStream(question: string, model?: string) {
         });
 
         const fullResponse = renderer.finish();
+        lastAIOutput = fullResponse;
 
         addToConversationHistory('user', question);
         addToConversationHistory('assistant', fullResponse);

@@ -6,7 +6,6 @@ import os from 'os';
 import { Command } from 'commander';
 import { handleAICommand } from './commands/handleAICommand';
 import { handleAIChat } from './commands/handleAIChat';
-import { handleConfig } from './commands/handleConfig';
 import { registerCapabilityCommands } from './commands/capabilityCommands';
 import { getAllCommands, getCommandSubcommands, getCommandDescription, installBashCompletion, installZshCompletion, complete, setProgramInstance } from './core/completion';
 import { loadAppsConfig, openUrl, DEFAULT_APPS } from './core/apps';
@@ -18,6 +17,7 @@ import { registerExplainCommands } from './commands/explainCommands';
 import { registerReplayCommands } from './commands/replayCommands';
 import { registerSkillsCommands } from './commands/skillsCommands';
 import { registerPreferencesCommands } from './commands/preferencesCommands';
+import { registerConfigCommands } from './commands/config';
 import { wouldExpandAsGlob } from './utils/globDetector';
 // import { createDiffEditCommand } from './governance/commands/diffEdit';
 
@@ -249,12 +249,6 @@ program
     });
 
 program
-    .command('config')
-    .description('管理本地配置 (~/.yuangs.json)')
-    .argument('[action]', 'get, set, list')
-    .argument('[key]', '配置项名称')
-    .argument('[value]', '配置项值')
-    .action(handleConfig);
 
 program
     .command('macros')
@@ -393,6 +387,7 @@ registerExplainCommands(program);
 registerReplayCommands(program);
 registerSkillsCommands(program);
 registerPreferencesCommands(program);
+registerConfigCommands(program);
 
 // Add governance diff-edit command
 // const diffEditCmd = createDiffEditCommand();
@@ -451,7 +446,11 @@ program
 program
     .argument('[command]', '自定义应用命令')
     .action((command) => {
-        if (command && apps[command]) {
+        // 先检查是否是 macro
+        const macros = getMacros();
+        if (command && macros[command]) {
+            runMacro(command);
+        } else if (command && apps[command]) {
             openUrl(apps[command]);
         } else {
             program.outputHelp();
@@ -461,7 +460,7 @@ program
 async function main() {
     const args = process.argv.slice(2);
 
-    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities', 'completion', '_complete_subcommand', '_describe', 'registry', 'explain', 'replay', 'skills', 'diff-edit'];
+    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities', 'completion', '_complete_subcommand', '_describe', 'registry', 'explain', 'replay', 'skills', 'diff-edit', 'ny', 'ni', 'll', 'gdoc', 'install', 'update'];
     const globalFlags = ['-h', '--help', '-V', '--version', '-v'];
     const firstArg = args[0];
     const isKnownCommand = firstArg && knownCommands.includes(firstArg);

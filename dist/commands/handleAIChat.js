@@ -54,6 +54,9 @@ const macros_1 = require("../core/macros");
 const renderer_1 = require("../utils/renderer");
 const globDetector_1 = require("../utils/globDetector");
 const execAsync = (0, util_1.promisify)(child_process_1.exec);
+// 全局变量：存储最后的 AI 输出内容，用于快速插入
+let lastAIOutput = '';
+let clipboardContent = '';
 function findCommonPrefix(strings) {
     if (strings.length === 0)
         return '';
@@ -250,12 +253,13 @@ async function handleAIChat(initialQuestion, model) {
         const runtime = new AgentRuntime((0, client_1.getConversationHistory)());
         const spinner = (0, ora_1.default)(chalk_1.default.cyan('AI 正在思考...')).start();
         const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
-        await runtime.run(initialQuestion, model, (chunk) => {
+        await runtime.run(initialQuestion, 'chat', (chunk) => {
             renderer.onChunk(chunk);
-        });
+        }, model, renderer);
         const fullResponse = renderer.finish();
+        lastAIOutput = fullResponse;
         (0, client_1.addToConversationHistory)('user', initialQuestion);
-        (0, client_1.addToConversationHistory)('assistant', fullResponse);
+        (0, client_1.addToConversationHistory)('assistant', fullResponse || '');
         return;
     }
     console.log(chalk_1.default.bold.cyan('\n🤖 进入 AI 交互模式 (输入 exit 退出)\n'));
@@ -280,6 +284,11 @@ async function handleAIChat(initialQuestion, model) {
     process.stdin.on('keypress', (str, key) => {
         if (key.ctrl && key.name === 'r') {
             rl.write(null, { ctrl: true, name: 'r' });
+        }
+        // Ctrl+Y: 插入最后一条 AI 输出到命令行
+        if (key.ctrl && key.name === 'y') {
+            rl.write(lastAIOutput);
+            console.log(chalk_1.default.gray('\n[已插入最后一条 AI 输出]'));
         }
     });
     // Helper to wrap rl.question in a Promise
@@ -662,11 +671,12 @@ ${stderr}
                         ? '你好，请开始对话'
                         : contextAssembler.assemble(contextStore, '你好，请基于以上上下文开始对话');
                     const spinner = (0, ora_1.default)(chalk_1.default.cyan('AI 正在思考...')).start();
-                    const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
-                    await runtime.run(finalPrompt, model, (chunk) => {
+                    const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
+                    await runtime.run(finalPrompt, 'chat', (chunk) => {
                         renderer.onChunk(chunk);
-                    });
+                    }, model, renderer);
                     const fullResponse = renderer.finish();
+                    lastAIOutput = fullResponse;
                     // 同步上下文到全局历史（为了兼容性）
                     (0, client_1.addToConversationHistory)('user', finalPrompt);
                     (0, client_1.addToConversationHistory)('assistant', fullResponse);
@@ -690,11 +700,12 @@ ${stderr}
                         ? '你好，请开始对话'
                         : contextAssembler.assemble(contextStore, '你好，请基于以上上下文开始对话');
                     const spinner = (0, ora_1.default)(chalk_1.default.cyan('AI 正在思考...')).start();
-                    const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
-                    await runtime.run(finalPrompt, model, (chunk) => {
+                    const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
+                    await runtime.run(finalPrompt, 'chat', (chunk) => {
                         renderer.onChunk(chunk);
-                    });
+                    }, model, renderer);
                     const fullResponse = renderer.finish();
+                    lastAIOutput = fullResponse;
                     // 同步上下文到全局历史（为了兼容性）
                     (0, client_1.addToConversationHistory)('user', finalPrompt);
                     (0, client_1.addToConversationHistory)('assistant', fullResponse);
@@ -756,10 +767,11 @@ ${finalPrompt}
                 // 使用 AgentRuntime 执行提问
                 const spinner = (0, ora_1.default)(chalk_1.default.cyan('AI 正在思考...')).start();
                 const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
-                await runtime.run(finalPrompt, model, (chunk) => {
+                await runtime.run(finalPrompt, 'chat', (chunk) => {
                     renderer.onChunk(chunk);
-                });
+                }, model, renderer);
                 const fullResponse = renderer.finish();
+                lastAIOutput = fullResponse;
                 // 同步上下文到全局历史（为了兼容性）
                 (0, client_1.addToConversationHistory)('user', finalPrompt);
                 (0, client_1.addToConversationHistory)('assistant', fullResponse);
@@ -786,12 +798,13 @@ async function askOnceStream(question, model) {
     messages.push({ role: 'user', content: question });
     const spinner = (0, ora_1.default)(chalk_1.default.cyan('AI 正在思考...')).start();
     // 初始化渲染器
-    const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
+    const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
     try {
         await (0, client_1.callAI_Stream)(messages, model, (chunk) => {
             renderer.onChunk(chunk);
         });
         const fullResponse = renderer.finish();
+        lastAIOutput = fullResponse;
         (0, client_1.addToConversationHistory)('user', question);
         (0, client_1.addToConversationHistory)('assistant', fullResponse);
     }
