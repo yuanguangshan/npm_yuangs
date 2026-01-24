@@ -756,9 +756,9 @@ ${finalPrompt}
                 // 使用 AgentRuntime 执行提问
                 const spinner = (0, ora_1.default)(chalk_1.default.cyan('AI 正在思考...')).start();
                 const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
-                await runtime.run(finalPrompt, model, (chunk) => {
+                await runtime.run(finalPrompt, 'chat', (chunk) => {
                     renderer.onChunk(chunk);
-                });
+                }, model, renderer);
                 const fullResponse = renderer.finish();
                 // 同步上下文到全局历史（为了兼容性）
                 (0, client_1.addToConversationHistory)('user', finalPrompt);
