@@ -30,5 +30,5 @@ export declare function runLLM({ prompt, model, stream, onChunk, }: {
     prompt: AgentPrompt;
     model: string;
     stream: boolean;
-    onChunk?: (s: string) => void;
+    onChunk?: (s: string, type?: 'thought' | 'json') => void;
 }): Promise<LLMResult>;

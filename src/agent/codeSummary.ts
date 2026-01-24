@@ -40,55 +40,8 @@ export function extractSymbols(code: string, filename: string): Symbol[] {
   } else if (['.java'].includes(ext)) {
     extractJavaSymbols(lines, symbols);
   }
-  
-  return symbols;
-}
 
-/**
- * 提取JavaScript/TypeScript符号
- */
-function extractJavaScriptSymbols(lines: string[], symbols: Symbol[]) {
-  lines.forEach((line, index) => {
-    const lineNum = index + 1;
-    const trimmed = line.trim();
-    
-    // Imports
-    if (trimmed.startsWith('import ')) {
-      const match = trimmed.match(/import\s+.*?from\s+['"](.+?)['"]/);
-      if (match) {
-        symbols.push({
-          name: match[1],
-          type: 'import',
-          line: lineNum
-        });
-      }
     }
-    
-    // Exports
-    if (trimmed.startsWith('export ')) {
-      if (trimmed.includes('function ')) {
-        const match = trimmed.match(/function\s+(\w+)/);
-        if (match) {
-          symbols.push({
-            name: match[1],
-            type: 'export',
-            line: lineNum,
-            signature: trimmed
-          });
-        }
-      } else if (trimmed.includes('class ')) {
-        const match = trimmed.match(/class\s+(\w+)/);
-        if (match) {
-          symbols.push({
-            name: match[1],
-            type: 'class',
-            line: lineNum,
-            signature: trimmed
-          });
-        }
-      }
-    }
-    
     // Classes
     const classMatch = trimmed.match(/^class\s+(\w+)/);
     if (classMatch) {

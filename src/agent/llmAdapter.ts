@@ -10,7 +10,7 @@ export class LLMAdapter {
   static async think(
     messages: AIRequestMessage[],
     mode: 'chat' | 'command' | 'command+exec' = 'chat',
-    onChunk?: (chunk: string) => void,
+    onChunk?: (chunk: string, type?: 'thought' | 'json') => void,
     model?: string,
     customSystemPrompt?: string,
     contextManager?: ContextManager

@@ -10,29 +10,42 @@ const promises_1 = __importDefault(require("fs/promises"));
 const path_1 = __importDefault(require("path"));
 const execAsync = (0, util_1.promisify)(child_process_1.exec);
 class ToolExecutor {
+    static MAX_OUTPUT_LENGTH = 2000; // Maximum output length in characters
+    /**
+     * Truncates output if too long and adds helpful suggestions
+     */
+    static maybeTruncate(output) {
+        if (output.length <= this.MAX_OUTPUT_LENGTH) {
+            return output;
+        }
+        const truncated = output.slice(0, this.MAX_OUTPUT_LENGTH);
+        const suggestion = `
+
+[⚠️ OUTPUT TRUNCATED]
+The output was too long (${output.length} chars). Here are some ways to get what you need:
+
+1. Use \`head\` to see the first lines:
+   head -n 50 filename
+
+2. Use \`tail\` to see the last lines:
+   tail -n 50 filename
+
+3. Use \`grep\` to filter relevant content:
+   grep "keyword" filename
+
+4. Use specific line ranges with read_file
+`;
+        return truncated + suggestion;
+    }
     static async execute(action) {
         const { type, payload } = action;
         try {
-            switch (type) {
-                case 'tool_call':
-                    return await this.executeTool(payload);
-                case 'shell_cmd':
-                    return await this.executeShell(payload.command);
-                case 'code_diff':
-                    return await this.executeDiff(payload.diff);
-                case 'answer':
-                    return {
-                        success: true,
-                        output: payload.content || payload.text || '',
-                        artifacts: []
-                    };
-                default:
-                    return {
-                        success: false,
-                        error: `Unknown action type: ${type}`,
-                        output: ''
-                    };
-            }
+            const result = await this.executeAction(type, payload);
+            const truncated = this.maybeTruncate(result.output);
+            return {
+                ...result,
+                output: truncated
+            };
         }
         catch (error) {
             return {
@@ -40,6 +53,28 @@ class ToolExecutor {
                 error: error.message || String(error),
                 output: ''
             };
+        }
+    }
+    static async executeAction(type, payload) {
+        switch (type) {
+            case 'tool_call':
+                return await this.executeTool(payload);
+            case 'shell_cmd':
+                return await this.executeShell(payload.command);
+            case 'code_diff':
+                return await this.executeDiff(payload.diff);
+            case 'answer':
+                return {
+                    success: true,
+                    output: payload.content || payload.text || '',
+                    artifacts: []
+                };
+            default:
+                return {
+                    success: false,
+                    error: `Unknown action type: ${type}`,
+                    output: ''
+                };
         }
     }
     static async executeTool(payload) {
