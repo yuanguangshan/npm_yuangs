@@ -128,19 +128,17 @@ class AgentRuntime {
             // 如果 LLM 认为已经完成或者当前的动作就是回答
             if (thought.isDone || action.type === "answer") {
                 const result = await executor_1.ToolExecutor.execute(action);
-                if (!onChunk) {
-                    if (agentRenderer) {
-                        // Stream final answer through renderer
-                        for (let i = 0; i < result.output.length; i += 10) {
-                            const chunk = result.output.slice(i, i + 10);
-                            agentRenderer.onChunk(chunk);
-                        }
-                        agentRenderer.finish();
+                if (agentRenderer) {
+                    // Stream final answer through renderer
+                    for (let i = 0; i < result.output.length; i += 10) {
+                        const chunk = result.output.slice(i, i + 10);
+                        agentRenderer.onChunk(chunk);
                     }
-                    else {
-                        const rendered = marked.parse(result.output);
-                        console.log(chalk_1.default.green(`\n🤖 AI：\n`) + rendered);
-                    }
+                    agentRenderer.finish();
+                }
+                else {
+                    const rendered = marked.parse(result.output);
+                    console.log(chalk_1.default.green(`\n🤖 AI：\n`) + rendered);
                 }
                 this.context.addMessage("assistant", result.output);
                 // Learn from successful chat
