@@ -54,6 +54,9 @@ const macros_1 = require("../core/macros");
 const renderer_1 = require("../utils/renderer");
 const globDetector_1 = require("../utils/globDetector");
 const execAsync = (0, util_1.promisify)(child_process_1.exec);
+// 全局变量：存储最后的 AI 输出内容，用于快速插入
+let lastAIOutput = '';
+let clipboardContent = '';
 function findCommonPrefix(strings) {
     if (strings.length === 0)
         return '';
@@ -254,6 +257,7 @@ async function handleAIChat(initialQuestion, model) {
             renderer.onChunk(chunk);
         }, model, renderer);
         const fullResponse = renderer.finish();
+        lastAIOutput = fullResponse;
         (0, client_1.addToConversationHistory)('user', initialQuestion);
         (0, client_1.addToConversationHistory)('assistant', fullResponse);
         return;
@@ -280,6 +284,11 @@ async function handleAIChat(initialQuestion, model) {
     process.stdin.on('keypress', (str, key) => {
         if (key.ctrl && key.name === 'r') {
             rl.write(null, { ctrl: true, name: 'r' });
+        }
+        // Ctrl+Y: 插入最后一条 AI 输出到命令行
+        if (key.ctrl && key.name === 'y') {
+            rl.write(lastAIOutput);
+            console.log(chalk_1.default.gray('\n[已插入最后一条 AI 输出]'));
         }
     });
     // Helper to wrap rl.question in a Promise
@@ -667,6 +676,7 @@ ${stderr}
                         renderer.onChunk(chunk);
                     }, model, renderer);
                     const fullResponse = renderer.finish();
+                    lastAIOutput = fullResponse;
                     // 同步上下文到全局历史（为了兼容性）
                     (0, client_1.addToConversationHistory)('user', finalPrompt);
                     (0, client_1.addToConversationHistory)('assistant', fullResponse);
@@ -695,6 +705,7 @@ ${stderr}
                         renderer.onChunk(chunk);
                     }, model, renderer);
                     const fullResponse = renderer.finish();
+                    lastAIOutput = fullResponse;
                     // 同步上下文到全局历史（为了兼容性）
                     (0, client_1.addToConversationHistory)('user', finalPrompt);
                     (0, client_1.addToConversationHistory)('assistant', fullResponse);
@@ -760,6 +771,7 @@ ${finalPrompt}
                     renderer.onChunk(chunk);
                 }, model, renderer);
                 const fullResponse = renderer.finish();
+                lastAIOutput = fullResponse;
                 // 同步上下文到全局历史（为了兼容性）
                 (0, client_1.addToConversationHistory)('user', finalPrompt);
                 (0, client_1.addToConversationHistory)('assistant', fullResponse);
@@ -792,6 +804,7 @@ async function askOnceStream(question, model) {
             renderer.onChunk(chunk);
         });
         const fullResponse = renderer.finish();
+        lastAIOutput = fullResponse;
         (0, client_1.addToConversationHistory)('user', question);
         (0, client_1.addToConversationHistory)('assistant', fullResponse);
     }
