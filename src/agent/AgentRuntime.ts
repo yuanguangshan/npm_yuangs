@@ -150,6 +150,39 @@ export class AgentRuntime {
         }
 
         this.context.addMessage("assistant", result.output);
+
+        // Learn from successful chat
+        try {
+          const { createExecutionRecord } = await import('../core/executionRecord');
+          const { inferCapabilityRequirement } = await import('../core/capabilityInference');
+          const { saveExecutionRecord } = await import('../core/executionStore');
+
+          const record = createExecutionRecord(
+            'agent-chat',
+            { required: [], preferred: [] } as any,
+            { aiProxyUrl: '', defaultModel: '', accountType: 'free' },
+            { selected: null, candidates: [], fallbackOccurred: false },
+            { success },
+            undefined,
+            userInput,
+            'chat'
+          );
+
+          (record as any).llmResult = { plan: thought.parsedPlan };
+          (record as any).input = { rawInput: userInput };
+
+          const savedRecordId = saveExecutionRecord(record);
+          const { loadExecutionRecord } = await import('../core/executionStore');
+          const savedRecord = loadExecutionRecord(savedRecordId);
+
+          if (savedRecord) {
+            const { learnSkillFromRecord } = await import('./skills');
+            learnSkillFromRecord(savedRecord, true);
+          }
+        } catch (error) {
+          console.warn(chalk.yellow(`[Skill Learning] Failed: ${error}`));
+        }
+
         break;
       }
 
@@ -236,6 +269,39 @@ export class AgentRuntime {
           ? result.output.substring(0, 300) + '...'
           : result.output;
         console.log(chalk.green(`[SUCCESS] Result:\n${preview}`));
+
+        // Learn from this successful execution
+        try {
+          const { createExecutionRecord } = await import('../core/executionRecord');
+          const { inferCapabilityRequirement } = await import('../core/capabilityInference');
+          const { saveExecutionRecord } = await import('../core/executionStore');
+
+          const record = createExecutionRecord(
+            `agent-${mode}`,
+            { required: [], preferred: [] } as any,
+            { aiProxyUrl: '', defaultModel: '', accountType: 'free' },
+            { selected: null, candidates: [], fallbackOccurred: false },
+            { success },
+            undefined,
+            userInput,
+            mode
+          );
+
+          // Attach thought/plan data for skill learning
+          (record as any).llmResult = { plan: thought.parsedPlan };
+          (record as any).input = { rawInput: userInput };
+
+          const savedRecordId = saveExecutionRecord(record);
+          const { loadExecutionRecord } = await import('../core/executionStore');
+          const savedRecord = loadExecutionRecord(savedRecordId);
+
+          if (savedRecord) {
+            const { learnSkillFromRecord } = await import('./skills');
+            learnSkillFromRecord(savedRecord, true);
+          }
+        } catch (error) {
+          console.warn(chalk.yellow(`[Skill Learning] Failed: ${error}`));
+        }
       } else {
         // 失败时记录错误，下次循环会注入错误恢复指导
         lastError = result.error;

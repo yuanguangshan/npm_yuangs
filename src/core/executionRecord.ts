@@ -10,6 +10,7 @@ export interface ExecutionMeta {
   projectPath: string;
   args?: any;
   rawInput?: string;
+  mode?: string;
   replayable?: boolean;
   version?: string;
 }
@@ -58,7 +59,9 @@ export function createExecutionRecord(
   config: MergedConfig,
   matchResult: any,
   outcome: Partial<ExecutionOutcome> = {},
-  command?: string
+  command?: string,
+  rawInput?: string,
+  mode?: string
 ): ExecutionRecord {
   const version = require('../../package.json').version;
 
@@ -69,6 +72,8 @@ export function createExecutionRecord(
       timestamp: new Date().toISOString(),
       toolVersion: version,
       projectPath: process.cwd(),
+      rawInput,
+      mode,
       version,
       replayable: true,
     },

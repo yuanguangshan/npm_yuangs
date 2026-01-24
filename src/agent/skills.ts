@@ -93,9 +93,17 @@ export function updateSkillStatus(skillId: string, success: boolean) {
  * 自动学习新技能
  */
 export function learnSkillFromRecord(record: any, success: boolean = true) {
-    if (record.mode === 'chat' || !record.llmResult.plan) return;
+    // Handle both old and new record structures
+    const mode = record.mode || record.meta?.mode || 'chat';
+    const plan = record.llmResult?.plan || record.decision?.llmResult?.plan;
+    const input = record.input?.rawInput || record.meta?.rawInput;
 
-    const existingSkill = skillLibrary.find(s => s.name === record.llmResult.plan?.goal);
+    // Only learn from agent/chat mode with plans
+    if (mode !== 'chat' && mode !== 'agent') return;
+    if (!plan) return;
+
+    const skillName = plan.goal || plan.command || 'unnamed';
+    const existingSkill = skillLibrary.find(s => s.name === skillName);
 
     if (existingSkill) {
         updateSkillStatus(existingSkill.id, success);
@@ -108,10 +116,10 @@ export function learnSkillFromRecord(record: any, success: boolean = true) {
     const now = Date.now();
     skillLibrary.push({
         id: record.id,
-        name: record.llmResult.plan.goal,
-        description: `自动学习的技能: ${record.llmResult.plan.goal}`,
-        whenToUse: record.input.rawInput,
-        planTemplate: record.llmResult.plan,
+        name: skillName,
+        description: `Auto-learned skill: ${skillName}`,
+        whenToUse: input || 'Agent execution',
+        planTemplate: plan,
         successCount: 1,
         failureCount: 0,
         confidence: 0.5,

@@ -203,6 +203,29 @@ class StreamMarkdownRenderer {
         }
         return totalLines;
     }
+    /**
+     * Start chunking mode for Agent Runtime
+     * Returns a callback function that Agent can use to send chunks
+     */
+    startChunking() {
+        return (chunk) => {
+            this.onChunk(chunk);
+            // Auto-finish if configured
+            if (this.autoFinish && this.isComplete()) {
+                this.finish();
+            }
+        };
+    }
+    /**
+     * Check if response appears complete (heuristic)
+     */
+    isComplete() {
+        const trimmed = this.fullResponse.trim();
+        // Simple heuristic: ends with code block or natural sentence end
+        return trimmed.endsWith('```') ||
+            trimmed.endsWith('.') ||
+            (trimmed.length > 50 && trimmed.endsWith('\n'));
+    }
 }
 exports.StreamMarkdownRenderer = StreamMarkdownRenderer;
 //# sourceMappingURL=renderer.js.map

@@ -14,6 +14,7 @@ import { execSync } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import ora, { Ora } from 'ora';
+import chalk from 'chalk';
 
 /**
  * 扫描结果
@@ -97,7 +98,18 @@ const DEFAULT_IGNORE_DIRS = [
     if (hasRipgrep) {
       consumerFiles = await this.scanWithRipgrep(baseName, searchDir);
     } else {
-      consumerFiles = await this.fallbackScan(baseName, searchDir);
+      // Add spinner for fallback scan
+      const spinner = ora(chalk.cyan('Fallback scanning (ripgrep unavailable)...')).start();
+      consumerFiles = await this.fallbackScan(baseName, searchDir, spinner);
+
+      if (this.scanStats) {
+        const elapsed = ((Date.now() - this.scanStats.startTime) / 1000).toFixed(2);
+        spinner.succeed(chalk.green(`Scan complete: ${this.scanStats.filesScanned} files, ${this.scanStats.directoriesProcessed} dirs in ${elapsed}s`));
+      } else {
+        spinner.succeed('Scan complete');
+      }
+
+      this.scanStats = null;
     }
 
     const duration = Date.now() - startTime;
@@ -135,8 +147,23 @@ const DEFAULT_IGNORE_DIRS = [
   /**
    * 回退到原生文件系统遍历
    */
-  private async fallbackScan(baseName: string, dir: string = '.'): Promise<string[]> {
+  private async fallbackScan(
+    baseName: string,
+    dir: string = '.',
+    spinner: Ora | null = null,
+    depth: number = 0
+  ): Promise<string[]> {
     const results: string[] = [];
+
+    // Initialize stats on first call
+    if (depth === 0) {
+      this.scanStats = {
+        filesScanned: 0,
+        directoriesProcessed: 0,
+        currentDirectory: dir,
+        startTime: Date.now()
+      };
+    }
 
     try {
       const entries = await fs.readdir(dir, { withFileTypes: true });
@@ -149,9 +176,34 @@ const DEFAULT_IGNORE_DIRS = [
             continue;
           }
 
-          const subResults = await this.fallbackScan(baseName, fullPath);
+          // Update stats before recursion
+          if (this.scanStats) {
+            this.scanStats.directoriesProcessed++;
+            this.scanStats.currentDirectory = fullPath;
+
+            // Update spinner periodically (every 5 directories)
+            if (spinner && this.scanStats.directoriesProcessed % 5 === 0) {
+              const elapsed = ((Date.now() - this.scanStats.startTime) / 1000).toFixed(1);
+              spinner.text = `Scanning: ${this.scanStats.filesScanned} files, ${this.scanStats.directoriesProcessed} dirs\n` +
+                             `Current: ${path.basename(fullPath)} (${elapsed}s)`;
+            }
+          }
+
+          const subResults = await this.fallbackScan(baseName, fullPath, spinner, depth + 1);
           results.push(...subResults);
         } else if (this.isSourceFile(entry.name)) {
+          // Update file count
+          if (this.scanStats) {
+            this.scanStats.filesScanned++;
+
+            // Update spinner periodically (every 20 files)
+            if (spinner && this.scanStats.filesScanned % 20 === 0) {
+              const elapsed = ((Date.now() - this.scanStats.startTime) / 1000).toFixed(1);
+              spinner.text = `Scanning: ${this.scanStats.filesScanned} files, ${this.scanStats.directoriesProcessed} dirs\n` +
+                             `Current: ${path.basename(dir)} (${elapsed}s)`;
+            }
+          }
+
           const content = await fs.readFile(fullPath, 'utf-8');
 
           if (this.containsModuleImport(content, baseName)) {
@@ -161,6 +213,12 @@ const DEFAULT_IGNORE_DIRS = [
       }
     } catch (error) {
       console.warn(`[FastScanner] Failed to scan directory ${dir}: ${error}`);
+    }
+
+    // Final update when recursion unwinds to root
+    if (depth === 0 && spinner && this.scanStats) {
+      const elapsed = ((Date.now() - this.scanStats.startTime) / 1000).toFixed(2);
+      spinner.text = `Complete: ${this.scanStats.filesScanned} files, ${this.scanStats.directoriesProcessed} dirs (${elapsed}s)`;
     }
 
     return results;

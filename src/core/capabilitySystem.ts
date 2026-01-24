@@ -85,7 +85,9 @@ export class CapabilitySystem {
     commandName: string,
     requirement: CapabilityRequirement,
     matchResult: CapabilityMatchResult,
-    command?: string
+    command?: string,
+    rawInput?: string,
+    mode?: string
   ): string {
     const config = this.loadMergedConfig();
     const record = createExecutionRecord(
@@ -94,7 +96,9 @@ export class CapabilitySystem {
       config,
       matchResult,
       { success: matchResult.selected !== null },
-      command
+      command,
+      rawInput,
+      mode
     );
 
     const filePath = saveExecutionRecord(record);

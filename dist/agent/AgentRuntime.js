@@ -51,6 +51,7 @@ const executor_1 = require("./executor");
 const smartContextManager_1 = require("./smartContextManager");
 const core_1 = require("./governance/core");
 const dynamicPrompt_1 = require("./dynamicPrompt");
+const renderer_1 = require("../utils/renderer");
 class AgentRuntime {
     context;
     executionId;
@@ -58,7 +59,7 @@ class AgentRuntime {
         this.context = new smartContextManager_1.SmartContextManager(initialContext);
         this.executionId = (0, crypto_1.randomUUID)();
     }
-    async run(userInput, mode = "chat", onChunk, model) {
+    async run(userInput, mode = "chat", onChunk, model, renderer) {
         let turnCount = 0;
         const maxTurns = 10;
         let lastError;
@@ -107,7 +108,14 @@ class AgentRuntime {
             const basePrompt = governance_1.GovernanceService.getPolicyManual();
             // 注入动态上下文
             const enhancedPrompt = (0, dynamicPrompt_1.injectDynamicContext)(basePrompt, dynamicContext);
-            const thought = await llmAdapter_1.LLMAdapter.think(messages, mode, onChunk, model, enhancedPrompt, this.context);
+            // Create renderer if not provided but onChunk is available
+            let agentRenderer = renderer;
+            let agentOnChunk = onChunk;
+            if (!agentRenderer && agentOnChunk) {
+                agentRenderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 Agent ') + ' ', undefined, { autoFinish: false });
+                agentOnChunk = agentRenderer.startChunking();
+            }
+            const thought = await llmAdapter_1.LLMAdapter.think(messages, mode, agentOnChunk, model, enhancedPrompt, this.context);
             const action = {
                 id: (0, crypto_1.randomUUID)(),
                 type: thought.type || "answer",
@@ -121,9 +129,40 @@ class AgentRuntime {
             // 如果 LLM 认为已经完成或者当前的动作就是回答
             if (thought.isDone || action.type === "answer") {
                 const result = await executor_1.ToolExecutor.execute(action);
-                const rendered = (0, marked_1.marked)(result.output);
-                console.log(chalk_1.default.green(`\n🤖 AI：\n`) + rendered);
+                if (!onChunk) {
+                    if (agentRenderer) {
+                        // Stream final answer through renderer
+                        for (let i = 0; i < result.output.length; i += 10) {
+                            const chunk = result.output.slice(i, i + 10);
+                            agentRenderer.onChunk(chunk);
+                        }
+                        agentRenderer.finish();
+                    }
+                    else {
+                        const rendered = (0, marked_1.marked)(result.output);
+                        console.log(chalk_1.default.green(`\n🤖 AI：\n`) + rendered);
+                    }
+                }
                 this.context.addMessage("assistant", result.output);
+                // Learn from successful chat
+                try {
+                    const { createExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionRecord')));
+                    const { inferCapabilityRequirement } = await Promise.resolve().then(() => __importStar(require('../core/capabilityInference')));
+                    const { saveExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionStore')));
+                    const record = createExecutionRecord('agent-chat', { required: [], preferred: [] }, { aiProxyUrl: '', defaultModel: '', accountType: 'free' }, { selected: null, candidates: [], fallbackOccurred: false }, { success }, undefined, userInput, 'chat');
+                    record.llmResult = { plan: thought.parsedPlan };
+                    record.input = { rawInput: userInput };
+                    const savedRecordId = saveExecutionRecord(record);
+                    const { loadExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionStore')));
+                    const savedRecord = loadExecutionRecord(savedRecordId);
+                    if (savedRecord) {
+                        const { learnSkillFromRecord } = await Promise.resolve().then(() => __importStar(require('./skills')));
+                        learnSkillFromRecord(savedRecord, true);
+                    }
+                }
+                catch (error) {
+                    console.warn(chalk_1.default.yellow(`[Skill Learning] Failed: ${error}`));
+                }
                 break;
             }
             // === 强制 ACK 校验（Causal Lock） ===
@@ -185,6 +224,26 @@ class AgentRuntime {
                     ? result.output.substring(0, 300) + '...'
                     : result.output;
                 console.log(chalk_1.default.green(`[SUCCESS] Result:\n${preview}`));
+                // Learn from this successful execution
+                try {
+                    const { createExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionRecord')));
+                    const { inferCapabilityRequirement } = await Promise.resolve().then(() => __importStar(require('../core/capabilityInference')));
+                    const { saveExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionStore')));
+                    const record = createExecutionRecord(`agent-${mode}`, { required: [], preferred: [] }, { aiProxyUrl: '', defaultModel: '', accountType: 'free' }, { selected: null, candidates: [], fallbackOccurred: false }, { success }, undefined, userInput, mode);
+                    // Attach thought/plan data for skill learning
+                    record.llmResult = { plan: thought.parsedPlan };
+                    record.input = { rawInput: userInput };
+                    const savedRecordId = saveExecutionRecord(record);
+                    const { loadExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionStore')));
+                    const savedRecord = loadExecutionRecord(savedRecordId);
+                    if (savedRecord) {
+                        const { learnSkillFromRecord } = await Promise.resolve().then(() => __importStar(require('./skills')));
+                        learnSkillFromRecord(savedRecord, true);
+                    }
+                }
+                catch (error) {
+                    console.warn(chalk_1.default.yellow(`[Skill Learning] Failed: ${error}`));
+                }
             }
             else {
                 // 失败时记录错误，下次循环会注入错误恢复指导

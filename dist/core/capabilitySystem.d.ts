@@ -10,7 +10,7 @@ export declare class CapabilitySystem {
     loadMergedConfig(): MergedConfig;
     loadCustomModels(): ModelCapabilities[];
     getAllModels(): ModelCapabilities[];
-    createAndSaveExecutionRecord(commandName: string, requirement: CapabilityRequirement, matchResult: CapabilityMatchResult, command?: string): string;
+    createAndSaveExecutionRecord(commandName: string, requirement: CapabilityRequirement, matchResult: CapabilityMatchResult, command?: string, rawInput?: string, mode?: string): string;
     replayExecution(recordId: string, options: ReplayOptions): Promise<ReplayResult>;
     explainConfig(): string;
 }

@@ -7,7 +7,7 @@ exports.deserializeExecutionRecord = deserializeExecutionRecord;
 function createExecutionId() {
     return `exec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
-function createExecutionRecord(commandName, requirement, config, matchResult, outcome = {}, command) {
+function createExecutionRecord(commandName, requirement, config, matchResult, outcome = {}, command, rawInput, mode) {
     const version = require('../../package.json').version;
     return {
         id: createExecutionId(),
@@ -16,6 +16,8 @@ function createExecutionRecord(commandName, requirement, config, matchResult, ou
             timestamp: new Date().toISOString(),
             toolVersion: version,
             projectPath: process.cwd(),
+            rawInput,
+            mode,
             version,
             replayable: true,
         },

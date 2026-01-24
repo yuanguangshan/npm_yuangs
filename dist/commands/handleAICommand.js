@@ -226,7 +226,7 @@ ${result.stderr}
                 ? latencyMs < 500 ? 1 : 0.5
                 : -1;
             if (!isUsingMacro) {
-                capabilitySystem.createAndSaveExecutionRecord('ai-command', requirement, matchResult, commandToExecute);
+                capabilitySystem.createAndSaveExecutionRecord('ai-command', requirement, matchResult, commandToExecute, userInput, 'command');
                 const { listExecutionRecords, saveExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionStore')));
                 const records = listExecutionRecords(1);
                 if (records.length > 0) {

@@ -9,6 +9,7 @@ export interface ExecutionMeta {
     projectPath: string;
     args?: any;
     rawInput?: string;
+    mode?: string;
     replayable?: boolean;
     version?: string;
 }
@@ -43,6 +44,6 @@ export interface ExecutionRecord {
     command?: string;
 }
 export declare function createExecutionId(): string;
-export declare function createExecutionRecord(commandName: string, requirement: CapabilityRequirement, config: MergedConfig, matchResult: any, outcome?: Partial<ExecutionOutcome>, command?: string): ExecutionRecord;
+export declare function createExecutionRecord(commandName: string, requirement: CapabilityRequirement, config: MergedConfig, matchResult: any, outcome?: Partial<ExecutionOutcome>, command?: string, rawInput?: string, mode?: string): ExecutionRecord;
 export declare function serializeExecutionRecord(record: ExecutionRecord): string;
 export declare function deserializeExecutionRecord(json: string): ExecutionRecord;

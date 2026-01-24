@@ -238,7 +238,9 @@ ${result.stderr}
                     'ai-command',
                     requirement,
                     matchResult,
-                    commandToExecute
+                    commandToExecute,
+                    userInput,
+                    'command'
                 );
 
                 const { listExecutionRecords, saveExecutionRecord } = await import('../core/executionStore');

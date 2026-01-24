@@ -26,4 +26,13 @@ export declare class StreamMarkdownRenderer {
      * 计算文本在终端的可视行数
      */
     private getVisualLineCount;
+    /**
+     * Start chunking mode for Agent Runtime
+     * Returns a callback function that Agent can use to send chunks
+     */
+    startChunking(): (chunk: string) => void;
+    /**
+     * Check if response appears complete (heuristic)
+     */
+    private isComplete;
 }

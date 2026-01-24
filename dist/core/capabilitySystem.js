@@ -50,9 +50,9 @@ class CapabilitySystem {
         const customModels = this.loadCustomModels();
         return [...this.primaryModels, ...this.fallbackModels, ...customModels];
     }
-    createAndSaveExecutionRecord(commandName, requirement, matchResult, command) {
+    createAndSaveExecutionRecord(commandName, requirement, matchResult, command, rawInput, mode) {
         const config = this.loadMergedConfig();
-        const record = (0, executionRecord_1.createExecutionRecord)(commandName, requirement, config, matchResult, { success: matchResult.selected !== null }, command);
+        const record = (0, executionRecord_1.createExecutionRecord)(commandName, requirement, config, matchResult, { success: matchResult.selected !== null }, command, rawInput, mode);
         const filePath = (0, executionStore_1.saveExecutionRecord)(record);
         return record.id;
     }
