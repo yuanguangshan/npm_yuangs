@@ -135,14 +135,16 @@ export class AgentRuntime {
       if (thought.isDone || action.type === "answer") {
         const result = await ToolExecutor.execute(action as any);
 
-        if (agentRenderer) {
-          // Stream final answer through renderer
+        // 注意：如果外部传入了 renderer（说明已经在流式输出），不要再次渲染
+        // 只有在内部创建的 renderer 或没有 renderer 时才需要渲染
+        if (!renderer && agentRenderer) {
+          // Stream final answer through internal renderer
           for (let i = 0; i < result.output.length; i += 10) {
             const chunk = result.output.slice(i, i + 10);
             agentRenderer.onChunk(chunk);
           }
           agentRenderer.finish();
-        } else {
+        } else if (!renderer) {
           const rendered = marked.parse(result.output);
           console.log(chalk.green(`\n🤖 AI：\n`) + rendered);
         }
