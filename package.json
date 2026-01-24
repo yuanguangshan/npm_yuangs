@@ -1,10 +1,6 @@
 {
   "name": "yuangs",
-<<<<<<< HEAD
-  "version": "3.35.0",
-=======
   "version": "3.46.0",
->>>>>>> 3ffd1de35828e0b609c45d0da4e3c39f98c8e122
   "description": "苑广山的个人应用集合 CLI（彩色版）",
   "author": "苑广山",
   "license": "ISC",
