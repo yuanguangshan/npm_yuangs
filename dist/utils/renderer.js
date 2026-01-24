@@ -112,25 +112,25 @@ class StreamMarkdownRenderer {
                 process.stdout.write(this.prefix + rendered + '\n');
             }
         }
-        else if (process.stdout.isTTY && this.buffer.trim()) {
-            // TTY 模式：回滚并渲染格式化内容
-            const screenWidth = process.stdout.columns || 80;
-            const totalContent = this.prefix + this.buffer;
-            // 计算原始文本占用的可视行数
-            const lineCount = this.getVisualLineCount(totalContent, screenWidth);
-            // 1. 清除当前行剩余内容
-            process.stdout.write('\r\x1b[K');
-            // 2. 向上回滚并清除之前的行
-            for (let i = 0; i < lineCount - 1; i++) {
-                process.stdout.write('\x1b[A\x1b[K');
+        else if (this.buffer.trim()) {
+            if (process.stdout.isTTY) {
+                // TTY 模式：回滚并渲染格式化内容
+                const screenWidth = process.stdout.columns || 80;
+                const totalContent = this.prefix + this.buffer;
+                // 计算原始文本占用的可视行数
+                const lineCount = this.getVisualLineCount(totalContent, screenWidth);
+                // 1. 清除当前行剩余内容
+                process.stdout.write('\r\x1b[K');
+                // 2. 向上回滚并清除之前的行
+                for (let i = 0; i < lineCount - 1; i++) {
+                    process.stdout.write('\x1b[A\x1b[K');
+                }
+                // 3. 输出格式化后的 Markdown
+                process.stdout.write(this.prefix + rendered + '\n');
             }
-            // 3. 输出格式化后的 Markdown
-            process.stdout.write(this.prefix + rendered + '\n');
-        }
-        else {
-            // 非 TTY 模式或无内容，直接补充换行
-            if (this.buffer.trim()) {
-                process.stdout.write('\n');
+            else {
+                // 非 TTY 模式（如管道）：输出格式化内容，不回滚
+                process.stdout.write(this.prefix + rendered + '\n');
             }
         }
         const elapsed = (Date.now() - this.startTime) / 1000;
@@ -154,8 +154,52 @@ class StreamMarkdownRenderer {
         let output = '';
         let i = 0;
         let orderedListIndex = 1;
+        let tableData = [];
+        let currentRow = [];
+        let inTable = false;
         while (i < tokens.length) {
             const token = tokens[i];
+            // 处理表格
+            if (token.type === 'table_open') {
+                inTable = true;
+                tableData = [];
+                i += 1;
+                continue;
+            }
+            if (token.type === 'table_close') {
+                inTable = false;
+                if (tableData.length > 0) {
+                    output += this.renderTable(tableData) + '\n\n';
+                }
+                tableData = [];
+                i += 1;
+                continue;
+            }
+            if (inTable) {
+                // 收集表格单元格内容
+                if (token.type === 'tr_open') {
+                    currentRow = [];
+                    i += 1;
+                    continue;
+                }
+                if (token.type === 'tr_close') {
+                    if (currentRow.length > 0) {
+                        tableData.push([...currentRow]);
+                    }
+                    currentRow = [];
+                    i += 1;
+                    continue;
+                }
+                if (token.type === 'th_open' || token.type === 'td_open') {
+                    const inlineToken = tokens[i + 1];
+                    if (inlineToken?.type === 'inline') {
+                        const content = this.renderInline(inlineToken.children || []);
+                        currentRow.push(content);
+                    }
+                    i += 3; // 跳过 inline 和 close
+                    continue;
+                }
+            }
             // 处理标题
             if (token.type === 'heading_open') {
                 const level = token.tag;
@@ -379,6 +423,37 @@ class StreamMarkdownRenderer {
                 this.finish();
             }
         };
+    }
+    /**
+     * 渲染表格
+     */
+    renderTable(tableData) {
+        if (tableData.length === 0)
+            return '';
+        // 计算每列的最大宽度
+        const colCount = Math.max(...tableData.map(row => row.length));
+        const colWidths = [];
+        for (let col = 0; col < colCount; col++) {
+            const max = Math.max(...tableData.map(row => (row[col] || '').length));
+            colWidths.push(max + 2); // 加上 2 个空格 padding
+        }
+        let output = '';
+        // 渲染每一行
+        tableData.forEach((row, rowIndex) => {
+            const cells = row.map((cell, colIndex) => {
+                const width = colWidths[colIndex];
+                const padded = cell.padEnd(width);
+                // 第一行（表头）加粗
+                return rowIndex === 0 ? chalk_1.default.bold(padded) : padded;
+            });
+            output += '│' + cells.join('│') + '│\n';
+            // 表头后加分隔线
+            if (rowIndex === 0) {
+                const separators = colWidths.map(w => '─'.repeat(w));
+                output += '├' + separators.join('┼') + '┤\n';
+            }
+        });
+        return output;
     }
     /**
      * Check if response appears complete

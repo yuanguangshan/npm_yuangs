@@ -60,6 +60,10 @@ export declare class StreamMarkdownRenderer {
      */
     startChunking(): (chunk: string) => void;
     /**
+     * 渲染表格
+     */
+    private renderTable;
+    /**
      * Check if response appears complete
      */
     private isComplete;
