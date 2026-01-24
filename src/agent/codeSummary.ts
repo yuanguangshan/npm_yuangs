@@ -1,5 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { TypeScriptASTParser } from './astParser';
 
 /**
  * 代码摘要生成器
@@ -14,24 +15,32 @@ export interface FileSummary {
 
 export interface Symbol {
   name: string;
-  type: 'function' | 'class' | 'variable' | 'import' | 'export';
+  type: 'function' | 'class' | 'variable' | 'import' | 'export' | 'interface' | 'type' | 'enum';
   line?: number;
   signature?: string;
 }
 
 /**
- * 从代码中提取符号（简单正则实现，支持多语言）
+ * 从代码中提取符号（优先AST，回退到正则）
  */
 export function extractSymbols(code: string, filename: string): Symbol[] {
+  const ext = path.extname(filename).toLowerCase();
+
+  // TypeScript/JavaScript 优先使用 AST 解析
+  if (['.ts', '.js', '.tsx', '.jsx'].includes(ext)) {
+    const result = TypeScriptASTParser.parse(code, filename);
+    if (result.success) {
+      return result.symbols;
+    }
+    // AST 解析失败，回退到正则表达式
+    console.warn(`[codeSummary] AST parsing failed for ${filename}, falling back to regex: ${result.error}`);
+  }
+
+  // 其他语言使用正则表达式（向后兼容）
   const symbols: Symbol[] = [];
   const lines = code.split('\n');
-  
-  // 根据文件扩展名选择提取策略
-  const ext = path.extname(filename).toLowerCase();
-  
-  if (['.ts', '.js', '.tsx', '.jsx'].includes(ext)) {
-    extractJavaScriptSymbols(lines, symbols);
-  } else if (['.py'].includes(ext)) {
+
+  if (['.py'].includes(ext)) {
     extractPythonSymbols(lines, symbols);
   } else if (['.go'].includes(ext)) {
     extractGoSymbols(lines, symbols);
@@ -39,10 +48,27 @@ export function extractSymbols(code: string, filename: string): Symbol[] {
     extractRustSymbols(lines, symbols);
   } else if (['.java'].includes(ext)) {
     extractJavaSymbols(lines, symbols);
+  } else if (['.ts', '.js', '.tsx', '.jsx'].includes(ext)) {
+    // TS/JS 正则回退
+    extractJavaScriptSymbols(lines, symbols);
   }
 
+  return symbols;
+}
+
+function extractJavaScriptSymbols(lines: string[], symbols: Symbol[]) {
+  lines.forEach((line, index) => {
+    const lineNum = index + 1;
+    const trimmed = line.trim();
+
+    if (trimmed.startsWith('import ') || trimmed.startsWith('export ')) {
+      symbols.push({
+        name: trimmed,
+        type: trimmed.startsWith('import ') ? 'import' : 'export',
+        line: lineNum
+      });
     }
-    // Classes
+
     const classMatch = trimmed.match(/^class\s+(\w+)/);
     if (classMatch) {
       symbols.push({
@@ -52,8 +78,7 @@ export function extractSymbols(code: string, filename: string): Symbol[] {
         signature: trimmed
       });
     }
-    
-    // Functions
+
     const funcMatch = trimmed.match(/^function\s+(\w+)/);
     if (funcMatch) {
       symbols.push({
@@ -63,8 +88,7 @@ export function extractSymbols(code: string, filename: string): Symbol[] {
         signature: trimmed
       });
     }
-    
-    // Methods
+
     const methodMatch = trimmed.match(/^\s*(async\s+)?(public|private|protected)?\s*(static)?\s*(\w+)\s*\(/);
     if (methodMatch && !trimmed.includes('function ')) {
       symbols.push({
@@ -74,8 +98,7 @@ export function extractSymbols(code: string, filename: string): Symbol[] {
         signature: trimmed
       });
     }
-    
-    // Arrow functions
+
     const arrowMatch = trimmed.match(/^const\s+(\w+)\s*=\s*(async\s+)?\(/);
     if (arrowMatch) {
       symbols.push({
@@ -88,15 +111,11 @@ export function extractSymbols(code: string, filename: string): Symbol[] {
   });
 }
 
-/**
- * 提取Python符号
- */
 function extractPythonSymbols(lines: string[], symbols: Symbol[]) {
   lines.forEach((line, index) => {
     const lineNum = index + 1;
     const trimmed = line.trim();
-    
-    // Imports
+
     if (trimmed.startsWith('import ') || trimmed.startsWith('from ')) {
       symbols.push({
         name: trimmed,
@@ -104,8 +123,7 @@ function extractPythonSymbols(lines: string[], symbols: Symbol[]) {
         line: lineNum
       });
     }
-    
-    // Classes
+
     const classMatch = trimmed.match(/^class\s+(\w+)/);
     if (classMatch) {
       symbols.push({
@@ -115,8 +133,7 @@ function extractPythonSymbols(lines: string[], symbols: Symbol[]) {
         signature: trimmed
       });
     }
-    
-    // Functions
+
     const funcMatch = trimmed.match(/^def\s+(\w+)/);
     if (funcMatch) {
       symbols.push({
@@ -129,15 +146,11 @@ function extractPythonSymbols(lines: string[], symbols: Symbol[]) {
   });
 }
 
-/**
- * 提取Go符号
- */
 function extractGoSymbols(lines: string[], symbols: Symbol[]) {
   lines.forEach((line, index) => {
     const lineNum = index + 1;
     const trimmed = line.trim();
-    
-    // Imports
+
     if (trimmed.startsWith('import ')) {
       symbols.push({
         name: trimmed,
@@ -145,8 +158,7 @@ function extractGoSymbols(lines: string[], symbols: Symbol[]) {
         line: lineNum
       });
     }
-    
-    // Types/Interfaces
+
     const typeMatch = trimmed.match(/^(type|interface)\s+(\w+)/);
     if (typeMatch) {
       symbols.push({
@@ -156,8 +168,7 @@ function extractGoSymbols(lines: string[], symbols: Symbol[]) {
         signature: trimmed
       });
     }
-    
-    // Functions
+
     const funcMatch = trimmed.match(/^func\s+(\w+)/);
     if (funcMatch) {
       symbols.push({
@@ -170,15 +181,11 @@ function extractGoSymbols(lines: string[], symbols: Symbol[]) {
   });
 }
 
-/**
- * 提取Rust符号
- */
 function extractRustSymbols(lines: string[], symbols: Symbol[]) {
   lines.forEach((line, index) => {
     const lineNum = index + 1;
     const trimmed = line.trim();
-    
-    // Uses
+
     if (trimmed.startsWith('use ')) {
       symbols.push({
         name: trimmed,
@@ -186,8 +193,7 @@ function extractRustSymbols(lines: string[], symbols: Symbol[]) {
         line: lineNum
       });
     }
-    
-    // Structs
+
     const structMatch = trimmed.match(/^struct\s+(\w+)/);
     if (structMatch) {
       symbols.push({
@@ -197,8 +203,7 @@ function extractRustSymbols(lines: string[], symbols: Symbol[]) {
         signature: trimmed
       });
     }
-    
-    // Functions
+
     const funcMatch = trimmed.match(/^fn\s+(\w+)/);
     if (funcMatch) {
       symbols.push({
@@ -211,15 +216,11 @@ function extractRustSymbols(lines: string[], symbols: Symbol[]) {
   });
 }
 
-/**
- * 提取Java符号
- */
 function extractJavaSymbols(lines: string[], symbols: Symbol[]) {
   lines.forEach((line, index) => {
     const lineNum = index + 1;
     const trimmed = line.trim();
-    
-    // Imports
+
     if (trimmed.startsWith('import ')) {
       symbols.push({
         name: trimmed,
@@ -227,8 +228,7 @@ function extractJavaSymbols(lines: string[], symbols: Symbol[]) {
         line: lineNum
       });
     }
-    
-    // Classes
+
     const classMatch = trimmed.match(/^class\s+(\w+)/);
     if (classMatch) {
       symbols.push({
@@ -238,8 +238,7 @@ function extractJavaSymbols(lines: string[], symbols: Symbol[]) {
         signature: trimmed
       });
     }
-    
-    // Methods
+
     const methodMatch = trimmed.match(/^\s*(public|private|protected)?\s*(static)?\s*\w+\s+(\w+)\s*\(/);
     if (methodMatch) {
       symbols.push({
@@ -256,33 +255,44 @@ function extractJavaSymbols(lines: string[], symbols: Symbol[]) {
  * 生成文件摘要
  */
 export function generateFileSummary(filePath: string, content: string): FileSummary {
+  const ext = path.extname(filePath).toLowerCase();
+
+  // TypeScript/JavaScript 优先使用 AST 紧凑摘要
+  if (['.ts', '.js', '.tsx', '.jsx'].includes(ext)) {
+    const result = TypeScriptASTParser.parse(content, filePath);
+    if (result.success) {
+      return {
+        path: filePath,
+        summary: TypeScriptASTParser.generateCompactSummary(result.symbols, filePath),
+        symbols: result.symbols
+      };
+    }
+  }
+
+  // 回退到正则表达式摘要
   const symbols = extractSymbols(content, filePath);
-  
-  // 统计符号类型
   const stats = {
     imports: symbols.filter(s => s.type === 'import').length,
     exports: symbols.filter(s => s.type === 'export').length,
     classes: symbols.filter(s => s.type === 'class').length,
     functions: symbols.filter(s => s.type === 'function').length,
   };
-  
-  // 生成摘要文本
+
   let summary = `文件: ${path.basename(filePath)}\n`;
   summary += `统计: ${stats.imports}个导入, ${stats.exports}个导出, ${stats.classes}个类, ${stats.functions}个函数\n`;
-  
+
   if (symbols.length > 0) {
     summary += '\n主要符号:\n';
-    
-    // 按类型分组
+
     const classes = symbols.filter(s => s.type === 'class');
     const functions = symbols.filter(s => s.type === 'function');
     const imports = symbols.filter(s => s.type === 'import');
     const exports = symbols.filter(s => s.type === 'export');
-    
+
     if (classes.length > 0) {
       summary += '  类: ' + classes.map(s => s.name).join(', ') + '\n';
     }
-    
+
     if (functions.length > 0) {
       summary += '  函数: ' + functions.slice(0, 10).map(s => s.name).join(', ');
       if (functions.length > 10) {
@@ -290,12 +300,12 @@ export function generateFileSummary(filePath: string, content: string): FileSumm
       }
       summary += '\n';
     }
-    
+
     if (imports.length > 0 && imports.length <= 5) {
       summary += '  导入: ' + imports.map(s => s.name).join(', ') + '\n';
     }
   }
-  
+
   return {
     path: filePath,
     summary,
@@ -308,12 +318,12 @@ export function generateFileSummary(filePath: string, content: string): FileSumm
  */
 export async function generateMultipleFileSummaries(files: Array<{ path: string; content: string }>): Promise<FileSummary[]> {
   const summaries: FileSummary[] = [];
-  
+
   for (const file of files) {
     const summary = generateFileSummary(file.path, file.content);
     summaries.push(summary);
   }
-  
+
   return summaries;
 }
 
@@ -322,9 +332,8 @@ export async function generateMultipleFileSummaries(files: Array<{ path: string;
  */
 export function generateSummaryReport(summaries: FileSummary[], maxLength: number = 2000): string {
   let report = '[CODE STRUCTURE SUMMARY]\n';
-  
+
   for (const summary of summaries) {
-    // 如果超过最大长度，截断
     if (report.length + summary.summary.length > maxLength) {
       const remaining = maxLength - report.length - 20;
       if (remaining > 0) {
@@ -332,9 +341,9 @@ export function generateSummaryReport(summaries: FileSummary[], maxLength: numbe
       }
       break;
     }
-    
+
     report += '\n' + summary.summary;
   }
-  
+
   return report;
 }

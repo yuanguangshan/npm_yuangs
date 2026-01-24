@@ -7,63 +7,19 @@ exports.LLMAdapter = void 0;
 const llm_1 = require("./llm");
 const client_1 = require("../ai/client");
 const json5_1 = __importDefault(require("json5"));
+const protocolV2_2_1 = require("./protocolV2_2");
 class LLMAdapter {
     static async think(messages, mode = 'chat', onChunk, model, customSystemPrompt, contextManager) {
-        // SYSTEM PROTOCOL V2.2 - CoT (Chain of Thought) 显式分离
-        let protocol = `[SYSTEM PROTOCOL V2.2]
-- ROLE: AUTOMATED EXECUTION AGENT
-- MODE: REACT (THINK -> ACTION -> PERCEIVE)
-- OUTPUT: CoT Block + JSON Block
-
-# EXECUTION PROTOCOL
-1. **THINK**: First, analyze the user's request, the current context, and previous history. Plan your next step.
-2. **ACT**: Generate a structured JSON action.
-3. **OBSERVE**: Wait for the tool output.
-
-# OUTPUT FORMAT
-You must output a "Thought Block" followed by a "JSON Action Block".
-
-[THOUGHT]
-Explain your reasoning here. 
-- Why are you choosing this tool? 
-- If the previous step failed, how are you fixing it?
-- If using a file, mention lines you are interested in.
-[/THOUGHT]
-
-\`\`\`json
-{
-  "action_type": "tool_call" | "shell_cmd" | "answer",
-  "tool_name": "...", 
-  "parameters": { ... },
-  "command": "...",
-  "risk_level": "low" | "medium" | "high",
-  "risk_explanation": "Required if risk is medium/high"
-}
-\`\`\`
-
-# GUIDELINES
-- **Silence**: Do not output conversational filler outside the [THOUGHT] block.
-- **Safety**: If you must run a destructive command (rm, dd), set risk_level to "high".
-- **Context**: You have access to files in context.
-- **Formatting**: When answering (action_type="answer"), use standard Markdown.
-
-Example Task: "count files in /tmp"
-
-[THOUGHT]
-User wants to count files in /tmp directory. I'll use ls to list files and pipe to wc -l to count them. This is a safe operation with low risk.
-[/THOUGHT]
-
-\`\`\`json
-{
-  "action_type": "shell_cmd",
-  "command": "ls /tmp | wc -l",
-  "risk_level": "low"
-}
-\`\`\``;
+        const v2Config = {
+            mode: mode === 'chat' ? 'chat' : 'command',
+            enableStrictOutput: mode !== 'chat',
+            enableReasoningTrace: true
+        };
+        let protocol = (0, protocolV2_2_1.buildV2_2ProtocolPrompt)(v2Config);
         if (mode === 'command' || mode === 'command+exec') {
             protocol += `\n\nCOMMAND MODE ACTIVE:
 - Prioritize "shell_cmd" for any terminal-based task.
-- Minimize "answer" type unless the task is purely conversational.
+- Minimize "answer" type unless task is purely conversational.
 - Direct execution is expected.`;
         }
         const prompt = {
