@@ -35,8 +35,11 @@ const STRUCTURED_OUTPUT_MODELS = [
   'gpt-4-turbo',
   'claude-3.5-sonnet',
   'claude-3.5-haiku',
-  'gemini-1.5-pro',
-  'gemini-1.5-flash'
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+  'gemini-3-flash-preview',
+  'Assistant',
+  'gemini-2.5-pro'
 ];
 
 /**
