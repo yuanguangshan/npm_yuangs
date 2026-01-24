@@ -731,7 +731,7 @@ ${stderr}
                         : contextAssembler.assemble(contextStore, '你好，请基于以上上下文开始对话');
 
                     const spinner = ora(chalk.cyan('AI 正在思考...')).start();
-                    const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
+                    const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
 
                     await runtime.run(finalPrompt, 'chat' as any, (chunk) => {
                         renderer.onChunk(chunk);
@@ -764,7 +764,7 @@ ${stderr}
                         : contextAssembler.assemble(contextStore, '你好，请基于以上上下文开始对话');
 
                     const spinner = ora(chalk.cyan('AI 正在思考...')).start();
-                    const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
+                    const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
 
                     await runtime.run(finalPrompt, 'chat' as any, (chunk) => {
                         renderer.onChunk(chunk);
