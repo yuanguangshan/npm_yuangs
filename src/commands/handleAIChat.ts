@@ -261,9 +261,9 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
         // 不是特殊语法，正常发给 AI
         const { AgentRuntime } = await import('../agent');
         const runtime = new AgentRuntime(getConversationHistory());
-        
+
         const spinner = ora(chalk.cyan('AI 正在思考...')).start();
-        const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
+        const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
 
         await runtime.run(initialQuestion, model as any, (chunk) => {
             renderer.onChunk(chunk);
@@ -824,14 +824,14 @@ ${finalPrompt}
                 rl.pause();
                 
                 // 使用 AgentRuntime 执行提问
-                const spinner = ora(chalk.cyan('AI 正在思考...')).start();
-                const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
+                    const spinner = ora(chalk.cyan('AI 正在思考...')).start();
+                    const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
 
-                await runtime.run(finalPrompt, model as any, (chunk) => {
-                    renderer.onChunk(chunk);
-                });
+                    await runtime.run(finalPrompt, model as any, (chunk) => {
+                        renderer.onChunk(chunk);
+                    });
 
-                const fullResponse = renderer.finish();
+                    const fullResponse = renderer.finish();
 
                 // 同步上下文到全局历史（为了兼容性）
                 addToConversationHistory('user', finalPrompt);

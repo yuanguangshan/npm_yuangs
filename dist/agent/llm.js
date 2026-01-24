@@ -66,6 +66,7 @@ async function runLLM({ prompt, model, stream, onChunk, }) {
         let currentBlockType = 'none';
         let buffer = '';
         await (0, client_1.callAI_Stream)(messages, model, (chunk) => {
+            raw += chunk;
             // Update buffer
             buffer += chunk;
             // Detect block type transitions

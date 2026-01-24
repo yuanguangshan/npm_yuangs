@@ -121,10 +121,8 @@ class AgentRuntime {
             // 如果 LLM 认为已经完成或者当前的动作就是回答
             if (thought.isDone || action.type === "answer") {
                 const result = await executor_1.ToolExecutor.execute(action);
-                if (!onChunk) {
-                    const rendered = (0, marked_1.marked)(result.output);
-                    console.log(chalk_1.default.green(`\n🤖 AI：\n`) + rendered);
-                }
+                const rendered = (0, marked_1.marked)(result.output);
+                console.log(chalk_1.default.green(`\n🤖 AI：\n`) + rendered);
                 this.context.addMessage("assistant", result.output);
                 break;
             }

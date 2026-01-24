@@ -19,6 +19,7 @@ import {
   injectDynamicContext,
   DynamicContext
 } from "./dynamicPrompt";
+import { StreamMarkdownRenderer } from '../utils/renderer';
 
 export class AgentRuntime {
   private context: SmartContextManager;
@@ -34,6 +35,7 @@ export class AgentRuntime {
     mode: "chat" | "command" = "chat",
     onChunk?: (chunk: string) => void,
     model?: string,
+    renderer?: StreamMarkdownRenderer
   ) {
     let turnCount = 0;
     const maxTurns = 10;
@@ -95,10 +97,23 @@ export class AgentRuntime {
       // 注入动态上下文
       const enhancedPrompt = injectDynamicContext(basePrompt, dynamicContext);
 
+      // Create renderer if not provided but onChunk is available
+      let agentRenderer = renderer;
+      let agentOnChunk = onChunk;
+
+      if (!agentRenderer && agentOnChunk) {
+        agentRenderer = new StreamMarkdownRenderer(
+          chalk.bgHex('#3b82f6').white.bold(' 🤖 Agent ') + ' ',
+          undefined,
+          { autoFinish: false }
+        );
+        agentOnChunk = agentRenderer.startChunking();
+      }
+
       const thought = await LLMAdapter.think(
         messages,
         mode as any,
-        onChunk,
+        agentOnChunk,
         model,
         enhancedPrompt,
         this.context,
@@ -119,10 +134,21 @@ export class AgentRuntime {
       // 如果 LLM 认为已经完成或者当前的动作就是回答
       if (thought.isDone || action.type === "answer") {
         const result = await ToolExecutor.execute(action as any);
+
         if (!onChunk) {
-          const rendered = marked(result.output);
-          console.log(chalk.green(`\n🤖 AI：\n`) + rendered);
+          if (agentRenderer) {
+            // Stream final answer through renderer
+            for (let i = 0; i < result.output.length; i += 10) {
+              const chunk = result.output.slice(i, i + 10);
+              agentRenderer.onChunk(chunk);
+            }
+            agentRenderer.finish();
+          } else {
+            const rendered = marked(result.output);
+            console.log(chalk.green(`\n🤖 AI：\n`) + rendered);
+          }
         }
+
         this.context.addMessage("assistant", result.output);
         break;
       }

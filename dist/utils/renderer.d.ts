@@ -1,11 +1,19 @@
 import { Ora } from 'ora';
+export interface RendererOptions {
+    autoFinish?: boolean;
+    onChunkCallback?: (chunk: string) => void;
+    quietMode?: boolean;
+}
 export declare class StreamMarkdownRenderer {
     private fullResponse;
     private prefix;
     private isFirstOutput;
     private spinner;
     private startTime;
-    constructor(prefix?: string, spinner?: Ora);
+    private quietMode;
+    private autoFinish;
+    private onChunkCallback;
+    constructor(prefix?: string, spinner?: Ora, options?: RendererOptions | boolean);
     /**
      * 处理流式数据块
      */

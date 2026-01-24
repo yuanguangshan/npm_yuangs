@@ -58,17 +58,37 @@ marked.setOptions({
     renderer: customRenderer
 });
 
+export interface RendererOptions {
+    autoFinish?: boolean;
+    onChunkCallback?: (chunk: string) => void;
+    quietMode?: boolean;
+}
+
 export class StreamMarkdownRenderer {
     private fullResponse: string = '';
     private prefix: string;
     private isFirstOutput: boolean = true;
     private spinner: Ora | null = null;
     private startTime: number;
+    private quietMode: boolean;
+    private autoFinish: boolean;
+    private onChunkCallback: ((chunk: string) => void) | null;
 
-    constructor(prefix: string = chalk.bold.blue('🤖 AI：'), spinner?: Ora) {
+    constructor(prefix: string = chalk.bold.blue('🤖 AI：'), spinner?: Ora, options?: RendererOptions | boolean) {
         this.prefix = prefix;
         this.spinner = spinner || null;
         this.startTime = Date.now();
+
+        // Support both old boolean quietMode and new options object
+        if (typeof options === 'boolean') {
+            this.quietMode = options;
+            this.autoFinish = false;
+            this.onChunkCallback = null;
+        } else {
+            this.quietMode = options?.quietMode ?? false;
+            this.autoFinish = options?.autoFinish ?? false;
+            this.onChunkCallback = options?.onChunkCallback || null;
+        }
     }
 
     /**
@@ -79,13 +99,21 @@ export class StreamMarkdownRenderer {
             this.spinner.stop();
         }
 
-        if (this.isFirstOutput) {
-            process.stdout.write(this.prefix);
-            this.isFirstOutput = false;
+        if (!this.quietMode) {
+            if (this.isFirstOutput) {
+                process.stdout.write(this.prefix);
+                this.isFirstOutput = false;
+            }
+
+            process.stdout.write(chunk);
         }
 
         this.fullResponse += chunk;
-        process.stdout.write(chunk);
+
+        // Call external callback if provided
+        if (this.onChunkCallback) {
+            this.onChunkCallback(chunk);
+        }
     }
 
     /**
@@ -99,10 +127,14 @@ export class StreamMarkdownRenderer {
 
         const formatted = (marked.parse(this.fullResponse, { async: false }) as string).trim();
 
-        if (process.stdout.isTTY && this.fullResponse.trim()) {
+        if (this.quietMode) {
+            if (this.fullResponse.trim()) {
+                process.stdout.write(this.prefix + formatted + '\n');
+            }
+        } else if (process.stdout.isTTY && this.fullResponse.trim()) {
             const screenWidth = process.stdout.columns || 80;
             const totalContent = this.prefix + this.fullResponse;
-            
+
             // 计算原始文本占用的可视行数
             const lineCount = this.getVisualLineCount(totalContent, screenWidth);
 
@@ -118,13 +150,13 @@ export class StreamMarkdownRenderer {
         } else {
             // 非 TTY 模式或无内容，直接补充换行（如果之前输出了内容）
             if (this.fullResponse.trim()) {
-                process.stdout.write('\n'); 
+                process.stdout.write('\n');
             }
         }
 
-        // 输出耗时统计
         const elapsed = (Date.now() - this.startTime) / 1000;
-        process.stdout.write('\n' + chalk.gray(`─`.repeat(20) + ` (耗时: ${elapsed.toFixed(2)}s) ` + `─`.repeat(20) + '\n\n'));
+        const separator = '─'.repeat(20);
+        process.stdout.write(`\n${chalk.gray(separator)} (耗时: ${elapsed.toFixed(2)}s) ${separator}\n\n`);
 
         return this.fullResponse;
     }
@@ -158,5 +190,31 @@ export class StreamMarkdownRenderer {
         }
 
         return totalLines;
+    }
+
+    /**
+     * Start chunking mode for Agent Runtime
+     * Returns a callback function that Agent can use to send chunks
+     */
+    public startChunking(): (chunk: string) => void {
+        return (chunk: string) => {
+            this.onChunk(chunk);
+
+            // Auto-finish if configured
+            if (this.autoFinish && this.isComplete()) {
+                this.finish();
+            }
+        };
+    }
+
+    /**
+     * Check if response appears complete (heuristic)
+     */
+    private isComplete(): boolean {
+        const trimmed = this.fullResponse.trim();
+        // Simple heuristic: ends with code block or natural sentence end
+        return trimmed.endsWith('```') ||
+               trimmed.endsWith('.') ||
+               (trimmed.length > 50 && trimmed.endsWith('\n'));
     }
 }

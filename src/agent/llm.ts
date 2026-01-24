@@ -84,6 +84,8 @@ export async function runLLM({
         let buffer = '';
 
         await callAI_Stream(messages, model, (chunk) => {
+            raw += chunk;
+
             // Update buffer
             buffer += chunk;
 

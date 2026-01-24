@@ -99,10 +99,24 @@ class StreamMarkdownRenderer {
     isFirstOutput = true;
     spinner = null;
     startTime;
-    constructor(prefix = chalk_1.default.bold.blue('🤖 AI：'), spinner) {
+    quietMode;
+    autoFinish;
+    onChunkCallback;
+    constructor(prefix = chalk_1.default.bold.blue('🤖 AI：'), spinner, options) {
         this.prefix = prefix;
         this.spinner = spinner || null;
         this.startTime = Date.now();
+        // Support both old boolean quietMode and new options object
+        if (typeof options === 'boolean') {
+            this.quietMode = options;
+            this.autoFinish = false;
+            this.onChunkCallback = null;
+        }
+        else {
+            this.quietMode = options?.quietMode ?? false;
+            this.autoFinish = options?.autoFinish ?? false;
+            this.onChunkCallback = options?.onChunkCallback || null;
+        }
     }
     /**
      * 处理流式数据块
@@ -111,12 +125,18 @@ class StreamMarkdownRenderer {
         if (this.spinner && this.spinner.isSpinning) {
             this.spinner.stop();
         }
-        if (this.isFirstOutput) {
-            process.stdout.write(this.prefix);
-            this.isFirstOutput = false;
+        if (!this.quietMode) {
+            if (this.isFirstOutput) {
+                process.stdout.write(this.prefix);
+                this.isFirstOutput = false;
+            }
+            process.stdout.write(chunk);
         }
         this.fullResponse += chunk;
-        process.stdout.write(chunk);
+        // Call external callback if provided
+        if (this.onChunkCallback) {
+            this.onChunkCallback(chunk);
+        }
     }
     /**
      * 流结束，执行回滚并渲染 Markdown
@@ -127,7 +147,12 @@ class StreamMarkdownRenderer {
             this.spinner.stop();
         }
         const formatted = marked.parse(this.fullResponse, { async: false }).trim();
-        if (process.stdout.isTTY && this.fullResponse.trim()) {
+        if (this.quietMode) {
+            if (this.fullResponse.trim()) {
+                process.stdout.write(this.prefix + formatted + '\n');
+            }
+        }
+        else if (process.stdout.isTTY && this.fullResponse.trim()) {
             const screenWidth = process.stdout.columns || 80;
             const totalContent = this.prefix + this.fullResponse;
             // 计算原始文本占用的可视行数
@@ -147,9 +172,9 @@ class StreamMarkdownRenderer {
                 process.stdout.write('\n');
             }
         }
-        // 输出耗时统计
         const elapsed = (Date.now() - this.startTime) / 1000;
-        process.stdout.write('\n' + chalk_1.default.gray(`─`.repeat(20) + ` (耗时: ${elapsed.toFixed(2)}s) ` + `─`.repeat(20) + '\n\n'));
+        const separator = '─'.repeat(20);
+        process.stdout.write(`\n${chalk_1.default.gray(separator)} (耗时: ${elapsed.toFixed(2)}s) ${separator}\n\n`);
         return this.fullResponse;
     }
     /**
