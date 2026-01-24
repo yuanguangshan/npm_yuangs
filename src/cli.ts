@@ -6,7 +6,6 @@ import os from 'os';
 import { Command } from 'commander';
 import { handleAICommand } from './commands/handleAICommand';
 import { handleAIChat } from './commands/handleAIChat';
-import { handleConfig } from './commands/handleConfig';
 import { registerCapabilityCommands } from './commands/capabilityCommands';
 import { getAllCommands, getCommandSubcommands, getCommandDescription, installBashCompletion, installZshCompletion, complete, setProgramInstance } from './core/completion';
 import { loadAppsConfig, openUrl, DEFAULT_APPS } from './core/apps';
@@ -18,6 +17,7 @@ import { registerExplainCommands } from './commands/explainCommands';
 import { registerReplayCommands } from './commands/replayCommands';
 import { registerSkillsCommands } from './commands/skillsCommands';
 import { registerPreferencesCommands } from './commands/preferencesCommands';
+import { registerConfigCommands } from './commands/config';
 import { wouldExpandAsGlob } from './utils/globDetector';
 // import { createDiffEditCommand } from './governance/commands/diffEdit';
 
@@ -249,12 +249,6 @@ program
     });
 
 program
-    .command('config')
-    .description('管理本地配置 (~/.yuangs.json)')
-    .argument('[action]', 'get, set, list')
-    .argument('[key]', '配置项名称')
-    .argument('[value]', '配置项值')
-    .action(handleConfig);
 
 program
     .command('macros')
@@ -393,6 +387,7 @@ registerExplainCommands(program);
 registerReplayCommands(program);
 registerSkillsCommands(program);
 registerPreferencesCommands(program);
+registerConfigCommands(program);
 
 // Add governance diff-edit command
 // const diffEditCmd = createDiffEditCommand();

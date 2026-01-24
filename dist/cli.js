@@ -44,7 +44,6 @@ const os_1 = __importDefault(require("os"));
 const commander_1 = require("commander");
 const handleAICommand_1 = require("./commands/handleAICommand");
 const handleAIChat_1 = require("./commands/handleAIChat");
-const handleConfig_1 = require("./commands/handleConfig");
 const capabilityCommands_1 = require("./commands/capabilityCommands");
 const completion_1 = require("./core/completion");
 const apps_1 = require("./core/apps");
@@ -56,6 +55,7 @@ const explainCommands_1 = require("./commands/explainCommands");
 const replayCommands_1 = require("./commands/replayCommands");
 const skillsCommands_1 = require("./commands/skillsCommands");
 const preferencesCommands_1 = require("./commands/preferencesCommands");
+const config_1 = require("./commands/config");
 const globDetector_1 = require("./utils/globDetector");
 // import { createDiffEditCommand } from './governance/commands/diffEdit';
 // Mandatory Node.js version check
@@ -273,13 +273,7 @@ program
         }
     }
 });
-program
-    .command('config')
-    .description('管理本地配置 (~/.yuangs.json)')
-    .argument('[action]', 'get, set, list')
-    .argument('[key]', '配置项名称')
-    .argument('[value]', '配置项值')
-    .action(handleConfig_1.handleConfig);
+program;
 program
     .command('macros')
     .description('查看所有快捷指令')
@@ -408,6 +402,7 @@ program
 (0, replayCommands_1.registerReplayCommands)(program);
 (0, skillsCommands_1.registerSkillsCommands)(program);
 (0, preferencesCommands_1.registerPreferencesCommands)(program);
+(0, config_1.registerConfigCommands)(program);
 // Add governance diff-edit command
 // const diffEditCmd = createDiffEditCommand();
 // program.addCommand(diffEditCmd);
