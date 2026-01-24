@@ -9,6 +9,11 @@ import { getOSProfile } from '../core/os';
 import { getMacros } from '../core/macros';
 import { aiCommandPlanSchema } from '../core/validation';
 import { getRelevantSkills } from './skills';
+import {
+    buildDynamicContext,
+    injectDynamicContext,
+    DynamicContext
+} from './dynamicPrompt';
 
 export function buildPrompt(
     intent: AgentIntent,
@@ -32,15 +37,11 @@ function buildChatPrompt(
     ];
 
     // Add context files if available
+    let contextDesc = '';
     if (context.files && context.files.length > 0) {
-        const contextDesc = context.files.map(f =>
+        contextDesc = context.files.map(f =>
             `File: ${f.path}\n\`\`\`\n${f.content}\n\`\`\``
         ).join('\n\n');
-
-        messages.push({
-            role: 'system',
-            content: `Context:\n${contextDesc}`,
-        });
     }
 
     messages.push({
@@ -49,7 +50,7 @@ function buildChatPrompt(
     });
 
     // Enhanced system prompt with role definition, interaction guidelines, and format standards
-    const systemPrompt = `你是一个专业的技术助手（Yuangs AI），专精于：
+    const baseSystemPrompt = `你是一个专业的技术助手（Yuangs AI），专精于：
 - 软件开发（前端、后端、DevOps）
 - 系统管理和自动化
 - 问题诊断和解决
@@ -84,6 +85,9 @@ function buildChatPrompt(
 - 无法直接修改文件，提供修改建议
 - 大文件只读取关键部分以节省Token
 - 敏感信息（如密码）不会保存`;
+
+    const dynamicContext: DynamicContext = {};
+    const systemPrompt = injectDynamicContext(baseSystemPrompt, dynamicContext);
 
     return {
         system: systemPrompt,

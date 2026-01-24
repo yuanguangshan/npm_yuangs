@@ -17,6 +17,7 @@ import { registerRegistryCommands } from './commands/registryCommands';
 import { registerExplainCommands } from './commands/explainCommands';
 import { registerReplayCommands } from './commands/replayCommands';
 import { registerSkillsCommands } from './commands/skillsCommands';
+import { registerPreferencesCommands } from './commands/preferencesCommands';
 import { wouldExpandAsGlob } from './utils/globDetector';
 // import { createDiffEditCommand } from './governance/commands/diffEdit';
 
@@ -91,6 +92,10 @@ program
     .option('-l', '使用 Lite 模型')
     .option('-w, --with-content', '在管道模式下读取文件内容')
     .option('--verbose', '详细输出（显示 Capability 匹配详情）')
+    .option('--planner', '启用双Agent模式（Planner + Executor）')
+    .option('--no-planner', '禁用双Agent模式')
+    .option('--show-context-relevance', '显示上下文相关性评分')
+    .option('--context-strategy <strategy>', '上下文策略: smart/minimal/full')
     .action(async (questionArgs, options) => {
         const stdinData = await readStdin();
         let question = Array.isArray(questionArgs) ? questionArgs.join(' ').trim() : questionArgs || '';
@@ -111,16 +116,41 @@ program
         if (options.f) model = 'Assistant';
         if (options.l) model = 'Assistant';
 
+        const { PreferencesManager } = await import('./agent/preferences');
+
+        if (options.contextStrategy) {
+            const validStrategies = ['smart', 'minimal', 'full'];
+            if (validStrategies.includes(options.contextStrategy)) {
+                PreferencesManager.setPreferences({ contextStrategy: options.contextStrategy });
+                console.log(chalk.cyan(`Context strategy set to: ${options.contextStrategy}`));
+            } else {
+                console.log(chalk.red(`Invalid context strategy: ${options.contextStrategy}`));
+                console.log(chalk.gray('Valid options: smart, minimal, full'));
+            }
+        }
+
         if (!question && !stdinData) {
             await handleAIChat(null, model);
             return;
         }
 
-        const { AgentRuntime } = await import('./agent');
-        console.log(chalk.magenta('--- RUNNING WITH NEW AGENT ENGINE ---'));
-        const runtime = new AgentRuntime(await import('./ai/client').then(m => m.getConversationHistory()));
+        const isPlannerEnabled = options.planner || (options.noPlanner !== true && PreferencesManager.getPreference('autoConfirm') === false);
 
-        await runtime.run(question || '', options.exec ? 'command' : 'chat', undefined, model);
+        (global as any).yuangsOptions = {
+            showContextRelevance: options.showContextRelevance
+        };
+
+        if (isPlannerEnabled) {
+            const { DualAgentRuntime } = await import('./agent');
+            console.log(chalk.magenta('--- RUNNING WITH DUAL AGENT ENGINE (PLANNER + EXECUTOR) ---'));
+            const runtime = new DualAgentRuntime(await import('./ai/client').then(m => m.getConversationHistory()));
+            await runtime.run(question || '', undefined, model);
+        } else {
+            const { AgentRuntime } = await import('./agent');
+            console.log(chalk.magenta('--- RUNNING WITH NEW AGENT ENGINE ---'));
+            const runtime = new AgentRuntime(await import('./ai/client').then(m => m.getConversationHistory()));
+            await runtime.run(question || '', options.exec ? 'command' : 'chat', undefined, model);
+        }
     });
 
 program
@@ -362,6 +392,7 @@ registerRegistryCommands(program);
 registerExplainCommands(program);
 registerReplayCommands(program);
 registerSkillsCommands(program);
+registerPreferencesCommands(program);
 
 // Add governance diff-edit command
 // const diffEditCmd = createDiffEditCommand();

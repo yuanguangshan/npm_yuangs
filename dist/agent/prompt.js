@@ -6,6 +6,7 @@ const os_1 = require("../core/os");
 const macros_1 = require("../core/macros");
 const validation_1 = require("../core/validation");
 const skills_1 = require("./skills");
+const dynamicPrompt_1 = require("./dynamicPrompt");
 function buildPrompt(intent, context, mode, input) {
     if (mode === 'chat') {
         return buildChatPrompt(context, input);
@@ -17,19 +18,16 @@ function buildChatPrompt(context, input) {
         ...(context.history ?? []),
     ];
     // Add context files if available
+    let contextDesc = '';
     if (context.files && context.files.length > 0) {
-        const contextDesc = context.files.map(f => `File: ${f.path}\n\`\`\`\n${f.content}\n\`\`\``).join('\n\n');
-        messages.push({
-            role: 'system',
-            content: `Context:\n${contextDesc}`,
-        });
+        contextDesc = context.files.map(f => `File: ${f.path}\n\`\`\`\n${f.content}\n\`\`\``).join('\n\n');
     }
     messages.push({
         role: 'user',
         content: input,
     });
     // Enhanced system prompt with role definition, interaction guidelines, and format standards
-    const systemPrompt = `你是一个专业的技术助手（Yuangs AI），专精于：
+    const baseSystemPrompt = `你是一个专业的技术助手（Yuangs AI），专精于：
 - 软件开发（前端、后端、DevOps）
 - 系统管理和自动化
 - 问题诊断和解决
@@ -64,6 +62,8 @@ function buildChatPrompt(context, input) {
 - 无法直接修改文件，提供修改建议
 - 大文件只读取关键部分以节省Token
 - 敏感信息（如密码）不会保存`;
+    const dynamicContext = {};
+    const systemPrompt = (0, dynamicPrompt_1.injectDynamicContext)(baseSystemPrompt, dynamicContext);
     return {
         system: systemPrompt,
         messages,

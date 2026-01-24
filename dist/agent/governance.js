@@ -41,6 +41,7 @@ const chalk_1 = __importDefault(require("chalk"));
 const core_1 = require("./governance/core");
 const ledger_1 = require("./governance/ledger");
 const bridge_1 = require("./governance/bridge");
+const riskDisclosure_1 = require("./riskDisclosure");
 const js_yaml_1 = __importDefault(require("js-yaml"));
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
@@ -101,6 +102,15 @@ class GovernanceService {
         else if (action.type === 'tool_call') {
             console.log(chalk_1.default.bold.green('🛠️  Tool: ') + chalk_1.default.cyan(`${action.payload.tool_name}(${JSON.stringify(action.payload.parameters)})`));
         }
+        // Generate and display risk disclosure
+        const riskFactors = (0, riskDisclosure_1.extractRiskFactorsFromThought)(action.reasoning || '');
+        riskFactors.commandType = action.type;
+        if (action.type === 'shell_cmd') {
+            riskFactors.command = action.payload.command;
+        }
+        riskFactors.isDestructive = action.payload.risk_level === 'high';
+        const disclosure = (0, riskDisclosure_1.generateRiskDisclosure)(riskFactors);
+        console.log((0, riskDisclosure_1.formatRiskDisclosureCLI)(disclosure));
         const { confirm } = await Promise.resolve().then(() => __importStar(require('../utils/confirm')));
         const ok = await confirm(`Do you want to proceed with this action?`);
         if (ok) {

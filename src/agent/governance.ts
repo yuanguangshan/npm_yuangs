@@ -3,6 +3,7 @@ import { ProposedAction, GovernanceDecision } from './state';
 import { evaluateProposal, PolicyRule, RiskEntry } from './governance/core';
 import { RiskLedger } from './governance/ledger';
 import { WasmGovernanceBridge } from './governance/bridge';
+import { generateRiskDisclosure, formatRiskDisclosureCLI, extractRiskFactorsFromThought, RiskFactors } from './riskDisclosure';
 import jsyaml from 'js-yaml';
 import fs from 'fs';
 import path from 'path';
@@ -71,6 +72,17 @@ export class GovernanceService {
     } else if (action.type === 'tool_call') {
       console.log(chalk.bold.green('🛠️  Tool: ') + chalk.cyan(`${action.payload.tool_name}(${JSON.stringify(action.payload.parameters)})`));
     }
+
+    // Generate and display risk disclosure
+    const riskFactors: RiskFactors = extractRiskFactorsFromThought(action.reasoning || '');
+    riskFactors.commandType = action.type;
+    if (action.type === 'shell_cmd') {
+      riskFactors.command = action.payload.command;
+    }
+    riskFactors.isDestructive = action.payload.risk_level === 'high';
+
+    const disclosure = generateRiskDisclosure(riskFactors);
+    console.log(formatRiskDisclosureCLI(disclosure));
 
     const { confirm } = await import('../utils/confirm');
     const ok = await confirm(`Do you want to proceed with this action?`);

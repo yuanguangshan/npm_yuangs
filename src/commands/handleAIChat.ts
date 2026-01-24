@@ -193,12 +193,47 @@ async function handleDirectoryReference(input: string): Promise<string> {
 
         const contentMap = readFilesContent(filePaths);
 
+        const relativeFilePaths = filePaths.map(p => path.relative(process.cwd(), p));
+
         const prompt = buildPromptWithFileContent(
             `目录: ${dirPath}\n找到 ${filePaths.length} 个文件`,
-            filePaths.map(p => path.relative(process.cwd(), p)),
+            relativeFilePaths,
             contentMap,
             question
         );
+
+        const globalOptions = (global as any).yuangsOptions || {};
+        if (globalOptions.showContextRelevance && question) {
+            const { SmartContextManager } = await import('../agent/smartContextManager');
+            const contextManager = new SmartContextManager();
+
+            const enhancedContext = await contextManager.getEnhancedContext({
+                query: question,
+                minRelevance: 0.3,
+                maxTokens: 5000,
+                enableSmartSummary: true
+            });
+
+            if (enhancedContext.summary) {
+                console.log(chalk.cyan('\n📊 Context Relevance Analysis\n'));
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                console.log(enhancedContext.summary);
+
+                if (enhancedContext.rankedItems.length > 0) {
+                    console.log(chalk.cyan('\n📋 Ranked Files (Top 10)\n'));
+                    enhancedContext.rankedItems.slice(0, 10).forEach((item, i) => {
+                        const relevancePercent = (item.relevance * 100).toFixed(0);
+                        const color = item.relevance > 0.8 ? chalk.green :
+                                    item.relevance > 0.5 ? chalk.yellow : chalk.gray;
+                        console.log(`  ${i + 1}. ${color(item.path)} ${chalk.gray(`(${relevancePercent}%)`)}`);
+                        if (item.matchReasons.length > 0) {
+                            console.log(`     ${chalk.gray(item.matchReasons.join(', '))}`);
+                        }
+                    });
+                }
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+            }
+        }
 
         console.log(chalk.green(`✓ 已读取 ${contentMap.size} 个文件\n`));
         return prompt;

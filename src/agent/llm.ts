@@ -7,6 +7,7 @@ import path from 'path';
 import os from 'os';
 import { safeParseJSON } from '../core/validation';
 import { z } from 'zod';
+import { withRetry, RetryConfig } from './errorHandling';
 
 const CONFIG_FILE = path.join(os.homedir(), '.yuangs.json');
 
@@ -156,8 +157,11 @@ export async function runLLM({
     }
 
     try {
-        const response = await axios.post(url, responseData, { headers });
-        const rawText = response.data.choices[0]?.message?.content || '';
+        const response = await withRetry(async () => await axios.post(url, responseData, { headers }) as any, {
+          retryableErrors: ['network', 'timeout', 'rate limit', 'ECONNRESET', 'ETIMEDOUT', '503', '502', '429'],
+          maxAttempts: 3
+        });
+        const rawText = (response.data as any)?.choices[0]?.message?.content || '';
 
         let parsed = undefined;
         if (prompt.outputSchema) {

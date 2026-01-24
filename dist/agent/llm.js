@@ -14,6 +14,7 @@ const path_1 = __importDefault(require("path"));
 const os_1 = __importDefault(require("os"));
 const validation_2 = require("../core/validation");
 const zod_1 = require("zod");
+const errorHandling_1 = require("./errorHandling");
 const CONFIG_FILE = path_1.default.join(os_1.default.homedir(), '.yuangs.json');
 exports.AgentActionSchema = zod_1.z.object({
     action_type: zod_1.z.enum(['tool_call', 'shell_cmd', 'answer', 'code_diff']),
@@ -134,8 +135,11 @@ async function runLLM({ prompt, model, stream, onChunk, }) {
         };
     }
     try {
-        const response = await axios_1.default.post(url, responseData, { headers });
-        const rawText = response.data.choices[0]?.message?.content || '';
+        const response = await (0, errorHandling_1.withRetry)(async () => await axios_1.default.post(url, responseData, { headers }), {
+            retryableErrors: ['network', 'timeout', 'rate limit', 'ECONNRESET', 'ETIMEDOUT', '503', '502', '429'],
+            maxAttempts: 3
+        });
+        const rawText = response.data?.choices[0]?.message?.content || '';
         let parsed = undefined;
         if (prompt.outputSchema) {
             const parseResult = (0, validation_2.safeParseJSON)(rawText, prompt.outputSchema, {});

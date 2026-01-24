@@ -193,7 +193,37 @@ async function handleDirectoryReference(input) {
             return question;
         }
         const contentMap = (0, fileReader_1.readFilesContent)(filePaths);
-        const prompt = (0, fileReader_1.buildPromptWithFileContent)(`目录: ${dirPath}\n找到 ${filePaths.length} 个文件`, filePaths.map(p => path_1.default.relative(process.cwd(), p)), contentMap, question);
+        const relativeFilePaths = filePaths.map(p => path_1.default.relative(process.cwd(), p));
+        const prompt = (0, fileReader_1.buildPromptWithFileContent)(`目录: ${dirPath}\n找到 ${filePaths.length} 个文件`, relativeFilePaths, contentMap, question);
+        const globalOptions = global.yuangsOptions || {};
+        if (globalOptions.showContextRelevance && question) {
+            const { SmartContextManager } = await Promise.resolve().then(() => __importStar(require('../agent/smartContextManager')));
+            const contextManager = new SmartContextManager();
+            const enhancedContext = await contextManager.getEnhancedContext({
+                query: question,
+                minRelevance: 0.3,
+                maxTokens: 5000,
+                enableSmartSummary: true
+            });
+            if (enhancedContext.summary) {
+                console.log(chalk_1.default.cyan('\n📊 Context Relevance Analysis\n'));
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                console.log(enhancedContext.summary);
+                if (enhancedContext.rankedItems.length > 0) {
+                    console.log(chalk_1.default.cyan('\n📋 Ranked Files (Top 10)\n'));
+                    enhancedContext.rankedItems.slice(0, 10).forEach((item, i) => {
+                        const relevancePercent = (item.relevance * 100).toFixed(0);
+                        const color = item.relevance > 0.8 ? chalk_1.default.green :
+                            item.relevance > 0.5 ? chalk_1.default.yellow : chalk_1.default.gray;
+                        console.log(`  ${i + 1}. ${color(item.path)} ${chalk_1.default.gray(`(${relevancePercent}%)`)}`);
+                        if (item.matchReasons.length > 0) {
+                            console.log(`     ${chalk_1.default.gray(item.matchReasons.join(', '))}`);
+                        }
+                    });
+                }
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+            }
+        }
         console.log(chalk_1.default.green(`✓ 已读取 ${contentMap.size} 个文件\n`));
         return prompt;
     }

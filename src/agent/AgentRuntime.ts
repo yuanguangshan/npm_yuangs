@@ -11,6 +11,7 @@ import { LLMAdapter } from "./llmAdapter";
 import { GovernanceService } from "./governance";
 import { ToolExecutor } from "./executor";
 import { ContextManager } from "./contextManager";
+import { SmartContextManager } from "./smartContextManager";
 import { evaluateProposal } from "./governance/core";
 import { ProposedAction } from "./state";
 import {
@@ -20,11 +21,11 @@ import {
 } from "./dynamicPrompt";
 
 export class AgentRuntime {
-  private context: ContextManager;
+  private context: SmartContextManager;
   private executionId: string;
 
   constructor(initialContext: any) {
-    this.context = new ContextManager(initialContext);
+    this.context = new SmartContextManager(initialContext);
     this.executionId = randomUUID();
   }
 
@@ -51,16 +52,42 @@ export class AgentRuntime {
         console.log(chalk.blue(`\n--- Turn ${currentTurn} ---`));
       }
 
-      // 构建动态上下文（如果上一步有错误）
-      const dynamicContext = await buildDynamicContext(lastError);
+      // Use smart context manager to get relevance-ranked context
+      const enhancedContext = await this.context.getEnhancedContext({
+        query: userInput,
+        minRelevance: 0.3,
+        maxTokens: 8000,
+        enableSmartSummary: true
+      });
 
-      const messages = this.context.getMessages().map((msg) => ({
-        role: (msg.role === "tool" ? "system" : msg.role) as
-          | "system"
-          | "user"
-          | "assistant",
-        content: msg.content,
-      }));
+      const messages: any[] = [];
+
+      // Add context overview as system message
+      if (enhancedContext.summary) {
+        messages.push({
+          role: 'system',
+          content: enhancedContext.summary
+        });
+      }
+
+      // Add ranked context files
+      for (const item of enhancedContext.rankedItems) {
+        messages.push({
+          role: 'user',
+          content: `@${item.path} (相关度: ${(item.relevance * 100).toFixed(0)}%)\n${item.summary || item.content || ''}`
+        });
+      }
+
+      // Add user input
+      if (userInput) {
+        messages.push({
+          role: 'user',
+          content: userInput
+        });
+      }
+
+      // Build dynamic context (if previous step had error)
+      const dynamicContext = await buildDynamicContext(lastError);
 
       // 构建基础prompt（包括治理策略）
       const basePrompt = GovernanceService.getPolicyManual();
