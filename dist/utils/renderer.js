@@ -90,16 +90,10 @@ const customRenderer = new marked_terminal_1.default({
     }
 });
 // 初始化 marked 配置
-if (typeof marked.use === 'function') {
-    marked.use({
-        renderer: customRenderer
-    });
-}
-else {
-    marked.setOptions({
-        renderer: customRenderer
-    });
-}
+// 注意：使用 setOptions 而不是 use()，因为 TerminalRenderer 包含了非标准方法
+marked.setOptions({
+    renderer: customRenderer
+});
 class StreamMarkdownRenderer {
     fullResponse = '';
     prefix;
