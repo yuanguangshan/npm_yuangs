@@ -160,9 +160,13 @@ export class AgentRuntime {
           const record = createExecutionRecord(
             'agent-chat',
             { required: [], preferred: [] } as any,
-            { aiProxyUrl: '', defaultModel: '', accountType: 'free' },
+            {
+              aiProxyUrl: { value: '', source: 'built-in' },
+              defaultModel: { value: '', source: 'built-in' },
+              accountType: { value: 'free', source: 'built-in' }
+            } as any,
             { selected: null, candidates: [], fallbackOccurred: false },
-            { success },
+            { success: true },
             undefined,
             userInput,
             'chat'
@@ -279,9 +283,13 @@ export class AgentRuntime {
           const record = createExecutionRecord(
             `agent-${mode}`,
             { required: [], preferred: [] } as any,
-            { aiProxyUrl: '', defaultModel: '', accountType: 'free' },
+            {
+              aiProxyUrl: { value: '', source: 'built-in' },
+              defaultModel: { value: '', source: 'built-in' },
+              accountType: { value: 'free', source: 'built-in' }
+            } as any,
             { selected: null, candidates: [], fallbackOccurred: false },
-            { success },
+            { success: true },
             undefined,
             userInput,
             mode

@@ -149,7 +149,11 @@ class AgentRuntime {
                     const { createExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionRecord')));
                     const { inferCapabilityRequirement } = await Promise.resolve().then(() => __importStar(require('../core/capabilityInference')));
                     const { saveExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionStore')));
-                    const record = createExecutionRecord('agent-chat', { required: [], preferred: [] }, { aiProxyUrl: '', defaultModel: '', accountType: 'free' }, { selected: null, candidates: [], fallbackOccurred: false }, { success }, undefined, userInput, 'chat');
+                    const record = createExecutionRecord('agent-chat', { required: [], preferred: [] }, {
+                        aiProxyUrl: { value: '', source: 'built-in' },
+                        defaultModel: { value: '', source: 'built-in' },
+                        accountType: { value: 'free', source: 'built-in' }
+                    }, { selected: null, candidates: [], fallbackOccurred: false }, { success: true }, undefined, userInput, 'chat');
                     record.llmResult = { plan: thought.parsedPlan };
                     record.input = { rawInput: userInput };
                     const savedRecordId = saveExecutionRecord(record);
@@ -229,7 +233,11 @@ class AgentRuntime {
                     const { createExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionRecord')));
                     const { inferCapabilityRequirement } = await Promise.resolve().then(() => __importStar(require('../core/capabilityInference')));
                     const { saveExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionStore')));
-                    const record = createExecutionRecord(`agent-${mode}`, { required: [], preferred: [] }, { aiProxyUrl: '', defaultModel: '', accountType: 'free' }, { selected: null, candidates: [], fallbackOccurred: false }, { success }, undefined, userInput, mode);
+                    const record = createExecutionRecord(`agent-${mode}`, { required: [], preferred: [] }, {
+                        aiProxyUrl: { value: '', source: 'built-in' },
+                        defaultModel: { value: '', source: 'built-in' },
+                        accountType: { value: 'free', source: 'built-in' }
+                    }, { selected: null, candidates: [], fallbackOccurred: false }, { success: true }, undefined, userInput, mode);
                     // Attach thought/plan data for skill learning
                     record.llmResult = { plan: thought.parsedPlan };
                     record.input = { rawInput: userInput };
