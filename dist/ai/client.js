@@ -110,7 +110,6 @@ async function callAI_Stream(messages, model, onChunk) {
     });
     return new Promise((resolve, reject) => {
         let buffer = '';
-        let chunkCount = 0;
         response.data.on('data', (chunk) => {
             buffer += chunk.toString();
             let lines = buffer.split('\n');
@@ -120,7 +119,6 @@ async function callAI_Stream(messages, model, onChunk) {
                 if (trimmedLine.startsWith('data: ')) {
                     const data = trimmedLine.slice(6);
                     if (data === '[DONE]') {
-                        console.error(`[DEBUG] Stream ended with ${chunkCount} chunks`);
                         resolve();
                         return;
                     }
@@ -128,19 +126,15 @@ async function callAI_Stream(messages, model, onChunk) {
                         const parsed = JSON.parse(data);
                         const content = parsed.choices?.[0]?.delta?.content || '';
                         if (content) {
-                            chunkCount++;
                             onChunk(content);
                         }
                     }
-                    catch (e) {
-                        console.error(`[DEBUG] Parse error: ${e}`);
-                    }
+                    catch (e) { }
                 }
             }
         });
         response.data.on('error', reject);
         response.data.on('end', () => {
-            console.error(`[DEBUG] Stream ended with ${chunkCount} chunks`);
             resolve();
         });
     });
