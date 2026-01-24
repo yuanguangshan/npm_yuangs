@@ -451,7 +451,11 @@ program
 program
     .argument('[command]', '自定义应用命令')
     .action((command) => {
-        if (command && apps[command]) {
+        // 先检查是否是 macro
+        const macros = getMacros();
+        if (command && macros[command]) {
+            runMacro(command);
+        } else if (command && apps[command]) {
             openUrl(apps[command]);
         } else {
             program.outputHelp();
@@ -461,7 +465,7 @@ program
 async function main() {
     const args = process.argv.slice(2);
 
-    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities', 'completion', '_complete_subcommand', '_describe', 'registry', 'explain', 'replay', 'skills', 'diff-edit'];
+    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities', 'completion', '_complete_subcommand', '_describe', 'registry', 'explain', 'replay', 'skills', 'diff-edit', 'ny', 'ni', 'll', 'gdoc', 'install', 'update'];
     const globalFlags = ['-h', '--help', '-V', '--version', '-v'];
     const firstArg = args[0];
     const isKnownCommand = firstArg && knownCommands.includes(firstArg);
