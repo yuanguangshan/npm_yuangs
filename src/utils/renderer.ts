@@ -172,26 +172,33 @@ export class StreamMarkdownRenderer {
    */
   private traverse(tokens: any[]): string {
     let output = '';
+    let i = 0;
     let orderedListIndex = 1;
-
-    for (let i = 0; i < tokens.length; i++) {
+    
+    while (i < tokens.length) {
       const token = tokens[i];
 
       // 处理标题
       if (token.type === 'heading_open') {
         const level = token.tag as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
-        const content = this.extractInlineText(tokens, i + 1);
+        // 查找 inline token
+        const inlineToken = tokens[i + 1];
+        const content = inlineToken?.type === 'inline' 
+          ? this.renderInline(inlineToken.children || [])
+          : '';
         output += (STYLES[level] || STYLES.h6)(content) + '\n\n';
-        i += 2; // 跳过 inline 和 close token
+        i += 3; // 跳过 inline 和 close token
         continue;
       }
 
       // 处理段落
       if (token.type === 'paragraph_open') {
-        continue;
-      }
-      if (token.type === 'paragraph_close') {
-        output += '\n';
+        // 查找 inline token
+        const inlineToken = tokens[i + 1];
+        if (inlineToken?.type === 'inline') {
+          output += this.renderInline(inlineToken.children || []) + '\n\n';
+        }
+        i += 3; // 跳过 inline 和 close token
         continue;
       }
 
@@ -202,6 +209,7 @@ export class StreamMarkdownRenderer {
         output += chalk.gray('╭' + '─'.repeat(30)) + '\n';
         output += lines.join('\n') + '\n';
         output += chalk.gray('╰' + '─'.repeat(30)) + '\n\n';
+        i += 1;
         continue;
       }
 
@@ -209,71 +217,131 @@ export class StreamMarkdownRenderer {
         const code = token.content.trim();
         const lines = code.split('\n').map((l: string) => STYLES.code_block(l));
         output += lines.join('\n') + '\n\n';
+        i += 1;
         continue;
       }
 
       // 处理无序列表
       if (token.type === 'bullet_list_open') {
+        i += 1;
         continue;
       }
       if (token.type === 'bullet_list_close') {
         output += '\n';
-        orderedListIndex = 1;
+        i += 1;
         continue;
       }
       if (token.type === 'list_item_open') {
-        const content = this.extractInlineText(tokens, i + 1);
-        output += STYLES.list_item(content) + '\n';
-        i += 2; // 跳过 inline 和 close
+        // list_item 可能包含多个 token，我们需要收集所有文本
+        let content = '';
+        let j = i + 1;
+        let depth = 1;
+        
+        while (j < tokens.length && depth > 0) {
+          const t = tokens[j];
+          if (t.type === 'list_item_open') depth++;
+          if (t.type === 'list_item_close') depth--;
+          
+          if (depth === 1 && t.type === 'inline') {
+            content += this.renderInline(t.children || []) + ' ';
+          } else if (depth === 1 && t.type === 'paragraph_open') {
+            // 处理段落内的 inline
+            const nextToken = tokens[j + 1];
+            if (nextToken?.type === 'inline') {
+              content += this.renderInline(nextToken.children || []) + ' ';
+            }
+          }
+          j++;
+        }
+        
+        output += STYLES.list_item(content.trim()) + '\n';
+        i = j;
         continue;
       }
 
       // 处理有序列表
       if (token.type === 'ordered_list_open') {
+        i += 1;
         continue;
       }
       if (token.type === 'ordered_list_close') {
         output += '\n';
         orderedListIndex = 1;
+        i += 1;
         continue;
       }
-      if (token.type === 'list_item_open' && tokens[i - 1]?.type === 'ordered_list_open') {
-        const content = this.extractInlineText(tokens, i + 1);
-        output += STYLES.ordered_item(content, orderedListIndex++) + '\n';
-        i += 2;
+      // 有序列表的 list_item_open
+      if (token.type === 'list_item_open' && i > 0 && tokens[i - 1]?.type === 'ordered_list_open') {
+        let content = '';
+        let j = i + 1;
+        let depth = 1;
+        
+        while (j < tokens.length && depth > 0) {
+          const t = tokens[j];
+          if (t.type === 'list_item_open') depth++;
+          if (t.type === 'list_item_close') depth--;
+          
+          if (depth === 1 && t.type === 'inline') {
+            content += this.renderInline(t.children || []) + ' ';
+          } else if (depth === 1 && t.type === 'paragraph_open') {
+            const nextToken = tokens[j + 1];
+            if (nextToken?.type === 'inline') {
+              content += this.renderInline(nextToken.children || []) + ' ';
+            }
+          }
+          j++;
+        }
+        
+        output += STYLES.ordered_item(content.trim(), orderedListIndex++) + '\n';
+        i = j;
         continue;
       }
 
       // 处理引用块
       if (token.type === 'blockquote_open') {
-        const content = this.extractInlineText(tokens, i + 1);
-        output += STYLES.blockquote(content) + '\n\n';
-        i += 2;
-        continue;
-      }
-
-      // 处理内联内容
-      if (token.type === 'inline') {
-        output += this.renderInline(token.children || []);
-        i += 1;
+        let content = '';
+        let j = i + 1;
+        let depth = 1;
+        
+        while (j < tokens.length && depth > 0) {
+          const t = tokens[j];
+          if (t.type === 'blockquote_open') depth++;
+          if (t.type === 'blockquote_close') depth--;
+          
+          if (depth === 1 && t.type === 'inline') {
+            content += this.renderInline(t.children || []) + ' ';
+          } else if (depth === 1 && t.type === 'paragraph_open') {
+            const nextToken = tokens[j + 1];
+            if (nextToken?.type === 'inline') {
+              content += this.renderInline(nextToken.children || []) + ' ';
+            }
+          } else if (depth === 1 && t.type === 'softbreak') {
+            content += '\n> ';
+          }
+          j++;
+        }
+        
+        output += STYLES.blockquote(content.trim()) + '\n\n';
+        i = j;
         continue;
       }
 
       // 处理水平线
       if (token.type === 'hr') {
         output += chalk.gray('─'.repeat(40)) + '\n\n';
+        i += 1;
         continue;
       }
 
       // 处理硬换行和软换行
-      if (token.type === 'hardbreak') {
+      if (token.type === 'hardbreak' || token.type === 'softbreak') {
         output += '\n';
+        i += 1;
         continue;
       }
-      if (token.type === 'softbreak') {
-        output += '\n';
-        continue;
-      }
+
+      // 跳过其他 token
+      i += 1;
     }
 
     return output.trim();
