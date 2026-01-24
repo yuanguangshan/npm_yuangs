@@ -249,7 +249,26 @@ export async function runLLM({
             latencyMs: Date.now() - start,
         };
     } catch (error: any) {
-        const errorMsg = error.response?.data?.error?.message || error.response?.data?.message || error.message || '未知错误';
+        // Safely extract error message without accessing circular references
+        let errorMsg = '未知错误';
+        
+        // Try to get error message from various safe sources
+        if (typeof error.message === 'string') {
+            errorMsg = error.message;
+        } else if (typeof error === 'string') {
+            errorMsg = error;
+        }
+        
+        // Try to get response data error message (safely)
+        if (error.response && typeof error.response.data === 'object') {
+            const responseData = error.response.data;
+            if (typeof responseData.error?.message === 'string') {
+                errorMsg = responseData.error.message;
+            } else if (typeof responseData.message === 'string') {
+                errorMsg = responseData.message;
+            }
+        }
+        
         throw new Error(`AI 请求失败: ${errorMsg}`);
     }
 }
