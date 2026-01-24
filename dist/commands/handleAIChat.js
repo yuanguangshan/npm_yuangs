@@ -671,7 +671,7 @@ ${stderr}
                         ? '你好，请开始对话'
                         : contextAssembler.assemble(contextStore, '你好，请基于以上上下文开始对话');
                     const spinner = (0, ora_1.default)(chalk_1.default.cyan('AI 正在思考...')).start();
-                    const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
+                    const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
                     await runtime.run(finalPrompt, 'chat', (chunk) => {
                         renderer.onChunk(chunk);
                     }, model, renderer);
@@ -700,7 +700,7 @@ ${stderr}
                         ? '你好，请开始对话'
                         : contextAssembler.assemble(contextStore, '你好，请基于以上上下文开始对话');
                     const spinner = (0, ora_1.default)(chalk_1.default.cyan('AI 正在思考...')).start();
-                    const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
+                    const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
                     await runtime.run(finalPrompt, 'chat', (chunk) => {
                         renderer.onChunk(chunk);
                     }, model, renderer);
