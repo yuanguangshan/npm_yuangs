@@ -66,54 +66,7 @@ async function runLLM({ prompt, model, stream, onChunk, }) {
         let buffer = '';
         await (0, client_1.callAI_Stream)(messages, model, (chunk) => {
             raw += chunk;
-            // Update buffer
-            buffer += chunk;
-            // Detect block type transitions
-            const wasThought = currentBlockType === 'thought';
-            const wasJson = currentBlockType === 'json';
-            const wasNone = currentBlockType === 'none';
-            // Check for [THOUGHT] start
-            if (buffer.includes('[THOUGHT]')) {
-                currentBlockType = 'thought';
-                // Send any pending JSON block before switching to thought
-                if (wasJson) {
-                    onChunk?.(buffer.slice(0, buffer.length - '[THOUGHT]'.length), 'json');
-                    buffer = '[THOUGHT]';
-                }
-            }
-            // Check for ```json start
-            else if (buffer.includes('```json')) {
-                currentBlockType = 'json';
-                // Send any pending thought block before switching to JSON
-                if (wasThought) {
-                    onChunk?.(buffer.slice(0, buffer.length - '```json'.length), 'thought');
-                    buffer = '```json';
-                }
-            }
-            // Check for JSON object start (without code block)
-            else if (buffer.trim().startsWith('{')) {
-                currentBlockType = 'json';
-            }
-            // Send chunk if we're in a stable block type
-            if (currentBlockType !== 'none') {
-                onChunk?.(chunk, currentBlockType);
-            }
-            // Maintain buffer for detecting transitions
-            if (buffer.length > 1000) {
-                // Keep only last 200 chars to prevent memory issues
-                const thoughtEnd = buffer.lastIndexOf('[THOUGHT]');
-                const jsonStart = buffer.lastIndexOf('```json');
-                const objStart = buffer.lastIndexOf('{');
-                if (thoughtEnd > 0 && thoughtEnd > objStart) {
-                    buffer = buffer.slice(thoughtEnd);
-                }
-                else if (jsonStart > 0 && jsonStart > thoughtEnd) {
-                    buffer = buffer.slice(jsonStart);
-                }
-                else if (objStart > 0 && objStart > jsonStart && objStart > thoughtEnd) {
-                    buffer = buffer.slice(objStart);
-                }
-            }
+            onChunk?.(chunk, 'thought');
         });
         return {
             rawText: raw,

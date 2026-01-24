@@ -128,8 +128,7 @@ class AgentRuntime {
             // 如果 LLM 认为已经完成或者当前的动作就是回答
             if (thought.isDone || action.type === "answer") {
                 const result = await executor_1.ToolExecutor.execute(action);
-                // 注意：如果外部传入了 renderer（说明已经在流式输出），不要再次渲染
-                // 只有在内部创建的 renderer 或没有 renderer 时才需要渲染
+                // 如果没有 renderer，使用内部创建的
                 if (!renderer && agentRenderer) {
                     // Stream final answer through internal renderer
                     for (let i = 0; i < result.output.length; i += 10) {
@@ -139,9 +138,11 @@ class AgentRuntime {
                     agentRenderer.finish();
                 }
                 else if (!renderer) {
+                    // Fallback to marked if no renderer
                     const rendered = marked.parse(result.output);
                     console.log(chalk_1.default.green(`\n🤖 AI：\n`) + rendered);
                 }
+                // 如果外部传入了 renderer，由外部调用 finish()
                 this.context.addMessage("assistant", result.output);
                 // Learn from successful chat
                 try {

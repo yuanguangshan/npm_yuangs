@@ -101,12 +101,15 @@ class StreamMarkdownRenderer {
      * 使用 md.parse() 解析 Tokens，直接映射为 ANSI
      */
     finish() {
+        console.error(`[DEBUG Renderer] finish() called, buffer length: ${this.buffer.length}, quietMode: ${this.quietMode}`);
+        console.error(`[DEBUG Renderer] buffer content: ${this.buffer.substring(0, 100)}...`);
         // 如果 Spinner 还在转（说明没有任何输出），先停掉
         if (this.spinner && this.spinner.isSpinning) {
             this.spinner.stop();
         }
         // 使用 Token 遍历渲染
         const rendered = this.render(this.buffer);
+        console.error(`[DEBUG Renderer] rendered length: ${rendered.length}, content: ${rendered.substring(0, 100)}...`);
         if (this.quietMode) {
             if (this.buffer.trim()) {
                 process.stdout.write(this.prefix + rendered + '\n');

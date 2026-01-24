@@ -252,14 +252,14 @@ async function handleAIChat(initialQuestion, model) {
         const { AgentRuntime } = await Promise.resolve().then(() => __importStar(require('../agent')));
         const runtime = new AgentRuntime((0, client_1.getConversationHistory)());
         const spinner = (0, ora_1.default)(chalk_1.default.cyan('AI 正在思考...')).start();
-        const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
+        const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
         await runtime.run(initialQuestion, 'chat', (chunk) => {
             renderer.onChunk(chunk);
         }, model, renderer);
         const fullResponse = renderer.finish();
         lastAIOutput = fullResponse;
         (0, client_1.addToConversationHistory)('user', initialQuestion);
-        (0, client_1.addToConversationHistory)('assistant', fullResponse);
+        (0, client_1.addToConversationHistory)('assistant', fullResponse || '');
         return;
     }
     console.log(chalk_1.default.bold.cyan('\n🤖 进入 AI 交互模式 (输入 exit 退出)\n'));
@@ -766,7 +766,7 @@ ${finalPrompt}
                 rl.pause();
                 // 使用 AgentRuntime 执行提问
                 const spinner = (0, ora_1.default)(chalk_1.default.cyan('AI 正在思考...')).start();
-                const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
+                const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
                 await runtime.run(finalPrompt, 'chat', (chunk) => {
                     renderer.onChunk(chunk);
                 }, model, renderer);

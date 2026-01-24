@@ -111,6 +111,8 @@ export async function callAI_Stream(messages: AIRequestMessage[], model: string 
 
     return new Promise((resolve, reject) => {
         let buffer = '';
+        let chunkCount = 0;
+        
         response.data.on('data', (chunk: Buffer) => {
             buffer += chunk.toString();
             let lines = buffer.split('\n');
@@ -121,19 +123,26 @@ export async function callAI_Stream(messages: AIRequestMessage[], model: string 
                 if (trimmedLine.startsWith('data: ')) {
                     const data = trimmedLine.slice(6);
                     if (data === '[DONE]') {
+                        console.error(`[DEBUG] Stream ended with ${chunkCount} chunks`);
                         resolve();
                         return;
                     }
                     try {
                         const parsed = JSON.parse(data);
-                        const content = parsed.choices[0]?.delta?.content || '';
-                        if (content) onChunk(content);
-                    } catch (e) { }
+                        const content = parsed.choices?.[0]?.delta?.content || '';
+                        if (content) {
+                            chunkCount++;
+                            onChunk(content);
+                        }
+                    } catch (e) { 
+                        console.error(`[DEBUG] Parse error: ${e}`);
+                    }
                 }
             }
         });
         response.data.on('error', reject);
         response.data.on('end', () => {
+            console.error(`[DEBUG] Stream ended with ${chunkCount} chunks`);
             resolve();
         });
     });

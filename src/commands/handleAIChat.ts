@@ -267,7 +267,7 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
         const runtime = new AgentRuntime(getConversationHistory());
 
         const spinner = ora(chalk.cyan('AI 正在思考...')).start();
-        const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
+        const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
 
         await runtime.run(initialQuestion, 'chat' as any, (chunk) => {
             renderer.onChunk(chunk);
@@ -276,7 +276,7 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
         const fullResponse = renderer.finish();
         lastAIOutput = fullResponse;
         addToConversationHistory('user', initialQuestion);
-        addToConversationHistory('assistant', fullResponse);
+        addToConversationHistory('assistant', fullResponse || '');
         return;
     }
 
@@ -837,7 +837,7 @@ ${finalPrompt}
 
                 // 使用 AgentRuntime 执行提问
                 const spinner = ora(chalk.cyan('AI 正在思考...')).start();
-                const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
+                const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
 
                 await runtime.run(finalPrompt, 'chat' as any, (chunk) => {
                     renderer.onChunk(chunk);
