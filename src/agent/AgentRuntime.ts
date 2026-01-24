@@ -1,12 +1,17 @@
 import chalk from "chalk";
 import { randomUUID } from "crypto";
-import { marked } from "marked";
+import * as marked from "marked";
 import TerminalRenderer from "marked-terminal";
 
-// Configure marked
-marked.setOptions({
-  renderer: new TerminalRenderer()
-});
+// Configure marked with TerminalRenderer
+const terminalRenderer = new TerminalRenderer();
+if (typeof marked.use === 'function') {
+  marked.use({ renderer: terminalRenderer });
+} else {
+  marked.setOptions({
+    renderer: terminalRenderer
+  });
+}
 import { LLMAdapter } from "./llmAdapter";
 import { GovernanceService } from "./governance";
 import { ToolExecutor } from "./executor";
@@ -144,7 +149,7 @@ export class AgentRuntime {
             }
             agentRenderer.finish();
           } else {
-            const rendered = marked(result.output);
+            const rendered = marked.parse(result.output);
             console.log(chalk.green(`\n🤖 AI：\n`) + rendered);
           }
         }

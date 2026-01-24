@@ -128,7 +128,7 @@ const DEFAULT_IGNORE_DIRS = [
     try {
       const ignoreArgs = Array.from(this.ignoreDirs).map(dir => `--glob '!${dir}'`).join(' ');
 
-      const cmd = `rg -l "from ['\\"].*${this.escapeRegex(baseName)}['\\"]" ${ignoreArgs} --type ts --type js --type tsx --type jsx`;
+      const cmd = `rg -l "from ['\\"].*${this.escapeRegex(baseName)}['\\"]" ${ignoreArgs} --type ts --type js`;
       const output = execSync(cmd, {
         encoding: 'utf-8',
         cwd: searchDir,

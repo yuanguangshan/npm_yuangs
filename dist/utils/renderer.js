@@ -90,9 +90,16 @@ const customRenderer = new marked_terminal_1.default({
     }
 });
 // 初始化 marked 配置
-marked.setOptions({
-    renderer: customRenderer
-});
+if (typeof marked.use === 'function') {
+    marked.use({
+        renderer: customRenderer
+    });
+}
+else {
+    marked.setOptions({
+        renderer: customRenderer
+    });
+}
 class StreamMarkdownRenderer {
     fullResponse = '';
     prefix;

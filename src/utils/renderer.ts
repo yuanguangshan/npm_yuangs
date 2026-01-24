@@ -54,9 +54,15 @@ const customRenderer = new TerminalRenderer({
 }) as any;
 
 // 初始化 marked 配置
-marked.setOptions({
+if (typeof marked.use === 'function') {
+  marked.use({
     renderer: customRenderer
-});
+  });
+} else {
+  marked.setOptions({
+    renderer: customRenderer
+  });
+}
 
 export interface RendererOptions {
     autoFinish?: boolean;

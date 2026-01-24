@@ -192,7 +192,20 @@ async function runLLM({ prompt, model, stream, onChunk, }) {
             retryableErrors: ['network', 'timeout', 'rate limit', 'ECONNRESET', 'ETIMEDOUT', '503', '502', '429'],
             maxAttempts: 3
         });
-        const rawText = response.data?.choices[0]?.message?.content || '';
+        // Safely extract content from response
+        let rawText = '';
+        if (response.data && typeof response.data === 'object') {
+            if (response.data.choices && Array.isArray(response.data.choices) && response.data.choices.length > 0) {
+                rawText = response.data.choices[0]?.message?.content || '';
+            }
+            else {
+                // Handle cases where response format is different
+                rawText = response.data.content || response.data.text || JSON.stringify(response.data);
+            }
+        }
+        else {
+            rawText = String(response.data || '');
+        }
         let parsed = undefined;
         if (prompt.outputSchema) {
             const parseResult = (0, validation_2.safeParseJSON)(rawText, prompt.outputSchema, {});
