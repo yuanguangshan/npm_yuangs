@@ -4,10 +4,12 @@ import readline from 'readline';
 import { callAI_Stream, getConversationHistory, addToConversationHistory, clearConversationHistory, getUserConfig } from '../ai/client';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { buildPromptWithFileContent, readFilesContent } from '../core/fileReader';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { ContextBuffer } from './contextBuffer';
+import { ContextStore, ContextAssembler, ContextItem } from './context';
 import { loadContext, saveContext, clearContextStorage } from './contextStorage';
 import { getGitContext } from './gitContext';
 import {
@@ -240,9 +242,10 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
 
     console.log(chalk.bold.cyan('\n🤖 进入 AI 交互模式 (输入 exit 退出)\n'));
 
-    const contextBuffer = new ContextBuffer();
+    const contextStore = new ContextStore();
+    const contextAssembler = new ContextAssembler();
     const persisted = await loadContext();
-    contextBuffer.import(persisted);
+    contextStore.import(persisted);
 
     if (persisted.length > 0) {
         console.log(chalk.yellow(`📦 已恢复 ${persisted.length} 条上下文\n`));
@@ -316,16 +319,22 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
 
                         const content = await readFileContent(filePath);
 
-                        contextBuffer.add({
-                            type: 'file',
+                        contextStore.add({
+                            id: `file:${filePath}`,
+                            source: 'file',
                             path: filePath,
-                            content
+                            content,
+                            tokens: Math.ceil(content.length / 4),
+                            importance: 0.5,
+                            lastUsedAt: Date.now(),
+                            addedAt: Date.now(),
+                            status: 'active'
                         });
 
                         const displayName = filePath;
                         console.log(chalk.green(`✓ 已加入文件上下文: ${displayName}\n`));
-                        
-                        await saveContext(contextBuffer.export());
+
+                        await saveContext(contextStore.export());
                         
                         console.log(chalk.cyan(`⚡️  正在执行: ${commandStr}\n`));
                         
@@ -333,7 +342,7 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
                         console.log(stdout);
                         if (stderr) console.error(chalk.red(stderr));
 
-                        await saveContext(contextBuffer.export());
+                        await saveContext(contextStore.export());
                         console.log(chalk.green(`✓ 执行完成\n`));
 
                         rl.resume();
@@ -374,14 +383,20 @@ ${stderr}
 \`\`\`
 `;
 
-                            contextBuffer.add({
-                                type: 'file',
+                            contextStore.add({
+                                id: `file:${filePath} [Run Log]`,
+                                source: 'file',
                                 path: `${filePath} [Run Log]`,
                                 alias: 'Execution Log',
-                                content: combinedContent
+                                content: combinedContent,
+                                tokens: Math.ceil(combinedContent.length / 4),
+                                importance: 0.5,
+                                lastUsedAt: Date.now(),
+                                addedAt: Date.now(),
+                                status: 'active'
                             });
-                            
-                            await saveContext(contextBuffer.export());
+
+                            await saveContext(contextStore.export());
                             console.log(chalk.green(`\n✓ 已捕获脚本源码及执行日志到上下文\n`));
                         } else {
                             console.log(chalk.red(`错误: 文件 ${filePath} 不存在`));
@@ -430,23 +445,35 @@ ${stderr}
                         const rangeInfo = lineEnd ? `${lineStart}-${lineEnd}` : `${lineStart}`;
                         const pathWithRange = `${filePath}:${rangeInfo}`;
 
-                        contextBuffer.add({
-                            type: 'file',
+                        contextStore.add({
+                            id: `file:${pathWithRange}`,
+                            source: 'file',
                             path: pathWithRange,
                             alias,
-                            content
-                        }, true); // bypassTokenLimit = true
+                            content,
+                            tokens: Math.ceil(content.length / 4),
+                            importance: 0.5,
+                            lastUsedAt: Date.now(),
+                            addedAt: Date.now(),
+                            status: 'active'
+                        });
                     } else {
                         // 原始行为：添加整个文件
-                        contextBuffer.add({
-                            type: 'file',
+                        contextStore.add({
+                            id: `file:${filePath}`,
+                            source: 'file',
                             path: filePath,
                             alias,
-                            content
+                            content,
+                            tokens: Math.ceil(content.length / 4),
+                            importance: 0.5,
+                            lastUsedAt: Date.now(),
+                            addedAt: Date.now(),
+                            status: 'active'
                         });
                     }
 
-                    await saveContext(contextBuffer.export());
+                    await saveContext(contextStore.export());
                     const displayName = alias ? `${alias} (${filePath}${lineStart !== null ? `:${lineStart}${lineEnd ? `-${lineEnd}` : ''}` : ''})` :
                         (filePath + (lineStart !== null ? `:${lineStart}${lineEnd ? `-${lineEnd}` : ''}` : ''));
                     console.log(chalk.green(`✅ 已加入文件上下文: ${displayName}\n`));
@@ -507,23 +534,29 @@ ${stderr}
                             continue;
                         }
 
-                        contextBuffer.add({
-                            type: 'file',  // 改为file类型，因为实际上是单个文件
+                        contextStore.add({
+                            id: `file:${filePath}`,
+                            source: 'file',
                             path: filePath,
-                            content: content
+                            content: content,
+                            tokens: Math.ceil(content.length / 4),
+                            importance: 0.5,
+                            lastUsedAt: Date.now(),
+                            addedAt: Date.now(),
+                            status: 'active'
                         });
                         addedCount++;
 
                         // 检查是否达到token限制，如果达到则停止添加更多文件
                         // 我们需要手动计算总tokens，因为totalTokens是私有方法
-                        const currentTotalTokens = contextBuffer.export().reduce((sum, item) => sum + item.tokens, 0);
+                        const currentTotalTokens = contextStore.export().reduce((sum, item) => sum + item.tokens, 0);
                         if (currentTotalTokens > maxTotalTokensLimit) { // 使用总上下文上限
                             console.log(chalk.yellow(`⚠️  达到token限制，停止添加更多文件`));
                             break;
                         }
                     }
 
-                    await saveContext(contextBuffer.export());
+                    await saveContext(contextStore.export());
                     console.log(chalk.green(`✓ 已成功加入 ${addedCount} 个文件到上下文\n`));
                 } catch (err: unknown) {
                     const message = err instanceof Error ? err.message : String(err);
@@ -559,7 +592,7 @@ ${stderr}
             }
 
             if (trimmed === ':ls') {
-                const list = contextBuffer.list();
+                const list = contextStore.list();
                 if (list.length === 0) {
                     console.log(chalk.gray('📭 当前没有上下文\n'));
                 } else {
@@ -571,7 +604,7 @@ ${stderr}
             if (trimmed === ':cat' || trimmed.startsWith(':cat ')) {
                 const parts = trimmed.split(' ');
                 const index = parts.length > 1 ? parseInt(parts[1]) : null;
-                const items = contextBuffer.export();
+                const items = contextStore.export();
 
                 if (items.length === 0) {
                     console.log(chalk.gray('📭 当前没有上下文内容可查阅\n'));
@@ -596,7 +629,7 @@ ${stderr}
             }
 
             if (trimmed === ':clear') {
-                contextBuffer.clear();
+                contextStore.clear();
                 await clearContextStorage();
                 console.log(chalk.yellow('🧹 上下文已清空（含持久化）\n'));
                 continue;
@@ -648,9 +681,9 @@ ${stderr}
                     console.log(chalk.cyan('AI 模式启动...\n'));
 
                     // Use empty context or current context for AI interaction
-                    let finalPrompt = contextBuffer.isEmpty()
+                    let finalPrompt = contextStore.isEmpty()
                         ? '你好，请开始对话'
-                        : contextBuffer.buildPrompt('你好，请基于以上上下文开始对话');
+                        : contextAssembler.assemble(contextStore, '你好，请基于以上上下文开始对话');
 
                     const spinner = ora(chalk.cyan('AI 正在思考...')).start();
                     const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
@@ -680,9 +713,9 @@ ${stderr}
                     console.log(chalk.cyan('AI 模式启动 (空行触发)...\n'));
 
                     // Use empty context or current context for AI interaction
-                    let finalPrompt = contextBuffer.isEmpty()
+                    let finalPrompt = contextStore.isEmpty()
                         ? '你好，请开始对话'
-                        : contextBuffer.buildPrompt('你好，请基于以上上下文开始对话');
+                        : contextAssembler.assemble(contextStore, '你好，请基于以上上下文开始对话');
 
                     const spinner = ora(chalk.cyan('AI 正在思考...')).start();
                     const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
@@ -738,9 +771,9 @@ ${stderr}
                 continue;
             }
 
-            let finalPrompt = contextBuffer.isEmpty()
+            let finalPrompt = contextStore.isEmpty()
                 ? trimmed
-                : contextBuffer.buildPrompt(trimmed);
+                : contextAssembler.assemble(contextStore, trimmed);
 
             const gitContext = await getGitContext();
 
