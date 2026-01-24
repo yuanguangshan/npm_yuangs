@@ -5,13 +5,8 @@ import TerminalRenderer from "marked-terminal";
 
 // Configure marked with TerminalRenderer
 const terminalRenderer = new TerminalRenderer();
-if (typeof marked.use === 'function') {
-  marked.use({ renderer: terminalRenderer });
-} else {
-  marked.setOptions({
-    renderer: terminalRenderer
-  });
-}
+marked.setOptions({ renderer: terminalRenderer });
+
 import { LLMAdapter } from "./llmAdapter";
 import { GovernanceService } from "./governance";
 import { ToolExecutor } from "./executor";

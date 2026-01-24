@@ -14,7 +14,6 @@ const path_1 = __importDefault(require("path"));
 const os_1 = __importDefault(require("os"));
 const validation_2 = require("../core/validation");
 const zod_1 = require("zod");
-const errorHandling_1 = require("./errorHandling");
 const CONFIG_FILE = path_1.default.join(os_1.default.homedir(), '.yuangs.json');
 exports.AgentActionSchema = zod_1.z.object({
     action_type: zod_1.z.enum(['tool_call', 'shell_cmd', 'answer', 'code_diff']),
@@ -188,10 +187,7 @@ async function runLLM({ prompt, model, stream, onChunk, }) {
         };
     }
     try {
-        const response = await (0, errorHandling_1.withRetry)(async () => await axios_1.default.post(url, responseData, { headers }), {
-            retryableErrors: ['network', 'timeout', 'rate limit', 'ECONNRESET', 'ETIMEDOUT', '503', '502', '429'],
-            maxAttempts: 3
-        });
+        const response = await axios_1.default.post(url, responseData, { headers });
         // Safely extract content from response
         let rawText = '';
         if (response.data && typeof response.data === 'object') {
@@ -222,22 +218,20 @@ async function runLLM({ prompt, model, stream, onChunk, }) {
     catch (error) {
         // Safely extract error message without accessing circular references
         let errorMsg = '未知错误';
-        // Try to get error message from various safe sources
-        if (typeof error.message === 'string') {
-            errorMsg = error.message;
-        }
-        else if (typeof error === 'string') {
-            errorMsg = error;
-        }
-        // Try to get response data error message (safely)
-        if (error.response && typeof error.response.data === 'object') {
-            const responseData = error.response.data;
-            if (typeof responseData.error?.message === 'string') {
-                errorMsg = responseData.error.message;
+        // Only access the basic message property to avoid circular reference issues
+        try {
+            if (error && typeof error.message === 'string') {
+                errorMsg = error.message;
             }
-            else if (typeof responseData.message === 'string') {
-                errorMsg = responseData.message;
+            else if (typeof error === 'string') {
+                errorMsg = error;
             }
+            else {
+                errorMsg = String(error);
+            }
+        }
+        catch (e) {
+            errorMsg = '未知错误（无法解析错误信息）';
         }
         throw new Error(`AI 请求失败: ${errorMsg}`);
     }

@@ -65,7 +65,24 @@ async function askAI(prompt, model) {
         return content || '';
     }
     catch (error) {
-        const errorMsg = error.response?.data?.error?.message || error.response?.data?.message || error.message || '未知错误';
+        // Safely extract error message without accessing circular references
+        let errorMsg = '未知错误';
+        if (typeof error.message === 'string') {
+            errorMsg = error.message;
+        }
+        else if (typeof error === 'string') {
+            errorMsg = error;
+        }
+        // Try to get response data error message (safely)
+        if (error.response && typeof error.response.data === 'object') {
+            const responseData = error.response.data;
+            if (typeof responseData.error?.message === 'string') {
+                errorMsg = responseData.error.message;
+            }
+            else if (typeof responseData.message === 'string') {
+                errorMsg = responseData.message;
+            }
+        }
         throw new Error(`AI 请求失败: ${errorMsg}`);
     }
 }

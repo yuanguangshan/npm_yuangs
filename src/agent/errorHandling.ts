@@ -65,9 +65,17 @@ function calculateBackoffDelay(
  * 判断错误是否可重试
  */
 function isRetryableError(error: Error, config: RetryConfig): boolean {
-  const errorMessage = error.message.toLowerCase();
+  // Safely extract error message
+  let errorMessage = '';
+  if (typeof error.message === 'string') {
+    errorMessage = error.message;
+  } else if (typeof error === 'string') {
+    errorMessage = error;
+  }
+  
+  const lowerMessage = errorMessage.toLowerCase();
   return config.retryableErrors.some(
-    (pattern) => errorMessage.includes(pattern.toLowerCase())
+    (pattern) => lowerMessage.includes(pattern.toLowerCase())
   );
 }
 
@@ -109,8 +117,10 @@ export async function withRetry<T>(
 
       // 计算延迟并等待
       const delay = calculateBackoffDelay(attempts, finalConfig);
+      // Safely extract error message for logging
+      const errorMsg = typeof lastError.message === 'string' ? lastError.message : String(lastError);
       console.log(
-        `[重试] 第${attempts}次尝试失败: ${lastError.message}, ${delay.toFixed(0)}ms后重试...`
+        `[重试] 第${attempts}次尝试失败: ${errorMsg}, ${delay.toFixed(0)}ms后重试...`
       );
       await sleep(delay);
     }
@@ -157,7 +167,10 @@ export async function withAlternatives<T>(
         fallbackUsed: true,
       };
     } catch (error) {
-      console.log(`[替代方案] ${alternative.name} 失败: ${(error as Error).message}`);
+      const errorMsg = error instanceof Error && typeof error.message === 'string' 
+        ? error.message 
+        : String(error);
+      console.log(`[替代方案] ${alternative.name} 失败: ${errorMsg}`);
     }
   }
 
@@ -205,7 +218,15 @@ export function generateErrorExplanation(error: Error, context: string = ''): st
       '上下文长度超限。请减少输入内容或使用更短的Prompt',
   };
 
-  const errorMessage = error.message.toLowerCase();
+  // Safely extract error message
+  let errorMessage = '';
+  if (typeof error.message === 'string') {
+    errorMessage = error.message;
+  } else if (typeof error === 'string') {
+    errorMessage = error;
+  }
+  
+  const lowerMessage = errorMessage.toLowerCase();
   
   // 查找匹配的错误解释
   for (const [key, explanation] of Object.entries(explanations)) {
@@ -215,7 +236,7 @@ export function generateErrorExplanation(error: Error, context: string = ''): st
   }
 
   // 默认解释
-  return `❌ 错误: ${error.message}\n\n可能原因：\n1. 网络连接问题\n2. API服务异常\n3. 请求格式错误\n4. 认证授权问题\n\n建议：\n1. 检查网络连接\n2. 查看API文档\n3. 确认API密钥正确\n4. 稍后重试${context ? '\n\n上下文: ' + context : ''}`;
+  return `❌ 错误: ${errorMessage}\n\n可能原因：\n1. 网络连接问题\n2. API服务异常\n3. 请求格式错误\n4. 认证授权问题\n\n建议：\n1. 检查网络连接\n2. 查看API文档\n3. 确认API密钥正确\n4. 稍后重试${context ? '\n\n上下文: ' + context : ''}`;
 }
 
 /**

@@ -43,14 +43,7 @@ const marked = __importStar(require("marked"));
 const marked_terminal_1 = __importDefault(require("marked-terminal"));
 // Configure marked with TerminalRenderer
 const terminalRenderer = new marked_terminal_1.default();
-if (typeof marked.use === 'function') {
-    marked.use({ renderer: terminalRenderer });
-}
-else {
-    marked.setOptions({
-        renderer: terminalRenderer
-    });
-}
+marked.setOptions({ renderer: terminalRenderer });
 const llmAdapter_1 = require("./llmAdapter");
 const governance_1 = require("./governance");
 const executor_1 = require("./executor");

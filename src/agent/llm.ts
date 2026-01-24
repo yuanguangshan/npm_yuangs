@@ -217,10 +217,7 @@ export async function runLLM({
     }
 
     try {
-        const response = await withRetry(async () => await axios.post(url, responseData, { headers }) as any, {
-          retryableErrors: ['network', 'timeout', 'rate limit', 'ECONNRESET', 'ETIMEDOUT', '503', '502', '429'],
-          maxAttempts: 3
-        });
+        const response = await axios.post(url, responseData, { headers }) as any;
 
         // Safely extract content from response
         let rawText = '';
@@ -252,21 +249,17 @@ export async function runLLM({
         // Safely extract error message without accessing circular references
         let errorMsg = '未知错误';
         
-        // Try to get error message from various safe sources
-        if (typeof error.message === 'string') {
-            errorMsg = error.message;
-        } else if (typeof error === 'string') {
-            errorMsg = error;
-        }
-        
-        // Try to get response data error message (safely)
-        if (error.response && typeof error.response.data === 'object') {
-            const responseData = error.response.data;
-            if (typeof responseData.error?.message === 'string') {
-                errorMsg = responseData.error.message;
-            } else if (typeof responseData.message === 'string') {
-                errorMsg = responseData.message;
+        // Only access the basic message property to avoid circular reference issues
+        try {
+            if (error && typeof error.message === 'string') {
+                errorMsg = error.message;
+            } else if (typeof error === 'string') {
+                errorMsg = error;
+            } else {
+                errorMsg = String(error);
             }
+        } catch (e) {
+            errorMsg = '未知错误（无法解析错误信息）';
         }
         
         throw new Error(`AI 请求失败: ${errorMsg}`);
