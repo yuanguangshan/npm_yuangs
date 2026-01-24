@@ -13,6 +13,7 @@
 import { execSync } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import ora, { Ora } from 'ora';
 
 /**
  * 扫描结果
@@ -48,9 +49,15 @@ const DEFAULT_IGNORE_DIRS = [
  *
  * 使用 ripgrep 进行极速搜索，不可用时自动回退到原生遍历
  */
-export class FastScanner {
+ export class FastScanner {
   private ignoreDirs: Set<string>;
   private ripgrepAvailable: boolean | null = null;
+  private scanStats: {
+    filesScanned: number;
+    directoriesProcessed: number;
+    currentDirectory: string;
+    startTime: number;
+  } | null = null;
 
   constructor(ignoreDirs: string[] = DEFAULT_IGNORE_DIRS) {
     this.ignoreDirs = new Set(ignoreDirs);
