@@ -827,9 +827,9 @@ ${finalPrompt}
                     const spinner = ora(chalk.cyan('AI 正在思考...')).start();
                     const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
 
-                    await runtime.run(finalPrompt, model as any, (chunk) => {
+                    await runtime.run(finalPrompt, 'chat' as any, (chunk) => {
                         renderer.onChunk(chunk);
-                    });
+                    }, model, renderer);
 
                     const fullResponse = renderer.finish();
 
