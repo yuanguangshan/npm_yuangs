@@ -60,7 +60,7 @@ export declare class StreamMarkdownRenderer {
      */
     startChunking(): (chunk: string) => void;
     /**
-     * 渲染表格
+     * 渲染表格（使用 cli-table3）
      */
     private renderTable;
     /**

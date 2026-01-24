@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.StreamMarkdownRenderer = void 0;
 const chalk_1 = __importDefault(require("chalk"));
 const markdown_it_1 = __importDefault(require("markdown-it"));
+const cli_table3_1 = __importDefault(require("cli-table3"));
 /**
  * 终端 Markdown 原生渲染器
  *
@@ -425,35 +426,43 @@ class StreamMarkdownRenderer {
         };
     }
     /**
-     * 渲染表格
+     * 渲染表格（使用 cli-table3）
      */
     renderTable(tableData) {
         if (tableData.length === 0)
             return '';
-        // 计算每列的最大宽度
-        const colCount = Math.max(...tableData.map(row => row.length));
-        const colWidths = [];
-        for (let col = 0; col < colCount; col++) {
-            const max = Math.max(...tableData.map(row => (row[col] || '').length));
-            colWidths.push(max + 2); // 加上 2 个空格 padding
-        }
-        let output = '';
-        // 渲染每一行
-        tableData.forEach((row, rowIndex) => {
-            const cells = row.map((cell, colIndex) => {
-                const width = colWidths[colIndex];
-                const padded = cell.padEnd(width);
-                // 第一行（表头）加粗
-                return rowIndex === 0 ? chalk_1.default.bold(padded) : padded;
-            });
-            output += '│' + cells.join('│') + '│\n';
-            // 表头后加分隔线
-            if (rowIndex === 0) {
-                const separators = colWidths.map(w => '─'.repeat(w));
-                output += '├' + separators.join('┼') + '┤\n';
+        const headers = tableData[0];
+        const rows = tableData.slice(1);
+        const table = new cli_table3_1.default({
+            head: headers,
+            style: {
+                head: ['cyan', 'bold'],
+                border: ['gray'],
+            },
+            wordWrap: true,
+            // 简化边框：只保留表头下的分隔线
+            chars: {
+                'top': '─',
+                'top-mid': '┬',
+                'top-left': '┌',
+                'top-right': '┐',
+                'bottom': '─',
+                'bottom-mid': '┴',
+                'bottom-left': '└',
+                'bottom-right': '┘',
+                'left': '│',
+                'left-mid': '',
+                'mid': '',
+                'mid-mid': '',
+                'right': '│',
+                'right-mid': '',
+                'middle': '│'
             }
         });
-        return output;
+        rows.forEach(row => {
+            table.push(row);
+        });
+        return table.toString() + '\n';
     }
     /**
      * Check if response appears complete
