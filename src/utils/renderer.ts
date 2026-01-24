@@ -244,12 +244,6 @@ export class StreamMarkdownRenderer {
           
           if (depth === 1 && t.type === 'inline') {
             content += this.renderInline(t.children || []) + ' ';
-          } else if (depth === 1 && t.type === 'paragraph_open') {
-            // 处理段落内的 inline
-            const nextToken = tokens[j + 1];
-            if (nextToken?.type === 'inline') {
-              content += this.renderInline(nextToken.children || []) + ' ';
-            }
           }
           j++;
         }
@@ -283,11 +277,6 @@ export class StreamMarkdownRenderer {
           
           if (depth === 1 && t.type === 'inline') {
             content += this.renderInline(t.children || []) + ' ';
-          } else if (depth === 1 && t.type === 'paragraph_open') {
-            const nextToken = tokens[j + 1];
-            if (nextToken?.type === 'inline') {
-              content += this.renderInline(nextToken.children || []) + ' ';
-            }
           }
           j++;
         }
@@ -310,11 +299,6 @@ export class StreamMarkdownRenderer {
           
           if (depth === 1 && t.type === 'inline') {
             content += this.renderInline(t.children || []) + ' ';
-          } else if (depth === 1 && t.type === 'paragraph_open') {
-            const nextToken = tokens[j + 1];
-            if (nextToken?.type === 'inline') {
-              content += this.renderInline(nextToken.children || []) + ' ';
-            }
           } else if (depth === 1 && t.type === 'softbreak') {
             content += '\n> ';
           }
