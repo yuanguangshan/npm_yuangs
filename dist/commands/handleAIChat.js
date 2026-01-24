@@ -250,9 +250,9 @@ async function handleAIChat(initialQuestion, model) {
         const runtime = new AgentRuntime((0, client_1.getConversationHistory)());
         const spinner = (0, ora_1.default)(chalk_1.default.cyan('AI 正在思考...')).start();
         const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
-        await runtime.run(initialQuestion, model, (chunk) => {
+        await runtime.run(initialQuestion, 'chat', (chunk) => {
             renderer.onChunk(chunk);
-        });
+        }, model, renderer);
         const fullResponse = renderer.finish();
         (0, client_1.addToConversationHistory)('user', initialQuestion);
         (0, client_1.addToConversationHistory)('assistant', fullResponse);
@@ -663,9 +663,9 @@ ${stderr}
                         : contextAssembler.assemble(contextStore, '你好，请基于以上上下文开始对话');
                     const spinner = (0, ora_1.default)(chalk_1.default.cyan('AI 正在思考...')).start();
                     const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
-                    await runtime.run(finalPrompt, model, (chunk) => {
+                    await runtime.run(finalPrompt, 'chat', (chunk) => {
                         renderer.onChunk(chunk);
-                    });
+                    }, model, renderer);
                     const fullResponse = renderer.finish();
                     // 同步上下文到全局历史（为了兼容性）
                     (0, client_1.addToConversationHistory)('user', finalPrompt);
@@ -691,9 +691,9 @@ ${stderr}
                         : contextAssembler.assemble(contextStore, '你好，请基于以上上下文开始对话');
                     const spinner = (0, ora_1.default)(chalk_1.default.cyan('AI 正在思考...')).start();
                     const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner);
-                    await runtime.run(finalPrompt, model, (chunk) => {
+                    await runtime.run(finalPrompt, 'chat', (chunk) => {
                         renderer.onChunk(chunk);
-                    });
+                    }, model, renderer);
                     const fullResponse = renderer.finish();
                     // 同步上下文到全局历史（为了兼容性）
                     (0, client_1.addToConversationHistory)('user', finalPrompt);
