@@ -25,10 +25,10 @@ class InputBuffer {
         this.buffer += chunk;
         // 唯一治理触发点: 检测到换行符
         if (chunk.includes('\n') || chunk.includes('\r')) {
-            const cmd = this.buffer.trim();
+            // 保留原始命令 (包括空格和可能的控制字符), 只去掉末尾的换行符
+            const cmd = this.buffer.replace(/[\r\n]+$/, '');
             this.buffer = '';
-            // 空命令不触发治理
-            return cmd.length > 0 ? cmd : null;
+            return cmd;
         }
         return null;
     }

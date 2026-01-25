@@ -66,18 +66,24 @@ class SSHGovernedExecutor {
     /**
      * 处理命令 (Enter 键触发)
      */
-    async handleCommand(cmd, host, user) {
+    /**
+     * 处理命令 (Enter 键触发)
+     * @param unsentCommand 尚未发送给服务器的命令部分 (用于解决打字回显重复问题)
+     */
+    async handleCommand(cmd, host, user, unsentCommand = cmd) {
         // 密码输入阶段: 绝不治理,直接透传
         if (this.elevation === ElevationState.PENDING_PWD) {
             // 密码也不记录到审计日志
-            this.session.write(cmd + '\n');
+            // 注意：这里我们只发送 unsent 部分 + 回车
+            this.session.write(unsentCommand + '\n');
             return;
         }
         const isSudo = cmd.trim().startsWith('sudo ');
         const isSu = cmd.trim().startsWith('su ');
         // sudo 命令处理
         if ((isSudo || isSu) && this.elevation === ElevationState.USER) {
-            await this.handleElevationRequest(cmd, host, user);
+            // 透传 unsentCommand 给 sudo 处理逻辑
+            await this.handleElevationRequest(cmd, host, user, unsentCommand);
             return;
         }
         // 普通命令: 调用治理服务
@@ -97,8 +103,7 @@ class SSHGovernedExecutor {
                     risk: decision.riskLevel
                 });
             }
-            // 关键修复: 发送 Ctrl+C (\x03) 给服务器以清除已输入的缓冲字符
-            // 否则之前透传的字符 (如 'r', 'm') 会停留在服务器的输入缓冲区中
+            // 发送 Ctrl+C (\x03) 给服务器以清除已输入的缓冲字符
             this.session.write('\x03');
             return;
         }
@@ -117,11 +122,9 @@ class SSHGovernedExecutor {
             });
         }
         // 执行命令
-        // 关键修复: 避免重复发送命令
-        // 之前的字符已经通过 'data' 事件透传给了服务器
-        // 如果命令没有被治理层修改，我们只需要发送一个回车符来触发执行
+        // 如果命令没有被治理层修改，我们只需要发送未发送的部分 + 回车
         if (decision.normalizedCmd === cmd) {
-            this.session.write('\r');
+            this.session.write(unsentCommand + '\r');
         }
         else {
             // 如果命令被修改了 (例如自动纠错)，我们需要先清除已有输入
@@ -132,7 +135,7 @@ class SSHGovernedExecutor {
     /**
      * 处理提权请求 (sudo/su)
      */
-    async handleElevationRequest(cmd, host, user) {
+    async handleElevationRequest(cmd, host, user, unsentCommand = cmd) {
         this.elevation = ElevationState.AWAITING_APPROVAL;
         const decision = await this.governance.evaluate({
             kind: 'ssh_cmd',
@@ -163,8 +166,8 @@ class SSHGovernedExecutor {
                 command: cmd
             });
         }
-        // 关键修复: 只发送回车,因为 sudo 命令字符已经透传
-        this.session.write('\r');
+        // 只发送 unsent 部分 + 回车
+        this.session.write(unsentCommand + '\r');
     }
     /**
      * 处理 PTY 输出 (状态跃迁)

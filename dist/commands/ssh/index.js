@@ -200,6 +200,8 @@ function registerSSHCommand(program) {
             const executor = new GovernedExecutor_1.SSHGovernedExecutor(session, governance, recorder);
             // 创建输入缓冲区
             const inputBuffer = new InputBuffer_1.InputBuffer();
+            // 追踪当前行已发送给服务器的字符
+            let lineBuffer = '';
             // 处理终端 resize
             // 关键: 同时更新 SSH PTY 和 录像机
             process.stdout.on('resize', () => {
@@ -219,25 +221,32 @@ function registerSSHCommand(program) {
                 const input = chunk.toString();
                 // 检查是否是完整命令
                 const cmd = inputBuffer.push(input);
-                if (cmd) {
-                    // 完整命令: 进入治理流程
-                    // 记录完整命令 input (包含换行符)
-                    if (!executor.isSensitive()) {
-                        recorder.recordInput(cmd + '\n'); // Record the complete command with newline
+                if (cmd !== null) {
+                    // 检测到完整命令
+                    // 计算 unsentCommand
+                    let unsent = '';
+                    if (cmd.startsWith(lineBuffer)) {
+                        unsent = cmd.slice(lineBuffer.length);
                     }
-                    await executor.handleCommand(cmd, config.host, config.username);
+                    else {
+                        // 如果 buffer 不匹配 (极其罕见), 全量重发以防万一
+                        unsent = cmd;
+                    }
+                    // 完整命令: 进入治理流程
+                    await executor.handleCommand(cmd, config.host, config.username, unsent);
+                    // 清空已发送缓冲区
+                    lineBuffer = '';
                 }
                 else {
-                    // 非完整命令: 不透传到远程会话, 仅用于本地显示 (打字体验)
+                    // 非完整命令: 直接透传 (打字体验)
                     // 也要记录输入! 否则回放时看不到打字过程
                     // 注意: 这里记录的是原始按键 (比如 'l', 's', Backspace 等)
                     // 只有当 GovernedExecutor.isSensitive() 为 false 时才记录
                     if (!executor.isSensitive()) {
                         recorder.recordInput(input);
                     }
-                    // Send to local stdout for typing experience, but not to remote session
-                    // This prevents duplication while maintaining typing feedback
-                    process.stdout.write(input);
+                    session.write(chunk);
+                    lineBuffer += input;
                 }
             });
             // 处理会话关闭

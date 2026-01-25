@@ -86,7 +86,11 @@ export declare class SSHGovernedExecutor {
     /**
      * 处理命令 (Enter 键触发)
      */
-    handleCommand(cmd: string, host?: string, user?: string): Promise<void>;
+    /**
+     * 处理命令 (Enter 键触发)
+     * @param unsentCommand 尚未发送给服务器的命令部分 (用于解决打字回显重复问题)
+     */
+    handleCommand(cmd: string, host?: string, user?: string, unsentCommand?: string): Promise<void>;
     /**
      * 处理提权请求 (sudo/su)
      */
