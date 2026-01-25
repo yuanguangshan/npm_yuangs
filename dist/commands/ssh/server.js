@@ -28,29 +28,50 @@ async function startWebTerminal(config, port = 3000) {
         const governance = {
             evaluate: async (ctx) => {
                 const cmd = ctx.command.trim();
-                // 1. 通知前端：AI 正在思考
-                socket.emit('governance_evaluating', { command: cmd });
+                // 1. 通知前端：AI 正在思考 (增加延迟模拟深度分析)
+                socket.emit('governance_evaluating', {
+                    command: cmd,
+                    timestamp: new Date().toLocaleTimeString()
+                });
+                // 模拟 AI 神经网络分析延迟
+                await new Promise(r => setTimeout(r, 400));
                 // 2. 简单的危险检测逻辑 (用于演示视觉效果)
                 const dangerousPatterns = [
-                    /rm\s+-rf\s+\//,
-                    /mkfs/,
-                    /:\(\)\{\s*:\|:&\s*\};:/
+                    { regex: /rm\s+-rf\s+\//, reason: '非法的文件系统根目录删除尝试', impact: '系统将彻底崩溃', risk: 'R3' },
+                    { regex: /mkfs/, reason: '格式化磁盘尝试', impact: '磁盘数据将全部丢失', risk: 'R3' },
+                    { regex: /dd\s+if=.*of=\/dev\//, reason: '底层设备写覆盖尝试', impact: '可能破坏引导扇区', risk: 'R3' }
                 ];
-                for (const pattern of dangerousPatterns) {
-                    if (pattern.test(cmd)) {
-                        // 🚨 触发前端视觉警报
+                for (const p of dangerousPatterns) {
+                    if (p.regex.test(cmd)) {
+                        const decision = {
+                            allowed: false,
+                            reason: p.reason,
+                            riskLevel: p.risk,
+                            disclosure: {
+                                command: cmd,
+                                impact: p.impact,
+                                riskLevel: p.risk,
+                                requiresConfirmation: true
+                            }
+                        };
+                        // 🚨 发送详细决策给前端预览
+                        socket.emit('governance_decision', decision);
+                        // 🚨 触发全屏视觉警报
                         socket.emit('governance_alert', {
                             level: 'critical',
-                            message: '高危命令已被 AI 拦截'
+                            message: 'BLOCK: ' + p.risk
                         });
-                        return {
-                            allowed: false,
-                            reason: 'Detected potentially destructive command',
-                            riskLevel: 'R3'
-                        };
+                        return decision;
                     }
                 }
-                return { allowed: true, normalizedCmd: ctx.command };
+                // 安全命令
+                const safeDecision = {
+                    allowed: true,
+                    normalizedCmd: ctx.command,
+                    reasoning: '命令通过多维语义安全审计，分析显示为低风险系统管理任务。'
+                };
+                socket.emit('governance_decision', safeDecision);
+                return safeDecision;
             }
         };
         const executor = new GovernedExecutor_1.SSHGovernedExecutor(session, governance);

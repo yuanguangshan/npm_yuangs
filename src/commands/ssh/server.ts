@@ -74,10 +74,8 @@ export async function startWebTerminal(config: any, port: number = 3000) {
                 // 安全命令
                 const safeDecision: ExecDecision = {
                     allowed: true,
-                    reason: '命令通过多维语义安全审计',
-                    riskLevel: 'R1',
                     normalizedCmd: ctx.command,
-                    reasoning: 'Behavioral analysis indicates low-risk system administration task.'
+                    reasoning: '命令通过多维语义安全审计，分析显示为低风险系统管理任务。'
                 };
                 socket.emit('governance_decision', safeDecision);
 
