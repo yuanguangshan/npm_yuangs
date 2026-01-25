@@ -1,4 +1,5 @@
 import { SSHSession } from './SSHSession';
+import { Recorder } from '../audit/Recorder';
 /**
  * 执行决策
  */
@@ -81,7 +82,7 @@ export declare class SSHGovernedExecutor {
     private static readonly SUDO_PASSWORD_PROMPT;
     private static readonly SUDO_FAILURE;
     private static readonly ROOT_PROMPT;
-    constructor(session: SSHSession, governance: GovernanceService, recorder?: any | undefined);
+    constructor(session: SSHSession, governance: GovernanceService, recorder?: Recorder | undefined);
     /**
      * 处理命令 (Enter 键触发)
      */

@@ -54,8 +54,7 @@ class SSHGovernedExecutor {
     static SUDO_PASSWORD_PROMPT = /(\[sudo\] password for .+:|Password:)/i;
     static SUDO_FAILURE = /(sorry, try again|authentication failure)/i;
     static ROOT_PROMPT = /(^|\n).*#\s?$/;
-    constructor(session, governance, recorder // TODO: 实现 Recorder
-    ) {
+    constructor(session, governance, recorder) {
         this.session = session;
         this.governance = governance;
         this.recorder = recorder;
@@ -70,6 +69,7 @@ class SSHGovernedExecutor {
     async handleCommand(cmd, host, user) {
         // 密码输入阶段: 绝不治理,直接透传
         if (this.elevation === ElevationState.PENDING_PWD) {
+            // 密码也不记录到审计日志
             this.session.write(cmd + '\n');
             return;
         }
@@ -89,10 +89,26 @@ class SSHGovernedExecutor {
         });
         if (!decision.allowed) {
             this.renderBlock(decision);
+            // 记录拦截事件
+            if (this.recorder && this.sensitive.shouldRecord()) {
+                this.recorder.recordGovernance('blocked', {
+                    command: cmd,
+                    reason: decision.reason,
+                    risk: decision.riskLevel
+                });
+            }
             return;
         }
         // 记录审计 (如果不在敏感阶段)
         if (this.recorder && this.sensitive.shouldRecord()) {
+            // 记录治理批准事件
+            if (decision.reasoning) {
+                this.recorder.recordGovernance('allowed', {
+                    command: cmd,
+                    reasoning: decision.reasoning
+                });
+            }
+            // 记录输入
             this.recorder.recordInput(cmd + '\n', {
                 elevation: this.elevation,
             });
@@ -114,11 +130,24 @@ class SSHGovernedExecutor {
         if (!decision.allowed) {
             this.elevation = ElevationState.USER;
             this.renderBlock(decision);
+            // 记录拦截
+            if (this.recorder && this.sensitive.shouldRecord()) {
+                this.recorder.recordGovernance('elevation_blocked', {
+                    command: cmd,
+                    reason: decision.reason
+                });
+            }
             return;
         }
         // 审批通过,允许进入密码阶段
         this.elevation = ElevationState.PENDING_PWD;
         this.sensitive.enter();
+        // 记录提权请求被批准 (在进入敏感模式前记录)
+        if (this.recorder) {
+            this.recorder.recordGovernance('elevation_started', {
+                command: cmd
+            });
+        }
         this.session.write(cmd + '\n');
     }
     /**
@@ -130,6 +159,11 @@ class SSHGovernedExecutor {
         if (this.elevation === ElevationState.PENDING_PWD &&
             SSHGovernedExecutor.SUDO_PASSWORD_PROMPT.test(text)) {
             // 不记录、不分析,直接透传
+            // 但需要在治理日志中标记这是一个敏感提示
+            if (this.recorder) {
+                // 不要记录具体 text，只记录事件
+                this.recorder.recordGovernance('sensitive_prompt_displayed');
+            }
             process.stdout.write(text);
             return;
         }
@@ -138,11 +172,17 @@ class SSHGovernedExecutor {
             SSHGovernedExecutor.SUDO_FAILURE.test(text)) {
             this.elevation = ElevationState.USER;
             this.sensitive.exit();
+            if (this.recorder) {
+                this.recorder.recordGovernance('elevation_failed');
+            }
         }
         // root shell 成功
         if (SSHGovernedExecutor.ROOT_PROMPT.test(text)) {
             this.elevation = ElevationState.ROOT;
             this.sensitive.exit();
+            if (this.recorder) {
+                this.recorder.recordGovernance('elevation_success_root');
+            }
         }
         // 审计控制
         if (this.recorder && this.sensitive.shouldRecord()) {

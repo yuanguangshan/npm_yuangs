@@ -40,6 +40,7 @@ const os = __importStar(require("os"));
 const SSHSession_1 = require("../../ssh/SSHSession");
 const InputBuffer_1 = require("../../ssh/InputBuffer");
 const GovernedExecutor_1 = require("../../ssh/GovernedExecutor");
+const Recorder_1 = require("../../audit/Recorder");
 /**
  * 简单的治理服务实现 (MVP)
  * TODO: 接入完整的 GovernanceService
@@ -181,17 +182,32 @@ function registerSSHCommand(program) {
             await session.connect(config);
             console.log(`✅ Connected to ${config.host}`);
             console.log(`🛡️  AI Governance enabled`);
-            console.log(`📝 All commands will be audited\n`);
+            // 获取初始终端尺寸
+            const width = process.stdout.columns || 80;
+            const height = process.stdout.rows || 24;
+            // 初始化录像机
+            const recorder = new Recorder_1.Recorder({
+                user: config.username,
+                host: config.host,
+                width,
+                height,
+                command: `yuangs ssh ${connection}`
+            });
+            console.log(`📝 Session recording started: ${recorder.getFilePath()}\n`);
             // 创建治理服务
             const governance = new SimpleGovernanceService();
-            // 创建治理执行器
-            const executor = new GovernedExecutor_1.SSHGovernedExecutor(session, governance);
+            // 创建治理执行器 (传入 recorder)
+            const executor = new GovernedExecutor_1.SSHGovernedExecutor(session, governance, recorder);
             // 创建输入缓冲区
             const inputBuffer = new InputBuffer_1.InputBuffer();
             // 处理终端 resize
+            // 关键: 同时更新 SSH PTY 和 录像机
             process.stdout.on('resize', () => {
                 const { columns, rows } = process.stdout;
-                session.resize(columns || 80, rows || 24);
+                const w = columns || 80;
+                const h = rows || 24;
+                session.resize(w, h);
+                recorder.recordResize(w, h);
             });
             // 设置原始模式
             if (process.stdin.isTTY) {
@@ -209,16 +225,24 @@ function registerSSHCommand(program) {
                 }
                 else {
                     // 非完整命令: 直接透传 (打字体验)
+                    // 也要记录输入! 否则回放时看不到打字过程
+                    // 注意: 这里记录的是原始按键 (比如 'l', 's', Backspace 等)
+                    // 只有当 GovernedExecutor.isSensitive() 为 false 时才记录
+                    if (!executor.isSensitive()) {
+                        recorder.recordInput(input);
+                    }
                     session.write(chunk);
                 }
             });
             // 处理会话关闭
             session.on('close', () => {
+                recorder.close();
                 console.log('\n\n🔌 Connection closed');
                 process.exit(0);
             });
             // 处理 Ctrl+C
             process.on('SIGINT', () => {
+                recorder.close();
                 console.log('\n\n👋 Disconnecting...');
                 session.close();
                 process.exit(0);
