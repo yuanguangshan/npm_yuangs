@@ -7,6 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
+            /* Default: Cyberpunk Dark */
             --bg-color: #09090b;
             --sidebar-bg: #111114;
             --header-bg: rgba(9, 9, 11, 0.8);
@@ -17,17 +18,81 @@
             --danger: #ef4444;
             --success: #10b981;
             --warning: #f59e0b;
-            --r1-gradient: linear-gradient(135deg, #10b981 0%, #047857 100%);
         }
 
-        /* 🌙 Dark Mode Scrollbar Fix */
+        /* ❄️ Nordic Frost */
+        body.theme-nordic {
+            --bg-color: #0f172a;
+            --sidebar-bg: #1e293b;
+            --header-bg: rgba(15, 23, 42, 0.8);
+            --border-color: #334155;
+            --accent-blue: #38bdf8;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+        }
+
+        /* 📜 Solarized Paper */
+        body.theme-paper {
+            --bg-color: #fdf6e3;
+            --sidebar-bg: #eee8d5;
+            --header-bg: rgba(253, 246, 227, 0.9);
+            --border-color: #d5c4a1;
+            --accent-blue: #268bd2;
+            --text-primary: #586e75;
+            --text-secondary: #839496;
+            --term-bg: #fdf6e3;
+        }
+
+        /* 📟 Matrix */
+        body.theme-matrix {
+            --bg-color: #000000;
+            --sidebar-bg: #050505;
+            --header-bg: rgba(0, 0, 0, 0.8);
+            --border-color: #003b00;
+            --accent-blue: #00ff41;
+            --text-primary: #00ff41;
+            --text-secondary: #008f11;
+        }
+
+        /* 🧛 Dracula */
+        body.theme-dracula {
+            --bg-color: #282a36;
+            --sidebar-bg: #1e1f29;
+            --header-bg: rgba(40, 42, 54, 0.8);
+            --border-color: #44475a;
+            --accent-blue: #bd93f9;
+            --text-primary: #f8f8f2;
+            --text-secondary: #6272a4;
+        }
+
+        /* 🌃 Synthwave */
+        body.theme-synth {
+            --bg-color: #2b213a;
+            --sidebar-bg: #241b30;
+            --header-bg: rgba(43, 33, 58, 0.8);
+            --border-color: #ff79c6;
+            --accent-blue: #36cdff;
+            --text-primary: #ffffff;
+            --text-secondary: #ff79c6;
+        }
+
+        /* 📁 Monokai */
+        body.theme-monokai {
+            --bg-color: #272822;
+            --sidebar-bg: #1e1f1c;
+            --header-bg: rgba(39, 40, 34, 0.8);
+            --border-color: #49483e;
+            --accent-blue: #a6e22e;
+            --text-primary: #f8f8f2;
+            --text-secondary: #75715e;
+        }
+
+        /* 🌙 Dark Mode Scrollbar */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
-        * { scrollbar-width: thin; scrollbar-color: #27272a transparent; }
-
-        * { box-sizing: border-box; }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 10px; }
+        
+        * { box-sizing: border-box; transition: background-color 0.3s, border-color 0.3s, color 0.3s; }
         body {
             margin: 0;
             background-color: var(--bg-color);
@@ -38,36 +103,6 @@
             height: 100vh;
             overflow: hidden;
         }
-
-        /* Red Flash Overlay */
-        #alert-overlay {
-            position: fixed;
-            inset: 0;
-            background: radial-gradient(circle, rgba(239, 68, 68, 0.15) 0%, transparent 70%);
-            opacity: 0;
-            pointer-events: none;
-            z-index: 1000;
-            transition: opacity 0.3s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        #alert-overlay.active { opacity: 1; animation: flash-red 0.5s infinite alternate; }
-        @keyframes flash-red { from { background-color: rgba(239, 68, 68, 0.05); } to { background-color: rgba(239, 68, 68, 0.2); } }
-
-        #alert-box {
-            background: #000;
-            border: 2px solid var(--danger);
-            padding: 30px 60px;
-            border-radius: 4px;
-            box-shadow: 0 0 100px rgba(239, 68, 68, 0.5);
-            text-align: center;
-            transform: scale(0.9);
-            transition: 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-        #alert-overlay.active #alert-box { transform: scale(1); }
-        .alert-title { color: var(--danger); font-size: 32px; font-weight: 800; letter-spacing: 4px; margin-bottom: 10px; }
-        .alert-sub { color: #fff; font-size: 14px; opacity: 0.8; }
 
         /* Header */
         header {
@@ -83,8 +118,14 @@
         }
         .logo-section { display: flex; align-items: baseline; gap: 12px; }
         .logo { font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 22px; background: linear-gradient(to right, #60a5fa, #a855f7); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-        .slogan { font-size: 12px; color: var(--text-secondary); font-weight: 500; letter-spacing: 0.5px; opacity: 0.8; }
-        .status-pill { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: var(--text-secondary); background: rgba(39, 39, 42, 0.5); padding: 4px 12px; border-radius: 99px; border: 1px solid var(--border-color); }
+        .slogan { font-size: 11px; color: var(--text-secondary); font-weight: 500; letter-spacing: 0.5px; opacity: 0.7; }
+        
+        .header-actions { display: flex; align-items: center; gap: 16px; }
+        .theme-switcher { display: flex; gap: 4px; background: rgba(0,0,0,0.2); padding: 4px; border-radius: 8px; border: 1px solid var(--border-color); }
+        .theme-btn { width: 20px; height: 20px; border-radius: 4px; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); }
+        .theme-btn:hover { transform: scale(1.15); }
+        
+        .status-pill { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 600; color: var(--text-secondary); background: rgba(39, 39, 42, 0.3); padding: 4px 10px; border-radius: 99px; border: 1px solid var(--border-color); }
         .dot { width: 6px; height: 6px; border-radius: 50%; background: #52525b; }
         .dot.active { background: var(--success); box-shadow: 0 0 8px var(--success); }
 
@@ -92,10 +133,10 @@
         main { flex: 1; display: flex; overflow: hidden; }
 
         /* Left: Terminal */
-        #term-section { flex: 1; padding: 20px; position: relative; background: radial-gradient(circle at top left, #18191e 0%, #09090b 100%); overflow: hidden; }
-        #term-container { height: 100%; border-radius: 8px; padding: 0; overflow: hidden; }
+        #term-section { flex: 1; padding: 20px; position: relative; background: var(--bg-color); overflow: hidden; }
+        #term-container { height: 100%; border-radius: 8px; padding: 0; overflow: hidden; border: 1px solid var(--border-color); background: rgba(0,0,0,0.1); }
 
-        /* Right: Sidebar */
+        /* Sidebar */
         #sidebar {
             width: 380px;
             background-color: var(--sidebar-bg);
@@ -106,20 +147,16 @@
             overflow-y: auto;
         }
 
-        .section-title { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+        .section-title { font-size: 10px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
         .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border-color); }
 
-        /* AI Insight Card */
         .insight-card {
-            background: rgba(24, 24, 27, 0.5);
+            background: rgba(128, 128, 128, 0.05);
             border: 1px solid var(--border-color);
             border-radius: 12px;
             padding: 20px;
             margin-bottom: 24px;
-            transition: all 0.3s;
         }
-        .insight-card.active { border-color: var(--accent-blue); box-shadow: 0 0 20px rgba(59, 130, 246, 0.1); }
-
         .scan-line { height: 2px; background: var(--accent-blue); width: 0%; margin-top: 10px; transition: width 0.4s; }
         .scan-active .scan-line { width: 100%; animation: pulse-blue 1s infinite; }
 
@@ -166,9 +203,20 @@
             <div class="logo">yuangs</div>
             <div class="slogan">AI 驱动的智能治理终端 | AI-Powered Governance Shell</div>
         </div>
-        <div class="status-pill">
-            <div id="conn-dot" class="dot"></div>
-            <span id="conn-status">WAITING</span>
+        <div class="header-actions">
+            <div class="theme-switcher">
+                <div class="theme-btn" style="background: #09090b" onclick="setTheme('default')" title="Cyberpunk"></div>
+                <div class="theme-btn" style="background: #0f172a" onclick="setTheme('nordic')" title="Nordic"></div>
+                <div class="theme-btn" style="background: #fdf6e3" onclick="setTheme('paper')" title="Paper"></div>
+                <div class="theme-btn" style="background: #00ff41" onclick="setTheme('matrix')" title="Matrix"></div>
+                <div class="theme-btn" style="background: #bd93f9" onclick="setTheme('dracula')" title="Dracula"></div>
+                <div class="theme-btn" style="background: #ff79c6" onclick="setTheme('synth')" title="Synthwave"></div>
+                <div class="theme-btn" style="background: #a6e22e" onclick="setTheme('monokai')" title="Monokai"></div>
+            </div>
+            <div class="status-pill">
+                <div id="conn-dot" class="dot"></div>
+                <span id="conn-status">WAITING</span>
+            </div>
         </div>
     </header>
 
@@ -298,6 +346,30 @@
             document.getElementById('conn-status').innerText = 'SECURE CHANNEL';
             term.focus();
         });
+
+        // --- Theme Management ---
+        const themes = {
+            default: { background: '#09090b00', foreground: '#f4f4f5', cursor: '#3b82f6' },
+            nordic: { background: '#0f172a00', foreground: '#f1f5f9', cursor: '#38bdf8' },
+            paper: { background: '#fdf6e300', foreground: '#586e75', cursor: '#268bd2' },
+            matrix: { background: '#00000000', foreground: '#00ff41', cursor: '#00ff41' },
+            dracula: { background: '#282a3600', foreground: '#f8f8f2', cursor: '#bd93f9' },
+            synth: { background: '#2b213a00', foreground: '#ffffff', cursor: '#ff79c6' },
+            monokai: { background: '#27282200', foreground: '#f8f8f2', cursor: '#a6e22e' }
+        };
+
+        window.setTheme = (themeName) => {
+            document.body.className = themeName === 'default' ? '' : 'theme-' + themeName;
+            term.options.theme = {
+                ...term.options.theme,
+                ...themes[themeName]
+            };
+            localStorage.setItem('yuangs-theme', themeName);
+        };
+
+        // Restore saved theme
+        const savedTheme = localStorage.getItem('yuangs-theme');
+        if (savedTheme) setTheme(savedTheme);
 
         window.onresize = () => {
             fitAddon.fit();
