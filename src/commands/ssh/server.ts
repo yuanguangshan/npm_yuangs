@@ -34,8 +34,8 @@ export async function startWebTerminal(config: any, port: number = 3000) {
                     timestamp: new Date().toLocaleTimeString()
                 });
 
-                // 模拟 AI 神经网络分析延迟
-                await new Promise(r => setTimeout(r, 400));
+                // 模拟 AI 神经网络分析延迟 (已优化为 20ms 以提升性能)
+                await new Promise(r => setTimeout(r, 20));
 
                 // 2. 简单的危险检测逻辑 (用于演示视觉效果)
                 const dangerousPatterns = [
