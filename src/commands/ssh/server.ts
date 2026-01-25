@@ -1,6 +1,6 @@
 import express from 'express';
 import { createServer } from 'http';
-import { Server } from 'socket.io';
+import { Server, Socket } from 'socket.io';
 import open from 'open';
 import path from 'path';
 import { SSHSession } from '../../ssh/SSHSession';
@@ -17,7 +17,7 @@ export async function startWebTerminal(config: any, port: number = 3000) {
     console.log(`📂 Serving static files from: ${publicPath}`);
     app.use(express.static(publicPath));
 
-    io.on('connection', async (socket) => {
+    io.on('connection', async (socket: Socket) => {
         console.log('🌐 Browser connected to yuangs-web-term');
 
         const session = new SSHSession();
@@ -129,7 +129,7 @@ export async function startWebTerminal(config: any, port: number = 3000) {
                 }
             });
 
-            socket.on('resize', ({ cols, rows }) => {
+            socket.on('resize', ({ cols, rows }: { cols: number, rows: number }) => {
                 session.resize(cols, rows);
             });
 
