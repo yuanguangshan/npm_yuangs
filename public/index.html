@@ -1,0 +1,77 @@
+<!doctype html>
+<html>
+  <head>
+    <title>yuangs-web-term | AI Governed Shell</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css"
+    />
+    <style>
+      body {
+        margin: 0;
+        background: #0f172a;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        font-family: sans-serif;
+      }
+      #header {
+        background: #1e293b;
+        color: #38bdf8;
+        padding: 10px 20px;
+        display: flex;
+        justify-content: space-between;
+        border-bottom: 1px solid #334155;
+      }
+      #terminal-container {
+        flex: 1;
+        padding: 10px;
+      }
+      .status-pill {
+        background: #0ea5e9;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="header">
+      <span><b>yuangs</b> SSH 智能终端</span>
+      <div id="status"><span class="status-pill">AI 治理已就绪</span></div>
+    </div>
+    <div id="terminal-container"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+      const term = new Terminal({
+        cursorBlink: true,
+        theme: { background: "#0f172a", foreground: "#f8fafc" },
+        fontSize: 14,
+        fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+      });
+      term.open(document.getElementById("terminal-container"));
+
+      const socket = io();
+      term.onData((data) => socket.emit("input", data));
+      socket.on("output", (data) => term.write(data));
+
+      // 自动适配窗口大小
+      window.onresize = () => {
+        const cols = Math.floor(window.innerWidth / 9);
+        const rows = Math.floor((window.innerHeight - 50) / 18);
+        term.resize(cols, rows);
+        socket.emit("resize", { cols, rows });
+      };
+
+      // Initial resize
+      setTimeout(() => {
+        const cols = Math.floor(window.innerWidth / 9);
+        const rows = Math.floor((window.innerHeight - 50) / 18);
+        term.resize(cols, rows);
+      }, 100);
+    </script>
+  </body>
+</html>
