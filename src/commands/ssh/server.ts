@@ -15,6 +15,13 @@ export async function startWebTerminal(config: any, port: number = 3000) {
     // Fix path resolution: dist/commands/ssh -> ../../../public
     const publicPath = path.join(__dirname, '../../../public');
     console.log(`📂 Serving static files from: ${publicPath}`);
+    
+    // Serve index.html at root path
+    app.get('/', (req, res) => {
+        res.sendFile(path.join(publicPath, 'index.html'));
+    });
+    
+    // Serve other static files
     app.use(express.static(publicPath));
 
     io.on('connection', async (socket: Socket) => {

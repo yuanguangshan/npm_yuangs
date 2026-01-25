@@ -19,6 +19,11 @@ async function startWebTerminal(config, port = 3000) {
     // Fix path resolution: dist/commands/ssh -> ../../../public
     const publicPath = path_1.default.join(__dirname, '../../../public');
     console.log(`📂 Serving static files from: ${publicPath}`);
+    // Serve index.html at root path
+    app.get('/', (req, res) => {
+        res.sendFile(path_1.default.join(publicPath, 'index.html'));
+    });
+    // Serve other static files
     app.use(express_1.default.static(publicPath));
     io.on('connection', async (socket) => {
         console.log('🌐 Browser connected to yuangs-web-term');
