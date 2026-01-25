@@ -18,8 +18,16 @@
             --success: #10b981;
             --warning: #f59e0b;
             --r3-gradient: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+            --r3-gradient: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
             --r1-gradient: linear-gradient(135deg, #10b981 0%, #047857 100%);
         }
+
+        /* 🌙 Dark Mode Scrollbar Fix */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+        * { scrollbar-width: thin; scrollbar-color: #27272a transparent; }
 
         * { box-sizing: border-box; }
         body {
