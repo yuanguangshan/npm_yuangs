@@ -17,8 +17,6 @@
             --danger: #ef4444;
             --success: #10b981;
             --warning: #f59e0b;
-            --r3-gradient: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
-            --r3-gradient: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
             --r1-gradient: linear-gradient(135deg, #10b981 0%, #047857 100%);
         }
 
@@ -94,8 +92,8 @@
         main { flex: 1; display: flex; overflow: hidden; }
 
         /* Left: Terminal */
-        #term-section { flex: 1; padding: 20px; position: relative; background: radial-gradient(circle at top left, #18191e 0%, #09090b 100%); }
-        #term-container { height: 100%; border-radius: 8px; padding: 10px; }
+        #term-section { flex: 1; padding: 20px; position: relative; background: radial-gradient(circle at top left, #18191e 0%, #09090b 100%); overflow: hidden; }
+        #term-container { height: 100%; border-radius: 8px; padding: 0; overflow: hidden; }
 
         /* Right: Sidebar */
         #sidebar {
@@ -216,7 +214,8 @@
             cursorBlink: true,
             fontFamily: '"JetBrains Mono", monospace',
             fontSize: 14,
-            theme: { background: '#09090b00' }
+            theme: { background: '#09090b00' },
+            scrollback: 5000 // Increase scrollback buffer
         });
         const fitAddon = new FitAddon.FitAddon();
         term.loadAddon(fitAddon);
@@ -225,7 +224,11 @@
 
         const socket = io();
         term.onData(data => socket.emit('input', data));
-        socket.on('output', data => term.write(data));
+        socket.on('output', data => {
+            term.write(data);
+            // Auto scroll to bottom
+            term.scrollToBottom();
+        });
 
         // UI Ref Elements
         const scanCard = document.getElementById('current-scan');
@@ -254,10 +257,12 @@
             decDetail.style.display = 'block';
 
             decTitle.innerText = dec.allowed ? 'Execution Approved' : 'Execution Denied';
-            decReason.innerText = dec.reason;
+            // Use reasoning for approved commands, reason for denied ones
+            decReason.innerText = dec.reasoning || dec.reason || 'No detailed analysis provided.';
             
-            riskPill.className = 'risk-badge risk-' + dec.riskLevel.toLowerCase();
-            riskPill.innerText = 'RISK LEVEL: ' + dec.riskLevel;
+            const riskLevel = dec.riskLevel || (dec.allowed ? 'R1' : 'R3');
+            riskPill.className = 'risk-badge risk-' + riskLevel.toLowerCase();
+            riskPill.innerText = 'RISK LEVEL: ' + riskLevel;
 
             if (!dec.allowed && dec.disclosure) {
                 decImpact.style.display = 'block';
@@ -272,7 +277,7 @@
             item.innerHTML = `
                 <div class="history-cmd">${dec.command || scanCmd.innerText}</div>
                 <div class="history-meta">
-                    <span>${dec.riskLevel}</span>
+                    <span style="color: ${dec.allowed ? 'var(--success)' : 'var(--danger)'}">${riskLevel}</span>
                     <span>${new Date().toLocaleTimeString()}</span>
                 </div>
             `;
