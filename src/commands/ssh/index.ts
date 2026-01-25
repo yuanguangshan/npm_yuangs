@@ -224,16 +224,22 @@ export function registerSSHCommand(program: Command): void {
 
           if (cmd) {
             // 完整命令: 进入治理流程
+            // 记录完整命令 input (包含换行符)
+            if (!executor.isSensitive()) {
+              recorder.recordInput(cmd + '\n'); // Record the complete command with newline
+            }
             await executor.handleCommand(cmd, config.host, config.username);
           } else {
-            // 非完整命令: 直接透传 (打字体验)
+            // 非完整命令: 不透传到远程会话, 仅用于本地显示 (打字体验)
             // 也要记录输入! 否则回放时看不到打字过程
             // 注意: 这里记录的是原始按键 (比如 'l', 's', Backspace 等)
             // 只有当 GovernedExecutor.isSensitive() 为 false 时才记录
             if (!executor.isSensitive()) {
                recorder.recordInput(input);
             }
-            session.write(chunk);
+            // Send to local stdout for typing experience, but not to remote session
+            // This prevents duplication while maintaining typing feedback
+            process.stdout.write(input);
           }
         });
 
