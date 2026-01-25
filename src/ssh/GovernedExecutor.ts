@@ -172,19 +172,17 @@ export class SSHGovernedExecutor {
     }
 
     // 执行命令
-    // 策略优化:
-    // 1. 默认: 智能补发 (只发 unsent + \r)，解决重复回显问题
-    // 2. 包含 Tab: 强制重发 (Ctrl+C + cmd + \r)，解决 Tab 补全导致的 AI/Server 状态不一致问题
-    // 3. 被修改: 强制重发 (Ctrl+U + cmd + \r)
-    
-    const containsTab = cmd.includes('\t');
-
-    if (decision.normalizedCmd === cmd && !containsTab) {
-      this.session.write(unsentCommand + '\r');
+    // 智能补发: 如果命令没有被治理层修改，我们只需要发送未发送的部分 + 回车
+    if (decision.normalizedCmd === cmd) {
+      if (unsentCommand) {
+        this.session.write(unsentCommand + '\r');
+      } else {
+        // 如果没有未发送部分，只发回车
+        this.session.write('\r');
+      }
     } else {
-      // 强制重发模式
-      // 使用 Ctrl+C (\x03) 确保行被彻底清除 (比 Ctrl+U 更通用)
-      // 这会导致界面上多显示一行 Prompt，但能保证执行的一致性
+      // 如果命令被修改了 (例如自动纠错)，我们需要先清除已有输入
+      // 发送 Ctrl+C (清除行) + 新命令 + 回车
       this.session.write('\x03' + decision.normalizedCmd + '\r');
     }
   }
