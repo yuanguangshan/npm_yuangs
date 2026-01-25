@@ -1,91 +1,293 @@
-<!doctype html>
-<html>
-  <head>
-    <title>yuangs-web-term | AI Governed Shell</title>
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css"
-    />
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>yuangs | AI Governance Console</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-      body {
-        margin: 0;
-        background: #0f172a;
-        display: flex;
-        flex-direction: column;
-        height: 100vh;
-        font-family: sans-serif;
-      }
-      #header {
-        background: #1e293b;
-        color: #38bdf8;
-        padding: 10px 20px;
-        display: flex;
-        justify-content: space-between;
-        border-bottom: 1px solid #334155;
-      }
-      #terminal-container {
-        flex: 1;
-        padding: 10px;
-      }
-      .status-pill {
-        background: #0ea5e9;
-        color: white;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 12px;
-      }
+        :root {
+            --bg-color: #09090b;
+            --sidebar-bg: #111114;
+            --header-bg: rgba(9, 9, 11, 0.8);
+            --border-color: #27272a;
+            --accent-blue: #3b82f6;
+            --text-primary: #f4f4f5;
+            --text-secondary: #a1a1aa;
+            --danger: #ef4444;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --r3-gradient: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+            --r1-gradient: linear-gradient(135deg, #10b981 0%, #047857 100%);
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Red Flash Overlay */
+        #alert-overlay {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle, rgba(239, 68, 68, 0.15) 0%, transparent 70%);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 1000;
+            transition: opacity 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #alert-overlay.active { opacity: 1; animation: flash-red 0.5s infinite alternate; }
+        @keyframes flash-red { from { background-color: rgba(239, 68, 68, 0.05); } to { background-color: rgba(239, 68, 68, 0.2); } }
+
+        #alert-box {
+            background: #000;
+            border: 2px solid var(--danger);
+            padding: 30px 60px;
+            border-radius: 4px;
+            box-shadow: 0 0 100px rgba(239, 68, 68, 0.5);
+            text-align: center;
+            transform: scale(0.9);
+            transition: 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        #alert-overlay.active #alert-box { transform: scale(1); }
+        .alert-title { color: var(--danger); font-size: 32px; font-weight: 800; letter-spacing: 4px; margin-bottom: 10px; }
+        .alert-sub { color: #fff; font-size: 14px; opacity: 0.8; }
+
+        /* Header */
+        header {
+            height: 56px;
+            padding: 0 20px;
+            background: var(--header-bg);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 100;
+        }
+        .logo { font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 20px; background: linear-gradient(to right, #60a5fa, #a855f7); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        .status-pill { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: var(--text-secondary); background: rgba(39, 39, 42, 0.5); padding: 4px 12px; border-radius: 99px; border: 1px solid var(--border-color); }
+        .dot { width: 6px; height: 6px; border-radius: 50%; background: #52525b; }
+        .dot.active { background: var(--success); box-shadow: 0 0 8px var(--success); }
+
+        /* Main Layout */
+        main { flex: 1; display: flex; overflow: hidden; }
+
+        /* Left: Terminal */
+        #term-section { flex: 1; padding: 20px; position: relative; background: radial-gradient(circle at top left, #18191e 0%, #09090b 100%); }
+        #term-container { height: 100%; border-radius: 8px; padding: 10px; }
+
+        /* Right: Sidebar */
+        #sidebar {
+            width: 380px;
+            background-color: var(--sidebar-bg);
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        .section-title { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+        .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border-color); }
+
+        /* AI Insight Card */
+        .insight-card {
+            background: rgba(24, 24, 27, 0.5);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            transition: all 0.3s;
+        }
+        .insight-card.active { border-color: var(--accent-blue); box-shadow: 0 0 20px rgba(59, 130, 246, 0.1); }
+
+        .scan-line { height: 2px; background: var(--accent-blue); width: 0%; margin-top: 10px; transition: width 0.4s; }
+        .scan-active .scan-line { width: 100%; animation: pulse-blue 1s infinite; }
+
+        @keyframes pulse-blue { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
+
+        /* Decision Badge */
+        .risk-badge {
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            display: inline-block;
+            margin-bottom: 12px;
+        }
+        .risk-r1 { background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.3); }
+        .risk-r3 { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.3); }
+
+        .decision-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+        .decision-reason { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+
+        /* History List */
+        .history-item {
+            padding: 12px 0;
+            border-bottom: 1px solid #1f1f23;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .history-item:last-child { border-bottom: none; }
+        .history-cmd { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent-blue); }
+        .history-meta { font-size: 10px; color: #52525b; display: flex; justify-content: space-between; }
     </style>
-  </head>
-  <body>
-    <div id="header">
-      <span><b>yuangs</b> SSH 智能终端</span>
-      <div id="status"><span class="status-pill">AI 治理已就绪</span></div>
+</head>
+<body>
+    <div id="alert-overlay">
+        <div id="alert-box">
+            <div class="alert-title">SECURITY BLOCK</div>
+            <div class="alert-sub">Critical command intercepted by AI Governance.</div>
+        </div>
     </div>
-    <div id="terminal-container"></div>
+
+    <header>
+        <div class="logo">yuangs</div>
+        <div class="status-pill">
+            <div id="conn-dot" class="dot"></div>
+            <span id="conn-status">WAITING</span>
+        </div>
+    </header>
+
+    <main>
+        <div id="term-section">
+            <div id="term-container"></div>
+        </div>
+
+        <aside id="sidebar">
+            <div class="section-title">AI Cognitive Process</div>
+            <div id="insight-container">
+                <div class="insight-card" id="current-scan">
+                    <div id="scan-label" style="font-size: 12px; color: var(--text-secondary)">Standby Mode</div>
+                    <div id="scan-cmd" style="font-family: 'JetBrains Mono'; font-size: 14px; margin-top: 8px; color: #fff;">-</div>
+                    <div class="scan-line"></div>
+                </div>
+            </div>
+
+            <div id="decision-detail" style="display: none;">
+                <div class="insight-card active">
+                    <div id="risk-pill" class="risk-badge">LEVEL: -</div>
+                    <div id="dec-title" class="decision-title">-</div>
+                    <div id="dec-reason" class="decision-reason">-</div>
+                    <div id="dec-impact" style="margin-top: 12px; font-size: 12px; color: var(--danger); display: none;">
+                        <b>Impact:</b> <span id="dec-impact-text"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-title">Audit History</div>
+            <div id="history-list">
+                <!-- Log items will go here -->
+            </div>
+        </aside>
+    </main>
 
     <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
-    <!-- Use local socket.io served by the server -->
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
     <script src="/socket.io/socket.io.js"></script>
+
     <script>
-      const term = new Terminal({
-        cursorBlink: true,
-        theme: { background: "#0f172a", foreground: "#f8fafc" },
-        fontSize: 14,
-        fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-      });
-      term.open(document.getElementById("terminal-container"));
+        const term = new Terminal({
+            cursorBlink: true,
+            fontFamily: '"JetBrains Mono", monospace',
+            fontSize: 14,
+            theme: { background: '#09090b00' }
+        });
+        const fitAddon = new FitAddon.FitAddon();
+        term.loadAddon(fitAddon);
+        term.open(document.getElementById('term-container'));
+        fitAddon.fit();
 
         const socket = io();
         term.onData(data => socket.emit('input', data));
         socket.on('output', data => term.write(data));
 
-        // Connection status updates
-        socket.on('connect', () => {
-            document.getElementById('status').innerHTML = '<span class="status-pill" style="background:#10b981">已连接 (Connected)</span>';
-            term.focus();
-        });
-        socket.on('disconnect', () => {
-            document.getElementById('status').innerHTML = '<span class="status-pill" style="background:#ef4444">连接断开 (Disconnected)</span>';
+        // UI Ref Elements
+        const scanCard = document.getElementById('current-scan');
+        const scanLabel = document.getElementById('scan-label');
+        const scanCmd = document.getElementById('scan-cmd');
+        const decDetail = document.getElementById('decision-detail');
+        const riskPill = document.getElementById('risk-pill');
+        const decTitle = document.getElementById('dec-title');
+        const decReason = document.getElementById('dec-reason');
+        const decImpact = document.getElementById('dec-impact');
+        const decImpactText = document.getElementById('dec-impact-text');
+        const historyList = document.getElementById('history-list');
+
+        // AI Evaluating
+        socket.on('governance_evaluating', (data) => {
+            scanCard.classList.add('scan-active');
+            scanLabel.innerText = 'AI Analysis in Progress...';
+            scanCmd.innerText = data.command;
+            decDetail.style.display = 'none';
         });
 
-        // Ensure focus
-        document.getElementById('terminal-container').addEventListener('click', () => term.focus());
-        
-        // 自动适配窗口大小
+        // AI Decision
+        socket.on('governance_decision', (dec) => {
+            scanCard.classList.remove('scan-active');
+            scanLabel.innerText = 'Audit Complete';
+            decDetail.style.display = 'block';
+
+            decTitle.innerText = dec.allowed ? 'Execution Approved' : 'Execution Denied';
+            decReason.innerText = dec.reason;
+            
+            riskPill.className = 'risk-badge risk-' + dec.riskLevel.toLowerCase();
+            riskPill.innerText = 'RISK LEVEL: ' + dec.riskLevel;
+
+            if (!dec.allowed && dec.disclosure) {
+                decImpact.style.display = 'block';
+                decImpactText.innerText = dec.disclosure.impact;
+            } else {
+                decImpact.style.display = 'none';
+            }
+
+            // Add to history
+            const item = document.createElement('div');
+            item.className = 'history-item';
+            item.innerHTML = `
+                <div class="history-cmd">${dec.command || scanCmd.innerText}</div>
+                <div class="history-meta">
+                    <span>${dec.riskLevel}</span>
+                    <span>${new Date().toLocaleTimeString()}</span>
+                </div>
+            `;
+            historyList.prepend(item);
+        });
+
+        // Alert
+        socket.on('governance_alert', () => {
+            document.getElementById('alert-overlay').classList.add('active');
+            setTimeout(() => {
+                document.getElementById('alert-overlay').classList.remove('active');
+            }, 3000);
+        });
+
+        // Connection
+        socket.on('connect', () => {
+            document.getElementById('conn-dot').classList.add('active');
+            document.getElementById('conn-status').innerText = 'SECURE CHANNEL';
+            term.focus();
+        });
+
         window.onresize = () => {
-            const cols = Math.floor(window.innerWidth / 9);
-            const rows = Math.floor((window.innerHeight - 50) / 18);
-            term.resize(cols, rows);
-            socket.emit('resize', { cols, rows });
+            fitAddon.fit();
+            const dims = fitAddon.proposeDimensions();
+            if (dims) socket.emit('resize', dims);
         };
-        
-        // Initial resize & focus
-        setTimeout(() => {
-             const cols = Math.floor(window.innerWidth / 9);
-             const rows = Math.floor((window.innerHeight - 50) / 18);
-             term.resize(cols, rows);
-             term.focus();
-        }, 100);
+
+        setTimeout(() => fitAddon.fit(), 500);
     </script>
-  </body>
+</body>
 </html>

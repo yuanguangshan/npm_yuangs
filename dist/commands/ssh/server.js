@@ -27,9 +27,29 @@ async function startWebTerminal(config, port = 3000) {
         // 这里接入你现有的治理服务逻辑
         const governance = {
             evaluate: async (ctx) => {
-                // 转发给你的 SimpleGovernanceService 或完整的 GovernanceEngine
-                // 这里可以 emit 事件给前端，让前端弹出华丽的 UI 确认框
-                socket.emit('governance_evaluating', { command: ctx.command });
+                const cmd = ctx.command.trim();
+                // 1. 通知前端：AI 正在思考
+                socket.emit('governance_evaluating', { command: cmd });
+                // 2. 简单的危险检测逻辑 (用于演示视觉效果)
+                const dangerousPatterns = [
+                    /rm\s+-rf\s+\//,
+                    /mkfs/,
+                    /:\(\)\{\s*:\|:&\s*\};:/
+                ];
+                for (const pattern of dangerousPatterns) {
+                    if (pattern.test(cmd)) {
+                        // 🚨 触发前端视觉警报
+                        socket.emit('governance_alert', {
+                            level: 'critical',
+                            message: '高危命令已被 AI 拦截'
+                        });
+                        return {
+                            allowed: false,
+                            reason: 'Detected potentially destructive command',
+                            riskLevel: 'R3'
+                        };
+                    }
+                }
                 return { allowed: true, normalizedCmd: ctx.command };
             }
         };

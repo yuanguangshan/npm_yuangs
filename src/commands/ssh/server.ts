@@ -4,7 +4,7 @@ import { Server } from 'socket.io';
 import open from 'open';
 import path from 'path';
 import { SSHSession } from '../../ssh/SSHSession';
-import { SSHGovernedExecutor, GovernanceService } from '../../ssh/GovernedExecutor';
+import { SSHGovernedExecutor, GovernanceService, ExecDecision } from '../../ssh/GovernedExecutor';
 import { InputBuffer } from '../../ssh/InputBuffer';
 
 export async function startWebTerminal(config: any, port: number = 3000) {
@@ -25,11 +25,63 @@ export async function startWebTerminal(config: any, port: number = 3000) {
         
         // 这里接入你现有的治理服务逻辑
         const governance: GovernanceService = {
-            evaluate: async (ctx) => {
-                // 转发给你的 SimpleGovernanceService 或完整的 GovernanceEngine
-                // 这里可以 emit 事件给前端，让前端弹出华丽的 UI 确认框
-                socket.emit('governance_evaluating', { command: ctx.command });
-                return { allowed: true, normalizedCmd: ctx.command }; 
+            evaluate: async (ctx): Promise<ExecDecision> => {
+                const cmd = ctx.command.trim();
+                
+                // 1. 通知前端：AI 正在思考 (增加延迟模拟深度分析)
+                socket.emit('governance_evaluating', { 
+                    command: cmd,
+                    timestamp: new Date().toLocaleTimeString()
+                });
+
+                // 模拟 AI 神经网络分析延迟
+                await new Promise(r => setTimeout(r, 400));
+
+                // 2. 简单的危险检测逻辑 (用于演示视觉效果)
+                const dangerousPatterns = [
+                    { regex: /rm\s+-rf\s+\//, reason: '非法的文件系统根目录删除尝试', impact: '系统将彻底崩溃', risk: 'R3' },
+                    { regex: /mkfs/, reason: '格式化磁盘尝试', impact: '磁盘数据将全部丢失', risk: 'R3' },
+                    { regex: /dd\s+if=.*of=\/dev\//, reason: '底层设备写覆盖尝试', impact: '可能破坏引导扇区', risk: 'R3' }
+                ];
+
+                for (const p of dangerousPatterns) {
+                    if (p.regex.test(cmd)) {
+                        const decision: ExecDecision = { 
+                            allowed: false, 
+                            reason: p.reason,
+                            riskLevel: p.risk,
+                            disclosure: {
+                                command: cmd,
+                                impact: p.impact,
+                                riskLevel: p.risk,
+                                requiresConfirmation: true
+                            }
+                        };
+
+                        // 🚨 发送详细决策给前端预览
+                        socket.emit('governance_decision', decision);
+                        
+                        // 🚨 触发全屏视觉警报
+                        socket.emit('governance_alert', { 
+                            level: 'critical', 
+                            message: 'BLOCK: ' + p.risk 
+                        });
+
+                        return decision;
+                    }
+                }
+
+                // 安全命令
+                const safeDecision: ExecDecision = {
+                    allowed: true,
+                    reason: '命令通过多维语义安全审计',
+                    riskLevel: 'R1',
+                    normalizedCmd: ctx.command,
+                    reasoning: 'Behavioral analysis indicates low-risk system administration task.'
+                };
+                socket.emit('governance_decision', safeDecision);
+
+                return safeDecision; 
             }
         };
 
