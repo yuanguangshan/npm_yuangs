@@ -222,10 +222,13 @@ function registerSSHCommand(program) {
                 // 检查是否是完整命令
                 const cmd = inputBuffer.push(input);
                 if (cmd !== null) {
+                    // 检测到完整命令
+                    // 对已发送缓冲区进行 Backspace 处理，以匹配 cmd 的格式
+                    const processedLineBuffer = InputBuffer_1.InputBuffer.processBackspace(lineBuffer);
                     // 计算 unsentCommand
                     let unsent = '';
-                    if (cmd.startsWith(lineBuffer)) {
-                        unsent = cmd.slice(lineBuffer.length);
+                    if (cmd.startsWith(processedLineBuffer)) {
+                        unsent = cmd.slice(processedLineBuffer.length);
                     }
                     else {
                         // 如果 buffer 不匹配 (极其罕见), 全量重发以防万一

@@ -20,6 +20,11 @@ export declare class InputBuffer {
      */
     push(chunk: string): string | null;
     /**
+     * 处理控制字符 (如 Backspace)
+     * 模拟终端行为: \x7f (DEL) 或 \b (BS) 删除前一个字符
+     */
+    static processBackspace(input: string): string;
+    /**
      * 清空缓冲区
      */
     clear(): void;

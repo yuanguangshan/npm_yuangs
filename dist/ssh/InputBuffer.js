@@ -26,11 +26,30 @@ class InputBuffer {
         // 唯一治理触发点: 检测到换行符
         if (chunk.includes('\n') || chunk.includes('\r')) {
             // 保留原始命令 (包括空格和可能的控制字符), 只去掉末尾的换行符
-            const cmd = this.buffer.replace(/[\r\n]+$/, '');
+            const rawCmd = this.buffer.replace(/[\r\n]+$/, '');
+            const cmd = InputBuffer.processBackspace(rawCmd);
             this.buffer = '';
             return cmd;
         }
         return null;
+    }
+    /**
+     * 处理控制字符 (如 Backspace)
+     * 模拟终端行为: \x7f (DEL) 或 \b (BS) 删除前一个字符
+     */
+    static processBackspace(input) {
+        const chars = [];
+        for (const char of input) {
+            if (char === '\x7f' || char === '\b') {
+                if (chars.length > 0) {
+                    chars.pop();
+                }
+            }
+            else {
+                chars.push(char);
+            }
+        }
+        return chars.join('');
     }
     /**
      * 清空缓冲区
