@@ -231,7 +231,6 @@ function registerSSHCommand(program) {
                         // 如果 buffer 不匹配 (极其罕见), 全量重发以防万一
                         unsent = cmd;
                     }
-                    console.log(`[DEBUG] unsent=${JSON.stringify(unsent)}`);
                     // 完整命令: 进入治理流程
                     await executor.handleCommand(cmd, config.host, config.username, unsent);
                     // 清空已发送缓冲区
