@@ -104,6 +104,37 @@
             overflow: hidden;
         }
 
+        /* Red Flash Overlay */
+        #alert-overlay {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle, rgba(239, 68, 68, 0.15) 0%, transparent 70%);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 1000;
+            transition: opacity 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #alert-overlay.active { opacity: 1; animation: flash-red 0.5s infinite alternate; }
+        @keyframes flash-red { from { background-color: rgba(239, 68, 68, 0.05); } to { background-color: rgba(239, 68, 68, 0.2); } }
+
+        #alert-box {
+            background: #000;
+            border: 2px solid var(--danger);
+            padding: 30px 60px;
+            border-radius: 4px;
+            box-shadow: 0 0 100px rgba(239, 68, 68, 0.5);
+            text-align: center;
+            transform: scale(0.9);
+            transition: 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            color: #fff;
+        }
+        #alert-overlay.active #alert-box { transform: scale(1); }
+        .alert-title { color: var(--danger); font-size: 32px; font-weight: 800; letter-spacing: 4px; margin-bottom: 10px; }
+        .alert-sub { color: #fff; font-size: 14px; opacity: 0.8; }
+
         /* Header */
         header {
             height: 56px;
