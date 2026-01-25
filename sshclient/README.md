@@ -6,7 +6,7 @@ yuangs SSH 是一个具备 AI 治理能力的 SSH 客户端,实现了"带 AI 审
 
 ## 核心特性
 
-### ✅ 已实现 (P0 MVP + L2 Audit)
+### ✅ 已实现 (P0 MVP + L2 Audit & Replay)
 
 1. **SSH 连接管理**
    - 支持密码和私钥认证
@@ -25,10 +25,10 @@ yuangs SSH 是一个具备 AI 治理能力的 SSH 客户端,实现了"带 AI 审
    - 实时风险评估
    - 治理决策可视化
    - **审计日志 (.yuangs.cast 格式)**
+   - **会话回放 (Replay Engine)**
 
 ### 🔄 进行中
 
-- 回放引擎
 - 因果锚点 (Causal Anchor)
 - 策略学习 (Policy Learning)
 
