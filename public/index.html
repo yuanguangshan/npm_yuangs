@@ -75,7 +75,9 @@
             justify-content: space-between;
             z-index: 100;
         }
-        .logo { font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 20px; background: linear-gradient(to right, #60a5fa, #a855f7); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        .logo-section { display: flex; align-items: baseline; gap: 12px; }
+        .logo { font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 22px; background: linear-gradient(to right, #60a5fa, #a855f7); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        .slogan { font-size: 12px; color: var(--text-secondary); font-weight: 500; letter-spacing: 0.5px; opacity: 0.8; }
         .status-pill { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: var(--text-secondary); background: rgba(39, 39, 42, 0.5); padding: 4px 12px; border-radius: 99px; border: 1px solid var(--border-color); }
         .dot { width: 6px; height: 6px; border-radius: 50%; background: #52525b; }
         .dot.active { background: var(--success); box-shadow: 0 0 8px var(--success); }
@@ -154,7 +156,10 @@
     </div>
 
     <header>
-        <div class="logo">yuangs</div>
+        <div class="logo-section">
+            <div class="logo">yuangs</div>
+            <div class="slogan">AI 驱动的智能治理终端 | AI-Powered Governance Shell</div>
+        </div>
         <div class="status-pill">
             <div id="conn-dot" class="dot"></div>
             <span id="conn-status">WAITING</span>
