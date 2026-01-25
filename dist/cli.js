@@ -56,6 +56,7 @@ const replayCommands_1 = require("./commands/replayCommands");
 const skillsCommands_1 = require("./commands/skillsCommands");
 const preferencesCommands_1 = require("./commands/preferencesCommands");
 const config_1 = require("./commands/config");
+const ssh_1 = require("./commands/ssh");
 const globDetector_1 = require("./utils/globDetector");
 // import { createDiffEditCommand } from './governance/commands/diffEdit';
 // Mandatory Node.js version check
@@ -403,6 +404,7 @@ program
 (0, skillsCommands_1.registerSkillsCommands)(program);
 (0, preferencesCommands_1.registerPreferencesCommands)(program);
 (0, config_1.registerConfigCommands)(program);
+(0, ssh_1.registerSSHCommand)(program);
 // Add governance diff-edit command
 // const diffEditCmd = createDiffEditCommand();
 // program.addCommand(diffEditCmd);
@@ -468,7 +470,7 @@ program
 });
 async function main() {
     const args = process.argv.slice(2);
-    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities', 'completion', '_complete_subcommand', '_describe', 'registry', 'explain', 'replay', 'skills', 'diff-edit', 'ny', 'ni', 'll', 'gdoc', 'install', 'update'];
+    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities', 'completion', '_complete_subcommand', '_describe', 'registry', 'explain', 'replay', 'skills', 'diff-edit', 'ny', 'ni', 'll', 'gdoc', 'install', 'update', 'ssh'];
     const globalFlags = ['-h', '--help', '-V', '--version', '-v'];
     const firstArg = args[0];
     const isKnownCommand = firstArg && knownCommands.includes(firstArg);

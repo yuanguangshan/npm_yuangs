@@ -18,6 +18,7 @@ import { registerReplayCommands } from './commands/replayCommands';
 import { registerSkillsCommands } from './commands/skillsCommands';
 import { registerPreferencesCommands } from './commands/preferencesCommands';
 import { registerConfigCommands } from './commands/config';
+import { registerSSHCommand } from './commands/ssh';
 import { wouldExpandAsGlob } from './utils/globDetector';
 // import { createDiffEditCommand } from './governance/commands/diffEdit';
 
@@ -388,6 +389,7 @@ registerReplayCommands(program);
 registerSkillsCommands(program);
 registerPreferencesCommands(program);
 registerConfigCommands(program);
+registerSSHCommand(program);
 
 // Add governance diff-edit command
 // const diffEditCmd = createDiffEditCommand();
@@ -460,7 +462,7 @@ program
 async function main() {
     const args = process.argv.slice(2);
 
-    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities', 'completion', '_complete_subcommand', '_describe', 'registry', 'explain', 'replay', 'skills', 'diff-edit', 'ny', 'ni', 'll', 'gdoc', 'install', 'update'];
+    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities', 'completion', '_complete_subcommand', '_describe', 'registry', 'explain', 'replay', 'skills', 'diff-edit', 'ny', 'ni', 'll', 'gdoc', 'install', 'update', 'ssh'];
     const globalFlags = ['-h', '--help', '-V', '--version', '-v'];
     const firstArg = args[0];
     const isKnownCommand = firstArg && knownCommands.includes(firstArg);
