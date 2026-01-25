@@ -97,6 +97,9 @@ class SSHGovernedExecutor {
                     risk: decision.riskLevel
                 });
             }
+            // 关键修复: 发送 Ctrl+C (\x03) 给服务器以清除已输入的缓冲字符
+            // 否则之前透传的字符 (如 'r', 'm') 会停留在服务器的输入缓冲区中
+            this.session.write('\x03');
             return;
         }
         // 记录审计 (如果不在敏感阶段)
@@ -114,7 +117,17 @@ class SSHGovernedExecutor {
             });
         }
         // 执行命令
-        this.session.write(decision.normalizedCmd + '\n');
+        // 关键修复: 避免重复发送命令
+        // 之前的字符已经通过 'data' 事件透传给了服务器
+        // 如果命令没有被治理层修改，我们只需要发送一个回车符来触发执行
+        if (decision.normalizedCmd === cmd) {
+            this.session.write('\r');
+        }
+        else {
+            // 如果命令被修改了 (例如自动纠错)，我们需要先清除已有输入
+            // 发送 Ctrl+U (清除行) + 新命令 + 回车
+            this.session.write('\x15' + decision.normalizedCmd + '\r');
+        }
     }
     /**
      * 处理提权请求 (sudo/su)
@@ -137,6 +150,8 @@ class SSHGovernedExecutor {
                     reason: decision.reason
                 });
             }
+            // 清除已输入的 sudo 命令
+            this.session.write('\x03');
             return;
         }
         // 审批通过,允许进入密码阶段
@@ -148,7 +163,8 @@ class SSHGovernedExecutor {
                 command: cmd
             });
         }
-        this.session.write(cmd + '\n');
+        // 关键修复: 只发送回车,因为 sudo 命令字符已经透传
+        this.session.write('\r');
     }
     /**
      * 处理 PTY 输出 (状态跃迁)

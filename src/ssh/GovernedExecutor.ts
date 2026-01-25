@@ -108,11 +108,16 @@ export class SSHGovernedExecutor {
   /**
    * 处理命令 (Enter 键触发)
    */
-  async handleCommand(cmd: string, host?: string, user?: string): Promise<void> {
+  /**
+   * 处理命令 (Enter 键触发)
+   * @param unsentCommand 尚未发送给服务器的命令部分 (用于解决打字回显重复问题)
+   */
+  async handleCommand(cmd: string, host?: string, user?: string, unsentCommand: string = cmd): Promise<void> {
     // 密码输入阶段: 绝不治理,直接透传
     if (this.elevation === ElevationState.PENDING_PWD) {
       // 密码也不记录到审计日志
-      this.session.write(cmd + '\n');
+      // 注意：这里我们只发送 unsent 部分 + 回车
+      this.session.write(unsentCommand + '\n');
       return;
     }
 
@@ -121,7 +126,8 @@ export class SSHGovernedExecutor {
 
     // sudo 命令处理
     if ((isSudo || isSu) && this.elevation === ElevationState.USER) {
-      await this.handleElevationRequest(cmd, host, user);
+      // 透传 unsentCommand 给 sudo 处理逻辑
+      await this.handleElevationRequest(cmd, host, user, unsentCommand);
       return;
     }
 
@@ -143,6 +149,9 @@ export class SSHGovernedExecutor {
           risk: decision.riskLevel
         });
       }
+      
+      // 发送 Ctrl+C (\x03) 给服务器以清除已输入的缓冲字符
+      this.session.write('\x03');
       return;
     }
 
@@ -163,13 +172,20 @@ export class SSHGovernedExecutor {
     }
 
     // 执行命令
-    this.session.write(decision.normalizedCmd + '\n');
+    // 如果命令没有被治理层修改，我们只需要发送未发送的部分 + 回车
+    if (decision.normalizedCmd === cmd) {
+      this.session.write(unsentCommand + '\r');
+    } else {
+      // 如果命令被修改了 (例如自动纠错)，我们需要先清除已有输入
+      // 发送 Ctrl+U (清除行) + 新命令 + 回车
+      this.session.write('\x15' + decision.normalizedCmd + '\r');
+    }
   }
 
   /**
    * 处理提权请求 (sudo/su)
    */
-  private async handleElevationRequest(cmd: string, host?: string, user?: string): Promise<void> {
+  private async handleElevationRequest(cmd: string, host?: string, user?: string, unsentCommand: string = cmd): Promise<void> {
     this.elevation = ElevationState.AWAITING_APPROVAL;
 
     const decision = await this.governance.evaluate({
@@ -189,6 +205,8 @@ export class SSHGovernedExecutor {
           reason: decision.reason
         });
       }
+      // 清除已输入的 sudo 命令
+      this.session.write('\x03');
       return;
     }
 
@@ -203,7 +221,8 @@ export class SSHGovernedExecutor {
       });
     }
 
-    this.session.write(cmd + '\n');
+    // 只发送 unsent 部分 + 回车
+    this.session.write(unsentCommand + '\r');
   }
 
   /**
