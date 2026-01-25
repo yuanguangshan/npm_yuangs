@@ -44,7 +44,8 @@
     <div id="terminal-container"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <!-- Use local socket.io served by the server -->
+    <script src="/socket.io/socket.io.js"></script>
     <script>
       const term = new Terminal({
         cursorBlink: true,
@@ -54,24 +55,37 @@
       });
       term.open(document.getElementById("terminal-container"));
 
-      const socket = io();
-      term.onData((data) => socket.emit("input", data));
-      socket.on("output", (data) => term.write(data));
+        const socket = io();
+        term.onData(data => socket.emit('input', data));
+        socket.on('output', data => term.write(data));
 
-      // 自动适配窗口大小
-      window.onresize = () => {
-        const cols = Math.floor(window.innerWidth / 9);
-        const rows = Math.floor((window.innerHeight - 50) / 18);
-        term.resize(cols, rows);
-        socket.emit("resize", { cols, rows });
-      };
+        // Connection status updates
+        socket.on('connect', () => {
+            document.getElementById('status').innerHTML = '<span class="status-pill" style="background:#10b981">已连接 (Connected)</span>';
+            term.focus();
+        });
+        socket.on('disconnect', () => {
+            document.getElementById('status').innerHTML = '<span class="status-pill" style="background:#ef4444">连接断开 (Disconnected)</span>';
+        });
 
-      // Initial resize
-      setTimeout(() => {
-        const cols = Math.floor(window.innerWidth / 9);
-        const rows = Math.floor((window.innerHeight - 50) / 18);
-        term.resize(cols, rows);
-      }, 100);
+        // Ensure focus
+        document.getElementById('terminal-container').addEventListener('click', () => term.focus());
+        
+        // 自动适配窗口大小
+        window.onresize = () => {
+            const cols = Math.floor(window.innerWidth / 9);
+            const rows = Math.floor((window.innerHeight - 50) / 18);
+            term.resize(cols, rows);
+            socket.emit('resize', { cols, rows });
+        };
+        
+        // Initial resize & focus
+        setTimeout(() => {
+             const cols = Math.floor(window.innerWidth / 9);
+             const rows = Math.floor((window.innerHeight - 50) / 18);
+             term.resize(cols, rows);
+             term.focus();
+        }, 100);
     </script>
   </body>
 </html>

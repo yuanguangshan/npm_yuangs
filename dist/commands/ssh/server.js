@@ -16,29 +16,10 @@ async function startWebTerminal(config, port = 3000) {
     const app = (0, express_1.default)();
     const httpServer = (0, http_1.createServer)(app);
     const io = new socket_io_1.Server(httpServer);
-    // 1. 静态资源托管（提供 xterm.js 页面）
-    // Assuming 'public' is in the project root, relative to dist/commands/ssh/server.js it would be ../../../public
-    // or relative to src/commands/ssh/server.ts it is ../../../public
-    // When compiled to dist/commands/ssh/server.js:
-    // __dirname is dist/commands/ssh
-    // ../../../public is dist/../public -> project_root/public.
-    // However, usually public assets are not in dist.
-    // If running from src (via ts-node), __dirname is src/commands/ssh.
-    // ../../../public matches project_root/public.
-    // Let's ensure the path is consistent.
-    app.use(express_1.default.static(path_1.default.join(__dirname, '../../../../public')));
-    // Wait, original user code said: path.join(__dirname, '../../../public')
-    // If __dirname is src/commands/ssh (3 levels deep from root src), then ../../../ leads to root.
-    // src/commands/ssh -> commands (..) -> src (..) -> root (..) -> public?
-    // /Users/ygs/ygs/npm_yuangs/src/commands/ssh
-    // .. -> /src/commands
-    // .. -> /src
-    // .. -> /Users/ygs/ygs/npm_yuangs
-    // So ../../../ is correct.
-    // BUT! When running 'dist/cli.js', the structure in dist mirrors src.
-    // dist/commands/ssh/server.js
-    // same depth. So ../../../public works if public is in root.
-    app.use(express_1.default.static(path_1.default.join(__dirname, '../../../public')));
+    // Fix path resolution: dist/commands/ssh -> ../../../public
+    const publicPath = path_1.default.join(__dirname, '../../../public');
+    console.log(`📂 Serving static files from: ${publicPath}`);
+    app.use(express_1.default.static(publicPath));
     io.on('connection', async (socket) => {
         console.log('🌐 Browser connected to yuangs-web-term');
         const session = new SSHSession_1.SSHSession();
