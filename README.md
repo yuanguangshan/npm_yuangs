@@ -737,7 +737,5 @@ yuangs diff-edit status <id>        # Check action status
 
 ---
 
-*此内容由插件自主更新*
-
 diff-edit使本项目有了质的变化。^-^
 
