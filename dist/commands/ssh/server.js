@@ -41,16 +41,34 @@ async function startWebTerminal(config, port = 3000) {
             session.on('data', (data) => {
                 socket.emit('output', data.toString());
             });
+            // 追踪当前行已发送给服务器的字符
+            let lineBuffer = '';
             // 核心桥接：浏览器输入 -> WebSocket -> 治理执行器
             socket.on('input', async (data) => {
                 const cmd = inputBuffer.push(data);
-                if (cmd) {
-                    // 触发治理逻辑
-                    await executor.handleCommand(cmd, config.host, config.username);
+                if (cmd !== null) {
+                    // 对已发送缓冲区进行 Backspace 处理，以匹配 cmd 的格式
+                    const processedLineBuffer = InputBuffer_1.InputBuffer.processBackspace(lineBuffer);
+                    // 计算 unsentCommand
+                    let unsent = '';
+                    if (cmd.startsWith(processedLineBuffer)) {
+                        unsent = cmd.slice(processedLineBuffer.length);
+                    }
+                    else {
+                        // 如果 buffer 不匹配 (极其罕见), 全量重发以防万一
+                        unsent = cmd;
+                    }
+                    // 触发治理逻辑 (传入 unsent 部分)
+                    await executor.handleCommand(cmd, config.host, config.username, unsent);
+                    // 清空已发送缓冲区
+                    lineBuffer = '';
                 }
                 else {
                     // 普通字符直接透传（为了打字回显流畅）
+                    // 只有在非敏感模式才记录/透传? 
+                    // 这里简化处理，直接透传，InputBuffer 会在内部聚合
                     session.write(data);
+                    lineBuffer += data;
                 }
             });
             socket.on('resize', ({ cols, rows }) => {
