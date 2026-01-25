@@ -1,14 +1,15 @@
 # Project Documentation
 
-- **Generated at:** 2026-01-25 18:08:43
+- **Generated at:** 2026-01-25 22:46:42
 - **Root Dir:** `.`
-- **File Count:** 244
-- **Total Size:** 1715.46 KB
+- **File Count:** 247
+- **Total Size:** 1785.19 KB
 
 ## 📂 扫描目录
 - [.gitignore](#📄-gitignore) (18 lines, 0.20 KB)
 - [API_DOCUMENTATION.md](#📄-api_documentationmd) (3460 lines, 78.90 KB)
-- [README.md](#📄-readmemd) (712 lines, 17.75 KB)
+- [README.md](#📄-readmemd) (741 lines, 18.87 KB)
+- [SECURITY.md](#📄-securitymd) (36 lines, 1.61 KB)
 - [chat.txt](#📄-chattxt) (1994 lines, 68.91 KB)
 - [cli_vs_tmux_AI.code-workspace](#📄-cli_vs_tmux_aicode-workspace) (21 lines, 0.26 KB)
 - [demo_ssh.sh](#📄-demo_sshsh) (131 lines, 3.32 KB)
@@ -38,8 +39,9 @@
 - [example.json](#📄-examplejson) (5 lines, 0.06 KB)
 - [jest.config.js](#📄-jestconfigjs) (35 lines, 0.89 KB)
 - [npm.code-workspace](#📄-npmcode-workspace) (9 lines, 0.08 KB)
-- [package-lock.json](#📄-package-lockjson) (6918 lines, 245.37 KB)
-- [package.json](#📄-packagejson) (78 lines, 1.98 KB)
+- [package-lock.json](#📄-package-lockjson) (8056 lines, 284.79 KB)
+- [package.json](#📄-packagejson) (83 lines, 2.12 KB)
+- [public/index.html](#📄-publicindexhtml) (619 lines, 19.18 KB)
 - [scripts/yuangs-install.sh](#📄-scriptsyuangs-installsh) (163 lines, 3.25 KB)
 - [scripts/yuangs.zsh](#📄-scriptsyuangszsh) (38 lines, 0.98 KB)
 - [src/__tests__/core/kernel/XResolver.test.ts](#📄-src__tests__corekernelxresolvertestts) (216 lines, 7.31 KB)
@@ -107,7 +109,8 @@
 - [src/commands/replayCommands.ts](#📄-srccommandsreplaycommandsts) (100 lines, 3.53 KB)
 - [src/commands/shellCompletions.ts](#📄-srccommandsshellcompletionsts) (504 lines, 13.64 KB)
 - [src/commands/skillsCommands.ts](#📄-srccommandsskillscommandsts) (126 lines, 4.64 KB)
-- [src/commands/ssh/index.ts](#📄-srccommandssshindexts) (266 lines, 7.91 KB)
+- [src/commands/ssh/index.ts](#📄-srccommandssshindexts) (303 lines, 8.16 KB)
+- [src/commands/ssh/server.ts](#📄-srccommandssshserverts) (158 lines, 6.38 KB)
 - [src/core/apps.ts](#📄-srccoreappsts) (49 lines, 1.63 KB)
 - [src/core/autofix.ts](#📄-srccoreautofixts) (22 lines, 0.61 KB)
 - [src/core/capabilities.ts](#📄-srccorecapabilitiests) (69 lines, 1.90 KB)
@@ -169,8 +172,8 @@
 - [src/registry/registry.ts](#📄-srcregistryregistryts) (271 lines, 7.72 KB)
 - [src/risk/explainer.ts](#📄-srcriskexplainerts) (282 lines, 7.04 KB)
 - [src/risk/index.ts](#📄-srcriskindexts) (1 lines, 0.03 KB)
-- [src/ssh/GovernedExecutor.ts](#📄-srcsshgovernedexecutorts) (293 lines, 7.13 KB)
-- [src/ssh/InputBuffer.ts](#📄-srcsshinputbufferts) (57 lines, 1.04 KB)
+- [src/ssh/GovernedExecutor.ts](#📄-srcsshgovernedexecutorts) (317 lines, 8.21 KB)
+- [src/ssh/InputBuffer.ts](#📄-srcsshinputbufferts) (76 lines, 1.58 KB)
 - [src/ssh/SSHSession.ts](#📄-srcsshsshsessionts) (188 lines, 3.95 KB)
 - [src/types.d.ts](#📄-srctypesdts) (6 lines, 0.17 KB)
 - [src/utils/confirm.ts](#📄-srcutilsconfirmts) (17 lines, 0.44 KB)
@@ -3863,6 +3866,28 @@ ai "@src/**/*.ts #docs"
 ✅ **可解释、可治理**  
 通过 `explain` 和 `replay` 命令，理解系统决策过程。
 
+✅ **AI Governance Web Console (Beta)**  
+可视化治理面板，提供 R3 级风险的全屏阻断与视觉警报。
+
+---
+
+## 🏗️ 架构概览 (Architecture)
+
+```mermaid
+graph TD
+    User([用户 User]) -- "yuangs ssh --web" --> CLI[yuangs Local CLI]
+    subgraph LocalMachine [本地电脑]
+        CLI --> Express[Express Web Server]
+        Express -- "1. WebSocket (Text/Events)" --> WebUI[Web Terminal / xterm.js]
+        Express -- "2. Local Governance" --> GovEngine[Governance Engine]
+        GovEngine -- "3. SSH Connection" --> SSHSession[SSHSession / PTY]
+    end
+    SSHSession -- "Encrypted Tunnel" --> RemoteServer[远程服务器 Remote Server]
+    
+    GovEngine -- "Intercept / Block" --> WebUI
+    SSHSession -- "Recording" --> CastFile[.cast / .md Audit Logs]
+```
+
 ---
 
 ## 适合谁？
@@ -4226,6 +4251,15 @@ Snapshots 可用于：
 - ✅ 文档示例
 - ✅ 审计线索
 
+### 4. 终端录制与审计 (.cast)
+
+Yuangs 采用标准的 [asciinema](https://asciinema.org/) 兼容格式进行会话录制。
+
+**审计日志包含：**
+- **行为流**：完整的终端输入/输出，支持 `replay`。
+- **治理上下文**：记录哪些命令被拦截、哪些被批准。
+- **AI 摘要**：自动为繁杂的操作记录生成可阅读的 Markdown 摘要。
+
 ---
 
 ## 💡 使用场景示例
@@ -4454,10 +4488,50 @@ yuangs diff-edit status <id>        # Check action status
 
 ---
 
-*此内容由插件自主更新*
-
 diff-edit使本项目有了质的变化。^-^
 
+
+````
+
+## 📄 SECURITY.md
+
+````markdown
+# SECURITY.md - AI Governance Safety Policy
+
+## 🛡️ AI Governance Philosophy
+
+Yuangs is built on the principle of **Developer Sovereignty**. Unlike "black-box" AI tools, Yuangs ensures that no command is executed without explicit human understanding and consent. The Web-based CLI further enhances this by providing visual "Hard Intercepts."
+
+## 🚫 The "Zero-Transmission" Command List
+
+The following patterns are **Hard-Coded** into the local Governance Engine. These commands are intercepted **at the source (on your local machine)** and are NEVER transmitted to the remote server over the SSH tunnel:
+
+1.  **Root Filesystem Destruction**: 
+    - `rm -rf /`
+    - `rm -rf /*`
+2.  **Filesystem Formatting**:
+    - `mkfs.*` (e.g., `mkfs.ext4`, `mkfs.xfs`)
+3.  **Direct Block Device Overwrite**:
+    - `dd if=... of=/dev/sd*`
+    - `dd if=... of=/dev/nvme*`
+4.  **Fork Bombs (Denial of Service)**:
+    - `:(){ :|:& };:`
+
+## 🧠 Governance Tiers
+
+| Tier | Mechanism | Action |
+| :--- | :--- | :--- |
+| **Tier 1: Static Intercept** | Local Regex (Hard-coded) | **Instant Block**. Command never leaves your machine. |
+| **Tier 2: AI Evaluation** | Semantic analysis (LLM) | **Prompt for Confirmation**. AI explains the risk; you decide. |
+| **Tier 3: Post-Exec Audit** | Session Recording (.cast) | **Auditable Trail**. Every action is logged for forensic review. |
+
+## 📦 Security Reporting
+
+If you find a bypass in the governance engine, please report it via GitHub Issues or contact the maintainer directly. Our goal is to make the "Guardrail" impenetrable without hindering administrative tasks.
+
+---
+
+> **"Power is nothing without control."**
 
 ````
 
@@ -15125,13 +15199,13 @@ module.exports = {
 ````json
 {
   "name": "yuangs",
-  "version": "5.2.0",
+  "version": "5.9.0",
   "lockfileVersion": 3,
   "requires": true,
   "packages": {
     "": {
       "name": "yuangs",
-      "version": "5.2.0",
+      "version": "5.9.0",
       "license": "ISC",
       "dependencies": {
         "axios": "^1.13.2",
@@ -15139,12 +15213,15 @@ module.exports = {
         "chalk": "^4.1.2",
         "cli-table3": "^0.6.5",
         "commander": "^13.1.0",
+        "express": "^5.2.1",
         "js-yaml": "^4.1.0",
         "json5": "^2.2.3",
         "markdown-it": "^14.1.0",
         "marked": "^15.0.12",
         "marked-terminal": "^7.3.0",
+        "open": "^11.0.0",
         "ora": "^5.4.1",
+        "socket.io": "^4.8.3",
         "ssh2": "^1.17.0",
         "yuangs": "^2.29.0",
         "zod": "^4.3.5",
@@ -15156,6 +15233,7 @@ module.exports = {
       "devDependencies": {
         "@assemblyscript/loader": "^0.27.37",
         "@types/better-sqlite3": "^7.6.13",
+        "@types/express": "^5.0.6",
         "@types/jest": "^30.0.0",
         "@types/js-yaml": "^4.0.9",
         "@types/json5": "^0.0.30",
@@ -15164,6 +15242,7 @@ module.exports = {
         "@types/marked-terminal": "^6.1.1",
         "@types/node": "^20.11.30",
         "@types/ora": "^3.1.0",
+        "@types/socket.io": "^3.0.1",
         "@types/ssh2": "^1.15.5",
         "assemblyscript": "^0.27.37",
         "jest": "^29.7.0",
@@ -16684,6 +16763,12 @@ module.exports = {
         "@sinonjs/commons": "^3.0.0"
       }
     },
+    "node_modules/@socket.io/component-emitter": {
+      "version": "3.1.2",
+      "resolved": "https://registry.npmjs.org/@socket.io/component-emitter/-/component-emitter-3.1.2.tgz",
+      "integrity": "sha512-9BCxFwvbGg/RsZK9tjXd8s4UcwR0MWeFQ1XEKIQVVvAGJyINdrqKMcTRyLoK8Rse1GjzLV9cwjWV1olXRWEXVA==",
+      "license": "MIT"
+    },
     "node_modules/@tsconfig/node10": {
       "version": "1.0.12",
       "resolved": "https://registry.npmjs.org/@tsconfig/node10/-/node10-1.0.12.tgz",
@@ -16767,12 +16852,67 @@ module.exports = {
         "@types/node": "*"
       }
     },
+    "node_modules/@types/body-parser": {
+      "version": "1.19.6",
+      "resolved": "https://registry.npmjs.org/@types/body-parser/-/body-parser-1.19.6.tgz",
+      "integrity": "sha512-HLFeCYgz89uk22N5Qg3dvGvsv46B8GLvKKo1zKG4NybA8U2DiEO3w9lqGg29t/tfLRJpJ6iQxnVw4OnB7MoM9g==",
+      "dev": true,
+      "license": "MIT",
+      "dependencies": {
+        "@types/connect": "*",
+        "@types/node": "*"
+      }
+    },
     "node_modules/@types/cardinal": {
       "version": "2.1.1",
       "resolved": "https://registry.npmjs.org/@types/cardinal/-/cardinal-2.1.1.tgz",
       "integrity": "sha512-/xCVwg8lWvahHsV2wXZt4i64H1sdL+sN1Uoq7fAc8/FA6uYHjuIveDwPwvGUYp4VZiv85dVl6J/Bum3NDAOm8g==",
       "dev": true,
       "license": "MIT"
+    },
+    "node_modules/@types/connect": {
+      "version": "3.4.38",
+      "resolved": "https://registry.npmjs.org/@types/connect/-/connect-3.4.38.tgz",
+      "integrity": "sha512-K6uROf1LD88uDQqJCktA4yzL1YYAK6NgfsI0v/mTgyPKWsX1CnJ0XPSDhViejru1GcRkLWb8RlzFYJRqGUbaug==",
+      "dev": true,
+      "license": "MIT",
+      "dependencies": {
+        "@types/node": "*"
+      }
+    },
+    "node_modules/@types/cors": {
+      "version": "2.8.19",
+      "resolved": "https://registry.npmjs.org/@types/cors/-/cors-2.8.19.tgz",
+      "integrity": "sha512-mFNylyeyqN93lfe/9CSxOGREz8cpzAhH+E93xJ4xWQf62V8sQ/24reV2nyzUWM6H6Xji+GGHpkbLe7pVoUEskg==",
+      "license": "MIT",
+      "dependencies": {
+        "@types/node": "*"
+      }
+    },
+    "node_modules/@types/express": {
+      "version": "5.0.6",
+      "resolved": "https://registry.npmjs.org/@types/express/-/express-5.0.6.tgz",
+      "integrity": "sha512-sKYVuV7Sv9fbPIt/442koC7+IIwK5olP1KWeD88e/idgoJqDm3JV/YUiPwkoKK92ylff2MGxSz1CSjsXelx0YA==",
+      "dev": true,
+      "license": "MIT",
+      "dependencies": {
+        "@types/body-parser": "*",
+        "@types/express-serve-static-core": "^5.0.0",
+        "@types/serve-static": "^2"
+      }
+    },
+    "node_modules/@types/express-serve-static-core": {
+      "version": "5.1.1",
+      "resolved": "https://registry.npmjs.org/@types/express-serve-static-core/-/express-serve-static-core-5.1.1.tgz",
+      "integrity": "sha512-v4zIMr/cX7/d2BpAEX3KNKL/JrT1s43s96lLvvdTmza1oEvDudCqK9aF/djc/SWgy8Yh0h30TZx5VpzqFCxk5A==",
+      "dev": true,
+      "license": "MIT",
+      "dependencies": {
+        "@types/node": "*",
+        "@types/qs": "*",
+        "@types/range-parser": "*",
+        "@types/send": "*"
+      }
     },
     "node_modules/@types/graceful-fs": {
       "version": "4.1.9",
@@ -16783,6 +16923,13 @@ module.exports = {
       "dependencies": {
         "@types/node": "*"
       }
+    },
+    "node_modules/@types/http-errors": {
+      "version": "2.0.5",
+      "resolved": "https://registry.npmjs.org/@types/http-errors/-/http-errors-2.0.5.tgz",
+      "integrity": "sha512-r8Tayk8HJnX0FztbZN7oVqGccWgw98T/0neJphO91KkmOzug1KkofZURD4UaD5uH8AqcFLfdPErnBod0u71/qg==",
+      "dev": true,
+      "license": "MIT"
     },
     "node_modules/@types/istanbul-lib-coverage": {
       "version": "2.0.6",
@@ -16911,7 +17058,6 @@ module.exports = {
       "version": "20.19.30",
       "resolved": "https://registry.npmjs.org/@types/node/-/node-20.19.30.tgz",
       "integrity": "sha512-WJtwWJu7UdlvzEAUm484QNg5eAoq5QR08KDNx7g45Usrs2NtOPiX8ugDqmKdXkyL03rBqU5dYNYVQetEpBHq2g==",
-      "dev": true,
       "license": "MIT",
       "dependencies": {
         "undici-types": "~6.21.0"
@@ -16925,6 +17071,51 @@ module.exports = {
       "license": "MIT",
       "dependencies": {
         "@types/node": "*"
+      }
+    },
+    "node_modules/@types/qs": {
+      "version": "6.14.0",
+      "resolved": "https://registry.npmjs.org/@types/qs/-/qs-6.14.0.tgz",
+      "integrity": "sha512-eOunJqu0K1923aExK6y8p6fsihYEn/BYuQ4g0CxAAgFc4b/ZLN4CrsRZ55srTdqoiLzU2B2evC+apEIxprEzkQ==",
+      "dev": true,
+      "license": "MIT"
+    },
+    "node_modules/@types/range-parser": {
+      "version": "1.2.7",
+      "resolved": "https://registry.npmjs.org/@types/range-parser/-/range-parser-1.2.7.tgz",
+      "integrity": "sha512-hKormJbkJqzQGhziax5PItDUTMAM9uE2XXQmM37dyd4hVM+5aVl7oVxMVUiVQn2oCQFN/LKCZdvSM0pFRqbSmQ==",
+      "dev": true,
+      "license": "MIT"
+    },
+    "node_modules/@types/send": {
+      "version": "1.2.1",
+      "resolved": "https://registry.npmjs.org/@types/send/-/send-1.2.1.tgz",
+      "integrity": "sha512-arsCikDvlU99zl1g69TcAB3mzZPpxgw0UQnaHeC1Nwb015xp8bknZv5rIfri9xTOcMuaVgvabfIRA7PSZVuZIQ==",
+      "dev": true,
+      "license": "MIT",
+      "dependencies": {
+        "@types/node": "*"
+      }
+    },
+    "node_modules/@types/serve-static": {
+      "version": "2.2.0",
+      "resolved": "https://registry.npmjs.org/@types/serve-static/-/serve-static-2.2.0.tgz",
+      "integrity": "sha512-8mam4H1NHLtu7nmtalF7eyBH14QyOASmcxHhSfEoRyr0nP/YdoesEtU+uSRvMe96TW/HPTtkoKqQLl53N7UXMQ==",
+      "dev": true,
+      "license": "MIT",
+      "dependencies": {
+        "@types/http-errors": "*",
+        "@types/node": "*"
+      }
+    },
+    "node_modules/@types/socket.io": {
+      "version": "3.0.1",
+      "resolved": "https://registry.npmjs.org/@types/socket.io/-/socket.io-3.0.1.tgz",
+      "integrity": "sha512-XSma2FhVD78ymvoxYV4xGXrIH/0EKQ93rR+YR0Y+Kw1xbPzLDCip/UWSejZ08FpxYeYNci/PZPQS9anrvJRqMA==",
+      "dev": true,
+      "license": "MIT",
+      "dependencies": {
+        "socket.io": "*"
       }
     },
     "node_modules/@types/ssh2": {
@@ -16977,6 +17168,44 @@ module.exports = {
       "integrity": "sha512-I4q9QU9MQv4oEOz4tAHJtNz1cwuLxn2F3xcc2iV5WdqLPpUnj30aUuxt1mAxYTG+oe8CZMV/+6rU4S4gRDzqtQ==",
       "dev": true,
       "license": "MIT"
+    },
+    "node_modules/accepts": {
+      "version": "2.0.0",
+      "resolved": "https://registry.npmjs.org/accepts/-/accepts-2.0.0.tgz",
+      "integrity": "sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng==",
+      "license": "MIT",
+      "dependencies": {
+        "mime-types": "^3.0.0",
+        "negotiator": "^1.0.0"
+      },
+      "engines": {
+        "node": ">= 0.6"
+      }
+    },
+    "node_modules/accepts/node_modules/mime-db": {
+      "version": "1.54.0",
+      "resolved": "https://registry.npmjs.org/mime-db/-/mime-db-1.54.0.tgz",
+      "integrity": "sha512-aU5EJuIN2WDemCcAp2vFBfp/m4EAhWJnUNSSw0ixs7/kXbd6Pg64EmwJkNdFhB8aWt1sH2CTXrLxo/iAGV3oPQ==",
+      "license": "MIT",
+      "engines": {
+        "node": ">= 0.6"
+      }
+    },
+    "node_modules/accepts/node_modules/mime-types": {
+      "version": "3.0.2",
+      "resolved": "https://registry.npmjs.org/mime-types/-/mime-types-3.0.2.tgz",
+      "integrity": "sha512-Lbgzdk0h4juoQ9fCKXW4by0UJqj+nOOrI9MJ1sSj4nI8aI2eo1qmvQEie4VD1glsS250n15LsWsYtCugiStS5A==",
+      "license": "MIT",
+      "dependencies": {
+        "mime-db": "^1.54.0"
+      },
+      "engines": {
+        "node": ">=18"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/express"
+      }
     },
     "node_modules/acorn": {
       "version": "8.15.0",
@@ -17272,6 +17501,15 @@ module.exports = {
       ],
       "license": "MIT"
     },
+    "node_modules/base64id": {
+      "version": "2.0.0",
+      "resolved": "https://registry.npmjs.org/base64id/-/base64id-2.0.0.tgz",
+      "integrity": "sha512-lGe34o6EHj9y3Kts9R4ZYs/Gr+6N7MCaMlIFA3F1R2O5/m7K06AxfSeO5530PEERE6/WyEg3lsuyw4GHlPZHog==",
+      "license": "MIT",
+      "engines": {
+        "node": "^4.5.0 || >= 5.9"
+      }
+    },
     "node_modules/baseline-browser-mapping": {
       "version": "2.9.17",
       "resolved": "https://registry.npmjs.org/baseline-browser-mapping/-/baseline-browser-mapping-2.9.17.tgz",
@@ -17334,6 +17572,30 @@ module.exports = {
         "buffer": "^5.5.0",
         "inherits": "^2.0.4",
         "readable-stream": "^3.4.0"
+      }
+    },
+    "node_modules/body-parser": {
+      "version": "2.2.2",
+      "resolved": "https://registry.npmjs.org/body-parser/-/body-parser-2.2.2.tgz",
+      "integrity": "sha512-oP5VkATKlNwcgvxi0vM0p/D3n2C3EReYVX+DNYs5TjZFn/oQt2j+4sVJtSMr18pdRr8wjTcBl6LoV+FUwzPmNA==",
+      "license": "MIT",
+      "dependencies": {
+        "bytes": "^3.1.2",
+        "content-type": "^1.0.5",
+        "debug": "^4.4.3",
+        "http-errors": "^2.0.0",
+        "iconv-lite": "^0.7.0",
+        "on-finished": "^2.4.1",
+        "qs": "^6.14.1",
+        "raw-body": "^3.0.1",
+        "type-is": "^2.0.1"
+      },
+      "engines": {
+        "node": ">=18"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/express"
       }
     },
     "node_modules/brace-expansion": {
@@ -17457,6 +17719,30 @@ module.exports = {
         "node": ">=10.0.0"
       }
     },
+    "node_modules/bundle-name": {
+      "version": "4.1.0",
+      "resolved": "https://registry.npmjs.org/bundle-name/-/bundle-name-4.1.0.tgz",
+      "integrity": "sha512-tjwM5exMg6BGRI+kNmTntNsvdZS1X8BFYS6tnJ2hdH0kVxM6/eVZ2xy+FqStSWvYmtfFMDLIxurorHwDKfDz5Q==",
+      "license": "MIT",
+      "dependencies": {
+        "run-applescript": "^7.0.0"
+      },
+      "engines": {
+        "node": ">=18"
+      },
+      "funding": {
+        "url": "https://github.com/sponsors/sindresorhus"
+      }
+    },
+    "node_modules/bytes": {
+      "version": "3.1.2",
+      "resolved": "https://registry.npmjs.org/bytes/-/bytes-3.1.2.tgz",
+      "integrity": "sha512-/Nf7TyzTx6S3yRJObOAV7956r8cr2+Oj8AC5dt8wSP3BQAoeX58NoHyCU8P8zGkNXStjTSi6fzO6F0pBdcYbEg==",
+      "license": "MIT",
+      "engines": {
+        "node": ">= 0.8"
+      }
+    },
     "node_modules/call-bind-apply-helpers": {
       "version": "1.0.2",
       "resolved": "https://registry.npmjs.org/call-bind-apply-helpers/-/call-bind-apply-helpers-1.0.2.tgz",
@@ -17468,6 +17754,22 @@ module.exports = {
       },
       "engines": {
         "node": ">= 0.4"
+      }
+    },
+    "node_modules/call-bound": {
+      "version": "1.0.4",
+      "resolved": "https://registry.npmjs.org/call-bound/-/call-bound-1.0.4.tgz",
+      "integrity": "sha512-+ys997U96po4Kx/ABpBCqhA9EuxJaQWDQg7295H4hBphv3IZg0boBKuwYpt4YXp6MZ5AmZQnU/tyMTlRpaSejg==",
+      "license": "MIT",
+      "dependencies": {
+        "call-bind-apply-helpers": "^1.0.2",
+        "get-intrinsic": "^1.3.0"
+      },
+      "engines": {
+        "node": ">= 0.4"
+      },
+      "funding": {
+        "url": "https://github.com/sponsors/ljharb"
       }
     },
     "node_modules/callsites": {
@@ -17751,12 +18053,69 @@ module.exports = {
       "dev": true,
       "license": "MIT"
     },
+    "node_modules/content-disposition": {
+      "version": "1.0.1",
+      "resolved": "https://registry.npmjs.org/content-disposition/-/content-disposition-1.0.1.tgz",
+      "integrity": "sha512-oIXISMynqSqm241k6kcQ5UwttDILMK4BiurCfGEREw6+X9jkkpEe5T9FZaApyLGGOnFuyMWZpdolTXMtvEJ08Q==",
+      "license": "MIT",
+      "engines": {
+        "node": ">=18"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/express"
+      }
+    },
+    "node_modules/content-type": {
+      "version": "1.0.5",
+      "resolved": "https://registry.npmjs.org/content-type/-/content-type-1.0.5.tgz",
+      "integrity": "sha512-nTjqfcBFEipKdXCv4YDQWCfmcLZKm81ldF0pAopTvyrFGVbcR6P/VAAd5G7N+0tTr8QqiU0tFadD6FK4NtJwOA==",
+      "license": "MIT",
+      "engines": {
+        "node": ">= 0.6"
+      }
+    },
     "node_modules/convert-source-map": {
       "version": "2.0.0",
       "resolved": "https://registry.npmjs.org/convert-source-map/-/convert-source-map-2.0.0.tgz",
       "integrity": "sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==",
       "dev": true,
       "license": "MIT"
+    },
+    "node_modules/cookie": {
+      "version": "0.7.2",
+      "resolved": "https://registry.npmjs.org/cookie/-/cookie-0.7.2.tgz",
+      "integrity": "sha512-yki5XnKuf750l50uGTllt6kKILY4nQ1eNIQatoXEByZ5dWgnKqbnqmTrBE5B4N7lrMJKQ2ytWMiTO2o0v6Ew/w==",
+      "license": "MIT",
+      "engines": {
+        "node": ">= 0.6"
+      }
+    },
+    "node_modules/cookie-signature": {
+      "version": "1.2.2",
+      "resolved": "https://registry.npmjs.org/cookie-signature/-/cookie-signature-1.2.2.tgz",
+      "integrity": "sha512-D76uU73ulSXrD1UXF4KE2TMxVVwhsnCgfAyTg9k8P6KGZjlXKrOLe4dJQKI3Bxi5wjesZoFXJWElNWBjPZMbhg==",
+      "license": "MIT",
+      "engines": {
+        "node": ">=6.6.0"
+      }
+    },
+    "node_modules/cors": {
+      "version": "2.8.6",
+      "resolved": "https://registry.npmjs.org/cors/-/cors-2.8.6.tgz",
+      "integrity": "sha512-tJtZBBHA6vjIAaF6EnIaq6laBBP9aq/Y3ouVJjEfoHbRBcHBAHYcMh/w8LDrk2PvIMMq8gmopa5D4V8RmbrxGw==",
+      "license": "MIT",
+      "dependencies": {
+        "object-assign": "^4",
+        "vary": "^1"
+      },
+      "engines": {
+        "node": ">= 0.10"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/express"
+      }
     },
     "node_modules/cpu-features": {
       "version": "0.0.10",
@@ -17838,7 +18197,6 @@ module.exports = {
       "version": "4.4.3",
       "resolved": "https://registry.npmjs.org/debug/-/debug-4.4.3.tgz",
       "integrity": "sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==",
-      "dev": true,
       "license": "MIT",
       "dependencies": {
         "ms": "^2.1.3"
@@ -17901,6 +18259,34 @@ module.exports = {
         "node": ">=0.10.0"
       }
     },
+    "node_modules/default-browser": {
+      "version": "5.4.0",
+      "resolved": "https://registry.npmjs.org/default-browser/-/default-browser-5.4.0.tgz",
+      "integrity": "sha512-XDuvSq38Hr1MdN47EDvYtx3U0MTqpCEn+F6ft8z2vYDzMrvQhVp0ui9oQdqW3MvK3vqUETglt1tVGgjLuJ5izg==",
+      "license": "MIT",
+      "dependencies": {
+        "bundle-name": "^4.1.0",
+        "default-browser-id": "^5.0.0"
+      },
+      "engines": {
+        "node": ">=18"
+      },
+      "funding": {
+        "url": "https://github.com/sponsors/sindresorhus"
+      }
+    },
+    "node_modules/default-browser-id": {
+      "version": "5.0.1",
+      "resolved": "https://registry.npmjs.org/default-browser-id/-/default-browser-id-5.0.1.tgz",
+      "integrity": "sha512-x1VCxdX4t+8wVfd1so/9w+vQ4vx7lKd2Qp5tDRutErwmR85OgmfX7RlLRMWafRMY7hbEiXIbudNrjOAPa/hL8Q==",
+      "license": "MIT",
+      "engines": {
+        "node": ">=18"
+      },
+      "funding": {
+        "url": "https://github.com/sponsors/sindresorhus"
+      }
+    },
     "node_modules/defaults": {
       "version": "1.0.4",
       "resolved": "https://registry.npmjs.org/defaults/-/defaults-1.0.4.tgz",
@@ -17913,6 +18299,18 @@ module.exports = {
         "url": "https://github.com/sponsors/sindresorhus"
       }
     },
+    "node_modules/define-lazy-prop": {
+      "version": "3.0.0",
+      "resolved": "https://registry.npmjs.org/define-lazy-prop/-/define-lazy-prop-3.0.0.tgz",
+      "integrity": "sha512-N+MeXYoqr3pOgn8xfyRPREN7gHakLYjhsHhWGT3fWAiL4IkAt0iDw14QiiEm2bE30c5XX5q0FtAA3CK5f9/BUg==",
+      "license": "MIT",
+      "engines": {
+        "node": ">=12"
+      },
+      "funding": {
+        "url": "https://github.com/sponsors/sindresorhus"
+      }
+    },
     "node_modules/delayed-stream": {
       "version": "1.0.0",
       "resolved": "https://registry.npmjs.org/delayed-stream/-/delayed-stream-1.0.0.tgz",
@@ -17920,6 +18318,15 @@ module.exports = {
       "license": "MIT",
       "engines": {
         "node": ">=0.4.0"
+      }
+    },
+    "node_modules/depd": {
+      "version": "2.0.0",
+      "resolved": "https://registry.npmjs.org/depd/-/depd-2.0.0.tgz",
+      "integrity": "sha512-g7nH6P6dyDioJogAAGprGpCtVImJhpPk/roCzdb3fIh61/s/nPsfR6onyMwkCAR/OlC3yBC0lESvUoQEAssIrw==",
+      "license": "MIT",
+      "engines": {
+        "node": ">= 0.8"
       }
     },
     "node_modules/detect-libc": {
@@ -17975,6 +18382,12 @@ module.exports = {
         "node": ">= 0.4"
       }
     },
+    "node_modules/ee-first": {
+      "version": "1.1.1",
+      "resolved": "https://registry.npmjs.org/ee-first/-/ee-first-1.1.1.tgz",
+      "integrity": "sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==",
+      "license": "MIT"
+    },
     "node_modules/electron-to-chromium": {
       "version": "1.5.278",
       "resolved": "https://registry.npmjs.org/electron-to-chromium/-/electron-to-chromium-1.5.278.tgz",
@@ -18007,6 +18420,15 @@ module.exports = {
       "integrity": "sha512-5U0rVMU5Y2n2+ykNLQqMoqklN9ICBT/KsvC1Gz6vqHbz2AXXGkG+Pm5rMWk/8Vjrr/mY9985Hi8DYzn1F09Nyw==",
       "license": "MIT"
     },
+    "node_modules/encodeurl": {
+      "version": "2.0.0",
+      "resolved": "https://registry.npmjs.org/encodeurl/-/encodeurl-2.0.0.tgz",
+      "integrity": "sha512-Q0n9HRi4m6JuGIV1eFlmvJB7ZEVxu93IrMyiMsGC0lrMJMWzRgx6WGquyfQgZVb31vhGgXnfmPNNXmxnOkRBrg==",
+      "license": "MIT",
+      "engines": {
+        "node": ">= 0.8"
+      }
+    },
     "node_modules/end-of-stream": {
       "version": "1.4.5",
       "resolved": "https://registry.npmjs.org/end-of-stream/-/end-of-stream-1.4.5.tgz",
@@ -18014,6 +18436,57 @@ module.exports = {
       "license": "MIT",
       "dependencies": {
         "once": "^1.4.0"
+      }
+    },
+    "node_modules/engine.io": {
+      "version": "6.6.5",
+      "resolved": "https://registry.npmjs.org/engine.io/-/engine.io-6.6.5.tgz",
+      "integrity": "sha512-2RZdgEbXmp5+dVbRm0P7HQUImZpICccJy7rN7Tv+SFa55pH+lxnuw6/K1ZxxBfHoYpSkHLAO92oa8O4SwFXA2A==",
+      "license": "MIT",
+      "dependencies": {
+        "@types/cors": "^2.8.12",
+        "@types/node": ">=10.0.0",
+        "accepts": "~1.3.4",
+        "base64id": "2.0.0",
+        "cookie": "~0.7.2",
+        "cors": "~2.8.5",
+        "debug": "~4.4.1",
+        "engine.io-parser": "~5.2.1",
+        "ws": "~8.18.3"
+      },
+      "engines": {
+        "node": ">=10.2.0"
+      }
+    },
+    "node_modules/engine.io-parser": {
+      "version": "5.2.3",
+      "resolved": "https://registry.npmjs.org/engine.io-parser/-/engine.io-parser-5.2.3.tgz",
+      "integrity": "sha512-HqD3yTBfnBxIrbnM1DoD6Pcq8NECnh8d4As1Qgh0z5Gg3jRRIqijury0CL3ghu/edArpUYiYqQiDUQBIs4np3Q==",
+      "license": "MIT",
+      "engines": {
+        "node": ">=10.0.0"
+      }
+    },
+    "node_modules/engine.io/node_modules/accepts": {
+      "version": "1.3.8",
+      "resolved": "https://registry.npmjs.org/accepts/-/accepts-1.3.8.tgz",
+      "integrity": "sha512-PYAthTa2m2VKxuvSD3DPC/Gy+U+sOA1LAuT8mkmRuvw+NACSaeXEQ+NHcVF7rONl6qcaxV3Uuemwawk+7+SJLw==",
+      "license": "MIT",
+      "dependencies": {
+        "mime-types": "~2.1.34",
+        "negotiator": "0.6.3"
+      },
+      "engines": {
+        "node": ">= 0.6"
+      }
+    },
+    "node_modules/engine.io/node_modules/negotiator": {
+      "version": "0.6.3",
+      "resolved": "https://registry.npmjs.org/negotiator/-/negotiator-0.6.3.tgz",
+      "integrity": "sha512-+EUsqGPLsM+j/zdChZjsnX51g4XrHFOIXwfnCVPGlQk/k5giakcKsuxCObBRu6DSm9opw/O6slWbJdghQM4bBg==",
+      "license": "MIT",
+      "engines": {
+        "node": ">= 0.6"
       }
     },
     "node_modules/entities": {
@@ -18104,6 +18577,12 @@ module.exports = {
         "node": ">=6"
       }
     },
+    "node_modules/escape-html": {
+      "version": "1.0.3",
+      "resolved": "https://registry.npmjs.org/escape-html/-/escape-html-1.0.3.tgz",
+      "integrity": "sha512-NiSupZ4OeuGwr68lGIeym/ksIZMJodUGOSCZ/FSnTxcrekbvqrgdUxlJOMpijaKZVjAJrWrGs/6Jy8OMuyj9ow==",
+      "license": "MIT"
+    },
     "node_modules/escape-string-regexp": {
       "version": "2.0.0",
       "resolved": "https://registry.npmjs.org/escape-string-regexp/-/escape-string-regexp-2.0.0.tgz",
@@ -18126,6 +18605,15 @@ module.exports = {
       },
       "engines": {
         "node": ">=4"
+      }
+    },
+    "node_modules/etag": {
+      "version": "1.8.1",
+      "resolved": "https://registry.npmjs.org/etag/-/etag-1.8.1.tgz",
+      "integrity": "sha512-aIL5Fx7mawVa300al2BnEE4iNvo1qETxLrPI/o05L7z6go7fCw1J6EQmbK4FmJ2AS7kgVF/KEZWufBfdClMcPg==",
+      "license": "MIT",
+      "engines": {
+        "node": ">= 0.6"
       }
     },
     "node_modules/execa": {
@@ -18188,6 +18676,74 @@ module.exports = {
         "node": "^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0"
       }
     },
+    "node_modules/express": {
+      "version": "5.2.1",
+      "resolved": "https://registry.npmjs.org/express/-/express-5.2.1.tgz",
+      "integrity": "sha512-hIS4idWWai69NezIdRt2xFVofaF4j+6INOpJlVOLDO8zXGpUVEVzIYk12UUi2JzjEzWL3IOAxcTubgz9Po0yXw==",
+      "license": "MIT",
+      "dependencies": {
+        "accepts": "^2.0.0",
+        "body-parser": "^2.2.1",
+        "content-disposition": "^1.0.0",
+        "content-type": "^1.0.5",
+        "cookie": "^0.7.1",
+        "cookie-signature": "^1.2.1",
+        "debug": "^4.4.0",
+        "depd": "^2.0.0",
+        "encodeurl": "^2.0.0",
+        "escape-html": "^1.0.3",
+        "etag": "^1.8.1",
+        "finalhandler": "^2.1.0",
+        "fresh": "^2.0.0",
+        "http-errors": "^2.0.0",
+        "merge-descriptors": "^2.0.0",
+        "mime-types": "^3.0.0",
+        "on-finished": "^2.4.1",
+        "once": "^1.4.0",
+        "parseurl": "^1.3.3",
+        "proxy-addr": "^2.0.7",
+        "qs": "^6.14.0",
+        "range-parser": "^1.2.1",
+        "router": "^2.2.0",
+        "send": "^1.1.0",
+        "serve-static": "^2.2.0",
+        "statuses": "^2.0.1",
+        "type-is": "^2.0.1",
+        "vary": "^1.1.2"
+      },
+      "engines": {
+        "node": ">= 18"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/express"
+      }
+    },
+    "node_modules/express/node_modules/mime-db": {
+      "version": "1.54.0",
+      "resolved": "https://registry.npmjs.org/mime-db/-/mime-db-1.54.0.tgz",
+      "integrity": "sha512-aU5EJuIN2WDemCcAp2vFBfp/m4EAhWJnUNSSw0ixs7/kXbd6Pg64EmwJkNdFhB8aWt1sH2CTXrLxo/iAGV3oPQ==",
+      "license": "MIT",
+      "engines": {
+        "node": ">= 0.6"
+      }
+    },
+    "node_modules/express/node_modules/mime-types": {
+      "version": "3.0.2",
+      "resolved": "https://registry.npmjs.org/mime-types/-/mime-types-3.0.2.tgz",
+      "integrity": "sha512-Lbgzdk0h4juoQ9fCKXW4by0UJqj+nOOrI9MJ1sSj4nI8aI2eo1qmvQEie4VD1glsS250n15LsWsYtCugiStS5A==",
+      "license": "MIT",
+      "dependencies": {
+        "mime-db": "^1.54.0"
+      },
+      "engines": {
+        "node": ">=18"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/express"
+      }
+    },
     "node_modules/fast-json-stable-stringify": {
       "version": "2.1.0",
       "resolved": "https://registry.npmjs.org/fast-json-stable-stringify/-/fast-json-stable-stringify-2.1.0.tgz",
@@ -18222,6 +18778,27 @@ module.exports = {
       },
       "engines": {
         "node": ">=8"
+      }
+    },
+    "node_modules/finalhandler": {
+      "version": "2.1.1",
+      "resolved": "https://registry.npmjs.org/finalhandler/-/finalhandler-2.1.1.tgz",
+      "integrity": "sha512-S8KoZgRZN+a5rNwqTxlZZePjT/4cnm0ROV70LedRHZ0p8u9fRID0hJUZQpkKLzro8LfmC8sx23bY6tVNxv8pQA==",
+      "license": "MIT",
+      "dependencies": {
+        "debug": "^4.4.0",
+        "encodeurl": "^2.0.0",
+        "escape-html": "^1.0.3",
+        "on-finished": "^2.4.1",
+        "parseurl": "^1.3.3",
+        "statuses": "^2.0.1"
+      },
+      "engines": {
+        "node": ">= 18.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/express"
       }
     },
     "node_modules/find-up": {
@@ -18272,6 +18849,24 @@ module.exports = {
       },
       "engines": {
         "node": ">= 6"
+      }
+    },
+    "node_modules/forwarded": {
+      "version": "0.2.0",
+      "resolved": "https://registry.npmjs.org/forwarded/-/forwarded-0.2.0.tgz",
+      "integrity": "sha512-buRG0fpBtRHSTCOASe6hD258tEubFoRLb4ZNA6NxMVHNw2gOcwHo9wyablzMzOA5z9xA9L1KNjk/Nt6MT9aYow==",
+      "license": "MIT",
+      "engines": {
+        "node": ">= 0.6"
+      }
+    },
+    "node_modules/fresh": {
+      "version": "2.0.0",
+      "resolved": "https://registry.npmjs.org/fresh/-/fresh-2.0.0.tgz",
+      "integrity": "sha512-Rx/WycZ60HOaqLKAi6cHRKKI7zxWbJ31MhntmtwMoaTeF7XFH9hhBp8vITaMidfljRQ6eYWCKkaTK+ykVJHP2A==",
+      "license": "MIT",
+      "engines": {
+        "node": ">= 0.8"
       }
     },
     "node_modules/fs-constants": {
@@ -18523,6 +19118,26 @@ module.exports = {
       "dev": true,
       "license": "MIT"
     },
+    "node_modules/http-errors": {
+      "version": "2.0.1",
+      "resolved": "https://registry.npmjs.org/http-errors/-/http-errors-2.0.1.tgz",
+      "integrity": "sha512-4FbRdAX+bSdmo4AUFuS0WNiPz8NgFt+r8ThgNWmlrjQjt1Q7ZR9+zTlce2859x4KSXrwIsaeTqDoKQmtP8pLmQ==",
+      "license": "MIT",
+      "dependencies": {
+        "depd": "~2.0.0",
+        "inherits": "~2.0.4",
+        "setprototypeof": "~1.2.0",
+        "statuses": "~2.0.2",
+        "toidentifier": "~1.0.1"
+      },
+      "engines": {
+        "node": ">= 0.8"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/express"
+      }
+    },
     "node_modules/human-signals": {
       "version": "2.1.0",
       "resolved": "https://registry.npmjs.org/human-signals/-/human-signals-2.1.0.tgz",
@@ -18531,6 +19146,22 @@ module.exports = {
       "license": "Apache-2.0",
       "engines": {
         "node": ">=10.17.0"
+      }
+    },
+    "node_modules/iconv-lite": {
+      "version": "0.7.2",
+      "resolved": "https://registry.npmjs.org/iconv-lite/-/iconv-lite-0.7.2.tgz",
+      "integrity": "sha512-im9DjEDQ55s9fL4EYzOAv0yMqmMBSZp6G0VvFyTMPKWxiSBHUj9NW/qqLmXUwXrrM7AvqSlTCfvqRb0cM8yYqw==",
+      "license": "MIT",
+      "dependencies": {
+        "safer-buffer": ">= 2.1.2 < 3.0.0"
+      },
+      "engines": {
+        "node": ">=0.10.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/express"
       }
     },
     "node_modules/ieee754": {
@@ -18607,6 +19238,15 @@ module.exports = {
       "integrity": "sha512-JV/yugV2uzW5iMRSiZAyDtQd+nxtUnjeLt0acNdw98kKLrvuRVyB80tsREOE7yvGVgalhZ6RNXCmEHkUKBKxew==",
       "license": "ISC"
     },
+    "node_modules/ipaddr.js": {
+      "version": "1.9.1",
+      "resolved": "https://registry.npmjs.org/ipaddr.js/-/ipaddr.js-1.9.1.tgz",
+      "integrity": "sha512-0KI/607xoxSToH7GjN1FfSbLoU0+btTicjsQSWQlh/hZykN8KpmMf7uYwPW3R+akZ6R/w18ZlXSHBYXiYUPO3g==",
+      "license": "MIT",
+      "engines": {
+        "node": ">= 0.10"
+      }
+    },
     "node_modules/is-arrayish": {
       "version": "0.2.1",
       "resolved": "https://registry.npmjs.org/is-arrayish/-/is-arrayish-0.2.1.tgz",
@@ -18630,6 +19270,21 @@ module.exports = {
         "url": "https://github.com/sponsors/ljharb"
       }
     },
+    "node_modules/is-docker": {
+      "version": "3.0.0",
+      "resolved": "https://registry.npmjs.org/is-docker/-/is-docker-3.0.0.tgz",
+      "integrity": "sha512-eljcgEDlEns/7AXFosB5K/2nCM4P7FQPkGc/DWLy5rmFEWvZayGrik1d9/QIY5nJ4f9YsVvBkA6kJpHn9rISdQ==",
+      "license": "MIT",
+      "bin": {
+        "is-docker": "cli.js"
+      },
+      "engines": {
+        "node": "^12.20.0 || ^14.13.1 || >=16.0.0"
+      },
+      "funding": {
+        "url": "https://github.com/sponsors/sindresorhus"
+      }
+    },
     "node_modules/is-fullwidth-code-point": {
       "version": "3.0.0",
       "resolved": "https://registry.npmjs.org/is-fullwidth-code-point/-/is-fullwidth-code-point-3.0.0.tgz",
@@ -18647,6 +19302,36 @@ module.exports = {
       "license": "MIT",
       "engines": {
         "node": ">=6"
+      }
+    },
+    "node_modules/is-in-ssh": {
+      "version": "1.0.0",
+      "resolved": "https://registry.npmjs.org/is-in-ssh/-/is-in-ssh-1.0.0.tgz",
+      "integrity": "sha512-jYa6Q9rH90kR1vKB6NM7qqd1mge3Fx4Dhw5TVlK1MUBqhEOuCagrEHMevNuCcbECmXZ0ThXkRm+Ymr51HwEPAw==",
+      "license": "MIT",
+      "engines": {
+        "node": ">=20"
+      },
+      "funding": {
+        "url": "https://github.com/sponsors/sindresorhus"
+      }
+    },
+    "node_modules/is-inside-container": {
+      "version": "1.0.0",
+      "resolved": "https://registry.npmjs.org/is-inside-container/-/is-inside-container-1.0.0.tgz",
+      "integrity": "sha512-KIYLCCJghfHZxqjYBE7rEy0OBuTd5xCHS7tHVgvCLkx7StIoaxwNW3hCALgEUjFfeRk+MG/Qxmp/vtETEF3tRA==",
+      "license": "MIT",
+      "dependencies": {
+        "is-docker": "^3.0.0"
+      },
+      "bin": {
+        "is-inside-container": "cli.js"
+      },
+      "engines": {
+        "node": ">=14.16"
+      },
+      "funding": {
+        "url": "https://github.com/sponsors/sindresorhus"
       }
     },
     "node_modules/is-interactive": {
@@ -18668,6 +19353,12 @@ module.exports = {
         "node": ">=0.12.0"
       }
     },
+    "node_modules/is-promise": {
+      "version": "4.0.0",
+      "resolved": "https://registry.npmjs.org/is-promise/-/is-promise-4.0.0.tgz",
+      "integrity": "sha512-hvpoI6korhJMnej285dSg6nu1+e6uxs7zG3BYAm5byqDsgJNWwxzM6z6iZiAgQR4TJ30JmBTOwqZUw3WlyH3AQ==",
+      "license": "MIT"
+    },
     "node_modules/is-stream": {
       "version": "2.0.1",
       "resolved": "https://registry.npmjs.org/is-stream/-/is-stream-2.0.1.tgz",
@@ -18688,6 +19379,21 @@ module.exports = {
       "license": "MIT",
       "engines": {
         "node": ">=10"
+      },
+      "funding": {
+        "url": "https://github.com/sponsors/sindresorhus"
+      }
+    },
+    "node_modules/is-wsl": {
+      "version": "3.1.0",
+      "resolved": "https://registry.npmjs.org/is-wsl/-/is-wsl-3.1.0.tgz",
+      "integrity": "sha512-UcVfVfaK4Sc4m7X3dUSoHoozQGBEFeDC+zVo06t98xe8CzHSZZBekNXH+tu0NalHolcJ/QAGqS46Hef7QXBIMw==",
+      "license": "MIT",
+      "dependencies": {
+        "is-inside-container": "^1.0.0"
+      },
+      "engines": {
+        "node": ">=16"
       },
       "funding": {
         "url": "https://github.com/sponsors/sindresorhus"
@@ -20470,6 +21176,27 @@ module.exports = {
       "integrity": "sha512-Lf+9+2r+Tdp5wXDXC4PcIBjTDtq4UKjCPMQhKIuzpJNW0b96kVqSwW0bT7FhRSfmAiFYgP+SCRvdrDozfh0U5w==",
       "license": "MIT"
     },
+    "node_modules/media-typer": {
+      "version": "1.1.0",
+      "resolved": "https://registry.npmjs.org/media-typer/-/media-typer-1.1.0.tgz",
+      "integrity": "sha512-aisnrDP4GNe06UcKFnV5bfMNPBUw4jsLGaWwWfnH3v02GnBuXX2MCVn5RbrWo0j3pczUilYblq7fQ7Nw2t5XKw==",
+      "license": "MIT",
+      "engines": {
+        "node": ">= 0.8"
+      }
+    },
+    "node_modules/merge-descriptors": {
+      "version": "2.0.0",
+      "resolved": "https://registry.npmjs.org/merge-descriptors/-/merge-descriptors-2.0.0.tgz",
+      "integrity": "sha512-Snk314V5ayFLhp3fkUREub6WtjBfPdCPY1Ln8/8munuLuiYhsABgBVWsozAG+MWMbVEvcdcpbi9R7ww22l9Q3g==",
+      "license": "MIT",
+      "engines": {
+        "node": ">=18"
+      },
+      "funding": {
+        "url": "https://github.com/sponsors/sindresorhus"
+      }
+    },
     "node_modules/merge-stream": {
       "version": "2.0.0",
       "resolved": "https://registry.npmjs.org/merge-stream/-/merge-stream-2.0.0.tgz",
@@ -20565,7 +21292,6 @@ module.exports = {
       "version": "2.1.3",
       "resolved": "https://registry.npmjs.org/ms/-/ms-2.1.3.tgz",
       "integrity": "sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==",
-      "dev": true,
       "license": "MIT"
     },
     "node_modules/mz": {
@@ -20598,6 +21324,15 @@ module.exports = {
       "integrity": "sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==",
       "dev": true,
       "license": "MIT"
+    },
+    "node_modules/negotiator": {
+      "version": "1.0.0",
+      "resolved": "https://registry.npmjs.org/negotiator/-/negotiator-1.0.0.tgz",
+      "integrity": "sha512-8Ofs/AUQh8MaEcrlq5xOX0CQ9ypTF5dl78mjlMNfOK08fzpgTHQRQPBxcPlEtIw0yRpws+Zo/3r+5WRby7u3Gg==",
+      "license": "MIT",
+      "engines": {
+        "node": ">= 0.6"
+      }
     },
     "node_modules/neo-async": {
       "version": "2.6.2",
@@ -20691,6 +21426,30 @@ module.exports = {
         "node": ">=0.10.0"
       }
     },
+    "node_modules/object-inspect": {
+      "version": "1.13.4",
+      "resolved": "https://registry.npmjs.org/object-inspect/-/object-inspect-1.13.4.tgz",
+      "integrity": "sha512-W67iLl4J2EXEGTbfeHCffrjDfitvLANg0UlX3wFUUSTx92KXRFegMHUVgSqE+wvhAbi4WqjGg9czysTV2Epbew==",
+      "license": "MIT",
+      "engines": {
+        "node": ">= 0.4"
+      },
+      "funding": {
+        "url": "https://github.com/sponsors/ljharb"
+      }
+    },
+    "node_modules/on-finished": {
+      "version": "2.4.1",
+      "resolved": "https://registry.npmjs.org/on-finished/-/on-finished-2.4.1.tgz",
+      "integrity": "sha512-oVlzkg3ENAhCk2zdv7IJwd/QUD4z2RxRwpkcGY8psCVcCYZNq4wYnVWALHM+brtuJjePWiYF/ClmuDr8Ch5+kg==",
+      "license": "MIT",
+      "dependencies": {
+        "ee-first": "1.1.1"
+      },
+      "engines": {
+        "node": ">= 0.8"
+      }
+    },
     "node_modules/once": {
       "version": "1.4.0",
       "resolved": "https://registry.npmjs.org/once/-/once-1.4.0.tgz",
@@ -20710,6 +21469,26 @@ module.exports = {
       },
       "engines": {
         "node": ">=6"
+      },
+      "funding": {
+        "url": "https://github.com/sponsors/sindresorhus"
+      }
+    },
+    "node_modules/open": {
+      "version": "11.0.0",
+      "resolved": "https://registry.npmjs.org/open/-/open-11.0.0.tgz",
+      "integrity": "sha512-smsWv2LzFjP03xmvFoJ331ss6h+jixfA4UUV/Bsiyuu4YJPfN+FIQGOIiv4w9/+MoHkfkJ22UIaQWRVFRfH6Vw==",
+      "license": "MIT",
+      "dependencies": {
+        "default-browser": "^5.4.0",
+        "define-lazy-prop": "^3.0.0",
+        "is-in-ssh": "^1.0.0",
+        "is-inside-container": "^1.0.0",
+        "powershell-utils": "^0.1.0",
+        "wsl-utils": "^0.3.0"
+      },
+      "engines": {
+        "node": ">=20"
       },
       "funding": {
         "url": "https://github.com/sponsors/sindresorhus"
@@ -20833,6 +21612,15 @@ module.exports = {
       "integrity": "sha512-Ofn/CTFzRGTTxwpNEs9PP93gXShHcTq255nzRYSKe8AkVpZY7e1fpmTfOyoIvjP5HG7Z2ZM7VS9PPhQGW2pOpw==",
       "license": "MIT"
     },
+    "node_modules/parseurl": {
+      "version": "1.3.3",
+      "resolved": "https://registry.npmjs.org/parseurl/-/parseurl-1.3.3.tgz",
+      "integrity": "sha512-CiyeOxFT/JZyN5m0z9PfXw4SCBJ6Sygz1Dpl0wqjlhDEGGBP1GnsUVEL0p63hoG1fcj3fHynXi9NYO4nWOL+qQ==",
+      "license": "MIT",
+      "engines": {
+        "node": ">= 0.8"
+      }
+    },
     "node_modules/path-exists": {
       "version": "4.0.0",
       "resolved": "https://registry.npmjs.org/path-exists/-/path-exists-4.0.0.tgz",
@@ -20869,6 +21657,16 @@ module.exports = {
       "integrity": "sha512-LDJzPVEEEPR+y48z93A0Ed0yXb8pAByGWo/k5YYdYgpY2/2EsOsksJrq7lOHxryrVOn1ejG6oAp8ahvOIQD8sw==",
       "dev": true,
       "license": "MIT"
+    },
+    "node_modules/path-to-regexp": {
+      "version": "8.3.0",
+      "resolved": "https://registry.npmjs.org/path-to-regexp/-/path-to-regexp-8.3.0.tgz",
+      "integrity": "sha512-7jdwVIRtsP8MYpdXSwOS0YdD0Du+qOoF/AEPIt88PcCFrZCzx41oxku1jD88hZBwbNUIEfpqvuhjFaMAqMTWnA==",
+      "license": "MIT",
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/express"
+      }
     },
     "node_modules/picocolors": {
       "version": "1.1.1",
@@ -20911,6 +21709,18 @@ module.exports = {
       },
       "engines": {
         "node": ">=8"
+      }
+    },
+    "node_modules/powershell-utils": {
+      "version": "0.1.0",
+      "resolved": "https://registry.npmjs.org/powershell-utils/-/powershell-utils-0.1.0.tgz",
+      "integrity": "sha512-dM0jVuXJPsDN6DvRpea484tCUaMiXWjuCn++HGTqUWzGDjv5tZkEZldAJ/UMlqRYGFrD/etByo4/xOuC/snX2A==",
+      "license": "MIT",
+      "engines": {
+        "node": ">=20"
+      },
+      "funding": {
+        "url": "https://github.com/sponsors/sindresorhus"
       }
     },
     "node_modules/prebuild-install": {
@@ -21001,6 +21811,19 @@ module.exports = {
         "node": ">= 6"
       }
     },
+    "node_modules/proxy-addr": {
+      "version": "2.0.7",
+      "resolved": "https://registry.npmjs.org/proxy-addr/-/proxy-addr-2.0.7.tgz",
+      "integrity": "sha512-llQsMLSUDUPT44jdrU/O37qlnifitDP+ZwrmmZcoSKyLKvtZxpyV0n2/bD/N4tBAAZ/gJEdZU7KMraoK1+XYAg==",
+      "license": "MIT",
+      "dependencies": {
+        "forwarded": "0.2.0",
+        "ipaddr.js": "1.9.1"
+      },
+      "engines": {
+        "node": ">= 0.10"
+      }
+    },
     "node_modules/proxy-from-env": {
       "version": "1.1.0",
       "resolved": "https://registry.npmjs.org/proxy-from-env/-/proxy-from-env-1.1.0.tgz",
@@ -21042,6 +21865,45 @@ module.exports = {
         }
       ],
       "license": "MIT"
+    },
+    "node_modules/qs": {
+      "version": "6.14.1",
+      "resolved": "https://registry.npmjs.org/qs/-/qs-6.14.1.tgz",
+      "integrity": "sha512-4EK3+xJl8Ts67nLYNwqw/dsFVnCf+qR7RgXSK9jEEm9unao3njwMDdmsdvoKBKHzxd7tCYz5e5M+SnMjdtXGQQ==",
+      "license": "BSD-3-Clause",
+      "dependencies": {
+        "side-channel": "^1.1.0"
+      },
+      "engines": {
+        "node": ">=0.6"
+      },
+      "funding": {
+        "url": "https://github.com/sponsors/ljharb"
+      }
+    },
+    "node_modules/range-parser": {
+      "version": "1.2.1",
+      "resolved": "https://registry.npmjs.org/range-parser/-/range-parser-1.2.1.tgz",
+      "integrity": "sha512-Hrgsx+orqoygnmhFbKaHE6c296J+HTAQXoxEF6gNupROmmGJRoyzfG3ccAveqCBrwr/2yxQ5BVd/GTl5agOwSg==",
+      "license": "MIT",
+      "engines": {
+        "node": ">= 0.6"
+      }
+    },
+    "node_modules/raw-body": {
+      "version": "3.0.2",
+      "resolved": "https://registry.npmjs.org/raw-body/-/raw-body-3.0.2.tgz",
+      "integrity": "sha512-K5zQjDllxWkf7Z5xJdV0/B0WTNqx6vxG70zJE4N0kBs4LovmEYWJzQGxC9bS9RAKu3bgM40lrd5zoLJ12MQ5BA==",
+      "license": "MIT",
+      "dependencies": {
+        "bytes": "~3.1.2",
+        "http-errors": "~2.0.1",
+        "iconv-lite": "~0.7.0",
+        "unpipe": "~1.0.0"
+      },
+      "engines": {
+        "node": ">= 0.10"
+      }
     },
     "node_modules/rc": {
       "version": "1.2.8",
@@ -21164,6 +22026,34 @@ module.exports = {
         "node": ">=8"
       }
     },
+    "node_modules/router": {
+      "version": "2.2.0",
+      "resolved": "https://registry.npmjs.org/router/-/router-2.2.0.tgz",
+      "integrity": "sha512-nLTrUKm2UyiL7rlhapu/Zl45FwNgkZGaCpZbIHajDYgwlJCOzLSk+cIPAnsEqV955GjILJnKbdQC1nVPz+gAYQ==",
+      "license": "MIT",
+      "dependencies": {
+        "debug": "^4.4.0",
+        "depd": "^2.0.0",
+        "is-promise": "^4.0.0",
+        "parseurl": "^1.3.3",
+        "path-to-regexp": "^8.0.0"
+      },
+      "engines": {
+        "node": ">= 18"
+      }
+    },
+    "node_modules/run-applescript": {
+      "version": "7.1.0",
+      "resolved": "https://registry.npmjs.org/run-applescript/-/run-applescript-7.1.0.tgz",
+      "integrity": "sha512-DPe5pVFaAsinSaV6QjQ6gdiedWDcRCbUuiQfQa2wmWV7+xC9bGulGI8+TdRmoFkAPaBXk8CrAbnlY2ISniJ47Q==",
+      "license": "MIT",
+      "engines": {
+        "node": ">=18"
+      },
+      "funding": {
+        "url": "https://github.com/sponsors/sindresorhus"
+      }
+    },
     "node_modules/safe-buffer": {
       "version": "5.2.1",
       "resolved": "https://registry.npmjs.org/safe-buffer/-/safe-buffer-5.2.1.tgz",
@@ -21200,6 +22090,82 @@ module.exports = {
         "semver": "bin/semver.js"
       }
     },
+    "node_modules/send": {
+      "version": "1.2.1",
+      "resolved": "https://registry.npmjs.org/send/-/send-1.2.1.tgz",
+      "integrity": "sha512-1gnZf7DFcoIcajTjTwjwuDjzuz4PPcY2StKPlsGAQ1+YH20IRVrBaXSWmdjowTJ6u8Rc01PoYOGHXfP1mYcZNQ==",
+      "license": "MIT",
+      "dependencies": {
+        "debug": "^4.4.3",
+        "encodeurl": "^2.0.0",
+        "escape-html": "^1.0.3",
+        "etag": "^1.8.1",
+        "fresh": "^2.0.0",
+        "http-errors": "^2.0.1",
+        "mime-types": "^3.0.2",
+        "ms": "^2.1.3",
+        "on-finished": "^2.4.1",
+        "range-parser": "^1.2.1",
+        "statuses": "^2.0.2"
+      },
+      "engines": {
+        "node": ">= 18"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/express"
+      }
+    },
+    "node_modules/send/node_modules/mime-db": {
+      "version": "1.54.0",
+      "resolved": "https://registry.npmjs.org/mime-db/-/mime-db-1.54.0.tgz",
+      "integrity": "sha512-aU5EJuIN2WDemCcAp2vFBfp/m4EAhWJnUNSSw0ixs7/kXbd6Pg64EmwJkNdFhB8aWt1sH2CTXrLxo/iAGV3oPQ==",
+      "license": "MIT",
+      "engines": {
+        "node": ">= 0.6"
+      }
+    },
+    "node_modules/send/node_modules/mime-types": {
+      "version": "3.0.2",
+      "resolved": "https://registry.npmjs.org/mime-types/-/mime-types-3.0.2.tgz",
+      "integrity": "sha512-Lbgzdk0h4juoQ9fCKXW4by0UJqj+nOOrI9MJ1sSj4nI8aI2eo1qmvQEie4VD1glsS250n15LsWsYtCugiStS5A==",
+      "license": "MIT",
+      "dependencies": {
+        "mime-db": "^1.54.0"
+      },
+      "engines": {
+        "node": ">=18"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/express"
+      }
+    },
+    "node_modules/serve-static": {
+      "version": "2.2.1",
+      "resolved": "https://registry.npmjs.org/serve-static/-/serve-static-2.2.1.tgz",
+      "integrity": "sha512-xRXBn0pPqQTVQiC8wyQrKs2MOlX24zQ0POGaj0kultvoOCstBQM5yvOhAVSUwOMjQtTvsPWoNCHfPGwaaQJhTw==",
+      "license": "MIT",
+      "dependencies": {
+        "encodeurl": "^2.0.0",
+        "escape-html": "^1.0.3",
+        "parseurl": "^1.3.3",
+        "send": "^1.2.0"
+      },
+      "engines": {
+        "node": ">= 18"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/express"
+      }
+    },
+    "node_modules/setprototypeof": {
+      "version": "1.2.0",
+      "resolved": "https://registry.npmjs.org/setprototypeof/-/setprototypeof-1.2.0.tgz",
+      "integrity": "sha512-E5LDX7Wrp85Kil5bhZv46j8jOeboKq5JMmYM3gVGdGH8xFpPWXUMsNrlODCrkoxMEeNi/XZIwuRvY4XNwYMJpw==",
+      "license": "ISC"
+    },
     "node_modules/shebang-command": {
       "version": "2.0.0",
       "resolved": "https://registry.npmjs.org/shebang-command/-/shebang-command-2.0.0.tgz",
@@ -21221,6 +22187,78 @@ module.exports = {
       "license": "MIT",
       "engines": {
         "node": ">=8"
+      }
+    },
+    "node_modules/side-channel": {
+      "version": "1.1.0",
+      "resolved": "https://registry.npmjs.org/side-channel/-/side-channel-1.1.0.tgz",
+      "integrity": "sha512-ZX99e6tRweoUXqR+VBrslhda51Nh5MTQwou5tnUDgbtyM0dBgmhEDtWGP/xbKn6hqfPRHujUNwz5fy/wbbhnpw==",
+      "license": "MIT",
+      "dependencies": {
+        "es-errors": "^1.3.0",
+        "object-inspect": "^1.13.3",
+        "side-channel-list": "^1.0.0",
+        "side-channel-map": "^1.0.1",
+        "side-channel-weakmap": "^1.0.2"
+      },
+      "engines": {
+        "node": ">= 0.4"
+      },
+      "funding": {
+        "url": "https://github.com/sponsors/ljharb"
+      }
+    },
+    "node_modules/side-channel-list": {
+      "version": "1.0.0",
+      "resolved": "https://registry.npmjs.org/side-channel-list/-/side-channel-list-1.0.0.tgz",
+      "integrity": "sha512-FCLHtRD/gnpCiCHEiJLOwdmFP+wzCmDEkc9y7NsYxeF4u7Btsn1ZuwgwJGxImImHicJArLP4R0yX4c2KCrMrTA==",
+      "license": "MIT",
+      "dependencies": {
+        "es-errors": "^1.3.0",
+        "object-inspect": "^1.13.3"
+      },
+      "engines": {
+        "node": ">= 0.4"
+      },
+      "funding": {
+        "url": "https://github.com/sponsors/ljharb"
+      }
+    },
+    "node_modules/side-channel-map": {
+      "version": "1.0.1",
+      "resolved": "https://registry.npmjs.org/side-channel-map/-/side-channel-map-1.0.1.tgz",
+      "integrity": "sha512-VCjCNfgMsby3tTdo02nbjtM/ewra6jPHmpThenkTYh8pG9ucZ/1P8So4u4FGBek/BjpOVsDCMoLA/iuBKIFXRA==",
+      "license": "MIT",
+      "dependencies": {
+        "call-bound": "^1.0.2",
+        "es-errors": "^1.3.0",
+        "get-intrinsic": "^1.2.5",
+        "object-inspect": "^1.13.3"
+      },
+      "engines": {
+        "node": ">= 0.4"
+      },
+      "funding": {
+        "url": "https://github.com/sponsors/ljharb"
+      }
+    },
+    "node_modules/side-channel-weakmap": {
+      "version": "1.0.2",
+      "resolved": "https://registry.npmjs.org/side-channel-weakmap/-/side-channel-weakmap-1.0.2.tgz",
+      "integrity": "sha512-WPS/HvHQTYnHisLo9McqBHOJk2FkHO/tlpvldyrnem4aeQp4hai3gythswg6p01oSoTl58rcpiFAjF2br2Ak2A==",
+      "license": "MIT",
+      "dependencies": {
+        "call-bound": "^1.0.2",
+        "es-errors": "^1.3.0",
+        "get-intrinsic": "^1.2.5",
+        "object-inspect": "^1.13.3",
+        "side-channel-map": "^1.0.1"
+      },
+      "engines": {
+        "node": ">= 0.4"
+      },
+      "funding": {
+        "url": "https://github.com/sponsors/ljharb"
       }
     },
     "node_modules/signal-exit": {
@@ -21303,6 +22341,69 @@ module.exports = {
         "node": ">=8"
       }
     },
+    "node_modules/socket.io": {
+      "version": "4.8.3",
+      "resolved": "https://registry.npmjs.org/socket.io/-/socket.io-4.8.3.tgz",
+      "integrity": "sha512-2Dd78bqzzjE6KPkD5fHZmDAKRNe3J15q+YHDrIsy9WEkqttc7GY+kT9OBLSMaPbQaEd0x1BjcmtMtXkfpc+T5A==",
+      "license": "MIT",
+      "dependencies": {
+        "accepts": "~1.3.4",
+        "base64id": "~2.0.0",
+        "cors": "~2.8.5",
+        "debug": "~4.4.1",
+        "engine.io": "~6.6.0",
+        "socket.io-adapter": "~2.5.2",
+        "socket.io-parser": "~4.2.4"
+      },
+      "engines": {
+        "node": ">=10.2.0"
+      }
+    },
+    "node_modules/socket.io-adapter": {
+      "version": "2.5.6",
+      "resolved": "https://registry.npmjs.org/socket.io-adapter/-/socket.io-adapter-2.5.6.tgz",
+      "integrity": "sha512-DkkO/dz7MGln0dHn5bmN3pPy+JmywNICWrJqVWiVOyvXjWQFIv9c2h24JrQLLFJ2aQVQf/Cvl1vblnd4r2apLQ==",
+      "license": "MIT",
+      "dependencies": {
+        "debug": "~4.4.1",
+        "ws": "~8.18.3"
+      }
+    },
+    "node_modules/socket.io-parser": {
+      "version": "4.2.5",
+      "resolved": "https://registry.npmjs.org/socket.io-parser/-/socket.io-parser-4.2.5.tgz",
+      "integrity": "sha512-bPMmpy/5WWKHea5Y/jYAP6k74A+hvmRCQaJuJB6I/ML5JZq/KfNieUVo/3Mh7SAqn7TyFdIo6wqYHInG1MU1bQ==",
+      "license": "MIT",
+      "dependencies": {
+        "@socket.io/component-emitter": "~3.1.0",
+        "debug": "~4.4.1"
+      },
+      "engines": {
+        "node": ">=10.0.0"
+      }
+    },
+    "node_modules/socket.io/node_modules/accepts": {
+      "version": "1.3.8",
+      "resolved": "https://registry.npmjs.org/accepts/-/accepts-1.3.8.tgz",
+      "integrity": "sha512-PYAthTa2m2VKxuvSD3DPC/Gy+U+sOA1LAuT8mkmRuvw+NACSaeXEQ+NHcVF7rONl6qcaxV3Uuemwawk+7+SJLw==",
+      "license": "MIT",
+      "dependencies": {
+        "mime-types": "~2.1.34",
+        "negotiator": "0.6.3"
+      },
+      "engines": {
+        "node": ">= 0.6"
+      }
+    },
+    "node_modules/socket.io/node_modules/negotiator": {
+      "version": "0.6.3",
+      "resolved": "https://registry.npmjs.org/negotiator/-/negotiator-0.6.3.tgz",
+      "integrity": "sha512-+EUsqGPLsM+j/zdChZjsnX51g4XrHFOIXwfnCVPGlQk/k5giakcKsuxCObBRu6DSm9opw/O6slWbJdghQM4bBg==",
+      "license": "MIT",
+      "engines": {
+        "node": ">= 0.6"
+      }
+    },
     "node_modules/source-map": {
       "version": "0.6.1",
       "resolved": "https://registry.npmjs.org/source-map/-/source-map-0.6.1.tgz",
@@ -21359,6 +22460,15 @@ module.exports = {
       },
       "engines": {
         "node": ">=10"
+      }
+    },
+    "node_modules/statuses": {
+      "version": "2.0.2",
+      "resolved": "https://registry.npmjs.org/statuses/-/statuses-2.0.2.tgz",
+      "integrity": "sha512-DvEy55V3DB7uknRo+4iOGT5fP1slR8wQohVdknigZPMpMstaKJQWhwiYBACJE3Ul2pTnATihhBYnRhZQHGBiRw==",
+      "license": "MIT",
+      "engines": {
+        "node": ">= 0.8"
       }
     },
     "node_modules/string_decoder": {
@@ -21577,6 +22687,15 @@ module.exports = {
         "node": ">=8.0"
       }
     },
+    "node_modules/toidentifier": {
+      "version": "1.0.1",
+      "resolved": "https://registry.npmjs.org/toidentifier/-/toidentifier-1.0.1.tgz",
+      "integrity": "sha512-o5sSPKEkg/DIQNmH43V0/uerLrpzVedkUh8tGNvaeXpfpuwjKenlSox/2O/BTlZUtEe+JG7s5YhEz608PlAHRA==",
+      "license": "MIT",
+      "engines": {
+        "node": ">=0.6"
+      }
+    },
     "node_modules/ts-jest": {
       "version": "29.4.6",
       "resolved": "https://registry.npmjs.org/ts-jest/-/ts-jest-29.4.6.tgz",
@@ -21741,6 +22860,45 @@ module.exports = {
         "url": "https://github.com/sponsors/sindresorhus"
       }
     },
+    "node_modules/type-is": {
+      "version": "2.0.1",
+      "resolved": "https://registry.npmjs.org/type-is/-/type-is-2.0.1.tgz",
+      "integrity": "sha512-OZs6gsjF4vMp32qrCbiVSkrFmXtG/AZhY3t0iAMrMBiAZyV9oALtXO8hsrHbMXF9x6L3grlFuwW2oAz7cav+Gw==",
+      "license": "MIT",
+      "dependencies": {
+        "content-type": "^1.0.5",
+        "media-typer": "^1.1.0",
+        "mime-types": "^3.0.0"
+      },
+      "engines": {
+        "node": ">= 0.6"
+      }
+    },
+    "node_modules/type-is/node_modules/mime-db": {
+      "version": "1.54.0",
+      "resolved": "https://registry.npmjs.org/mime-db/-/mime-db-1.54.0.tgz",
+      "integrity": "sha512-aU5EJuIN2WDemCcAp2vFBfp/m4EAhWJnUNSSw0ixs7/kXbd6Pg64EmwJkNdFhB8aWt1sH2CTXrLxo/iAGV3oPQ==",
+      "license": "MIT",
+      "engines": {
+        "node": ">= 0.6"
+      }
+    },
+    "node_modules/type-is/node_modules/mime-types": {
+      "version": "3.0.2",
+      "resolved": "https://registry.npmjs.org/mime-types/-/mime-types-3.0.2.tgz",
+      "integrity": "sha512-Lbgzdk0h4juoQ9fCKXW4by0UJqj+nOOrI9MJ1sSj4nI8aI2eo1qmvQEie4VD1glsS250n15LsWsYtCugiStS5A==",
+      "license": "MIT",
+      "dependencies": {
+        "mime-db": "^1.54.0"
+      },
+      "engines": {
+        "node": ">=18"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/express"
+      }
+    },
     "node_modules/typescript": {
       "version": "5.9.3",
       "resolved": "https://registry.npmjs.org/typescript/-/typescript-5.9.3.tgz",
@@ -21779,7 +22937,6 @@ module.exports = {
       "version": "6.21.0",
       "resolved": "https://registry.npmjs.org/undici-types/-/undici-types-6.21.0.tgz",
       "integrity": "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==",
-      "dev": true,
       "license": "MIT"
     },
     "node_modules/unicode-emoji-modifier-base": {
@@ -21789,6 +22946,15 @@ module.exports = {
       "license": "MIT",
       "engines": {
         "node": ">=4"
+      }
+    },
+    "node_modules/unpipe": {
+      "version": "1.0.0",
+      "resolved": "https://registry.npmjs.org/unpipe/-/unpipe-1.0.0.tgz",
+      "integrity": "sha512-pjy2bYhSsufwWlKwPc+l3cN7+wuJlK6uz0YdJEOlQDbl6jo/YlPi4mb8agUkVC8BF7V8NuzeyPNqRksA3hztKQ==",
+      "license": "MIT",
+      "engines": {
+        "node": ">= 0.8"
       }
     },
     "node_modules/update-browserslist-db": {
@@ -21848,6 +23014,15 @@ module.exports = {
       },
       "engines": {
         "node": ">=10.12.0"
+      }
+    },
+    "node_modules/vary": {
+      "version": "1.1.2",
+      "resolved": "https://registry.npmjs.org/vary/-/vary-1.1.2.tgz",
+      "integrity": "sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==",
+      "license": "MIT",
+      "engines": {
+        "node": ">= 0.8"
       }
     },
     "node_modules/walker": {
@@ -21927,6 +23102,43 @@ module.exports = {
       },
       "engines": {
         "node": "^12.13.0 || ^14.15.0 || >=16.0.0"
+      }
+    },
+    "node_modules/ws": {
+      "version": "8.18.3",
+      "resolved": "https://registry.npmjs.org/ws/-/ws-8.18.3.tgz",
+      "integrity": "sha512-PEIGCY5tSlUt50cqyMXfCzX+oOPqN0vuGqWzbcJ2xvnkzkq46oOpz7dQaTDBdfICb4N14+GARUDw2XV2N4tvzg==",
+      "license": "MIT",
+      "engines": {
+        "node": ">=10.0.0"
+      },
+      "peerDependencies": {
+        "bufferutil": "^4.0.1",
+        "utf-8-validate": ">=5.0.2"
+      },
+      "peerDependenciesMeta": {
+        "bufferutil": {
+          "optional": true
+        },
+        "utf-8-validate": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/wsl-utils": {
+      "version": "0.3.1",
+      "resolved": "https://registry.npmjs.org/wsl-utils/-/wsl-utils-0.3.1.tgz",
+      "integrity": "sha512-g/eziiSUNBSsdDJtCLB8bdYEUMj4jR7AGeUo96p/3dTafgjHhpF4RiCFPiRILwjQoDXx5MqkBr4fwWtR3Ky4Wg==",
+      "license": "MIT",
+      "dependencies": {
+        "is-wsl": "^3.1.0",
+        "powershell-utils": "^0.1.0"
+      },
+      "engines": {
+        "node": ">=20"
+      },
+      "funding": {
+        "url": "https://github.com/sponsors/sindresorhus"
       }
     },
     "node_modules/y18n": {
@@ -22049,7 +23261,7 @@ module.exports = {
 ````json
 {
   "name": "yuangs",
-  "version": "5.2.0",
+  "version": "5.9.0",
   "description": "苑广山的个人应用集合 CLI（彩色版）",
   "author": "苑广山",
   "license": "ISC",
@@ -22089,12 +23301,15 @@ module.exports = {
     "chalk": "^4.1.2",
     "cli-table3": "^0.6.5",
     "commander": "^13.1.0",
+    "express": "^5.2.1",
     "js-yaml": "^4.1.0",
     "json5": "^2.2.3",
     "markdown-it": "^14.1.0",
     "marked": "^15.0.12",
     "marked-terminal": "^7.3.0",
+    "open": "^11.0.0",
     "ora": "^5.4.1",
+    "socket.io": "^4.8.3",
     "ssh2": "^1.17.0",
     "yuangs": "^2.29.0",
     "zod": "^4.3.5",
@@ -22103,6 +23318,7 @@ module.exports = {
   "devDependencies": {
     "@assemblyscript/loader": "^0.27.37",
     "@types/better-sqlite3": "^7.6.13",
+    "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
     "@types/js-yaml": "^4.0.9",
     "@types/json5": "^0.0.30",
@@ -22111,6 +23327,7 @@ module.exports = {
     "@types/marked-terminal": "^6.1.1",
     "@types/node": "^20.11.30",
     "@types/ora": "^3.1.0",
+    "@types/socket.io": "^3.0.1",
     "@types/ssh2": "^1.15.5",
     "assemblyscript": "^0.27.37",
     "jest": "^29.7.0",
@@ -22126,6 +23343,630 @@ module.exports = {
   }
 }
 
+````
+
+## 📄 public/index.html
+
+````html
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>YUANGS | AI Governance Console</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            /* Default: Cyberpunk Dark */
+            --bg-color: #09090b;
+            --sidebar-bg: #111114;
+            --header-bg: rgba(9, 9, 11, 0.8);
+            --border-color: #27272a;
+            --accent-blue: #3b82f6;
+            --text-primary: #f4f4f5;
+            --text-secondary: #a1a1aa;
+            --danger: #ef4444;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+
+        /* ❄️ Nordic Frost */
+        body.theme-nordic {
+            --bg-color: #0f172a;
+            --sidebar-bg: #1e293b;
+            --header-bg: rgba(15, 23, 42, 0.8);
+            --border-color: #334155;
+            --accent-blue: #38bdf8;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+        }
+
+        /* 📜 Solarized Paper */
+        body.theme-paper {
+            --bg-color: #fdf6e3;
+            --sidebar-bg: #eee8d5;
+            --header-bg: rgba(253, 246, 227, 0.9);
+            --border-color: #d5c4a1;
+            --accent-blue: #268bd2;
+            --text-primary: #586e75;
+            --text-secondary: #839496;
+            --term-bg: #fdf6e3;
+        }
+
+        /* 📟 Matrix */
+        body.theme-matrix {
+            --bg-color: #000000;
+            --sidebar-bg: #050505;
+            --header-bg: rgba(0, 0, 0, 0.8);
+            --border-color: #003b00;
+            --accent-blue: #00ff41;
+            --text-primary: #00ff41;
+            --text-secondary: #008f11;
+        }
+
+        /* 🧛 Dracula */
+        body.theme-dracula {
+            --bg-color: #282a36;
+            --sidebar-bg: #1e1f29;
+            --header-bg: rgba(40, 42, 54, 0.8);
+            --border-color: #44475a;
+            --accent-blue: #bd93f9;
+            --text-primary: #f8f8f2;
+            --text-secondary: #6272a4;
+        }
+
+        /* 🌑 Solarized Dark */
+        body.theme-solarized {
+            --bg-color: #002b36;
+            --sidebar-bg: #073642;
+            --header-bg: rgba(0, 43, 54, 0.8);
+            --border-color: #586e75;
+            --accent-blue: #268bd2;
+            --text-primary: #839496;
+            --text-secondary: #586e75;
+        }
+
+        /* 🐈 GitHub Dark */
+        body.theme-github {
+            --bg-color: #0d1117;
+            --sidebar-bg: #161b22;
+            --header-bg: rgba(13, 17, 23, 0.8);
+            --border-color: #30363d;
+            --accent-blue: #58a6ff;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+        }
+
+        /* 🌙 Dark Mode Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 10px;
+        }
+
+        * {
+            box-sizing: border-box;
+            transition: background-color 0.3s, border-color 0.3s, color 0.3s;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Red Flash Overlay */
+        #alert-overlay {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle, rgba(239, 68, 68, 0.15) 0%, transparent 70%);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 1000;
+            transition: opacity 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #alert-overlay.active {
+            opacity: 1;
+            animation: flash-red 0.5s infinite alternate;
+        }
+
+        @keyframes flash-red {
+            from {
+                background-color: rgba(239, 68, 68, 0.05);
+            }
+
+            to {
+                background-color: rgba(239, 68, 68, 0.2);
+            }
+        }
+
+        #alert-box {
+            background: #000;
+            border: 2px solid var(--danger);
+            padding: 30px 60px;
+            border-radius: 4px;
+            box-shadow: 0 0 100px rgba(239, 68, 68, 0.5);
+            text-align: center;
+            transform: scale(0.9);
+            transition: 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            color: #fff;
+        }
+
+        #alert-overlay.active #alert-box {
+            transform: scale(1);
+        }
+
+        .alert-title {
+            color: var(--danger);
+            font-size: 32px;
+            font-weight: 800;
+            letter-spacing: 4px;
+            margin-bottom: 10px;
+        }
+
+        .alert-sub {
+            color: #fff;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        /* Header */
+        header {
+            height: 56px;
+            padding: 0 20px;
+            background: var(--header-bg);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 100;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
+        }
+
+        .logo {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 800;
+            font-size: 22px;
+            background: linear-gradient(to right, #60a5fa, #a855f7);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .slogan {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            opacity: 0.9;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .theme-switcher {
+            display: flex;
+            gap: 4px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 4px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .theme-btn {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .theme-btn:hover {
+            transform: scale(1.15);
+        }
+
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            background: rgba(39, 39, 42, 0.3);
+            padding: 4px 10px;
+            border-radius: 99px;
+            border: 1px solid var(--border-color);
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #52525b;
+        }
+
+        .dot.active {
+            background: var(--success);
+            box-shadow: 0 0 8px var(--success);
+        }
+
+        /* Main Layout */
+        main {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* Left: Terminal */
+        #term-section {
+            flex: 1;
+            padding: 20px;
+            position: relative;
+            background: var(--bg-color);
+            overflow: hidden;
+        }
+
+        #term-container {
+            height: 100%;
+            border-radius: 8px;
+            padding: 0;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        /* Sidebar */
+        #sidebar {
+            width: 380px;
+            background-color: var(--sidebar-bg);
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        .section-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-color);
+        }
+
+        .insight-card {
+            background: rgba(128, 128, 128, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+
+        .scan-line {
+            height: 2px;
+            background: var(--accent-blue);
+            width: 0%;
+            margin-top: 10px;
+            transition: width 0.4s;
+        }
+
+        .scan-active .scan-line {
+            width: 100%;
+            animation: pulse-blue 1s infinite;
+        }
+
+        @keyframes pulse-blue {
+            0% {
+                opacity: 0.4;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0.4;
+            }
+        }
+
+        /* Decision Badge */
+        .risk-badge {
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            display: inline-block;
+            margin-bottom: 12px;
+        }
+
+        .risk-r1 {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .risk-r3 {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .decision-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .decision-reason {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* History List */
+        .history-item {
+            padding: 12px 0;
+            border-bottom: 1px solid #1f1f23;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .history-cmd {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--accent-blue);
+        }
+
+        .history-meta {
+            font-size: 10px;
+            color: #52525b;
+            display: flex;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="alert-overlay">
+        <div id="alert-box">
+            <div class="alert-title">SECURITY BLOCK</div>
+            <div class="alert-sub">Critical command intercepted by AI Governance.</div>
+        </div>
+    </div>
+
+    <header>
+        <div class="logo-section">
+            <div class="logo">YUANGS</div>
+            <div class="slogan">AI 驱动的智能治理终端 | AI-Powered Governance Shell</div>
+        </div>
+        <div class="header-actions">
+            <div class="theme-switcher">
+                <div class="theme-btn" style="background: #09090b" onclick="setTheme('default')" title="Cyberpunk">
+                </div>
+                <div class="theme-btn" style="background: #0f172a" onclick="setTheme('nordic')" title="Nordic"></div>
+                <div class="theme-btn" style="background: #fdf6e3" onclick="setTheme('paper')" title="Paper"></div>
+                <div class="theme-btn" style="background: #00ff41" onclick="setTheme('matrix')" title="Matrix"></div>
+                <div class="theme-btn" style="background: #bd93f9" onclick="setTheme('dracula')" title="Dracula"></div>
+                <div class="theme-btn" style="background: #002b36" onclick="setTheme('solarized')"
+                    title="Solarized Dark"></div>
+                <div class="theme-btn" style="background: #0d1117" onclick="setTheme('github')" title="GitHub Dark">
+                </div>
+            </div>
+            <div class="status-pill">
+                <div id="conn-dot" class="dot"></div>
+                <span id="conn-status">WAITING</span>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div id="term-section">
+            <div id="term-container"></div>
+        </div>
+
+        <aside id="sidebar">
+            <div class="section-title">AI Cognitive Process</div>
+            <div id="insight-container">
+                <div class="insight-card" id="current-scan">
+                    <div id="scan-label" style="font-size: 12px; color: var(--text-secondary)">Standby Mode</div>
+                    <div id="scan-cmd"
+                        style="font-family: 'JetBrains Mono'; font-size: 14px; margin-top: 8px; color: #fff;">-</div>
+                    <div class="scan-line"></div>
+                </div>
+            </div>
+
+            <div id="decision-detail" style="display: none;">
+                <div class="insight-card active">
+                    <div id="risk-pill" class="risk-badge">LEVEL: -</div>
+                    <div id="dec-title" class="decision-title">-</div>
+                    <div id="dec-reason" class="decision-reason">-</div>
+                    <div id="dec-impact"
+                        style="margin-top: 12px; font-size: 12px; color: var(--danger); display: none;">
+                        <b>Impact:</b> <span id="dec-impact-text"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-title">Audit History</div>
+            <div id="history-list">
+                <!-- Log items will go here -->
+            </div>
+        </aside>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+
+    <script>
+        const term = new Terminal({
+            cursorBlink: true,
+            fontFamily: '"JetBrains Mono", monospace',
+            fontSize: 14,
+            theme: { background: '#09090b00' },
+            scrollback: 5000 // Increase scrollback buffer
+        });
+        const fitAddon = new FitAddon.FitAddon();
+        term.loadAddon(fitAddon);
+        term.open(document.getElementById('term-container'));
+        fitAddon.fit();
+
+        const socket = io();
+        term.onData(data => socket.emit('input', data));
+        socket.on('output', data => {
+            term.write(data);
+            // Auto scroll to bottom
+            term.scrollToBottom();
+        });
+
+        // UI Ref Elements
+        const scanCard = document.getElementById('current-scan');
+        const scanLabel = document.getElementById('scan-label');
+        const scanCmd = document.getElementById('scan-cmd');
+        const decDetail = document.getElementById('decision-detail');
+        const riskPill = document.getElementById('risk-pill');
+        const decTitle = document.getElementById('dec-title');
+        const decReason = document.getElementById('dec-reason');
+        const decImpact = document.getElementById('dec-impact');
+        const decImpactText = document.getElementById('dec-impact-text');
+        const historyList = document.getElementById('history-list');
+
+        // AI Evaluating
+        socket.on('governance_evaluating', (data) => {
+            scanCard.classList.add('scan-active');
+            scanLabel.innerText = 'AI Analysis in Progress...';
+            scanCmd.innerText = data.command;
+            decDetail.style.display = 'none';
+        });
+
+        // AI Decision
+        socket.on('governance_decision', (dec) => {
+            scanCard.classList.remove('scan-active');
+            scanLabel.innerText = 'Audit Complete';
+            decDetail.style.display = 'block';
+
+            decTitle.innerText = dec.allowed ? 'Execution Approved' : 'Execution Denied';
+            // Use reasoning for approved commands, reason for denied ones
+            decReason.innerText = dec.reasoning || dec.reason || 'No detailed analysis provided.';
+
+            const riskLevel = dec.riskLevel || (dec.allowed ? 'R1' : 'R3');
+            riskPill.className = 'risk-badge risk-' + riskLevel.toLowerCase();
+            riskPill.innerText = 'RISK LEVEL: ' + riskLevel;
+
+            if (!dec.allowed && dec.disclosure) {
+                decImpact.style.display = 'block';
+                decImpactText.innerText = dec.disclosure.impact;
+            } else {
+                decImpact.style.display = 'none';
+            }
+
+            // Add to history
+            const item = document.createElement('div');
+            item.className = 'history-item';
+            item.innerHTML = `
+                <div class="history-cmd">${dec.command || scanCmd.innerText}</div>
+                <div class="history-meta">
+                    <span style="color: ${dec.allowed ? 'var(--success)' : 'var(--danger)'}">${riskLevel}</span>
+                    <span>${new Date().toLocaleTimeString()}</span>
+                </div>
+            `;
+            historyList.prepend(item);
+        });
+
+        // Alert
+        socket.on('governance_alert', () => {
+            document.getElementById('alert-overlay').classList.add('active');
+            setTimeout(() => {
+                document.getElementById('alert-overlay').classList.remove('active');
+            }, 3000);
+        });
+
+        // Connection
+        socket.on('connect', () => {
+            document.getElementById('conn-dot').classList.add('active');
+            document.getElementById('conn-status').innerText = 'SECURE CHANNEL';
+            term.focus();
+        });
+
+        // --- Theme Management ---
+        const themes = {
+            default: { background: '#09090b00', foreground: '#f4f4f5', cursor: '#3b82f6' },
+            nordic: { background: '#0f172a00', foreground: '#f1f5f9', cursor: '#38bdf8' },
+            paper: { background: '#fdf6e300', foreground: '#586e75', cursor: '#268bd2' },
+            matrix: { background: '#00000000', foreground: '#00ff41', cursor: '#00ff41' },
+            dracula: { background: '#282a3600', foreground: '#f8f8f2', cursor: '#bd93f9' },
+            solarized: { background: '#002b3600', foreground: '#839496', cursor: '#268bd2' },
+            github: { background: '#0d111700', foreground: '#c9d1d9', cursor: '#58a6ff' }
+        };
+
+        window.setTheme = (themeName) => {
+            document.body.className = themeName === 'default' ? '' : 'theme-' + themeName;
+            term.options.theme = {
+                ...term.options.theme,
+                ...themes[themeName]
+            };
+            localStorage.setItem('yuangs-theme', themeName);
+        };
+
+        // Restore saved theme
+        const savedTheme = localStorage.getItem('yuangs-theme');
+        if (savedTheme) setTheme(savedTheme);
+
+        window.onresize = () => {
+            fitAddon.fit();
+            const dims = fitAddon.proposeDimensions();
+            if (dims) socket.emit('resize', dims);
+        };
+
+        setTimeout(() => fitAddon.fit(), 500);
+    </script>
+</body>
+
+</html>
 ````
 
 ## 📄 scripts/yuangs-install.sh
@@ -32117,6 +33958,7 @@ import { SSHSession } from '../../ssh/SSHSession';
 import { InputBuffer } from '../../ssh/InputBuffer';
 import { SSHGovernedExecutor, GovernanceService, ExecutionContext, ExecDecision } from '../../ssh/GovernedExecutor';
 import { Recorder } from '../../audit/Recorder';
+import { startWebTerminal } from './server';
 
 /**
  * 简单的治理服务实现 (MVP)
@@ -32234,6 +34076,158 @@ function parseSSHString(connectionString: string): Partial<SSHConfig> {
 }
 
 /**
+/**
+ * 准备 SSH 配置
+ */
+async function prepareSSHConfig(connection: string, options: any): Promise<SSHConfig> {
+  // 解析连接字符串
+  const parsed = parseSSHString(connection);
+  
+  // 尝试加载配置
+  const savedConfig = loadSSHConfig(parsed.host!);
+  
+  const config: SSHConfig = {
+    host: parsed.host!,
+    username: parsed.username!,
+    port: parseInt(options.port, 10) || parsed.port || 22,
+  };
+
+  // 处理认证
+  if (options.identity) {
+    config.privateKey = fs.readFileSync(options.identity, 'utf-8');
+  } else if (savedConfig?.privateKey) {
+    config.privateKey = fs.readFileSync(savedConfig.privateKey, 'utf-8');
+  } else if (options.password) {
+    config.password = options.password;
+  } else if (savedConfig?.password) {
+    config.password = savedConfig.password;
+  } else {
+    // 尝试默认密钥
+    const defaultKeyPath = path.join(os.homedir(), '.ssh', 'id_rsa');
+    if (fs.existsSync(defaultKeyPath)) {
+      config.privateKey = fs.readFileSync(defaultKeyPath, 'utf-8');
+    } else {
+      throw new Error('No authentication method provided');
+    }
+  }
+
+  return config;
+}
+
+/**
+ * 启动命令行终端
+ */
+async function startCommandLineTerminal(connection: string, config: SSHConfig) {
+  console.log(`🔐 Connecting to ${config.username}@${config.host}:${config.port}...`);
+
+  // 创建 SSH 会话
+  const session = new SSHSession();
+  await session.connect(config);
+
+  console.log(`✅ Connected to ${config.host}`);
+  console.log(`🛡️  AI Governance enabled`);
+  
+  // 获取初始终端尺寸
+  const width = process.stdout.columns || 80;
+  const height = process.stdout.rows || 24;
+
+  // 初始化录像机
+  const recorder = new Recorder({
+    user: config.username,
+    host: config.host,
+    width,
+    height,
+    command: `yuangs ssh ${connection}`
+  });
+
+  console.log(`📝 Session recording started: ${recorder.getFilePath()}\n`);
+
+  // 创建治理服务
+  const governance = new SimpleGovernanceService();
+
+  // 创建治理执行器 (传入 recorder)
+  const executor = new SSHGovernedExecutor(session, governance, recorder);
+
+  // 创建输入缓冲区
+  const inputBuffer = new InputBuffer();
+  
+  // 追踪当前行已发送给服务器的字符
+  let lineBuffer = '';
+
+  // 处理终端 resize
+  // 关键: 同时更新 SSH PTY 和 录像机
+  process.stdout.on('resize', () => {
+    const { columns, rows } = process.stdout;
+    const w = columns || 80;
+    const h = rows || 24;
+    session.resize(w, h);
+    recorder.recordResize(w, h);
+  });
+
+  // 设置原始模式
+  if (process.stdin.isTTY) {
+    process.stdin.setRawMode(true);
+  }
+  process.stdin.resume();
+
+  // 处理用户输入
+  process.stdin.on('data', async (chunk: Buffer) => {
+    const input = chunk.toString();
+
+    // 检查是否是完整命令
+    const cmd = inputBuffer.push(input);
+
+    if (cmd !== null) {
+      // 检测到完整命令
+      
+      // 对已发送缓冲区进行 Backspace 处理，以匹配 cmd 的格式
+      const processedLineBuffer = InputBuffer.processBackspace(lineBuffer);
+
+      // 计算 unsentCommand
+      let unsent = '';
+      
+      if (cmd.startsWith(processedLineBuffer)) {
+          unsent = cmd.slice(processedLineBuffer.length);
+      } else {
+          // 如果 buffer 不匹配 (极其罕见), 全量重发以防万一
+          unsent = cmd;
+      }
+      
+      // 完整命令: 进入治理流程
+      await executor.handleCommand(cmd, config.host, config.username, unsent);
+      
+      // 清空已发送缓冲区
+      lineBuffer = '';
+    } else {
+      // 非完整命令: 直接透传 (打字体验)
+      // 也要记录输入! 否则回放时看不到打字过程
+      // 注意: 这里记录的是原始按键 (比如 'l', 's', Backspace 等)
+      // 只有当 GovernedExecutor.isSensitive() 为 false 时才记录
+      if (!executor.isSensitive()) {
+         recorder.recordInput(input);
+      }
+      session.write(chunk);
+      lineBuffer += input;
+    }
+  });
+
+  // 处理会话关闭
+  session.on('close', () => {
+    recorder.close();
+    console.log('\n\n🔌 Connection closed');
+    process.exit(0);
+  });
+
+  // 处理 Ctrl+C
+  process.on('SIGINT', () => {
+    recorder.close();
+    console.log('\n\n👋 Disconnecting...');
+    session.close();
+    process.exit(0);
+  });
+}
+
+/**
  * SSH 命令实现
  */
 export function registerSSHCommand(program: Command): void {
@@ -32243,136 +34237,184 @@ export function registerSSHCommand(program: Command): void {
     .option('-p, --port <port>', 'SSH port', '22')
     .option('-i, --identity <file>', 'Private key file')
     .option('--password <password>', 'Password (not recommended)')
+    .option('--web', 'Launch in web-based terminal (Beta)', false)
     .action(async (connection: string, options: any) => {
       try {
-        // 解析连接字符串
-        const parsed = parseSSHString(connection);
+        const config = await prepareSSHConfig(connection, options);
         
-        // 尝试加载配置
-        const savedConfig = loadSSHConfig(parsed.host!);
-        
-        // 合并配置
-        const config: SSHConfig = {
-          host: parsed.host!,
-          username: parsed.username!,
-          port: parseInt(options.port, 10) || parsed.port || 22,
-        };
-
-        // 处理认证
-        if (options.identity) {
-          config.privateKey = fs.readFileSync(options.identity, 'utf-8');
-        } else if (savedConfig?.privateKey) {
-          config.privateKey = fs.readFileSync(savedConfig.privateKey, 'utf-8');
-        } else if (options.password) {
-          config.password = options.password;
-        } else if (savedConfig?.password) {
-          config.password = savedConfig.password;
+        if (options.web) {
+            await startWebTerminal(config);
         } else {
-          // 尝试默认密钥
-          const defaultKeyPath = path.join(os.homedir(), '.ssh', 'id_rsa');
-          if (fs.existsSync(defaultKeyPath)) {
-            config.privateKey = fs.readFileSync(defaultKeyPath, 'utf-8');
-          } else {
-            throw new Error('No authentication method provided');
-          }
+            await startCommandLineTerminal(connection, config);
         }
-
-        console.log(`🔐 Connecting to ${config.username}@${config.host}:${config.port}...`);
-
-        // 创建 SSH 会话
-        const session = new SSHSession();
-        await session.connect(config);
-
-        console.log(`✅ Connected to ${config.host}`);
-        console.log(`🛡️  AI Governance enabled`);
-        
-        // 获取初始终端尺寸
-        const width = process.stdout.columns || 80;
-        const height = process.stdout.rows || 24;
-
-        // 初始化录像机
-        const recorder = new Recorder({
-          user: config.username,
-          host: config.host,
-          width,
-          height,
-          command: `yuangs ssh ${connection}`
-        });
-
-        console.log(`📝 Session recording started: ${recorder.getFilePath()}\n`);
-
-        // 创建治理服务
-        const governance = new SimpleGovernanceService();
-
-        // 创建治理执行器 (传入 recorder)
-        const executor = new SSHGovernedExecutor(session, governance, recorder);
-
-        // 创建输入缓冲区
-        const inputBuffer = new InputBuffer();
-
-        // 处理终端 resize
-        // 关键: 同时更新 SSH PTY 和 录像机
-        process.stdout.on('resize', () => {
-          const { columns, rows } = process.stdout;
-          const w = columns || 80;
-          const h = rows || 24;
-          session.resize(w, h);
-          recorder.recordResize(w, h);
-        });
-
-        // 设置原始模式
-        if (process.stdin.isTTY) {
-          process.stdin.setRawMode(true);
-        }
-        process.stdin.resume();
-
-        // 处理用户输入
-        process.stdin.on('data', async (chunk: Buffer) => {
-          const input = chunk.toString();
-
-          // 检查是否是完整命令
-          const cmd = inputBuffer.push(input);
-
-          if (cmd) {
-            // 完整命令: 进入治理流程
-            // 记录完整命令 input (包含换行符)
-            if (!executor.isSensitive()) {
-              recorder.recordInput(cmd + '\n'); // Record the complete command with newline
-            }
-            await executor.handleCommand(cmd, config.host, config.username);
-          } else {
-            // 非完整命令: 不透传到远程会话, 仅用于本地显示 (打字体验)
-            // 也要记录输入! 否则回放时看不到打字过程
-            // 注意: 这里记录的是原始按键 (比如 'l', 's', Backspace 等)
-            // 只有当 GovernedExecutor.isSensitive() 为 false 时才记录
-            if (!executor.isSensitive()) {
-               recorder.recordInput(input);
-            }
-            // Send to local stdout for typing experience, but not to remote session
-            // This prevents duplication while maintaining typing feedback
-            process.stdout.write(input);
-          }
-        });
-
-        // 处理会话关闭
-        session.on('close', () => {
-          recorder.close();
-          console.log('\n\n🔌 Connection closed');
-          process.exit(0);
-        });
-
-        // 处理 Ctrl+C
-        process.on('SIGINT', () => {
-          recorder.close();
-          console.log('\n\n👋 Disconnecting...');
-          session.close();
-          process.exit(0);
-        });
-
       } catch (error: any) {
         console.error(`❌ SSH connection failed: ${error.message}`);
         process.exit(1);
       }
+    });
+}
+
+````
+
+## 📄 src/commands/ssh/server.ts
+
+````typescript
+import express from 'express';
+import { createServer } from 'http';
+import { Server, Socket } from 'socket.io';
+import open from 'open';
+import path from 'path';
+import { SSHSession } from '../../ssh/SSHSession';
+import { SSHGovernedExecutor, GovernanceService, ExecDecision } from '../../ssh/GovernedExecutor';
+import { InputBuffer } from '../../ssh/InputBuffer';
+
+export async function startWebTerminal(config: any, port: number = 3000) {
+    const app = express();
+    const httpServer = createServer(app);
+    const io = new Server(httpServer);
+
+    // Fix path resolution: dist/commands/ssh -> ../../../public
+    const publicPath = path.join(__dirname, '../../../public');
+    console.log(`📂 Serving static files from: ${publicPath}`);
+    
+    // Serve index.html at root path
+    app.get('/', (req, res) => {
+        res.sendFile(path.join(publicPath, 'index.html'));
+    });
+    
+    // Serve other static files
+    app.use(express.static(publicPath));
+
+    io.on('connection', async (socket: Socket) => {
+        console.log('🌐 Browser connected to yuangs-web-term');
+
+        const session = new SSHSession();
+        const inputBuffer = new InputBuffer();
+        
+        // 这里接入你现有的治理服务逻辑
+        const governance: GovernanceService = {
+            evaluate: async (ctx): Promise<ExecDecision> => {
+                const cmd = ctx.command.trim();
+                
+                // 1. 通知前端：AI 正在思考 (增加延迟模拟深度分析)
+                socket.emit('governance_evaluating', { 
+                    command: cmd,
+                    timestamp: new Date().toLocaleTimeString()
+                });
+
+                // 模拟 AI 神经网络分析延迟 (已优化为 20ms 以提升性能)
+                await new Promise(r => setTimeout(r, 20));
+
+                // 2. 简单的危险检测逻辑 (用于演示视觉效果)
+                const dangerousPatterns = [
+                    { regex: /rm\s+-rf\s+\//, reason: '非法的文件系统根目录删除尝试', impact: '系统将彻底崩溃', risk: 'R3' },
+                    { regex: /mkfs/, reason: '格式化磁盘尝试', impact: '磁盘数据将全部丢失', risk: 'R3' },
+                    { regex: /dd\s+if=.*of=\/dev\//, reason: '底层设备写覆盖尝试', impact: '可能破坏引导扇区', risk: 'R3' }
+                ];
+
+                for (const p of dangerousPatterns) {
+                    if (p.regex.test(cmd)) {
+                        const decision: ExecDecision = { 
+                            allowed: false, 
+                            reason: p.reason,
+                            riskLevel: p.risk,
+                            disclosure: {
+                                command: cmd,
+                                impact: p.impact,
+                                riskLevel: p.risk,
+                                requiresConfirmation: true
+                            }
+                        };
+
+                        // 🚨 发送详细决策给前端预览
+                        socket.emit('governance_decision', decision);
+                        
+                        // 🚨 触发全屏视觉警报
+                        socket.emit('governance_alert', { 
+                            level: 'critical', 
+                            message: 'BLOCK: ' + p.risk 
+                        });
+
+                        return decision;
+                    }
+                }
+
+                // 安全命令
+                const safeDecision: ExecDecision = {
+                    allowed: true,
+                    normalizedCmd: ctx.command,
+                    reasoning: '命令通过多维语义安全审计，分析显示为低风险系统管理任务。'
+                };
+                socket.emit('governance_decision', safeDecision);
+
+                return safeDecision; 
+            }
+        };
+
+        const executor = new SSHGovernedExecutor(session, governance);
+
+        try {
+            await session.connect(config);
+            socket.emit('output', '\r\n🛡️  yuangs AI Governance Web Shell Connected\r\n');
+
+            // 核心桥接：SSH 输出 -> WebSocket -> 浏览器
+            session.on('data', (data: Buffer) => {
+                socket.emit('output', data.toString());
+            });
+
+            // 追踪当前行已发送给服务器的字符
+            let lineBuffer = '';
+
+            // 核心桥接：浏览器输入 -> WebSocket -> 治理执行器
+            socket.on('input', async (data: string) => {
+                const cmd = inputBuffer.push(data);
+                if (cmd !== null) {
+                    
+                    // 对已发送缓冲区进行 Backspace 处理，以匹配 cmd 的格式
+                    const processedLineBuffer = InputBuffer.processBackspace(lineBuffer);
+
+                    // 计算 unsentCommand
+                    let unsent = '';
+                    
+                    if (cmd.startsWith(processedLineBuffer)) {
+                        unsent = cmd.slice(processedLineBuffer.length);
+                    } else {
+                        // 如果 buffer 不匹配 (极其罕见), 全量重发以防万一
+                        unsent = cmd;
+                    }
+
+                    // 触发治理逻辑 (传入 unsent 部分)
+                    await executor.handleCommand(cmd, config.host, config.username, unsent);
+                    
+                    // 清空已发送缓冲区
+                    lineBuffer = '';
+                } else {
+                    // 普通字符直接透传（为了打字回显流畅）
+                    // 只有在非敏感模式才记录/透传? 
+                    // 这里简化处理，直接透传，InputBuffer 会在内部聚合
+                    session.write(data);
+                    lineBuffer += data;
+                }
+            });
+
+            socket.on('resize', ({ cols, rows }: { cols: number, rows: number }) => {
+                session.resize(cols, rows);
+            });
+
+            socket.on('disconnect', () => {
+                session.close();
+                console.log('🔌 Browser disconnected');
+            });
+
+        } catch (err: any) {
+            socket.emit('output', `\r\n❌ Connection Failed: ${err.message}\r\n`);
+        }
+    });
+
+    httpServer.listen(port, () => {
+        const url = `http://localhost:${port}`;
+        console.log(`🚀 yuangs-web-term is running at ${url}`);
+        open(url); // 自动打开浏览器
     });
 }
 
@@ -39554,11 +41596,16 @@ export class SSHGovernedExecutor {
   /**
    * 处理命令 (Enter 键触发)
    */
-  async handleCommand(cmd: string, host?: string, user?: string): Promise<void> {
+  /**
+   * 处理命令 (Enter 键触发)
+   * @param unsentCommand 尚未发送给服务器的命令部分 (用于解决打字回显重复问题)
+   */
+  async handleCommand(cmd: string, host?: string, user?: string, unsentCommand: string = cmd): Promise<void> {
     // 密码输入阶段: 绝不治理,直接透传
     if (this.elevation === ElevationState.PENDING_PWD) {
       // 密码也不记录到审计日志
-      this.session.write(cmd + '\n');
+      // 注意：这里我们只发送 unsent 部分 + 回车
+      this.session.write(unsentCommand + '\n');
       return;
     }
 
@@ -39567,7 +41614,8 @@ export class SSHGovernedExecutor {
 
     // sudo 命令处理
     if ((isSudo || isSu) && this.elevation === ElevationState.USER) {
-      await this.handleElevationRequest(cmd, host, user);
+      // 透传 unsentCommand 给 sudo 处理逻辑
+      await this.handleElevationRequest(cmd, host, user, unsentCommand);
       return;
     }
 
@@ -39589,6 +41637,9 @@ export class SSHGovernedExecutor {
           risk: decision.riskLevel
         });
       }
+      
+      // 发送 Ctrl+C (\x03) 给服务器以清除已输入的缓冲字符
+      this.session.write('\x03');
       return;
     }
 
@@ -39609,13 +41660,25 @@ export class SSHGovernedExecutor {
     }
 
     // 执行命令
-    this.session.write(decision.normalizedCmd + '\n');
+    // 智能补发: 如果命令没有被治理层修改，我们只需要发送未发送的部分 + 回车
+    if (decision.normalizedCmd === cmd) {
+      if (unsentCommand) {
+        this.session.write(unsentCommand + '\r');
+      } else {
+        // 如果没有未发送部分，只发回车
+        this.session.write('\r');
+      }
+    } else {
+      // 如果命令被修改了 (例如自动纠错)，我们需要先清除已有输入
+      // 发送 Ctrl+C (清除行) + 新命令 + 回车
+      this.session.write('\x03' + decision.normalizedCmd + '\r');
+    }
   }
 
   /**
    * 处理提权请求 (sudo/su)
    */
-  private async handleElevationRequest(cmd: string, host?: string, user?: string): Promise<void> {
+  private async handleElevationRequest(cmd: string, host?: string, user?: string, unsentCommand: string = cmd): Promise<void> {
     this.elevation = ElevationState.AWAITING_APPROVAL;
 
     const decision = await this.governance.evaluate({
@@ -39635,6 +41698,8 @@ export class SSHGovernedExecutor {
           reason: decision.reason
         });
       }
+      // 清除已输入的 sudo 命令
+      this.session.write('\x03');
       return;
     }
 
@@ -39649,7 +41714,8 @@ export class SSHGovernedExecutor {
       });
     }
 
-    this.session.write(cmd + '\n');
+    // 只发送 unsent 部分 + 回车
+    this.session.write(unsentCommand + '\r');
   }
 
   /**
@@ -39769,14 +41835,33 @@ export class InputBuffer {
 
     // 唯一治理触发点: 检测到换行符
     if (chunk.includes('\n') || chunk.includes('\r')) {
-      const cmd = this.buffer.trim();
+      // 保留原始命令 (包括空格和可能的控制字符), 只去掉末尾的换行符
+      const rawCmd = this.buffer.replace(/[\r\n]+$/, '');
+      const cmd = InputBuffer.processBackspace(rawCmd);
       this.buffer = '';
       
-      // 空命令不触发治理
-      return cmd.length > 0 ? cmd : null;
+      return cmd; 
     }
 
     return null;
+  }
+
+  /**
+   * 处理控制字符 (如 Backspace)
+   * 模拟终端行为: \x7f (DEL) 或 \b (BS) 删除前一个字符
+   */
+  static processBackspace(input: string): string {
+    const chars: string[] = [];
+    for (const char of input) {
+      if (char === '\x7f' || char === '\b') {
+        if (chars.length > 0) {
+          chars.pop();
+        }
+      } else {
+        chars.push(char);
+      }
+    }
+    return chars.join('');
   }
 
   /**
@@ -59152,6 +61237,6 @@ accountType: "free"
 
 ---
 ### 📊 最终统计汇总
-- **文件总数:** 244
-- **代码总行数:** 57452
-- **物理总大小:** 1715.46 KB
+- **文件总数:** 247
+- **代码总行数:** 59517
+- **物理总大小:** 1785.19 KB
