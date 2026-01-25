@@ -1,10 +1,6 @@
 {
   "name": "yuangs",
-<<<<<<< HEAD
-  "version": "3.35.0",
-=======
   "version": "3.46.0",
->>>>>>> 3ffd1de35828e0b609c45d0da4e3c39f98c8e122
   "description": "苑广山的个人应用集合 CLI（彩色版）",
   "author": "苑广山",
   "license": "ISC",
@@ -39,6 +35,7 @@
   },
   "homepage": "https://github.com/yuanguangshan/npm_yuangs#readme",
   "dependencies": {
+    "@types/ssh2": "^1.15.5",
     "axios": "^1.13.2",
     "better-sqlite3": "^12.6.2",
     "chalk": "^4.1.2",
@@ -50,6 +47,7 @@
     "marked": "^15.0.12",
     "marked-terminal": "^7.3.0",
     "ora": "^5.4.1",
+    "ssh2": "^1.17.0",
     "yuangs": "^2.29.0",
     "zod": "^4.3.5",
     "zod-to-json-schema": "^3.25.1"
