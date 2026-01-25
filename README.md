@@ -115,6 +115,28 @@ ai "@src/**/*.ts #docs"
 ✅ **可解释、可治理**  
 通过 `explain` 和 `replay` 命令，理解系统决策过程。
 
+✅ **AI Governance Web Console (Beta)**  
+可视化治理面板，提供 R3 级风险的全屏阻断与视觉警报。
+
+---
+
+## 🏗️ 架构概览 (Architecture)
+
+```mermaid
+graph TD
+    User([用户 User]) -- "yuangs ssh --web" --> CLI[yuangs Local CLI]
+    subgraph LocalMachine [本地电脑]
+        CLI --> Express[Express Web Server]
+        Express -- "1. WebSocket (Text/Events)" --> WebUI[Web Terminal / xterm.js]
+        Express -- "2. Local Governance" --> GovEngine[Governance Engine]
+        GovEngine -- "3. SSH Connection" --> SSHSession[SSHSession / PTY]
+    end
+    SSHSession -- "Encrypted Tunnel" --> RemoteServer[远程服务器 Remote Server]
+    
+    GovEngine -- "Intercept / Block" --> WebUI
+    SSHSession -- "Recording" --> CastFile[.cast / .md Audit Logs]
+```
+
 ---
 
 ## 适合谁？
@@ -477,6 +499,15 @@ Snapshots 可用于：
 - ✅ 输出格式验证
 - ✅ 文档示例
 - ✅ 审计线索
+
+### 4. 终端录制与审计 (.cast)
+
+Yuangs 采用标准的 [asciinema](https://asciinema.org/) 兼容格式进行会话录制。
+
+**审计日志包含：**
+- **行为流**：完整的终端输入/输出，支持 `replay`。
+- **治理上下文**：记录哪些命令被拦截、哪些被批准。
+- **AI 摘要**：自动为繁杂的操作记录生成可阅读的 Markdown 摘要。
 
 ---
 

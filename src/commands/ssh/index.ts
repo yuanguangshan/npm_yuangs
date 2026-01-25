@@ -285,7 +285,7 @@ export function registerSSHCommand(program: Command): void {
     .option('-p, --port <port>', 'SSH port', '22')
     .option('-i, --identity <file>', 'Private key file')
     .option('--password <password>', 'Password (not recommended)')
-    .option('--web', 'Launch in web-based terminal', false)
+    .option('--web', 'Launch in web-based terminal (Beta)', false)
     .action(async (connection: string, options: any) => {
       try {
         const config = await prepareSSHConfig(connection, options);
