@@ -371,6 +371,169 @@
             gap: 16px;
         }
 
+        /* Mobile Audit Panel Styles */
+        #mobile-audit-panel {
+            display: none;
+            width: 100%;
+            background-color: var(--sidebar-bg);
+            border-top: 1px solid var(--border-color);
+        }
+
+        #audit-toggle {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            cursor: pointer;
+            background-color: var(--sidebar-bg);
+            border-bottom: 1px solid var(--border-color);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        #audit-content {
+            padding: 20px;
+        }
+
+        /* Desktop Sidebar */
+        #desktop-sidebar {
+            width: 380px;
+            background-color: var(--sidebar-bg);
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        /* Mobile Responsive Styles */
+        @media (max-width: 768px) {
+            #desktop-sidebar {
+                display: none;
+            }
+
+            #mobile-audit-panel {
+                display: block;
+            }
+
+            main {
+                flex-direction: column;
+            }
+
+            #term-section {
+                order: 1;
+                width: 100%;
+                padding: 12px;
+            }
+
+            header {
+                height: auto;
+                min-height: 56px;
+                padding: 12px 16px;
+            }
+
+            .logo-section {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+
+            .logo-wrapper {
+                flex-direction: row;
+                align-items: baseline;
+                gap: 10px;
+            }
+
+            .logo-main {
+                font-size: 18px;
+            }
+
+            .logo-sub {
+                font-size: 9px;
+            }
+
+            .slogan {
+                font-size: 11px;
+                padding-left: 10px;
+                border-left: 1px solid var(--border-color);
+                opacity: 0.7;
+            }
+
+            .header-actions {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+
+            .server-selector {
+                order: 2;
+                width: 100%;
+                display: flex;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            #server-select {
+                width: 100%;
+                margin-bottom: 8px;
+            }
+
+            #custom-server-input {
+                width: 100%;
+                margin-bottom: 8px;
+            }
+
+            #connect-btn {
+                align-self: flex-end;
+            }
+
+            .theme-switcher {
+                order: 1;
+                margin-bottom: 8px;
+            }
+
+            .section-title::after {
+                display: none;
+            }
+
+            .section-title {
+                display: block;
+                text-align: left;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .logo-wrapper {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
+            }
+
+            .logo-main {
+                font-size: 16px;
+            }
+
+            .logo-sub {
+                font-size: 8px;
+            }
+
+            .slogan {
+                font-size: 10px;
+                padding-left: 0;
+                border-left: none;
+                margin-top: 4px;
+            }
+
+            .status-pill {
+                font-size: 10px;
+                padding: 2px 6px;
+            }
+
+            .theme-btn {
+                width: 16px;
+                height: 16px;
+            }
+        }
+
         .theme-switcher {
             display: flex;
             gap: 4px;
@@ -624,7 +787,46 @@
             <div id="term-container"></div>
         </div>
 
-        <aside id="sidebar">
+        <!-- Mobile Audit Panel -->
+        <div id="mobile-audit-panel">
+            <div id="audit-toggle" onclick="toggleAuditPanel()">
+                <span>AI Governance & Audit</span>
+                <span id="toggle-icon">▼</span>
+            </div>
+            <div id="audit-content" style="display: none;">
+                <aside id="sidebar">
+                    <div class="section-title">AI Cognitive Process</div>
+                    <div id="insight-container">
+                        <div class="insight-card" id="current-scan">
+                            <div id="scan-label" style="font-size: 12px; color: var(--text-secondary)">Standby Mode</div>
+                            <div id="scan-cmd"
+                                style="font-family: 'JetBrains Mono'; font-size: 14px; margin-top: 8px; color: #fff;">-</div>
+                            <div class="scan-line"></div>
+                        </div>
+                    </div>
+
+                    <div id="decision-detail" style="display: none;">
+                        <div class="insight-card active">
+                            <div id="risk-pill" class="risk-badge">LEVEL: -</div>
+                            <div id="dec-title" class="decision-title">-</div>
+                            <div id="dec-reason" class="decision-reason">-</div>
+                            <div id="dec-impact"
+                                style="margin-top: 12px; font-size: 12px; color: var(--danger); display: none;">
+                                <b>Impact:</b> <span id="dec-impact-text"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-title">Audit History</div>
+                    <div id="history-list">
+                        <!-- Log items will go here -->
+                    </div>
+                </aside>
+            </div>
+        </div>
+
+        <!-- Desktop Sidebar -->
+        <aside id="desktop-sidebar">
             <div class="section-title">AI Cognitive Process</div>
             <div id="insight-container">
                 <div class="insight-card" id="current-scan">
@@ -811,6 +1013,19 @@
 
             // Emit server change event to backend
             socket.emit('change_server', serverInfo);
+        }
+
+        function toggleAuditPanel() {
+            const content = document.getElementById('audit-content');
+            const icon = document.getElementById('toggle-icon');
+
+            if (content.style.display === 'none' || content.style.display === '') {
+                content.style.display = 'block';
+                icon.textContent = '▲';
+            } else {
+                content.style.display = 'none';
+                icon.textContent = '▼';
+            }
         }
 
         // Restore saved theme
