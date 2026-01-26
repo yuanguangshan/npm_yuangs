@@ -366,7 +366,7 @@
             }
 
             #term-section {
-                padding: 10px;
+                padding: 6px; /* 移动端也减小边距 */
                 height: 100%;
                 /* Take full space */
                 flex: 1;
@@ -644,7 +644,7 @@
         /* Left: Terminal */
         #term-section {
             flex: 1;
-            padding: 20px;
+            padding: 8px; /* 减小边距，从 20px 改为 8px */
             position: relative;
             background: var(--bg-color);
             overflow: hidden;
@@ -653,7 +653,7 @@
         #term-container {
             height: 100%;
             border-radius: 8px;
-            padding: 0;
+            padding: 12px; /* 添加内边距，让文字不紧贴边框 */
             overflow: hidden;
             border: 1px solid var(--border-color);
             background: rgba(0, 0, 0, 0.1);
@@ -735,9 +735,14 @@
         }
 
         #custom-server-input {
+            display: none; /* 默认隐藏 */
             border: 1px solid var(--border-color);
             background: rgba(0, 0, 0, 0.2);
             width: 160px;
+        }
+        
+        #custom-server-input.visible {
+            display: inline-block; /* 选择 custom 时显示 */
         }
 
         #custom-server-input:focus {
@@ -1090,6 +1095,40 @@
             term.scrollToBottom();
         });
 
+        // 🔧 修复移动端虚拟键盘遮挡问题
+        // 监听窗口大小变化（虚拟键盘弹出时会触发）
+        let lastHeight = window.innerHeight;
+        window.addEventListener('resize', function() {
+            const currentHeight = window.innerHeight;
+            
+            // 如果高度减小（虚拟键盘弹出）
+            if (currentHeight < lastHeight) {
+                // 滚动终端到底部，确保当前输入行可见
+                setTimeout(() => {
+                    term.scrollToBottom();
+                    
+                    // 同时滚动页面，让终端容器尽量可见
+                    const termContainer = document.getElementById('term-container');
+                    if (termContainer) {
+                        termContainer.scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'end' 
+                        });
+                    }
+                }, 100);
+            }
+            
+            lastHeight = currentHeight;
+            
+            // 重新计算终端尺寸
+            fitAddon.fit();
+        });
+
+        // 当终端获得焦点时也滚动到底部
+        document.getElementById('term-container').addEventListener('click', function() {
+            term.scrollToBottom();
+        });
+
         // MutationObserver to hide prompt symbols after xterm renders them
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
@@ -1245,9 +1284,10 @@
             const input = document.getElementById('custom-server-input');
 
             if (select.value === 'custom') {
-                input.style.display = 'inline-block';
+                input.classList.add('visible');
+                input.focus(); // 自动聚焦到输入框
             } else {
-                input.style.display = 'none';
+                input.classList.remove('visible');
             }
         }
 
