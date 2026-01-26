@@ -149,7 +149,7 @@ export class SSHGovernedExecutor {
           risk: decision.riskLevel
         });
       }
-      
+
       // 发送 Ctrl+C (\x03) 给服务器以清除已输入的缓冲字符
       this.session.write('\x03');
       return;
@@ -164,7 +164,7 @@ export class SSHGovernedExecutor {
           reasoning: decision.reasoning
         });
       }
-      
+
       // 记录输入
       this.recorder.recordInput(cmd + '\n', {
         elevation: this.elevation,
@@ -203,8 +203,8 @@ export class SSHGovernedExecutor {
     if (!decision.allowed) {
       this.elevation = ElevationState.USER;
       this.renderBlock(decision);
-       // 记录拦截
-       if (this.recorder && this.sensitive.shouldRecord()) {
+      // 记录拦截
+      if (this.recorder && this.sensitive.shouldRecord()) {
         this.recorder.recordGovernance('elevation_blocked', {
           command: cmd,
           reason: decision.reason
@@ -218,7 +218,7 @@ export class SSHGovernedExecutor {
     // 审批通过,允许进入密码阶段
     this.elevation = ElevationState.PENDING_PWD;
     this.sensitive.enter();
-    
+
     // 记录提权请求被批准 (在进入敏感模式前记录)
     if (this.recorder) {
       this.recorder.recordGovernance('elevation_started', {
@@ -247,7 +247,7 @@ export class SSHGovernedExecutor {
         // 不要记录具体 text，只记录事件
         this.recorder.recordGovernance('sensitive_prompt_displayed');
       }
-      process.stdout.write(text);
+      // process.stdout.write(text);
       return;
     }
 
@@ -277,7 +277,7 @@ export class SSHGovernedExecutor {
       this.recorder.recordOutput(buf);
     }
 
-    process.stdout.write(buf);
+    // process.stdout.write(buf);
   }
 
   /**
