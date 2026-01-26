@@ -16,3 +16,4 @@ node_modules/
 # .github/workflows/*.ai/
 .ai/context.json
 .DS_Store
+gcloud init

@@ -303,6 +303,14 @@ async function handleAIChat(initialQuestion, model) {
         while (true) {
             const input = await ask(chalk_1.default.green('你：'));
             const trimmed = input.trim();
+            const { handleSpecialSyntax } = await Promise.resolve().then(() => __importStar(require('../utils/syntaxHandler')));
+            const specialResult = await handleSpecialSyntax(trimmed);
+            if (specialResult.processed) {
+                if (specialResult.result) {
+                    console.log(specialResult.result);
+                }
+                continue;
+            }
             // === 场景 5.1: 原子执行 (:exec) ===
             if (trimmed.startsWith(':exec ')) {
                 const cmd = trimmed.slice(6).trim();

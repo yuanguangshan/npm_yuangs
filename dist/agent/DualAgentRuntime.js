@@ -117,7 +117,7 @@ class DualAgentRuntime {
             this.currentIndex = i;
             const step = this.steps[i];
             console.log(chalk_1.default.yellow(`\n▶️  Step ${i + 1}/${this.steps.length}: ${step.description}`));
-            const result = await this.executeStep(step, onChunk, model);
+            const result = await this.executeStep(step, onChunk, model, userInput);
             if (!result.success) {
                 console.log(chalk_1.default.red(`❌ Step failed: ${result.error}`));
                 const shouldContinue = await this.askUser('Step failed. Continue with remaining steps? (y/N): ');
@@ -213,7 +213,7 @@ ${context ? `Context:\n${context}\n` : ''}
             .join('\n');
         return files ? `Files/Context:\n${files}` : '';
     }
-    async executeStep(step, onChunk, model) {
+    async executeStep(step, onChunk, model, originalInput = '') {
         const action = {
             id: (0, crypto_1.randomUUID)(),
             type: step.type,
@@ -229,9 +229,41 @@ ${context ? `Context:\n${context}\n` : ''}
         const result = await executor_1.ToolExecutor.execute(action);
         if (result.success) {
             this.context.addToolResult(step.type, result.output);
+            try {
+                const { createExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionRecord')));
+                const { saveExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionStore')));
+                const record = createExecutionRecord(`agent-planner-${step.type}`, { required: [], preferred: [] }, {
+                    aiProxyUrl: { value: '', source: 'built-in' },
+                    defaultModel: { value: '', source: 'built-in' },
+                    accountType: { value: 'free', source: 'built-in' }
+                }, { selected: null, candidates: [], fallbackOccurred: false }, { success: true }, step.command || JSON.stringify(step.parameters), this.executionId, 'agent');
+                record.llmResult = { plan: { goal: step.description, command: step.command, parameters: step.parameters, risk_level: step.risk_level } };
+                record.input = { rawInput: originalInput };
+                const savedRecordId = saveExecutionRecord(record);
+                const { loadExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionStore')));
+                const savedRecord = loadExecutionRecord(savedRecordId);
+                if (savedRecord) {
+                    const { learnSkillFromRecord } = await Promise.resolve().then(() => __importStar(require('./skills')));
+                    learnSkillFromRecord(savedRecord, true);
+                }
+            }
+            catch (error) {
+                console.warn(chalk_1.default.yellow(`[Skill Learning] Failed: ${error}`));
+            }
         }
         else {
             this.context.addToolResult(step.type, `Error: ${result.error}`);
+            try {
+                const { getAllSkills, updateSkillStatus } = await Promise.resolve().then(() => __importStar(require('./skills')));
+                const skills = getAllSkills();
+                const existingSkill = skills.find(s => s.name === step.description);
+                if (existingSkill) {
+                    updateSkillStatus(existingSkill.id, false);
+                }
+            }
+            catch (error) {
+                console.warn(chalk_1.default.yellow(`[Skill Learning] Failed to update status: ${error}`));
+            }
         }
         return {
             success: result.success,
