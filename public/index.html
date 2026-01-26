@@ -580,7 +580,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px 20px;
+            padding: 16px 20px;  /* 增加内边距扩大点击区域 */
             cursor: pointer;
             background: var(--sidebar-bg);
             border-bottom: 1px solid var(--border-color);
@@ -589,6 +589,9 @@
             text-transform: uppercase;
             letter-spacing: 1px;
             color: var(--text-secondary);
+            min-height: 48px;  /* 增加最小高度 */
+            user-select: none;  /* 防止选中文本 */
+            -webkit-tap-highlight-color: transparent;  /* 移除移动端点击高亮 */
         }
 
         .insight-card {
