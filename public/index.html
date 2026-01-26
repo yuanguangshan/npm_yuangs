@@ -685,6 +685,22 @@
             display: flex;
             justify-content: space-between;
         }
+
+        /* Hide shell prompt symbols (# and %) in xterm */
+        .xterm-rows > div {
+            position: relative;
+        }
+
+        .xterm-rows > div:has(.xterm-char-cell:only-child) .xterm-char-cell[data-char="#"],
+        .xterm-rows > div:has(.xterm-char-cell:only-child) .xterm-char-cell[data-char="%"] {
+            display: none !important;
+        }
+
+        /* Alternative approach for older browsers */
+        .xterm-rows .xterm-char-cell[data-char="#"]:only-child,
+        .xterm-rows .xterm-char-cell[data-char="%"]:only-child {
+            display: none !important;
+        }
     </style>
 </head>
 
@@ -841,31 +857,41 @@
         const socket = io();
         term.onData(data => socket.emit('input', data));
         socket.on('output', data => {
-            // Client-side filtering: Remove lines containing only % or # symbols
-            const lines = data.split(/(\r\n|\n|\r)/);
-            const filteredLines = lines.filter(line => {
-                // Skip empty lines from split
-                if (line === '' || line === '\r\n' || line === '\n' || line === '\r') {
-                    return true;
-                }
-                // Check if line contains only prompt symbol and whitespace
-                const trimmed = line.trim();
-                if (trimmed === '%' || trimmed === '#') {
-                    return false;
-                }
-                // Check if line starts with % or # followed only by whitespace
-                const testLine = line.replace(/\r/g, '');
-                if (/^[%#]\s*$/.test(testLine)) {
-                    return false;
-                }
-                return true;
-            });
-            data = filteredLines.join('');
-            
             term.write(data);
             // Auto scroll to bottom
             term.scrollToBottom();
         });
+
+        // MutationObserver to hide prompt symbols after xterm renders them
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList') {
+                    mutation.addedNodes.forEach((node) => {
+                        if (node.nodeType === 1) { // Element node
+                            const rows = node.querySelectorAll('.xterm-rows > div');
+                            rows.forEach((row) => {
+                                const text = row.innerText.trim();
+                                // Check if row contains only % or # (with optional whitespace)
+                                if (text === '%' || text === '#') {
+                                    row.style.display = 'none';
+                                }
+                            });
+                        }
+                    });
+                }
+            });
+        });
+
+        // Start observing the terminal container
+        setTimeout(() => {
+            const termContainer = document.getElementById('term-container');
+            if (termContainer) {
+                observer.observe(termContainer, {
+                    childList: true,
+                    subtree: true
+                });
+            }
+        }, 100);
 
         // UI Ref Elements - Updated to handle both desktop and mobile panels
         // AI Evaluating
