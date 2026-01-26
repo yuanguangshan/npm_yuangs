@@ -276,7 +276,7 @@
             .header-actions {
                 flex-wrap: wrap;
                 gap: 12px;
-                margin-top: 8px;
+                margin-top: 12px;
                 width: 100%;
             }
 
@@ -285,26 +285,40 @@
                 display: flex;
                 flex-wrap: wrap;
                 gap: 8px;
+                background: rgba(0, 0, 0, 0.2);
+                padding: 8px;
+                border-radius: 8px;
+                border: 1px solid var(--border-color);
             }
 
             #server-select,
             #custom-server-input {
                 flex: 1;
-                min-width: 150px;
+                min-width: 120px;
+                font-size: 13px;
+                height: 32px;
             }
 
             #connect-btn {
                 width: 100%;
+                height: 36px;
+                background: var(--accent-blue) !important;
+                color: white !important;
+                border: none !important;
+                font-weight: 600;
             }
 
             main {
                 flex-direction: column;
+                height: calc(100vh - 56px);
+                /* Fix main height */
             }
 
             #term-section {
                 padding: 10px;
-                height: 60vh;
-                flex: none;
+                height: 100%;
+                /* Take full space */
+                flex: 1;
             }
 
             #desktop-sidebar {
@@ -313,14 +327,28 @@
 
             #mobile-audit-panel {
                 display: block;
-                flex: 1;
-                overflow-y: auto;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                z-index: 2000;
+                background: var(--sidebar-bg);
+                box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5);
+                border-top: 1px solid var(--border-color);
             }
 
             .audit-sidebar {
                 width: 100% !important;
                 border-left: none !important;
                 padding: 16px !important;
+                max-height: 60vh;
+                overflow-y: auto;
+            }
+
+            #term-section {
+                height: 100vh;
+                padding-bottom: 60px;
+                /* Space for the collapsed toggle */
             }
         }
 
@@ -425,17 +453,100 @@
             color: var(--text-secondary);
             text-transform: uppercase;
             letter-spacing: 1.5px;
-            margin-bottom: 20px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        /* Server Selector - Premium Style */
+        .server-selector {
             display: flex;
             align-items: center;
             gap: 8px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 4px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            margin-right: 12px;
         }
 
-        .section-title::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: var(--border-color);
+        #server-select,
+        #custom-server-input {
+            padding: 4px 10px;
+            border-radius: 6px;
+            border: 1px solid transparent;
+            background: transparent;
+            color: var(--text-primary);
+            outline: none;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        #server-select {
+            min-width: 140px;
+        }
+
+        #server-select:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        #custom-server-input {
+            border: 1px solid var(--border-color);
+            background: rgba(0, 0, 0, 0.2);
+            width: 160px;
+        }
+
+        #custom-server-input:focus {
+            border-color: var(--accent-blue);
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        #connect-btn {
+            padding: 4px 14px;
+            border-radius: 6px;
+            border: none;
+            background: var(--accent-blue);
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 700;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+        }
+
+        #connect-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+            filter: brightness(1.1);
+        }
+
+        #connect-btn:active {
+            transform: translateY(0);
+        }
+
+        /* Mobile Audit Panel Styles (Hidden by default on web) */
+        #mobile-audit-panel {
+            display: none;
+        }
+
+        #audit-toggle {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            cursor: pointer;
+            background: var(--sidebar-bg);
+            border-bottom: 1px solid var(--border-color);
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
         }
 
         .insight-card {
@@ -553,8 +664,7 @@
         </div>
         <div class="header-actions">
             <div class="server-selector">
-                <select id="server-select" onchange="switchServer()"
-                    style="padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--sidebar-bg); color: var(--text-primary); outline: none; cursor: pointer;">
+                <select id="server-select" onchange="switchServer()">
                     <option value="" style="background: var(--sidebar-bg); color: var(--text-secondary);">Select
                         Server...</option>
                     <option value="macos" style="background: var(--sidebar-bg); color: var(--text-primary);">MacOS
@@ -572,10 +682,8 @@
                     <option value="custom" style="background: var(--sidebar-bg); color: var(--text-primary);">Custom
                         Server...</option>
                 </select>
-                <input type="text" id="custom-server-input" placeholder="server@ip:port"
-                    style="display:none; margin-right: 10px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--sidebar-bg); color: var(--text-primary);">
-                <button id="connect-btn" onclick="connectToServer()"
-                    style="padding: 4px 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--sidebar-bg); color: var(--text-primary); cursor: pointer;">Connect</button>
+                <input type="text" id="custom-server-input" placeholder="server@ip:port">
+                <button id="connect-btn" onclick="connectToServer()">Connect</button>
             </div>
             <div class="theme-switcher">
                 <div class="theme-btn" style="background: #09090b" onclick="setTheme('default')" title="Cyberpunk">
@@ -829,6 +937,7 @@
         }
 
         function toggleAuditPanel() {
+            const panel = document.getElementById('mobile-audit-panel');
             const content = document.getElementById('audit-content');
             const icon = document.getElementById('toggle-icon');
 
