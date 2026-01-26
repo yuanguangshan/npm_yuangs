@@ -189,7 +189,7 @@ class SSHGovernedExecutor {
                 // 不要记录具体 text，只记录事件
                 this.recorder.recordGovernance('sensitive_prompt_displayed');
             }
-            process.stdout.write(text);
+            // process.stdout.write(text);
             return;
         }
         // sudo 失败
@@ -213,7 +213,7 @@ class SSHGovernedExecutor {
         if (this.recorder && this.sensitive.shouldRecord()) {
             this.recorder.recordOutput(buf);
         }
-        process.stdout.write(buf);
+        // process.stdout.write(buf);
     }
     /**
      * 渲染拦截信息
