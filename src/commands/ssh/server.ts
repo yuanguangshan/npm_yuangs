@@ -157,13 +157,30 @@ export async function startWebTerminal(config: any, port: number = 3000) {
                     if (trimmed === '%' || trimmed === '#') {
                         return false;
                     }
-                    // Remove lines that start with % or # followed only by spaces
+                    // Remove lines that start with % or # followed only by spaces or end of line
                     if (/^[%#]\s*$/.test(line)) {
+                        return false;
+                    }
+                    // Remove lines that are ONLY a prompt symbol (no other content)
+                    if (/^[\s]*[%#][\s]*$/.test(line)) {
                         return false;
                     }
                     return true;
                 });
-                output = filteredLines.join('\n');
+                
+                // Further filter: if a line starts with prompt but has content, keep the content
+                const processedLines = filteredLines.map(line => {
+                    // If line starts with just % or # at the beginning (possibly with spaces before)
+                    // and then has actual content, remove the prompt symbol
+                    // Example: "% ls" -> "ls", "  # pwd" -> "pwd"
+                    const match = line.match(/^[\s]*[%#][\s]+(.+)$/);
+                    if (match) {
+                        return match[1]; // Return content after the prompt
+                    }
+                    return line;
+                });
+                
+                output = processedLines.join('\n');
                 
                 socket.emit('output', output);
             });
@@ -217,9 +234,10 @@ export async function startWebTerminal(config: any, port: number = 3000) {
         }
     });
 
-    httpServer.listen(port, () => {
-        const url = `http://localhost:${port}`;
+    httpServer.listen(port, '0.0.0.0', () => {
+        const url = `http://0.0.0.0:${port}`;
         console.log(`🚀 yuangs-web-term is running at ${url}`);
-        open(url); // 自动打开浏览器
+        // Don't auto-open browser when binding to all interfaces (for remote access)
+        // open(url); // 自动打开浏览器
     });
 }

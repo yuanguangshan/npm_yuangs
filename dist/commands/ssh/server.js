@@ -7,7 +7,6 @@ exports.startWebTerminal = startWebTerminal;
 const express_1 = __importDefault(require("express"));
 const http_1 = require("http");
 const socket_io_1 = require("socket.io");
-const open_1 = __importDefault(require("open"));
 const path_1 = __importDefault(require("path"));
 const SSHSession_1 = require("../../ssh/SSHSession");
 const GovernedExecutor_1 = require("../../ssh/GovernedExecutor");
@@ -136,13 +135,28 @@ async function startWebTerminal(config, port = 3000) {
                     if (trimmed === '%' || trimmed === '#') {
                         return false;
                     }
-                    // Remove lines that start with % or # followed only by spaces
+                    // Remove lines that start with % or # followed only by spaces or end of line
                     if (/^[%#]\s*$/.test(line)) {
+                        return false;
+                    }
+                    // Remove lines that are ONLY a prompt symbol (no other content)
+                    if (/^[\s]*[%#][\s]*$/.test(line)) {
                         return false;
                     }
                     return true;
                 });
-                output = filteredLines.join('\n');
+                // Further filter: if a line starts with prompt but has content, keep the content
+                const processedLines = filteredLines.map(line => {
+                    // If line starts with just % or # at the beginning (possibly with spaces before)
+                    // and then has actual content, remove the prompt symbol
+                    // Example: "% ls" -> "ls", "  # pwd" -> "pwd"
+                    const match = line.match(/^[\s]*[%#][\s]+(.+)$/);
+                    if (match) {
+                        return match[1]; // Return content after the prompt
+                    }
+                    return line;
+                });
+                output = processedLines.join('\n');
                 socket.emit('output', output);
             });
             // 追踪当前行已发送给服务器的字符
@@ -187,10 +201,11 @@ async function startWebTerminal(config, port = 3000) {
             socket.emit('output', `\r\n❌ Connection Failed: ${err.message}\r\n`);
         }
     });
-    httpServer.listen(port, () => {
-        const url = `http://localhost:${port}`;
+    httpServer.listen(port, '0.0.0.0', () => {
+        const url = `http://0.0.0.0:${port}`;
         console.log(`🚀 yuangs-web-term is running at ${url}`);
-        (0, open_1.default)(url); // 自动打开浏览器
+        // Don't auto-open browser when binding to all interfaces (for remote access)
+        // open(url); // 自动打开浏览器
     });
 }
 //# sourceMappingURL=server.js.map

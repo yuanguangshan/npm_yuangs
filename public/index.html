@@ -214,6 +214,19 @@
             flex-direction: column;
             align-items: flex-start;
             gap: 2px;
+            cursor: pointer;
+            user-select: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+
+        .logo-wrapper:hover {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .logo-wrapper:active {
+            background: rgba(59, 130, 246, 0.2);
         }
 
         .logo-main {
@@ -266,6 +279,7 @@
                 align-items: center;
                 gap: 0;
                 cursor: pointer;
+                user-select: none;
             }
 
             .logo-main {
@@ -287,6 +301,11 @@
                 width: auto;
             }
 
+            #menu-overlay {
+                top: 44px;
+                left: 12px;
+            }
+
             .server-selector {
                 flex: 0 1 auto;
                 display: flex;
@@ -298,21 +317,9 @@
                 border: 1px solid var(--border-color);
             }
 
-            .theme-switcher {
+            .header-actions .theme-switcher,
+            .header-actions .status-pill {
                 display: none !important;
-                position: absolute;
-                top: 44px;
-                right: 12px;
-                z-index: 1000;
-                background: var(--sidebar-bg);
-                padding: 8px;
-                border-radius: 8px;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-                border: 1px solid var(--border-color);
-            }
-
-            .theme-switcher.visible {
-                display: flex !important;
             }
 
             .status-pill {
@@ -324,6 +331,10 @@
 
             .status-pill span {
                 display: none;
+            }
+
+            .status-pill .dot {
+                display: block;
             }
 
             #server-select,
@@ -366,7 +377,7 @@
             }
 
             #mobile-audit-panel {
-                display: block;
+                display: block; /* Always visible */
                 position: fixed;
                 bottom: 0;
                 left: 0;
@@ -377,6 +388,11 @@
                 border-top: 1px solid var(--border-color);
                 /* Account for iPhone home indicator */
                 padding-bottom: env(safe-area-inset-bottom);
+                transition: transform 0.3s ease;
+            }
+
+            #mobile-audit-panel.collapsed {
+                /* When collapsed, only show the header bar */
             }
 
             .audit-sidebar {
@@ -389,8 +405,50 @@
 
             #term-section {
                 height: 100vh;
-                padding-bottom: calc(60px + env(safe-area-inset-bottom));
-                /* Add safe area to the bottom padding */
+                padding-bottom: calc(48px + env(safe-area-inset-bottom));
+                /* Reserve space for collapsed audit panel header */
+            }
+
+            /* Mobile Audit Panel Header */
+            .audit-panel-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 12px 16px;
+                background: var(--sidebar-bg);
+                border-bottom: 1px solid var(--border-color);
+                font-size: 11px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                color: var(--text-secondary);
+                min-height: 48px;
+                position: relative;
+            }
+
+            #audit-toggle {
+                position: absolute;
+                top: 8px;
+                right: 12px;
+                width: 32px;
+                height: 32px;
+                cursor: pointer;
+                background: rgba(0, 0, 0, 0.3);
+                border: 1px solid var(--border-color);
+                border-radius: 6px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 16px;
+                color: var(--text-primary);
+                user-select: none;
+                -webkit-tap-highlight-color: transparent;
+                z-index: 10;
+                transition: background 0.2s;
+            }
+
+            #audit-toggle:hover {
+                background: rgba(0, 0, 0, 0.5);
             }
         }
 
@@ -407,25 +465,148 @@
             }
         }
 
+        /* Menu System */
+        #menu-overlay {
+            display: none;
+            position: fixed;
+            top: 60px;
+            left: 20px;
+            z-index: 99999 !important;
+            background: #ff0000 !important; /* 临时测试：鲜红色背景 */
+            border: 5px solid #00ff00 !important; /* 临时测试：绿色边框 */
+            border-radius: 12px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.9), 
+                        0 0 0 1px rgba(59, 130, 246, 0.5),
+                        0 0 20px rgba(59, 130, 246, 0.3);
+            min-width: 280px;
+            max-width: 320px;
+            padding: 16px;
+            pointer-events: auto;
+            opacity: 1 !important;
+        }
+
+        #menu-overlay.visible {
+            display: block !important;
+            animation: menu-appear 0.2s ease;
+        }
+
+        @keyframes menu-appear {
+            from {
+                opacity: 0;
+                transform: translateY(-10px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .menu-section {
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .menu-section:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .menu-section-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #ffffff !important; /* 临时测试：白色文字 */
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            padding: 0 0 8px 0;
+            margin-bottom: 8px;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s;
+            font-size: 14px;
+            font-weight: 500;
+            color: #ffffff !important; /* 临时测试：白色文字 */
+            background: #0000ff !important; /* 临时测试：蓝色背景 */
+            border: 1px solid transparent;
+            margin-bottom: 4px;
+        }
+
+        .menu-item:hover {
+            background: rgba(59, 130, 246, 0.15);
+            border-color: var(--accent-blue);
+            transform: translateX(2px);
+        }
+
+        .menu-item:active {
+            transform: scale(0.98);
+        }
+
+        .menu-item-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .menu-item-icon {
+            width: 20px;
+            text-align: center;
+        }
+
         .theme-switcher {
             display: flex;
+            flex-direction: column;
             gap: 4px;
-            background: rgba(0, 0, 0, 0.2);
-            padding: 4px;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
+            padding: 0;
         }
 
-        .theme-btn {
-            width: 20px;
-            height: 20px;
-            border-radius: 4px;
+        .theme-option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 16px;
             cursor: pointer;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+            background: rgba(255, 255, 255, 0.02);
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 4px;
         }
 
-        .theme-btn:hover {
-            transform: scale(1.15);
+        .theme-option:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--border-color);
+            transform: translateX(2px);
+        }
+
+        .theme-option.active {
+            border-color: var(--accent-blue);
+            background: rgba(59, 130, 246, 0.2);
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .theme-option.active::after {
+            content: '✓';
+            margin-left: auto;
+            color: var(--accent-blue);
+            font-weight: bold;
+        }
+
+        .theme-color-preview {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            flex-shrink: 0;
         }
 
         .status-pill {
@@ -487,6 +668,22 @@
             flex-direction: column;
             padding: 24px;
             overflow-y: auto;
+        }
+
+        /* Desktop sidebar should be hidden by default */
+        #desktop-sidebar {
+            display: none;
+            width: 0px;
+            opacity: 0;
+            transition: width 0.3s ease, opacity 0.3s ease;
+            overflow: hidden;
+        }
+
+        /* Desktop sidebar expanded state */
+        #desktop-sidebar.expanded {
+            display: flex !important;
+            width: 380px;
+            opacity: 1;
         }
 
         .section-title {
@@ -574,24 +771,6 @@
         /* Mobile Audit Panel Styles (Hidden by default on web) */
         #mobile-audit-panel {
             display: none;
-        }
-
-        #audit-toggle {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 16px 20px;  /* 增加内边距扩大点击区域 */
-            cursor: pointer;
-            background: var(--sidebar-bg);
-            border-bottom: 1px solid var(--border-color);
-            font-size: 12px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: var(--text-secondary);
-            min-height: 48px;  /* 增加最小高度 */
-            user-select: none;  /* 防止选中文本 */
-            -webkit-tap-highlight-color: transparent;  /* 移除移动端点击高亮 */
         }
 
         .insight-card {
@@ -717,11 +896,60 @@
 
     <header>
         <div class="logo-section">
-            <div class="logo-wrapper">
+            <div class="logo-wrapper" id="menu-trigger">
                 <div class="logo-main">YUANGS</div>
             </div>
             <div class="slogan">AI 驱动的智能治理终端</div>
         </div>
+        
+        <!-- Menu Overlay -->
+        <div id="menu-overlay" style="/* DEBUG: Remove inline style after testing */">
+            <div class="menu-section">
+                <div class="menu-section-title">🎛️ 视图控制</div>
+                <div class="menu-item" id="toggle-audit-menu">
+                    <div class="menu-item-label">
+                        <span class="menu-item-icon">📊</span>
+                        <span id="audit-status-text">展开审计面板</span>
+                    </div>
+                    <span id="audit-status-icon">▶</span>
+                </div>
+            </div>
+            
+            <div class="menu-section">
+                <div class="menu-section-title">🎨 主题选择</div>
+                <div class="theme-switcher" id="theme-list">
+                    <div class="theme-option" data-theme="default">
+                        <div class="theme-color-preview" style="background: #09090b"></div>
+                        <span>Cyberpunk Dark</span>
+                    </div>
+                    <div class="theme-option" data-theme="nordic">
+                        <div class="theme-color-preview" style="background: #0f172a"></div>
+                        <span>Nordic Frost</span>
+                    </div>
+                    <div class="theme-option" data-theme="paper">
+                        <div class="theme-color-preview" style="background: #fdf6e3"></div>
+                        <span>Solarized Paper</span>
+                    </div>
+                    <div class="theme-option" data-theme="matrix">
+                        <div class="theme-color-preview" style="background: #00ff41"></div>
+                        <span>Matrix</span>
+                    </div>
+                    <div class="theme-option" data-theme="dracula">
+                        <div class="theme-color-preview" style="background: #bd93f9"></div>
+                        <span>Dracula</span>
+                    </div>
+                    <div class="theme-option" data-theme="solarized">
+                        <div class="theme-color-preview" style="background: #002b36"></div>
+                        <span>Solarized Dark</span>
+                    </div>
+                    <div class="theme-option" data-theme="github">
+                        <div class="theme-color-preview" style="background: #0d1117"></div>
+                        <span>GitHub Dark</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <div class="header-actions">
             <div class="server-selector">
                 <select id="server-select" onchange="switchServer()">
@@ -745,18 +973,6 @@
                 <input type="text" id="custom-server-input" placeholder="server@ip:port">
                 <button id="connect-btn" onclick="connectToServer()">Connect</button>
             </div>
-            <div class="theme-switcher">
-                <div class="theme-btn" style="background: #09090b" onclick="setTheme('default')" title="Cyberpunk">
-                </div>
-                <div class="theme-btn" style="background: #0f172a" onclick="setTheme('nordic')" title="Nordic"></div>
-                <div class="theme-btn" style="background: #fdf6e3" onclick="setTheme('paper')" title="Paper"></div>
-                <div class="theme-btn" style="background: #00ff41" onclick="setTheme('matrix')" title="Matrix"></div>
-                <div class="theme-btn" style="background: #bd93f9" onclick="setTheme('dracula')" title="Dracula"></div>
-                <div class="theme-btn" style="background: #002b36" onclick="setTheme('solarized')"
-                    title="Solarized Dark"></div>
-                <div class="theme-btn" style="background: #0d1117" onclick="setTheme('github')" title="GitHub Dark">
-                </div>
-            </div>
             <div class="status-pill">
                 <div id="conn-dot" class="dot"></div>
                 <span id="conn-status">WAITING</span>
@@ -770,10 +986,12 @@
         </div>
 
         <!-- Mobile Audit Panel -->
-        <div id="mobile-audit-panel">
-            <div id="audit-toggle" onclick="toggleAuditPanel()">
+        <div id="mobile-audit-panel" class="collapsed">
+            <div class="audit-panel-header">
                 <span>AI Governance & Audit</span>
-                <span id="toggle-icon">▼</span>
+                <div id="audit-toggle">
+                    <span id="toggle-icon">▲</span>
+                </div>
             </div>
             <div id="audit-content" style="display: none;">
                 <aside class="audit-sidebar">
@@ -871,19 +1089,45 @@
                 if (mutation.type === 'childList') {
                     mutation.addedNodes.forEach((node) => {
                         if (node.nodeType === 1) { // Element node
-                            const rows = node.querySelectorAll('.xterm-rows > div');
+                            // Check all xterm rows
+                            const rows = node.querySelectorAll ? node.querySelectorAll('.xterm-rows > div') : [];
                             rows.forEach((row) => {
-                                const text = row.innerText.trim();
+                                const text = row.innerText ? row.innerText.trim() : '';
                                 // Check if row contains only % or # (with optional whitespace)
                                 if (text === '%' || text === '#') {
                                     row.style.display = 'none';
                                 }
                             });
+                            
+                            // Also check if the node itself is a row
+                            if (node.classList && node.classList.contains('xterm-rows')) {
+                                const directRows = node.querySelectorAll(':scope > div');
+                                directRows.forEach((row) => {
+                                    const text = row.innerText ? row.innerText.trim() : '';
+                                    if (text === '%' || text === '#') {
+                                        row.style.display = 'none';
+                                    }
+                                });
+                            }
                         }
                     });
                 }
             });
         });
+
+        // Periodic cleanup function to catch any missed prompts
+        setInterval(() => {
+            const termContainer = document.getElementById('term-container');
+            if (termContainer) {
+                const allRows = termContainer.querySelectorAll('.xterm-rows > div');
+                allRows.forEach((row) => {
+                    const text = row.innerText ? row.innerText.trim() : '';
+                    if (text === '%' || text === '#') {
+                        row.style.display = 'none';
+                    }
+                });
+            }
+        }, 500); // Check every 500ms
 
         // Start observing the terminal container
         setTimeout(() => {
@@ -980,6 +1224,12 @@
                 ...themes[themeName]
             };
             localStorage.setItem('yuangs-theme', themeName);
+            
+            // Update active state in menu
+            document.querySelectorAll('.theme-option').forEach(opt => {
+                opt.classList.remove('active');
+            });
+            document.querySelector(`.theme-option[data-theme="${themeName}"]`)?.classList.add('active');
         };
 
         // Server Selection Functions
@@ -1027,17 +1277,65 @@
             socket.emit('change_server', serverInfo);
         }
 
-        function toggleAuditPanel() {
-            const panel = document.getElementById('mobile-audit-panel');
-            const content = document.getElementById('audit-content');
-            const icon = document.getElementById('toggle-icon');
+        function toggleAuditPanel(e) {
+            // 阻止事件冒泡
+            if (e) e.stopPropagation();
+            
+            const isMobile = window.innerWidth <= 768;
+            
+            if (isMobile) {
+                // 移动端：切换底部面板
+                const panel = document.getElementById('mobile-audit-panel');
+                const content = document.getElementById('audit-content');
+                const icon = document.getElementById('toggle-icon');
 
-            if (content.style.display === 'none' || content.style.display === '') {
-                content.style.display = 'block';
-                icon.textContent = '▲';
+                if (panel.classList.contains('collapsed')) {
+                    panel.classList.remove('collapsed');
+                    content.style.display = 'block';
+                    icon.textContent = '▼';
+                    updateAuditMenuStatus(true);
+                } else {
+                    panel.classList.add('collapsed');
+                    content.style.display = 'none';
+                    icon.textContent = '▲';
+                    updateAuditMenuStatus(false);
+                }
             } else {
-                content.style.display = 'none';
-                icon.textContent = '▼';
+                // 桌面端：切换侧边栏（使用 CSS 类）
+                const sidebar = document.getElementById('desktop-sidebar');
+                const isExpanded = sidebar.classList.contains('expanded');
+
+                if (isExpanded) {
+                    sidebar.classList.remove('expanded');
+                    updateAuditMenuStatus(false);
+                    console.log('Desktop sidebar collapsed');
+                } else {
+                    sidebar.classList.add('expanded');
+                    updateAuditMenuStatus(true);
+                    console.log('Desktop sidebar expanded');
+                }
+
+                // 重新计算终端大小
+                setTimeout(() => {
+                    if (window.fitAddon) {
+                        window.fitAddon.fit();
+                        const dims = window.fitAddon.proposeDimensions();
+                        if (dims && socket) socket.emit('resize', dims);
+                    }
+                }, 350); // 等待动画完成
+            }
+        }
+
+        function updateAuditMenuStatus(isOpen) {
+            const statusText = document.getElementById('audit-status-text');
+            const statusIcon = document.getElementById('audit-status-icon');
+            
+            if (isOpen) {
+                statusText.textContent = '折叠审计面板';
+                statusIcon.textContent = '▼';
+            } else {
+                statusText.textContent = '展开审计面板';
+                statusIcon.textContent = '▶';
             }
         }
 
@@ -1067,31 +1365,117 @@
             };
         }
 
-        // Logo click to show theme switcher on mobile
-        document.querySelector('.logo-wrapper').addEventListener('click', function () {
-            // Only on mobile
-            if (window.innerWidth <= 768) {
-                const themeSwitcher = document.querySelector('.theme-switcher');
-                themeSwitcher.classList.toggle('visible');
+        // 为主题选项添加点击事件监听器
+        document.querySelectorAll('.theme-option').forEach(opt => {
+            opt.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const theme = this.getAttribute('data-theme');
+                if (theme) {
+                    setTheme(theme);
+                }
+            });
+        });
+
+        // 菜单触发器
+        const menuTrigger = document.getElementById('menu-trigger');
+        const menuOverlay = document.getElementById('menu-overlay');
+        
+        console.log('Menu elements:', { menuTrigger, menuOverlay });
+        
+        if (menuTrigger && menuOverlay) {
+            menuTrigger.addEventListener('click', function(e) {
+                e.stopPropagation();
+                console.log('Menu trigger clicked!');
+                const isVisible = menuOverlay.classList.contains('visible');
+                console.log('Current visible state:', isVisible);
+                menuOverlay.classList.toggle('visible');
+                console.log('New visible state:', menuOverlay.classList.contains('visible'));
+                
+                // 详细的样式调试
+                const styles = window.getComputedStyle(menuOverlay);
+                console.log('Menu overlay computed styles:', {
+                    display: styles.display,
+                    position: styles.position,
+                    top: styles.top,
+                    left: styles.left,
+                    zIndex: styles.zIndex,
+                    opacity: styles.opacity,
+                    visibility: styles.visibility,
+                    width: styles.width,
+                    height: styles.height,
+                    background: styles.background
+                });
+                
+                // 获取元素位置
+                const rect = menuOverlay.getBoundingClientRect();
+                console.log('Menu overlay position:', {
+                    top: rect.top,
+                    left: rect.left,
+                    right: rect.right,
+                    bottom: rect.bottom,
+                    width: rect.width,
+                    height: rect.height
+                });
+            });
+        } else {
+            console.error('Menu elements not found!', { menuTrigger, menuOverlay });
+        }
+
+        // 审计面板菜单项
+        document.getElementById('toggle-audit-menu').addEventListener('click', function(e) {
+            e.stopPropagation();
+            toggleAuditPanel(e);
+            // 不要关闭菜单，让用户可以继续操作
+        });
+
+        // 为审计面板切换按钮添加事件监听器（移动端底部按钮）
+        const auditToggle = document.getElementById('audit-toggle');
+        if (auditToggle) {
+            auditToggle.addEventListener('click', toggleAuditPanel);
+            auditToggle.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                toggleAuditPanel(e);
+            });
+        }
+
+        // 点击外部关闭菜单
+        document.addEventListener('click', function(e) {
+            const menu = document.getElementById('menu-overlay');
+            const trigger = document.getElementById('menu-trigger');
+            
+            if (!menu.contains(e.target) && !trigger.contains(e.target)) {
+                menu.classList.remove('visible');
             }
         });
 
-        // Close theme switcher when clicking outside
-        document.addEventListener('click', function (event) {
-            const themeSwitcher = document.querySelector('.theme-switcher');
-            const logoWrapper = document.querySelector('.logo-wrapper');
+        // Handle window resize to ensure proper panel behavior
+        window.addEventListener('resize', function() {
+            const mobilePanel = document.getElementById('mobile-audit-panel');
+            const desktopSidebar = document.getElementById('desktop-sidebar');
+            const menu = document.getElementById('menu-overlay');
 
-            if (window.innerWidth <= 768 &&
-                !themeSwitcher.contains(event.target) &&
-                !logoWrapper.contains(event.target) &&
-                themeSwitcher.classList.contains('visible')) {
-                themeSwitcher.classList.remove('visible');
+            // 关闭菜单
+            menu.classList.remove('visible');
+
+            if (window.innerWidth <= 768) {
+                // On mobile view, ensure desktop sidebar is hidden
+                if (desktopSidebar) {
+                    desktopSidebar.classList.remove('expanded');
+                }
+            } else {
+                // On desktop view, hide mobile panel content
+                if (mobilePanel) {
+                    const content = document.getElementById('audit-content');
+                    if (content) {
+                        content.style.display = 'none';
+                    }
+                }
             }
         });
 
         // Restore saved theme
-        const savedTheme = localStorage.getItem('yuangs-theme');
-        if (savedTheme) setTheme(savedTheme);
+        const savedTheme = localStorage.getItem('yuangs-theme') || 'default';
+        setTheme(savedTheme);
 
         window.onresize = () => {
             fitAddon.fit();
