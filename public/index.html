@@ -3,6 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YUANGS | AI Governance Console</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
     <link
@@ -237,7 +238,7 @@
             line-height: 1.4;
         }
 
-        /* Mobile Responsive Styles */
+        /* Mobile Responsive Styles Consolidated */
         @media (max-width: 768px) {
             header {
                 height: auto;
@@ -274,34 +275,26 @@
 
             .header-actions {
                 flex-wrap: wrap;
-                gap: 8px;
+                gap: 12px;
+                margin-top: 8px;
+                width: 100%;
             }
 
             .server-selector {
-                order: 2;
                 width: 100%;
                 display: flex;
-                flex-direction: column;
-                align-items: flex-start;
+                flex-wrap: wrap;
+                gap: 8px;
             }
 
-            #server-select {
-                width: 100%;
-                margin-bottom: 8px;
-            }
-
+            #server-select,
             #custom-server-input {
-                width: 100%;
-                margin-bottom: 8px;
+                flex: 1;
+                min-width: 150px;
             }
 
             #connect-btn {
-                align-self: flex-end;
-            }
-
-            .theme-switcher {
-                order: 1;
-                margin-bottom: 8px;
+                width: 100%;
             }
 
             main {
@@ -309,195 +302,25 @@
             }
 
             #term-section {
-                order: 2;
-                width: 100%;
-                padding: 12px;
+                padding: 10px;
+                height: 60vh;
+                flex: none;
             }
 
-            #sidebar {
-                order: 1;
-                width: 100%;
-                height: 200px;
-                border-left: none;
-                border-top: 1px solid var(--border-color);
-            }
-
-            .section-title::after {
-                display: none;
-            }
-
-            .section-title {
-                display: block;
-                text-align: left;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .logo-wrapper {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 4px;
-            }
-
-            .logo-main {
-                font-size: 16px;
-            }
-
-            .logo-sub {
-                font-size: 8px;
-            }
-
-            .slogan {
-                font-size: 10px;
-                padding-left: 0;
-                border-left: none;
-                margin-top: 4px;
-            }
-
-            .status-pill {
-                font-size: 10px;
-                padding: 2px 6px;
-            }
-
-            .theme-btn {
-                width: 16px;
-                height: 16px;
-            }
-        }
-
-        .header-actions {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        /* Mobile Audit Panel Styles */
-        #mobile-audit-panel {
-            display: none;
-            width: 100%;
-            background-color: var(--sidebar-bg);
-            border-top: 1px solid var(--border-color);
-        }
-
-        #audit-toggle {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 20px;
-            cursor: pointer;
-            background-color: var(--sidebar-bg);
-            border-bottom: 1px solid var(--border-color);
-            font-size: 14px;
-            font-weight: 600;
-        }
-
-        #audit-content {
-            padding: 20px;
-        }
-
-        /* Desktop Sidebar */
-        #desktop-sidebar {
-            width: 380px;
-            background-color: var(--sidebar-bg);
-            border-left: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            padding: 24px;
-            overflow-y: auto;
-        }
-
-        /* Mobile Responsive Styles */
-        @media (max-width: 768px) {
             #desktop-sidebar {
                 display: none;
             }
 
             #mobile-audit-panel {
                 display: block;
+                flex: 1;
+                overflow-y: auto;
             }
 
-            main {
-                flex-direction: column;
-            }
-
-            #term-section {
-                order: 1;
-                width: 100%;
-                padding: 12px;
-            }
-
-            header {
-                height: auto;
-                min-height: 56px;
-                padding: 12px 16px;
-            }
-
-            .logo-section {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 8px;
-            }
-
-            .logo-wrapper {
-                flex-direction: row;
-                align-items: baseline;
-                gap: 10px;
-            }
-
-            .logo-main {
-                font-size: 18px;
-            }
-
-            .logo-sub {
-                font-size: 9px;
-            }
-
-            .slogan {
-                font-size: 11px;
-                padding-left: 10px;
-                border-left: 1px solid var(--border-color);
-                opacity: 0.7;
-            }
-
-            .header-actions {
-                flex-wrap: wrap;
-                gap: 8px;
-            }
-
-            .server-selector {
-                order: 2;
-                width: 100%;
-                display: flex;
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            #server-select {
-                width: 100%;
-                margin-bottom: 8px;
-            }
-
-            #custom-server-input {
-                width: 100%;
-                margin-bottom: 8px;
-            }
-
-            #connect-btn {
-                align-self: flex-end;
-            }
-
-            .theme-switcher {
-                order: 1;
-                margin-bottom: 8px;
-            }
-
-            .section-title::after {
-                display: none;
-            }
-
-            .section-title {
-                display: block;
-                text-align: left;
+            .audit-sidebar {
+                width: 100% !important;
+                border-left: none !important;
+                padding: 16px !important;
             }
         }
 
@@ -505,32 +328,12 @@
             .logo-wrapper {
                 flex-direction: column;
                 align-items: flex-start;
-                gap: 4px;
-            }
-
-            .logo-main {
-                font-size: 16px;
-            }
-
-            .logo-sub {
-                font-size: 8px;
+                gap: 2px;
             }
 
             .slogan {
-                font-size: 10px;
                 padding-left: 0;
                 border-left: none;
-                margin-top: 4px;
-            }
-
-            .status-pill {
-                font-size: 10px;
-                padding: 2px 6px;
-            }
-
-            .theme-btn {
-                width: 16px;
-                height: 16px;
             }
         }
 
@@ -606,7 +409,7 @@
         }
 
         /* Sidebar */
-        #sidebar {
+        .audit-sidebar {
             width: 380px;
             background-color: var(--sidebar-bg);
             border-left: 1px solid var(--border-color);
@@ -750,18 +553,29 @@
         </div>
         <div class="header-actions">
             <div class="server-selector">
-                <select id="server-select" onchange="switchServer()" style="padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--sidebar-bg); color: var(--text-primary); outline: none; cursor: pointer;">
-                    <option value="" style="background: var(--sidebar-bg); color: var(--text-secondary);">Select Server...</option>
-                    <option value="macos" style="background: var(--sidebar-bg); color: var(--text-primary);">MacOS Server (192.168.31.100)</option>
-                    <option value="u" style="background: var(--sidebar-bg); color: var(--text-primary);">Server U (192.168.31.213)</option>
-                    <option value="ali" style="background: var(--sidebar-bg); color: var(--text-primary);">Ali Server (47.88.20.199)</option>
-                    <option value="Ubuntu_R86S" style="background: var(--sidebar-bg); color: var(--text-primary);">Ubuntu R86S (192.168.31.213)</option>
-                    <option value="a" style="background: var(--sidebar-bg); color: var(--text-primary);">Server A (8.153.97.65)</option>
-                    <option value="t" style="background: var(--sidebar-bg); color: var(--text-primary);">Server T (43.153.67.212)</option>
-                    <option value="custom" style="background: var(--sidebar-bg); color: var(--text-primary);">Custom Server...</option>
+                <select id="server-select" onchange="switchServer()"
+                    style="padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--sidebar-bg); color: var(--text-primary); outline: none; cursor: pointer;">
+                    <option value="" style="background: var(--sidebar-bg); color: var(--text-secondary);">Select
+                        Server...</option>
+                    <option value="macos" style="background: var(--sidebar-bg); color: var(--text-primary);">MacOS
+                        Server (192.168.31.100)</option>
+                    <option value="u" style="background: var(--sidebar-bg); color: var(--text-primary);">Server U
+                        (192.168.31.213)</option>
+                    <option value="ali" style="background: var(--sidebar-bg); color: var(--text-primary);">Ali Server
+                        (47.88.20.199)</option>
+                    <option value="Ubuntu_R86S" style="background: var(--sidebar-bg); color: var(--text-primary);">
+                        Ubuntu R86S (192.168.31.213)</option>
+                    <option value="a" style="background: var(--sidebar-bg); color: var(--text-primary);">Server A
+                        (8.153.97.65)</option>
+                    <option value="t" style="background: var(--sidebar-bg); color: var(--text-primary);">Server T
+                        (43.153.67.212)</option>
+                    <option value="custom" style="background: var(--sidebar-bg); color: var(--text-primary);">Custom
+                        Server...</option>
                 </select>
-                <input type="text" id="custom-server-input" placeholder="server@ip:port" style="display:none; margin-right: 10px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--sidebar-bg); color: var(--text-primary);">
-                <button id="connect-btn" onclick="connectToServer()" style="padding: 4px 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--sidebar-bg); color: var(--text-primary); cursor: pointer;">Connect</button>
+                <input type="text" id="custom-server-input" placeholder="server@ip:port"
+                    style="display:none; margin-right: 10px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--sidebar-bg); color: var(--text-primary);">
+                <button id="connect-btn" onclick="connectToServer()"
+                    style="padding: 4px 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--sidebar-bg); color: var(--text-primary); cursor: pointer;">Connect</button>
             </div>
             <div class="theme-switcher">
                 <div class="theme-btn" style="background: #09090b" onclick="setTheme('default')" title="Cyberpunk">
@@ -794,31 +608,33 @@
                 <span id="toggle-icon">▼</span>
             </div>
             <div id="audit-content" style="display: none;">
-                <aside id="sidebar">
+                <aside class="audit-sidebar">
                     <div class="section-title">AI Cognitive Process</div>
-                    <div id="insight-container">
-                        <div class="insight-card" id="current-scan">
-                            <div id="scan-label" style="font-size: 12px; color: var(--text-secondary)">Standby Mode</div>
-                            <div id="scan-cmd"
-                                style="font-family: 'JetBrains Mono'; font-size: 14px; margin-top: 8px; color: #fff;">-</div>
+                    <div class="insight-container">
+                        <div class="insight-card current-scan">
+                            <div class="scan-label" style="font-size: 12px; color: var(--text-secondary)">Standby Mode
+                            </div>
+                            <div class="scan-cmd"
+                                style="font-family: 'JetBrains Mono'; font-size: 14px; margin-top: 8px; color: #fff;">-
+                            </div>
                             <div class="scan-line"></div>
                         </div>
                     </div>
 
-                    <div id="decision-detail" style="display: none;">
+                    <div class="decision-detail" style="display: none;">
                         <div class="insight-card active">
-                            <div id="risk-pill" class="risk-badge">LEVEL: -</div>
-                            <div id="dec-title" class="decision-title">-</div>
-                            <div id="dec-reason" class="decision-reason">-</div>
-                            <div id="dec-impact"
+                            <div class="risk-badge risk-pill">LEVEL: -</div>
+                            <div class="decision-title dec-title">-</div>
+                            <div class="decision-reason dec-reason">-</div>
+                            <div class="dec-impact"
                                 style="margin-top: 12px; font-size: 12px; color: var(--danger); display: none;">
-                                <b>Impact:</b> <span id="dec-impact-text"></span>
+                                <b>Impact:</b> <span class="dec-impact-text"></span>
                             </div>
                         </div>
                     </div>
 
                     <div class="section-title">Audit History</div>
-                    <div id="history-list">
+                    <div class="history-list">
                         <!-- Log items will go here -->
                     </div>
                 </aside>
@@ -826,31 +642,31 @@
         </div>
 
         <!-- Desktop Sidebar -->
-        <aside id="desktop-sidebar">
+        <aside id="desktop-sidebar" class="audit-sidebar">
             <div class="section-title">AI Cognitive Process</div>
-            <div id="insight-container">
-                <div class="insight-card" id="current-scan">
-                    <div id="scan-label" style="font-size: 12px; color: var(--text-secondary)">Standby Mode</div>
-                    <div id="scan-cmd"
+            <div class="header-insight-container">
+                <div class="insight-card current-scan">
+                    <div class="scan-label" style="font-size: 12px; color: var(--text-secondary)">Standby Mode</div>
+                    <div class="scan-cmd"
                         style="font-family: 'JetBrains Mono'; font-size: 14px; margin-top: 8px; color: #fff;">-</div>
                     <div class="scan-line"></div>
                 </div>
             </div>
 
-            <div id="decision-detail" style="display: none;">
+            <div class="decision-detail" style="display: none;">
                 <div class="insight-card active">
-                    <div id="risk-pill" class="risk-badge">LEVEL: -</div>
-                    <div id="dec-title" class="decision-title">-</div>
-                    <div id="dec-reason" class="decision-reason">-</div>
-                    <div id="dec-impact"
+                    <div class="risk-badge risk-pill">LEVEL: -</div>
+                    <div class="decision-title dec-title">-</div>
+                    <div class="decision-reason dec-reason">-</div>
+                    <div class="dec-impact"
                         style="margin-top: 12px; font-size: 12px; color: var(--danger); display: none;">
-                        <b>Impact:</b> <span id="dec-impact-text"></span>
+                        <b>Impact:</b> <span class="dec-impact-text"></span>
                     </div>
                 </div>
             </div>
 
             <div class="section-title">Audit History</div>
-            <div id="history-list">
+            <div class="history-list">
                 <!-- Log items will go here -->
             </div>
         </aside>
@@ -911,7 +727,7 @@
             if (!dec.allowed && dec.disclosure) {
                 elements.decImpacts.forEach(impact => {
                     impact.style.display = 'block';
-                    impact.querySelector('#dec-impact-text').innerText = dec.disclosure.impact;
+                    impact.querySelector('.dec-impact-text').innerText = dec.disclosure.impact;
                 });
             } else {
                 elements.decImpacts.forEach(impact => impact.style.display = 'none');
@@ -1027,17 +843,16 @@
 
         // Function to update audit elements regardless of which panel is visible
         function updateAuditElements() {
-            // Get elements from both panels to ensure updates work on both desktop and mobile
-            const scanCards = document.querySelectorAll('#current-scan');
-            const scanLabels = document.querySelectorAll('#scan-label');
-            const scanCmds = document.querySelectorAll('#scan-cmd');
-            const decDetails = document.querySelectorAll('#decision-detail');
-            const riskPills = document.querySelectorAll('#risk-pill');
-            const decTitles = document.querySelectorAll('#dec-title');
-            const decReasons = document.querySelectorAll('#dec-reason');
-            const decImpacts = document.querySelectorAll('#dec-impact');
-            const decImpactTexts = document.querySelectorAll('#dec-impact-text');
-            const historyLists = document.querySelectorAll('#history-list');
+            // Get elements from both panels using classes
+            const scanCards = document.querySelectorAll('.current-scan');
+            const scanLabels = document.querySelectorAll('.scan-label');
+            const scanCmds = document.querySelectorAll('.scan-cmd');
+            const decDetails = document.querySelectorAll('.decision-detail');
+            const riskPills = document.querySelectorAll('.risk-pill');
+            const decTitles = document.querySelectorAll('.dec-title');
+            const decReasons = document.querySelectorAll('.dec-reason');
+            const decImpacts = document.querySelectorAll('.dec-impact');
+            const historyLists = document.querySelectorAll('.history-list');
 
             return {
                 scanCards,
@@ -1048,7 +863,6 @@
                 decTitles,
                 decReasons,
                 decImpacts,
-                decImpactTexts,
                 historyLists
             };
         }
