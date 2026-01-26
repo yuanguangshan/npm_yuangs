@@ -435,15 +435,15 @@
         </div>
         <div class="header-actions">
             <div class="server-selector">
-                <select id="server-select" onchange="switchServer()">
-                    <option value="">Select Server...</option>
-                    <option value="macos">MacOS Server (192.168.31.100)</option>
-                    <option value="u">Server U (192.168.31.213)</option>
-                    <option value="ali">Ali Server (47.88.20.199)</option>
-                    <option value="Ubuntu_R86S">Ubuntu R86S (192.168.31.213)</option>
-                    <option value="a">Server A (8.153.97.65)</option>
-                    <option value="t">Server T (43.153.67.212)</option>
-                    <option value="custom">Custom Server...</option>
+                <select id="server-select" onchange="switchServer()" style="padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--sidebar-bg); color: var(--text-primary); outline: none; cursor: pointer;">
+                    <option value="" style="background: var(--sidebar-bg); color: var(--text-secondary);">Select Server...</option>
+                    <option value="macos" style="background: var(--sidebar-bg); color: var(--text-primary);">MacOS Server (192.168.31.100)</option>
+                    <option value="u" style="background: var(--sidebar-bg); color: var(--text-primary);">Server U (192.168.31.213)</option>
+                    <option value="ali" style="background: var(--sidebar-bg); color: var(--text-primary);">Ali Server (47.88.20.199)</option>
+                    <option value="Ubuntu_R86S" style="background: var(--sidebar-bg); color: var(--text-primary);">Ubuntu R86S (192.168.31.213)</option>
+                    <option value="a" style="background: var(--sidebar-bg); color: var(--text-primary);">Server A (8.153.97.65)</option>
+                    <option value="t" style="background: var(--sidebar-bg); color: var(--text-primary);">Server T (43.153.67.212)</option>
+                    <option value="custom" style="background: var(--sidebar-bg); color: var(--text-primary);">Custom Server...</option>
                 </select>
                 <input type="text" id="custom-server-input" placeholder="server@ip:port" style="display:none; margin-right: 10px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--sidebar-bg); color: var(--text-primary);">
                 <button id="connect-btn" onclick="connectToServer()" style="padding: 4px 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--sidebar-bg); color: var(--text-primary); cursor: pointer;">Connect</button>
