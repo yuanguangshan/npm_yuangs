@@ -3,7 +3,12 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#09090b">
     <title>YUANGS | AI Governance Console</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
     <link
@@ -119,6 +124,11 @@
             flex-direction: column;
             height: 100vh;
             overflow: hidden;
+            /* iOS Safe Areas */
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
         }
 
         /* Red Flash Overlay */
@@ -335,6 +345,8 @@
                 background: var(--sidebar-bg);
                 box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5);
                 border-top: 1px solid var(--border-color);
+                /* Account for iPhone home indicator */
+                padding-bottom: env(safe-area-inset-bottom);
             }
 
             .audit-sidebar {
@@ -347,8 +359,8 @@
 
             #term-section {
                 height: 100vh;
-                padding-bottom: 60px;
-                /* Space for the collapsed toggle */
+                padding-bottom: calc(60px + env(safe-area-inset-bottom));
+                /* Add safe area to the bottom padding */
             }
         }
 
@@ -987,7 +999,19 @@
         };
 
         setTimeout(() => fitAddon.fit(), 500);
+
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(reg => {
+                    console.log('PWA ServiceWorker registered');
+                }).catch(err => {
+                    console.log('PWA ServiceWorker registration failed:', err);
+                });
+            });
+        }
     </script>
 </body>
 
 </html>
+```
