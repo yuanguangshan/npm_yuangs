@@ -881,58 +881,55 @@
             term.scrollToBottom();
         });
 
-        // UI Ref Elements
-        const scanCard = document.getElementById('current-scan');
-        const scanLabel = document.getElementById('scan-label');
-        const scanCmd = document.getElementById('scan-cmd');
-        const decDetail = document.getElementById('decision-detail');
-        const riskPill = document.getElementById('risk-pill');
-        const decTitle = document.getElementById('dec-title');
-        const decReason = document.getElementById('dec-reason');
-        const decImpact = document.getElementById('dec-impact');
-        const decImpactText = document.getElementById('dec-impact-text');
-        const historyList = document.getElementById('history-list');
-
+        // UI Ref Elements - Updated to handle both desktop and mobile panels
         // AI Evaluating
         socket.on('governance_evaluating', (data) => {
-            scanCard.classList.add('scan-active');
-            scanLabel.innerText = 'AI Analysis in Progress...';
-            scanCmd.innerText = data.command;
-            decDetail.style.display = 'none';
+            const elements = updateAuditElements();
+            elements.scanCards.forEach(card => card.classList.add('scan-active'));
+            elements.scanLabels.forEach(label => label.innerText = 'AI Analysis in Progress...');
+            elements.scanCmds.forEach(cmd => cmd.innerText = data.command);
+            elements.decDetails.forEach(detail => detail.style.display = 'none');
         });
 
         // AI Decision
         socket.on('governance_decision', (dec) => {
-            scanCard.classList.remove('scan-active');
-            scanLabel.innerText = 'Audit Complete';
-            decDetail.style.display = 'block';
+            const elements = updateAuditElements();
+            elements.scanCards.forEach(card => card.classList.remove('scan-active'));
+            elements.scanLabels.forEach(label => label.innerText = 'Audit Complete');
+            elements.decDetails.forEach(detail => detail.style.display = 'block');
 
-            decTitle.innerText = dec.allowed ? 'Execution Approved' : 'Execution Denied';
+            elements.decTitles.forEach(title => title.innerText = dec.allowed ? 'Execution Approved' : 'Execution Denied');
             // Use reasoning for approved commands, reason for denied ones
-            decReason.innerText = dec.reasoning || dec.reason || 'No detailed analysis provided.';
+            elements.decReasons.forEach(reason => reason.innerText = dec.reasoning || dec.reason || 'No detailed analysis provided.');
 
             const riskLevel = dec.riskLevel || (dec.allowed ? 'R1' : 'R3');
-            riskPill.className = 'risk-badge risk-' + riskLevel.toLowerCase();
-            riskPill.innerText = 'RISK LEVEL: ' + riskLevel;
+            elements.riskPills.forEach(pill => {
+                pill.className = 'risk-badge risk-' + riskLevel.toLowerCase();
+                pill.innerText = 'RISK LEVEL: ' + riskLevel;
+            });
 
             if (!dec.allowed && dec.disclosure) {
-                decImpact.style.display = 'block';
-                decImpactText.innerText = dec.disclosure.impact;
+                elements.decImpacts.forEach(impact => {
+                    impact.style.display = 'block';
+                    impact.querySelector('#dec-impact-text').innerText = dec.disclosure.impact;
+                });
             } else {
-                decImpact.style.display = 'none';
+                elements.decImpacts.forEach(impact => impact.style.display = 'none');
             }
 
-            // Add to history
-            const item = document.createElement('div');
-            item.className = 'history-item';
-            item.innerHTML = `
-                <div class="history-cmd">${dec.command || scanCmd.innerText}</div>
-                <div class="history-meta">
-                    <span style="color: ${dec.allowed ? 'var(--success)' : 'var(--danger)'}">${riskLevel}</span>
-                    <span>${new Date().toLocaleTimeString()}</span>
-                </div>
-            `;
-            historyList.prepend(item);
+            // Add to history - update all history lists
+            elements.historyLists.forEach(historyList => {
+                const item = document.createElement('div');
+                item.className = 'history-item';
+                item.innerHTML = `
+                    <div class="history-cmd">${dec.command || (elements.scanCmds[0] ? elements.scanCmds[0].innerText : '-')}</div>
+                    <div class="history-meta">
+                        <span style="color: ${dec.allowed ? 'var(--success)' : 'var(--danger)'}">${riskLevel}</span>
+                        <span>${new Date().toLocaleTimeString()}</span>
+                    </div>
+                `;
+                historyList.prepend(item);
+            });
         });
 
         // Alert
@@ -1026,6 +1023,34 @@
                 content.style.display = 'none';
                 icon.textContent = '▼';
             }
+        }
+
+        // Function to update audit elements regardless of which panel is visible
+        function updateAuditElements() {
+            // Get elements from both panels to ensure updates work on both desktop and mobile
+            const scanCards = document.querySelectorAll('#current-scan');
+            const scanLabels = document.querySelectorAll('#scan-label');
+            const scanCmds = document.querySelectorAll('#scan-cmd');
+            const decDetails = document.querySelectorAll('#decision-detail');
+            const riskPills = document.querySelectorAll('#risk-pill');
+            const decTitles = document.querySelectorAll('#dec-title');
+            const decReasons = document.querySelectorAll('#dec-reason');
+            const decImpacts = document.querySelectorAll('#dec-impact');
+            const decImpactTexts = document.querySelectorAll('#dec-impact-text');
+            const historyLists = document.querySelectorAll('#history-list');
+
+            return {
+                scanCards,
+                scanLabels,
+                scanCmds,
+                decDetails,
+                riskPills,
+                decTitles,
+                decReasons,
+                decImpacts,
+                decImpactTexts,
+                historyLists
+            };
         }
 
         // Restore saved theme
