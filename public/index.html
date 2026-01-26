@@ -288,18 +288,18 @@
             }
 
             .server-selector {
-                flex: 1;
+                flex: 0 1 auto;
                 display: flex;
                 align-items: center;
                 gap: 4px;
                 background: rgba(0, 0, 0, 0.2);
-                padding: 4px 6px;
+                padding: 4px;
                 border-radius: 6px;
                 border: 1px solid var(--border-color);
             }
 
             .theme-switcher {
-                display: none;
+                display: none !important;
                 position: absolute;
                 top: 44px;
                 right: 12px;
@@ -312,28 +312,40 @@
             }
 
             .theme-switcher.visible {
-                display: flex;
+                display: flex !important;
             }
 
             .status-pill {
+                display: flex;
+                padding: 4px;
+                background: transparent;
+                border: none;
+            }
+
+            .status-pill span {
                 display: none;
             }
 
             #server-select,
             #custom-server-input {
                 flex: 1;
-                min-width: 120px;
-                font-size: 13px;
-                height: 32px;
+                min-width: 60px;
+                max-width: 120px;
+                font-size: 12px;
+                height: 28px;
+                padding: 2px 6px;
             }
 
             #connect-btn {
-                width: 100%;
-                height: 36px;
+                width: auto;
+                height: 28px;
+                padding: 0 10px;
                 background: var(--accent-blue) !important;
                 color: white !important;
                 border: none !important;
                 font-weight: 600;
+                font-size: 11px;
+                white-space: nowrap;
             }
 
             main {
@@ -694,7 +706,7 @@
         <div class="header-actions">
             <div class="server-selector">
                 <select id="server-select" onchange="switchServer()">
-                    <option value="" style="background: var(--sidebar-bg); color: var(--text-secondary);">Select
+                    <option value="" style="background: var(--sidebar-bg); color: var(--text-secondary);">
                         Server...</option>
                     <option value="macos" style="background: var(--sidebar-bg); color: var(--text-primary);">MacOS
                         Server (192.168.31.100)</option>
@@ -1006,7 +1018,7 @@
         }
 
         // Logo click to show theme switcher on mobile
-        document.querySelector('.logo-wrapper').addEventListener('click', function() {
+        document.querySelector('.logo-wrapper').addEventListener('click', function () {
             // Only on mobile
             if (window.innerWidth <= 768) {
                 const themeSwitcher = document.querySelector('.theme-switcher');
@@ -1015,12 +1027,12 @@
         });
 
         // Close theme switcher when clicking outside
-        document.addEventListener('click', function(event) {
+        document.addEventListener('click', function (event) {
             const themeSwitcher = document.querySelector('.theme-switcher');
             const logoWrapper = document.querySelector('.logo-wrapper');
-            
-            if (window.innerWidth <= 768 && 
-                !themeSwitcher.contains(event.target) && 
+
+            if (window.innerWidth <= 768 &&
+                !themeSwitcher.contains(event.target) &&
                 !logoWrapper.contains(event.target) &&
                 themeSwitcher.classList.contains('visible')) {
                 themeSwitcher.classList.remove('visible');

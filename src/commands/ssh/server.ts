@@ -149,8 +149,21 @@ export async function startWebTerminal(config: any, port: number = 3000) {
                 let output = data.toString();
                 
                 // Filter out shell prompt symbols that appear after command completion
-                // This removes standalone % or # at the end of output
-                output = output.replace(/(\r\n|\n)([%#])(\r\n|\n|$)/g, '$1$3');
+                // This removes lines that are just prompt symbols with whitespace
+                const lines = output.split('\n');
+                const filteredLines = lines.filter(line => {
+                    const trimmed = line.trim();
+                    // Remove lines that are only % or # (with optional spaces)
+                    if (trimmed === '%' || trimmed === '#') {
+                        return false;
+                    }
+                    // Remove lines that start with % or # followed only by spaces
+                    if (/^[%#]\s*$/.test(line)) {
+                        return false;
+                    }
+                    return true;
+                });
+                output = filteredLines.join('\n');
                 
                 socket.emit('output', output);
             });
