@@ -330,6 +330,15 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
             const input = await ask(chalk.green('你：'));
             const trimmed = input.trim();
 
+            const { handleSpecialSyntax } = await import('../utils/syntaxHandler');
+            const specialResult = await handleSpecialSyntax(trimmed);
+            if (specialResult.processed) {
+                if (specialResult.result) {
+                    console.log(specialResult.result);
+                }
+                continue;
+            }
+
             // === 场景 5.1: 原子执行 (:exec) ===
             if (trimmed.startsWith(':exec ')) {
                 const cmd = trimmed.slice(6).trim();

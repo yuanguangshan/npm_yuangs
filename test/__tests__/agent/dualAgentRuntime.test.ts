@@ -29,11 +29,52 @@ jest.mock('../../../src/agent/executor', () => ({
   }
 }));
 
+jest.mock('../../../src/agent/skills', () => ({
+  learnSkillFromRecord: jest.fn(),
+  getAllSkills: jest.fn(() => []),
+  updateSkillStatus: jest.fn(),
+  computeSkillScore: jest.fn(() => 0.5),
+  getRelevantSkills: jest.fn(() => []),
+  reapColdSkills: jest.fn()
+}));
+
 jest.mock('readline', () => ({
   createInterface: jest.fn().mockReturnValue({
     question: jest.fn(),
     close: jest.fn()
   })
+}));
+
+jest.mock('../../../src/core/executionRecord', () => ({
+  createExecutionRecord: jest.fn((cmd, req, config, match, outcome, command, input, mode) => ({
+    id: 'test-record-id',
+    meta: {
+      commandName: cmd,
+      timestamp: new Date().toISOString(),
+      toolVersion: '5.13.0',
+      projectPath: '/test',
+      rawInput: input?.rawInput,
+      mode,
+      version: '5.13.0'
+    },
+    intent: { required: [], preferred: [], capabilityVersion: '1.0' },
+    configSnapshot: config,
+    decision: match,
+    outcome: { success: outcome.success || false }
+  }))
+}));
+
+jest.mock('../../../src/core/executionStore', () => ({
+  saveExecutionRecord: jest.fn(() => 'test-record-id'),
+  loadExecutionRecord: jest.fn(() => ({
+    id: 'test-record-id',
+    meta: {
+      commandName: 'test',
+      mode: 'agent'
+    },
+    llmResult: { plan: { goal: 'Test step' } },
+    input: { rawInput: 'test input' }
+  }))
 }));
 
 jest.mock('marked', () => ({
@@ -346,6 +387,111 @@ describe('DualAgentRuntime', () => {
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Planner error'));
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Plan generation failed'));
       expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Proceed with this plan'));
+      consoleSpy.mockRestore();
+    });
+
+    it('should learn from successful step execution', async () => {
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+      const { askAI } = require('../../../src/ai/client');
+      const { learnSkillFromRecord } = require('../../../src/agent/skills');
+      const { createExecutionRecord } = require('../../../src/core/executionRecord');
+      const { saveExecutionRecord } = require('../../../src/core/executionStore');
+      const { loadExecutionRecord } = require('../../../src/core/executionStore');
+
+      const mockPlan = {
+        plan: 'Test execution plan',
+          steps: [
+            {
+              id: 'step1',
+              description: 'Execute echo',
+              type: 'shell_cmd',
+              command: 'echo "test"',
+              risk_level: 'low',
+              dependencies: []
+            }
+          ],
+          estimated_time: '1 minute'
+        };
+
+      (askAI as jest.Mock).mockResolvedValue(
+        '```json\n' + JSON.stringify(mockPlan) + '\n```'
+      );
+
+      await runtime.run('Execute plan', undefined, undefined, 'test-model');
+
+      expect(createExecutionRecord).toHaveBeenCalled();
+      expect(saveExecutionRecord).toHaveBeenCalled();
+      expect(loadExecutionRecord).toHaveBeenCalled();
+      expect(learnSkillFromRecord).toHaveBeenCalled();
+      expect(learnSkillFromRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          meta: expect.objectContaining({ mode: 'agent' }),
+          llmResult: expect.objectContaining({
+            plan: expect.objectContaining({ goal: 'Execute echo' })
+          })
+        }),
+        true
+      );
+      consoleSpy.mockRestore();
+    });
+
+    it('should update skill status on failed step', async () => {
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+      const { askAI } = require('../../../src/ai/client');
+      const { ToolExecutor } = require('../../../src/agent/executor');
+      const { getAllSkills } = require('../../../src/agent/skills');
+      const { updateSkillStatus } = require('../../../src/agent/skills');
+
+      const existingSkill = {
+        id: 'existing-skill-id',
+        name: 'Execute echo',
+        description: 'Existing skill',
+        whenToUse: 'Test',
+        planTemplate: {},
+        successCount: 5,
+        failureCount: 1,
+        confidence: 0.6,
+        lastUsed: Date.now(),
+        createdAt: Date.now() - 100000,
+        enabled: true
+      };
+
+      (getAllSkills as jest.Mock).mockReturnValue([existingSkill]);
+
+      const mockPlan = {
+        plan: 'Test with failure',
+          steps: [
+            {
+              id: 'step1',
+              description: 'Execute echo',
+              type: 'shell_cmd',
+              command: 'echo "test"',
+              risk_level: 'low',
+              dependencies: []
+            }
+          ],
+          estimated_time: '1 minute'
+        };
+
+      (askAI as jest.Mock).mockResolvedValue(
+        '```json\n' + JSON.stringify(mockPlan) + '\n```'
+      );
+
+      (ToolExecutor.execute as jest.Mock)
+        .mockResolvedValueOnce({ success: true, output: 'step1', artifacts: [] })
+        .mockResolvedValueOnce({ success: false, error: 'Command failed', output: '' });
+
+      mockReadlineInterface.question = jest.fn()
+        .mockImplementationOnce((question: string, callback: any) => {
+          callback('y');
+        })
+        .mockImplementationOnce((question: string, callback: any) => {
+          callback('n');
+        });
+
+      await runtime.run('Execute with failure', undefined, undefined, 'test-model');
+
+      expect(updateSkillStatus).toHaveBeenCalledWith('existing-skill-id', false);
       consoleSpy.mockRestore();
     });
   });

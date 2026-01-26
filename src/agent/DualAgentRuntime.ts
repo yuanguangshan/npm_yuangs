@@ -112,7 +112,7 @@ export class DualAgentRuntime {
 
       console.log(chalk.yellow(`\n▶️  Step ${i + 1}/${this.steps.length}: ${step.description}`));
 
-      const result = await this.executeStep(step, onChunk, model);
+      const result = await this.executeStep(step, onChunk, model, userInput);
 
       if (!result.success) {
         console.log(chalk.red(`❌ Step failed: ${result.error}`));
@@ -226,7 +226,8 @@ ${context ? `Context:\n${context}\n` : ''}
   private async executeStep(
     step: TaskStep,
     onChunk?: (chunk: string) => void,
-    model?: string
+    model?: string,
+    originalInput: string = ''
   ): Promise<ToolExecutionResult> {
     const action: ProposedAction = {
       id: randomUUID(),
@@ -245,8 +246,54 @@ ${context ? `Context:\n${context}\n` : ''}
 
     if (result.success) {
       this.context.addToolResult(step.type, result.output);
+
+      try {
+        const { createExecutionRecord } = await import('../core/executionRecord');
+        const { saveExecutionRecord } = await import('../core/executionStore');
+
+        const record = createExecutionRecord(
+          `agent-planner-${step.type}`,
+          { required: [], preferred: [] } as any,
+          {
+            aiProxyUrl: { value: '', source: 'built-in' },
+            defaultModel: { value: '', source: 'built-in' },
+            accountType: { value: 'free', source: 'built-in' }
+          } as any,
+          { selected: null, candidates: [], fallbackOccurred: false },
+          { success: true },
+          step.command || JSON.stringify(step.parameters),
+          this.executionId,
+          'agent'
+        );
+
+        (record as any).llmResult = { plan: { goal: step.description, command: step.command, parameters: step.parameters, risk_level: step.risk_level } };
+        (record as any).input = { rawInput: originalInput };
+
+        const savedRecordId = saveExecutionRecord(record);
+        const { loadExecutionRecord } = await import('../core/executionStore');
+        const savedRecord = loadExecutionRecord(savedRecordId);
+
+        if (savedRecord) {
+          const { learnSkillFromRecord } = await import('./skills');
+          learnSkillFromRecord(savedRecord, true);
+        }
+      } catch (error) {
+        console.warn(chalk.yellow(`[Skill Learning] Failed: ${error}`));
+      }
     } else {
       this.context.addToolResult(step.type, `Error: ${result.error}`);
+
+      try {
+        const { getAllSkills, updateSkillStatus } = await import('./skills');
+        const skills = getAllSkills();
+        const existingSkill = skills.find(s => s.name === step.description);
+
+        if (existingSkill) {
+          updateSkillStatus(existingSkill.id, false);
+        }
+      } catch (error) {
+        console.warn(chalk.yellow(`[Skill Learning] Failed to update status: ${error}`));
+      }
     }
 
     return {
