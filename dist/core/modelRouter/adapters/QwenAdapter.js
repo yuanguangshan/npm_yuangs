@@ -52,8 +52,8 @@ class QwenAdapter extends BaseAdapter_1.BaseAdapter {
                 // 构建带上下文的完整prompt（如果配置中启用了上下文）
                 const useContext = config.metadata?.useContext !== false;
                 const fullPrompt = useContext ? this.buildPromptWithContext(prompt) : prompt;
-                // 构建参数数组，不再手动拼接字符串
-                const args = ['chat', '--msg', fullPrompt];
+                // 构建参数数组，prompt 作为位置参数
+                const args = [fullPrompt];
                 // 添加模型参数
                 if (model) {
                     args.push('-m', model);
