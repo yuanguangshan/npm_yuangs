@@ -146,7 +146,13 @@ export async function startWebTerminal(config: any, port: number = 3000) {
 
             // 核心桥接：SSH 输出 -> WebSocket -> 浏览器
             session.on('data', (data: Buffer) => {
-                socket.emit('output', data.toString());
+                let output = data.toString();
+                
+                // Filter out shell prompt symbols that appear after command completion
+                // This removes standalone % or # at the end of output
+                output = output.replace(/(\r\n|\n)([%#])(\r\n|\n|$)/g, '$1$3');
+                
+                socket.emit('output', output);
             });
 
             // 追踪当前行已发送给服务器的字符
