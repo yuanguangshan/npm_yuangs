@@ -377,7 +377,7 @@
             }
 
             #mobile-audit-panel {
-                display: block; /* Always visible */
+                display: block !important; /* Always visible on mobile */
                 position: fixed;
                 bottom: 0;
                 left: 0;
@@ -472,8 +472,8 @@
             top: 60px;
             left: 20px;
             z-index: 99999 !important;
-            background: #ff0000 !important; /* 临时测试：鲜红色背景 */
-            border: 5px solid #00ff00 !important; /* 临时测试：绿色边框 */
+            background: var(--sidebar-bg);
+            border: 2px solid var(--accent-blue);
             border-radius: 12px;
             box-shadow: 0 12px 40px rgba(0, 0, 0, 0.9), 
                         0 0 0 1px rgba(59, 130, 246, 0.5),
@@ -514,7 +514,7 @@
         .menu-section-title {
             font-size: 11px;
             font-weight: 700;
-            color: #ffffff !important; /* 临时测试：白色文字 */
+            color: var(--accent-blue);
             text-transform: uppercase;
             letter-spacing: 1.5px;
             padding: 0 0 8px 0;
@@ -531,8 +531,8 @@
             transition: all 0.2s;
             font-size: 14px;
             font-weight: 500;
-            color: #ffffff !important; /* 临时测试：白色文字 */
-            background: #0000ff !important; /* 临时测试：蓝色背景 */
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.02);
             border: 1px solid transparent;
             margin-bottom: 4px;
         }
@@ -768,9 +768,16 @@
             transform: translateY(0);
         }
 
-        /* Mobile Audit Panel Styles (Hidden by default on web) */
+        /* Mobile Audit Panel Styles */
         #mobile-audit-panel {
-            display: none;
+            display: none; /* Hidden on desktop */
+        }
+        
+        /* Show on mobile */
+        @media (max-width: 768px) {
+            #mobile-audit-panel {
+                display: block !important;
+            }
         }
 
         .insight-card {
@@ -1281,38 +1288,44 @@
             // 阻止事件冒泡
             if (e) e.stopPropagation();
             
-            const isMobile = window.innerWidth <= 768;
+            // 判断当前是哪个面板在显示
+            const mobilePanel = document.getElementById('mobile-audit-panel');
+            const desktopSidebar = document.getElementById('desktop-sidebar');
+            
+            // 检查哪个面板当前可见（基于 CSS media query）
+            const mobileVisible = window.getComputedStyle(mobilePanel).display !== 'none';
+            const isMobile = mobileVisible; // 使用 CSS 控制，而不是 JavaScript 判断
+            
+            console.log('🔍 Toggle audit panel - Mobile visible:', mobileVisible, 'Using mobile logic:', isMobile);
             
             if (isMobile) {
                 // 移动端：切换底部面板
-                const panel = document.getElementById('mobile-audit-panel');
                 const content = document.getElementById('audit-content');
                 const icon = document.getElementById('toggle-icon');
 
-                if (panel.classList.contains('collapsed')) {
-                    panel.classList.remove('collapsed');
+                if (mobilePanel.classList.contains('collapsed')) {
+                    mobilePanel.classList.remove('collapsed');
                     content.style.display = 'block';
-                    icon.textContent = '▼';
+                    if (icon) icon.textContent = '▼';
                     updateAuditMenuStatus(true);
                 } else {
-                    panel.classList.add('collapsed');
+                    mobilePanel.classList.add('collapsed');
                     content.style.display = 'none';
-                    icon.textContent = '▲';
+                    if (icon) icon.textContent = '▲';
                     updateAuditMenuStatus(false);
                 }
             } else {
                 // 桌面端：切换侧边栏（使用 CSS 类）
-                const sidebar = document.getElementById('desktop-sidebar');
-                const isExpanded = sidebar.classList.contains('expanded');
+                const isExpanded = desktopSidebar.classList.contains('expanded');
 
                 if (isExpanded) {
-                    sidebar.classList.remove('expanded');
+                    desktopSidebar.classList.remove('expanded');
                     updateAuditMenuStatus(false);
-                    console.log('Desktop sidebar collapsed');
+                    console.log('✅ Desktop sidebar collapsed');
                 } else {
-                    sidebar.classList.add('expanded');
+                    desktopSidebar.classList.add('expanded');
                     updateAuditMenuStatus(true);
-                    console.log('Desktop sidebar expanded');
+                    console.log('✅ Desktop sidebar expanded');
                 }
 
                 // 重新计算终端大小
@@ -1422,11 +1435,31 @@
         }
 
         // 审计面板菜单项
-        document.getElementById('toggle-audit-menu').addEventListener('click', function(e) {
-            e.stopPropagation();
-            toggleAuditPanel(e);
-            // 不要关闭菜单，让用户可以继续操作
-        });
+        const toggleAuditMenuItem = document.getElementById('toggle-audit-menu');
+        console.log('🔍 Toggle audit menu element:', toggleAuditMenuItem);
+        
+        if (toggleAuditMenuItem) {
+            toggleAuditMenuItem.addEventListener('click', function(e) {
+                e.stopPropagation();
+                console.log('🔍 Audit menu item clicked!');
+                console.log('🔍 Window width:', window.innerWidth);
+                console.log('🔍 Is mobile:', window.innerWidth <= 768);
+                
+                const sidebar = document.getElementById('desktop-sidebar');
+                console.log('🔍 Desktop sidebar element:', sidebar);
+                console.log('🔍 Sidebar classes before:', sidebar ? sidebar.className : 'null');
+                console.log('🔍 Sidebar style before:', sidebar ? window.getComputedStyle(sidebar).display : 'null');
+                
+                toggleAuditPanel(e);
+                
+                console.log('🔍 Sidebar classes after:', sidebar ? sidebar.className : 'null');
+                console.log('🔍 Sidebar style after:', sidebar ? window.getComputedStyle(sidebar).display : 'null');
+                
+                // 不要关闭菜单，让用户可以继续操作
+            });
+        } else {
+            console.error('❌ Toggle audit menu element not found!');
+        }
 
         // 为审计面板切换按钮添加事件监听器（移动端底部按钮）
         const auditToggle = document.getElementById('audit-toggle');
