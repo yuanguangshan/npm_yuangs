@@ -251,25 +251,25 @@
         /* Mobile Responsive Styles Consolidated */
         @media (max-width: 768px) {
             header {
-                height: auto;
-                min-height: 56px;
-                padding: 12px 16px;
+                height: 44px;
+                padding: 8px 12px;
             }
 
             .logo-section {
-                flex-direction: column;
-                align-items: flex-start;
+                flex-direction: row;
+                align-items: center;
                 gap: 8px;
             }
 
             .logo-wrapper {
                 flex-direction: row;
-                align-items: baseline;
-                gap: 10px;
+                align-items: center;
+                gap: 0;
+                cursor: pointer;
             }
 
             .logo-main {
-                font-size: 18px;
+                font-size: 16px;
             }
 
             .logo-sub {
@@ -277,28 +277,46 @@
             }
 
             .slogan {
-                font-size: 11px;
-                padding-left: 10px;
-                border-left: 1px solid var(--border-color);
-                opacity: 0.7;
+                display: none;
             }
 
             .header-actions {
-                flex-wrap: wrap;
-                gap: 12px;
-                margin-top: 12px;
-                width: 100%;
+                flex-wrap: nowrap;
+                gap: 8px;
+                margin-top: 0;
+                width: auto;
             }
 
             .server-selector {
-                width: 100%;
+                flex: 1;
                 display: flex;
-                flex-wrap: wrap;
-                gap: 8px;
+                align-items: center;
+                gap: 4px;
                 background: rgba(0, 0, 0, 0.2);
+                padding: 4px 6px;
+                border-radius: 6px;
+                border: 1px solid var(--border-color);
+            }
+
+            .theme-switcher {
+                display: none;
+                position: absolute;
+                top: 44px;
+                right: 12px;
+                z-index: 1000;
+                background: var(--sidebar-bg);
                 padding: 8px;
                 border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
                 border: 1px solid var(--border-color);
+            }
+
+            .theme-switcher.visible {
+                display: flex;
+            }
+
+            .status-pill {
+                display: none;
             }
 
             #server-select,
@@ -986,6 +1004,28 @@
                 historyLists
             };
         }
+
+        // Logo click to show theme switcher on mobile
+        document.querySelector('.logo-wrapper').addEventListener('click', function() {
+            // Only on mobile
+            if (window.innerWidth <= 768) {
+                const themeSwitcher = document.querySelector('.theme-switcher');
+                themeSwitcher.classList.toggle('visible');
+            }
+        });
+
+        // Close theme switcher when clicking outside
+        document.addEventListener('click', function(event) {
+            const themeSwitcher = document.querySelector('.theme-switcher');
+            const logoWrapper = document.querySelector('.logo-wrapper');
+            
+            if (window.innerWidth <= 768 && 
+                !themeSwitcher.contains(event.target) && 
+                !logoWrapper.contains(event.target) &&
+                themeSwitcher.classList.contains('visible')) {
+                themeSwitcher.classList.remove('visible');
+            }
+        });
 
         // Restore saved theme
         const savedTheme = localStorage.getItem('yuangs-theme');
