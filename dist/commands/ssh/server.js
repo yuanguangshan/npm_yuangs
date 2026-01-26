@@ -27,7 +27,9 @@ async function startWebTerminal(config, port = 3000) {
     app.use(express_1.default.static(publicPath));
     io.on('connection', async (socket) => {
         console.log('🌐 Browser connected to yuangs-web-term');
-        const session = new SSHSession_1.SSHSession();
+        // Initialize with the default config
+        let currentConfig = { ...config };
+        let session = new SSHSession_1.SSHSession();
         const inputBuffer = new InputBuffer_1.InputBuffer();
         // 这里接入你现有的治理服务逻辑
         const governance = {
@@ -79,9 +81,48 @@ async function startWebTerminal(config, port = 3000) {
                 return safeDecision;
             }
         };
-        const executor = new GovernedExecutor_1.SSHGovernedExecutor(session, governance);
+        let executor = new GovernedExecutor_1.SSHGovernedExecutor(session, governance);
+        // Handle server change request from frontend
+        socket.on('change_server', async (serverInfo) => {
+            try {
+                // Parse server info in format user@host or user@host:port
+                const parts = serverInfo.split('@');
+                if (parts.length < 2) {
+                    socket.emit('output', `\r\n❌ Invalid server format. Use: user@host or user@host:port\r\n`);
+                    return;
+                }
+                const username = parts[0];
+                const hostParts = parts[1].split(':');
+                const host = hostParts[0];
+                const port = hostParts[1] ? parseInt(hostParts[1]) : 22;
+                // Close existing session
+                if (session.isConnected()) {
+                    session.close();
+                }
+                // Create new session with new config
+                session = new SSHSession_1.SSHSession();
+                executor = new GovernedExecutor_1.SSHGovernedExecutor(session, governance);
+                currentConfig = {
+                    host: host,
+                    port: port,
+                    username: username,
+                    readyTimeout: 60000, // Use the timeout we set earlier
+                    privateKey: config.privateKey, // Use the same private key
+                };
+                // Connect to the new server
+                await session.connect(currentConfig);
+                socket.emit('output', `\r\n🛡️ Switched to server: ${serverInfo}\r\n`);
+                // Setup event handlers for the new session
+                session.on('data', (data) => {
+                    socket.emit('output', data.toString());
+                });
+            }
+            catch (err) {
+                socket.emit('output', `\r\n❌ Server switch failed: ${err.message}\r\n`);
+            }
+        });
         try {
-            await session.connect(config);
+            await session.connect(currentConfig);
             socket.emit('output', '\r\n🛡️  yuangs AI Governance Web Shell Connected\r\n');
             // 核心桥接：SSH 输出 -> WebSocket -> 浏览器
             session.on('data', (data) => {
@@ -105,13 +146,13 @@ async function startWebTerminal(config, port = 3000) {
                         unsent = cmd;
                     }
                     // 触发治理逻辑 (传入 unsent 部分)
-                    await executor.handleCommand(cmd, config.host, config.username, unsent);
+                    await executor.handleCommand(cmd, currentConfig.host, currentConfig.username, unsent);
                     // 清空已发送缓冲区
                     lineBuffer = '';
                 }
                 else {
                     // 普通字符直接透传（为了打字回显流畅）
-                    // 只有在非敏感模式才记录/透传? 
+                    // 只有在非敏感模式才记录/透传?
                     // 这里简化处理，直接透传，InputBuffer 会在内部聚合
                     session.write(data);
                     lineBuffer += data;

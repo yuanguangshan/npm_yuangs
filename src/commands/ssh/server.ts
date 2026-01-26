@@ -15,28 +15,30 @@ export async function startWebTerminal(config: any, port: number = 3000) {
     // Fix path resolution: dist/commands/ssh -> ../../../public
     const publicPath = path.join(__dirname, '../../../public');
     console.log(`📂 Serving static files from: ${publicPath}`);
-    
+
     // Serve index.html at root path
     app.get('/', (req, res) => {
         res.sendFile(path.join(publicPath, 'index.html'));
     });
-    
+
     // Serve other static files
     app.use(express.static(publicPath));
 
     io.on('connection', async (socket: Socket) => {
         console.log('🌐 Browser connected to yuangs-web-term');
 
-        const session = new SSHSession();
+        // Initialize with the default config
+        let currentConfig = { ...config };
+        let session = new SSHSession();
         const inputBuffer = new InputBuffer();
-        
+
         // 这里接入你现有的治理服务逻辑
         const governance: GovernanceService = {
             evaluate: async (ctx): Promise<ExecDecision> => {
                 const cmd = ctx.command.trim();
-                
+
                 // 1. 通知前端：AI 正在思考 (增加延迟模拟深度分析)
-                socket.emit('governance_evaluating', { 
+                socket.emit('governance_evaluating', {
                     command: cmd,
                     timestamp: new Date().toLocaleTimeString()
                 });
@@ -53,8 +55,8 @@ export async function startWebTerminal(config: any, port: number = 3000) {
 
                 for (const p of dangerousPatterns) {
                     if (p.regex.test(cmd)) {
-                        const decision: ExecDecision = { 
-                            allowed: false, 
+                        const decision: ExecDecision = {
+                            allowed: false,
                             reason: p.reason,
                             riskLevel: p.risk,
                             disclosure: {
@@ -67,11 +69,11 @@ export async function startWebTerminal(config: any, port: number = 3000) {
 
                         // 🚨 发送详细决策给前端预览
                         socket.emit('governance_decision', decision);
-                        
+
                         // 🚨 触发全屏视觉警报
-                        socket.emit('governance_alert', { 
-                            level: 'critical', 
-                            message: 'BLOCK: ' + p.risk 
+                        socket.emit('governance_alert', {
+                            level: 'critical',
+                            message: 'BLOCK: ' + p.risk
                         });
 
                         return decision;
@@ -86,14 +88,60 @@ export async function startWebTerminal(config: any, port: number = 3000) {
                 };
                 socket.emit('governance_decision', safeDecision);
 
-                return safeDecision; 
+                return safeDecision;
             }
         };
 
-        const executor = new SSHGovernedExecutor(session, governance);
+        let executor = new SSHGovernedExecutor(session, governance);
+
+        // Handle server change request from frontend
+        socket.on('change_server', async (serverInfo: string) => {
+            try {
+                // Parse server info in format user@host or user@host:port
+                const parts = serverInfo.split('@');
+                if (parts.length < 2) {
+                    socket.emit('output', `\r\n❌ Invalid server format. Use: user@host or user@host:port\r\n`);
+                    return;
+                }
+
+                const username = parts[0];
+                const hostParts = parts[1].split(':');
+                const host = hostParts[0];
+                const port = hostParts[1] ? parseInt(hostParts[1]) : 22;
+
+                // Close existing session
+                if (session.isConnected()) {
+                    session.close();
+                }
+
+                // Create new session with new config
+                session = new SSHSession();
+                executor = new SSHGovernedExecutor(session, governance);
+
+                currentConfig = {
+                    host: host,
+                    port: port,
+                    username: username,
+                    readyTimeout: 60000, // Use the timeout we set earlier
+                    privateKey: config.privateKey, // Use the same private key
+                };
+
+                // Connect to the new server
+                await session.connect(currentConfig);
+                socket.emit('output', `\r\n🛡️ Switched to server: ${serverInfo}\r\n`);
+
+                // Setup event handlers for the new session
+                session.on('data', (data: Buffer) => {
+                    socket.emit('output', data.toString());
+                });
+
+            } catch (err: any) {
+                socket.emit('output', `\r\n❌ Server switch failed: ${err.message}\r\n`);
+            }
+        });
 
         try {
-            await session.connect(config);
+            await session.connect(currentConfig);
             socket.emit('output', '\r\n🛡️  yuangs AI Governance Web Shell Connected\r\n');
 
             // 核心桥接：SSH 输出 -> WebSocket -> 浏览器
@@ -108,13 +156,13 @@ export async function startWebTerminal(config: any, port: number = 3000) {
             socket.on('input', async (data: string) => {
                 const cmd = inputBuffer.push(data);
                 if (cmd !== null) {
-                    
+
                     // 对已发送缓冲区进行 Backspace 处理，以匹配 cmd 的格式
                     const processedLineBuffer = InputBuffer.processBackspace(lineBuffer);
 
                     // 计算 unsentCommand
                     let unsent = '';
-                    
+
                     if (cmd.startsWith(processedLineBuffer)) {
                         unsent = cmd.slice(processedLineBuffer.length);
                     } else {
@@ -123,13 +171,13 @@ export async function startWebTerminal(config: any, port: number = 3000) {
                     }
 
                     // 触发治理逻辑 (传入 unsent 部分)
-                    await executor.handleCommand(cmd, config.host, config.username, unsent);
-                    
+                    await executor.handleCommand(cmd, currentConfig.host, currentConfig.username, unsent);
+
                     // 清空已发送缓冲区
                     lineBuffer = '';
                 } else {
                     // 普通字符直接透传（为了打字回显流畅）
-                    // 只有在非敏感模式才记录/透传? 
+                    // 只有在非敏感模式才记录/透传?
                     // 这里简化处理，直接透传，InputBuffer 会在内部聚合
                     session.write(data);
                     lineBuffer += data;

@@ -42,6 +42,7 @@ export class SSHSession extends EventEmitter {
         host: opts.host,
         port: opts.port ?? 22,
         username: opts.username,
+        readyTimeout: 60000, // Increase timeout to 60 seconds
       };
 
       if (opts.privateKey) {

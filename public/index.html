@@ -434,6 +434,15 @@
             <div class="slogan">AI 驱动的智能治理终端 | AI-Powered Governance Shell</div>
         </div>
         <div class="header-actions">
+            <div class="server-selector">
+                <select id="server-select" onchange="switchServer()">
+                    <option value="">Select Server...</option>
+                    <option value="macos">MacOS Server (192.168.31.100)</option>
+                    <option value="custom">Custom Server...</option>
+                </select>
+                <input type="text" id="custom-server-input" placeholder="server@ip:port" style="display:none; margin-right: 10px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--sidebar-bg); color: var(--text-primary);">
+                <button id="connect-btn" onclick="connectToServer()" style="padding: 4px 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--sidebar-bg); color: var(--text-primary); cursor: pointer;">Connect</button>
+            </div>
             <div class="theme-switcher">
                 <div class="theme-btn" style="background: #09090b" onclick="setTheme('default')" title="Cyberpunk">
                 </div>
@@ -601,6 +610,41 @@
             };
             localStorage.setItem('yuangs-theme', themeName);
         };
+
+        // Server Selection Functions
+        function switchServer() {
+            const select = document.getElementById('server-select');
+            const input = document.getElementById('custom-server-input');
+
+            if (select.value === 'custom') {
+                input.style.display = 'inline-block';
+            } else {
+                input.style.display = 'none';
+            }
+        }
+
+        function connectToServer() {
+            const select = document.getElementById('server-select');
+            let serverInfo = '';
+
+            if (select.value === 'macos') {
+                serverInfo = 'yuanguangshan@192.168.31.100';
+            } else if (select.value === 'custom') {
+                const customInput = document.getElementById('custom-server-input');
+                serverInfo = customInput.value.trim();
+
+                if (!serverInfo) {
+                    alert('Please enter server details in the format: user@host');
+                    return;
+                }
+            } else {
+                alert('Please select a server');
+                return;
+            }
+
+            // Emit server change event to backend
+            socket.emit('change_server', serverInfo);
+        }
 
         // Restore saved theme
         const savedTheme = localStorage.getItem('yuangs-theme');
