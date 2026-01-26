@@ -438,6 +438,11 @@
                 <select id="server-select" onchange="switchServer()">
                     <option value="">Select Server...</option>
                     <option value="macos">MacOS Server (192.168.31.100)</option>
+                    <option value="u">Server U (192.168.31.213)</option>
+                    <option value="ali">Ali Server (47.88.20.199)</option>
+                    <option value="Ubuntu_R86S">Ubuntu R86S (192.168.31.213)</option>
+                    <option value="a">Server A (8.153.97.65)</option>
+                    <option value="t">Server T (43.153.67.212)</option>
                     <option value="custom">Custom Server...</option>
                 </select>
                 <input type="text" id="custom-server-input" placeholder="server@ip:port" style="display:none; margin-right: 10px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--sidebar-bg); color: var(--text-primary);">
@@ -629,6 +634,16 @@
 
             if (select.value === 'macos') {
                 serverInfo = 'yuanguangshan@192.168.31.100';
+            } else if (select.value === 'u') {
+                serverInfo = 'root@192.168.31.213';
+            } else if (select.value === 'ali') {
+                serverInfo = 'root@47.88.20.199';
+            } else if (select.value === 'Ubuntu_R86S') {
+                serverInfo = 'root@192.168.31.213';
+            } else if (select.value === 'a') {
+                serverInfo = 'root@8.153.97.65';
+            } else if (select.value === 't') {
+                serverInfo = 'root@43.153.67.212';
             } else if (select.value === 'custom') {
                 const customInput = document.getElementById('custom-server-input');
                 serverInfo = customInput.value.trim();
