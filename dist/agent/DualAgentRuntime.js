@@ -65,9 +65,6 @@ class DualAgentRuntime {
         if (config.disablePlanner) {
             return false;
         }
-        if (userInput.length < 50 && !userInput.includes('并') && !userInput.includes('然后')) {
-            return false;
-        }
         const plannerKeywords = ['重构', '优化整个', '批量', '多步骤', '逐个', '依次', '计划', 'refactor', 'optimize all', 'batch', 'multiple steps', 'sequentially'];
         if (!plannerKeywords.some(kw => userInput.toLowerCase().includes(kw.toLowerCase()))) {
             return false;
@@ -83,6 +80,12 @@ class DualAgentRuntime {
             /创建|create|mkdir|touch/
         ];
         const hasSimpleIndicator = simpleIndicators.some(pattern => pattern.test(input));
+        const plannerKeywords = ['重构', '优化整个', '批量', '多步骤', '逐个', '依次', '计划', 'refactor', 'optimize all', 'batch', 'multiple steps', 'sequentially'];
+        const hasPlannerKeyword = plannerKeywords.some(kw => input.toLowerCase().includes(kw.toLowerCase()));
+        // If input has planner keywords, treat as high complexity
+        if (hasPlannerKeyword) {
+            return 0.8;
+        }
         if (input.length < 30 || hasSimpleIndicator) {
             return 0.3;
         }

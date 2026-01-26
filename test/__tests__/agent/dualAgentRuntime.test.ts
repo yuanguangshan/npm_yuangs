@@ -4,7 +4,14 @@ import { DualAgentRuntime } from '../../../src/agent/DualAgentRuntime';
 // Mock dependencies
 jest.mock('../../../src/agent/llmAdapter', () => ({
   LLMAdapter: {
-    think: jest.fn()
+    think: jest.fn().mockResolvedValue({
+      type: 'answer',
+      raw: 'Mock response',
+      payload: { text: 'Mock response' },
+      reasoning: 'Mock reasoning',
+      isDone: true,
+      parsedPlan: {}
+    })
   }
 }));
 
@@ -15,7 +22,10 @@ jest.mock('../../../src/ai/client', () => ({
 
 jest.mock('../../../src/agent/executor', () => ({
   ToolExecutor: {
-    execute: jest.fn()
+    execute: jest.fn().mockResolvedValue({
+      success: true,
+      output: 'Mock output'
+    })
   }
 }));
 
@@ -27,8 +37,8 @@ jest.mock('readline', () => ({
 }));
 
 jest.mock('marked', () => ({
-  setOptions: jest.fn(),
-  marked: jest.fn(() => '')
+  parse: jest.fn((text: string) => text),
+  setOptions: jest.fn()
 }));
 
 describe('DualAgentRuntime', () => {

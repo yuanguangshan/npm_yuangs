@@ -138,19 +138,31 @@ class FastScanner {
     async scanWithRipgrep(baseName, searchDir) {
         try {
             const ignoreArgs = Array.from(this.ignoreDirs).map(dir => `--glob '!${dir}'`).join(' ');
-            const cmd = `rg -l "from ['\\"].*${this.escapeRegex(baseName)}['\\"]" ${ignoreArgs} --type ts --type js`;
+            // 修复：确保搜索目录正确，并添加更完整的导入模式
+            const patterns = [
+                `from ['\\"].*${this.escapeRegex(baseName)}['\\"]`,
+                `import ['\\"].*${this.escapeRegex(baseName)}['\\"]`,
+                `require\\(['\\"].*${this.escapeRegex(baseName)}['\\"]\\)`,
+            ];
+            const pattern = patterns.join('|');
+            const cmd = `rg -l "${pattern}" ${ignoreArgs} --type ts --type js .`;
             const output = (0, child_process_1.execSync)(cmd, {
                 encoding: 'utf-8',
                 cwd: searchDir,
                 stdio: 'pipe'
             });
-            return output.split('\n').filter(Boolean);
+            // 将相对路径转换为绝对路径
+            const relativePaths = output.split('\n').filter(Boolean);
+            return relativePaths.map(relPath => path.resolve(searchDir, relPath));
         }
         catch (error) {
             if (error.status === 1) {
+                // ripgrep 找不到匹配项，返回空数组
                 return [];
             }
-            throw error;
+            // 其他错误，尝试使用 fallback
+            console.warn(`[FastScanner] ripgrep scan failed, using fallback: ${error.message}`);
+            return [];
         }
     }
     /**
@@ -229,6 +241,7 @@ class FastScanner {
      */
     containsModuleImport(content, baseName) {
         const importPatterns = [
+            // import 语句的各种形式
             `from './${baseName}`,
             `from "./${baseName}`,
             `from '../${baseName}`,
@@ -237,10 +250,29 @@ class FastScanner {
             `from "./${baseName}.ts`,
             `from './${baseName}.js`,
             `from "./${baseName}.js`,
-            `import '${baseName}'`,
-            `import "${baseName}"`,
+            `from './${baseName}'`,
+            `from "./${baseName}"`,
+            `import './${baseName}`,
+            `import "./${baseName}`,
+            `import '../${baseName}`,
+            `import "../${baseName}`,
+            `import './${baseName}.ts`,
+            `import "./${baseName}.ts`,
+            `import './${baseName}.js`,
+            `import "./${baseName}.js`,
+            `import './${baseName}'`,
+            `import "./${baseName}"`,
+            // require 语句
             `require('./${baseName}`,
             `require("./${baseName}`,
+            `require('../${baseName}`,
+            `require("../${baseName}`,
+            `require('./${baseName}.ts`,
+            `require("./${baseName}.ts`,
+            `require('./${baseName}.js`,
+            `require("./${baseName}.js`,
+            `require('./${baseName}')`,
+            `require("./${baseName}")`,
         ];
         return importPatterns.some(pattern => content.includes(pattern));
     }

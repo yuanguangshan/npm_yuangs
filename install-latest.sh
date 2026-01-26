@@ -41,6 +41,7 @@ echo ""
 # 解析命令行参数
 RUN_TESTS=false
 SKIP_BUILD=false
+RUN_XRESOLVER_TEST=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -52,13 +53,18 @@ while [[ $# -gt 0 ]]; do
             SKIP_BUILD=true
             shift
             ;;
+        --xresolver-test|-x)
+            RUN_XRESOLVER_TEST=true
+            shift
+            ;;
         --help|-h)
             echo "用法: $0 [选项]"
             echo ""
             echo "选项:"
-            echo "  --test, -t      安装前运行测试"
-            echo "  --skip-build    跳过构建步骤（如果已构建）"
-            echo "  --help, -h      显示帮助信息"
+            echo "  --test, -t            安装前运行完整测试套件"
+            echo "  --xresolver-test, -x  仅运行 XResolver 相关测试（快速验证）"
+            echo "  --skip-build          跳过构建步骤（如果已构建）"
+            echo "  --help, -h            显示帮助信息"
             exit 0
             ;;
         *)
@@ -103,9 +109,13 @@ fi
 
 # 5. 运行测试（可选）
 if [ "$RUN_TESTS" = true ]; then
-    log "运行测试套件..."
+    log "运行完整测试套件..."
     npm test
     info "测试通过 ✓"
+elif [ "$RUN_XRESOLVER_TEST" = true ]; then
+    log "运行 XResolver 测试（快速验证）..."
+    npm test -- --testPathPattern=XResolver
+    info "XResolver 测试通过 ✓"
 fi
 
 # 6. 卸载旧版本（如果已安装）
