@@ -128,8 +128,21 @@ async function startWebTerminal(config, port = 3000) {
             session.on('data', (data) => {
                 let output = data.toString();
                 // Filter out shell prompt symbols that appear after command completion
-                // This removes standalone % or # at the end of output
-                output = output.replace(/(\r\n|\n)([%#])(\r\n|\n|$)/g, '$1$3');
+                // This removes lines that are just prompt symbols with whitespace
+                const lines = output.split('\n');
+                const filteredLines = lines.filter(line => {
+                    const trimmed = line.trim();
+                    // Remove lines that are only % or # (with optional spaces)
+                    if (trimmed === '%' || trimmed === '#') {
+                        return false;
+                    }
+                    // Remove lines that start with % or # followed only by spaces
+                    if (/^[%#]\s*$/.test(line)) {
+                        return false;
+                    }
+                    return true;
+                });
+                output = filteredLines.join('\n');
                 socket.emit('output', output);
             });
             // 追踪当前行已发送给服务器的字符
