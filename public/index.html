@@ -979,6 +979,14 @@
                         (8.153.97.65)</option>
                     <option value="t" style="background: var(--sidebar-bg); color: var(--text-primary);">Server T
                         (43.153.67.212)</option>
+                    <option value="aws-dev" style="background: var(--sidebar-bg); color: var(--text-primary);">AWS Dev Server
+                        (ec2-user@dev.example.com)</option>
+                    <option value="gcp-prod" style="background: var(--sidebar-bg); color: var(--text-primary);">GCP Production
+                        (admin@prod.example.com)</option>
+                    <option value="docker-local" style="background: var(--sidebar-bg); color: var(--text-primary);">Local Docker
+                        (root@localhost:2222)</option>
+                    <option value="k8s-cluster" style="background: var(--sidebar-bg); color: var(--text-primary);">K8s Cluster Master
+                        (kube@cluster.example.com)</option>
                     <option value="custom" style="background: var(--sidebar-bg); color: var(--text-primary);">Custom
                         Server...</option>
                 </select>
@@ -1307,6 +1315,14 @@
                 serverInfo = 'root@8.153.97.65';
             } else if (select.value === 't') {
                 serverInfo = 'root@43.153.67.212';
+            } else if (select.value === 'aws-dev') {
+                serverInfo = 'ec2-user@dev.example.com';
+            } else if (select.value === 'gcp-prod') {
+                serverInfo = 'admin@prod.example.com';
+            } else if (select.value === 'docker-local') {
+                serverInfo = 'root@localhost:2222';
+            } else if (select.value === 'k8s-cluster') {
+                serverInfo = 'kube@cluster.example.com';
             } else if (select.value === 'custom') {
                 const customInput = document.getElementById('custom-server-input');
                 serverInfo = customInput.value.trim();
