@@ -25,57 +25,84 @@ const modelRouter_1 = require("../core/modelRouter");
  * 根据用户输入和上下文自动推断最适合的任务类型
  */
 function inferTaskType(userInput, mode = 'chat') {
-    const input = userInput.toLowerCase();
+    // 输入验证
+    if (!userInput || typeof userInput !== 'string') {
+        return modelRouter_1.TaskType.CONVERSATION;
+    }
+    const input = userInput.toLowerCase().trim();
+    // 使用正则表达式提高匹配准确性
     // 代码生成相关
-    if (input.includes('写') ||
-        input.includes('生成') ||
-        input.includes('实现') ||
-        input.includes('写一个') ||
-        input.includes('create') ||
-        input.includes('implement') ||
-        input.includes('generate') ||
-        input.includes('write')) {
-        return modelRouter_1.TaskType.CODE_GENERATION;
+    const codeGenPatterns = [
+        /\b(写|生成|实现|create|implement|generate|write)\b.*(函数|方法|类|模块|代码|program|function|method|class|module|code)/i,
+        /\b写一个\b/i,
+        /\b写个\b/i,
+        /\b生成一个\b/i
+    ];
+    for (const pattern of codeGenPatterns) {
+        if (pattern.test(input)) {
+            return modelRouter_1.TaskType.CODE_GENERATION;
+        }
     }
     // 代码审查相关
-    if (input.includes('审查') ||
-        input.includes('review') ||
-        input.includes('检查代码') ||
-        input.includes('code review')) {
-        return modelRouter_1.TaskType.CODE_REVIEW;
+    const codeReviewPatterns = [
+        /\b(审查|review|检查|check)\b.*(代码|code)/i,
+        /\bcode review\b/i
+    ];
+    for (const pattern of codeReviewPatterns) {
+        if (pattern.test(input)) {
+            return modelRouter_1.TaskType.CODE_REVIEW;
+        }
     }
     // 调试相关
-    if (input.includes('调试') ||
-        input.includes('debug') ||
-        input.includes('bug') ||
-        input.includes('错误') ||
-        input.includes('fix')) {
-        return modelRouter_1.TaskType.DEBUG;
+    const debugPatterns = [
+        /\b(调试|debug)\b/,
+        /\b(修复|fix|解决|solve)\b.*(bug|错误|error|问题)/i,
+        /\b(bug|错误|error|问题)\b.*(修复|fix|解决|solve)/i
+    ];
+    for (const pattern of debugPatterns) {
+        if (pattern.test(input)) {
+            return modelRouter_1.TaskType.DEBUG;
+        }
     }
     // 翻译相关
-    if (input.includes('翻译') ||
-        input.includes('translate') ||
-        input.includes('翻译成') ||
-        input.match(/translate.*to/)) {
-        return modelRouter_1.TaskType.TRANSLATION;
+    const translatePatterns = [
+        /\b翻译\b.*(成|为|to|into)\b/i,
+        /\btranslate\b/i
+    ];
+    for (const pattern of translatePatterns) {
+        if (pattern.test(input)) {
+            return modelRouter_1.TaskType.TRANSLATION;
+        }
     }
     // 摘要相关
-    if (input.includes('总结') ||
-        input.includes('摘要') ||
-        input.includes('summarize') ||
-        input.includes('summary')) {
-        return modelRouter_1.TaskType.SUMMARIZATION;
+    const summaryPatterns = [
+        /\b(总结|摘要|summarize|summary)\b/i
+    ];
+    for (const pattern of summaryPatterns) {
+        if (pattern.test(input)) {
+            return modelRouter_1.TaskType.SUMMARIZATION;
+        }
     }
     // 分析相关
-    if (input.includes('分析') ||
-        input.includes('analyze') ||
-        input.includes('explain')) {
-        return modelRouter_1.TaskType.ANALYSIS;
+    const analysisPatterns = [
+        /\b(分析|analyze|explain|解释)\b/i
+    ];
+    for (const pattern of analysisPatterns) {
+        if (pattern.test(input)) {
+            return modelRouter_1.TaskType.ANALYSIS;
+        }
     }
     // 命令生成相关
-    if (mode === 'command' ||
-        input.includes('命令') ||
-        input.includes('command')) {
+    const commandPatterns = [
+        /\b(命令|command)\b/
+    ];
+    for (const pattern of commandPatterns) {
+        if (pattern.test(input)) {
+            return modelRouter_1.TaskType.COMMAND_GENERATION;
+        }
+    }
+    // 如果模式是 command，默认为命令生成
+    if (mode === 'command') {
         return modelRouter_1.TaskType.COMMAND_GENERATION;
     }
     // 默认对话
@@ -263,14 +290,25 @@ let globalRouterIntegration = null;
  */
 function getRouterIntegration() {
     if (!globalRouterIntegration) {
-        // 从配置文件读取设置
-        const { getUserConfig } = require('../ai/client');
-        const config = getUserConfig();
-        globalRouterIntegration = new ModelRouterIntegration({
-            enableRouting: config.enableModelRouting !== false,
-            enableFallback: config.enableModelRouterFallback !== false,
-            defaultStrategy: config.defaultRoutingStrategy || modelRouter_1.RoutingStrategy.AUTO,
-        });
+        try {
+            // 从配置文件读取设置
+            const { getUserConfig } = require('../ai/client');
+            const config = getUserConfig();
+            globalRouterIntegration = new ModelRouterIntegration({
+                enableRouting: config.enableModelRouting !== false,
+                enableFallback: config.enableModelRouterFallback !== false,
+                defaultStrategy: config.defaultRoutingStrategy || modelRouter_1.RoutingStrategy.AUTO,
+            });
+        }
+        catch (error) {
+            // 如果读取配置失败，使用默认配置
+            console.warn('[ModelRouterIntegration] Failed to load user config, using defaults:', error);
+            globalRouterIntegration = new ModelRouterIntegration({
+                enableRouting: true,
+                enableFallback: true,
+                defaultStrategy: modelRouter_1.RoutingStrategy.AUTO,
+            });
+        }
     }
     return globalRouterIntegration;
 }
