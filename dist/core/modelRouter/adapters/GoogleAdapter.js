@@ -40,7 +40,8 @@ class GoogleAdapter extends BaseAdapter_1.BaseAdapter {
                 return false;
             }
             // 检查版本以确认安装
-            const { stdout } = await this.runSpawnCommand('gemini', ['--version'], 5000);
+            const { stdout } = await this.runSpawnCommand('gemini', ['--version'], 30000 // 增加超时时间，gemini cli 启动较慢
+            );
             if (!stdout.trim())
                 return false;
             // 检查是否配置了 API key 环境变量
@@ -97,12 +98,12 @@ class GoogleAdapter extends BaseAdapter_1.BaseAdapter {
         switch (taskType) {
             case types_1.TaskType.CODE_GENERATION:
             case types_1.TaskType.CODE_REVIEW:
-                return 'gemini-2.5-pro';
+                return 'gemini-1.5-pro';
             case types_1.TaskType.CONVERSATION:
             case types_1.TaskType.GENERAL:
-                return 'gemini-2.5-flash';
+                return 'gemini-1.5-flash';
             default:
-                return 'gemini-2.5-flash';
+                return 'gemini-1.5-flash';
         }
     }
     /**
