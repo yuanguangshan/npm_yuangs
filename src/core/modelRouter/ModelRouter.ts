@@ -9,10 +9,12 @@ import {
   TaskType,
   DomainHealth,
   DomainState,
-  ExplorationStrategy
+  ExplorationStrategy,
+  SupervisorConfig
 } from './types';
 import { RoutingPolicy } from './policies/types';
 import { DslPolicy } from './policies/DslPolicy';
+import { ModelSupervisor } from './ModelSupervisor';
 
 /**
  * 模型路由器
@@ -23,9 +25,11 @@ export class ModelRouter {
   private stats: Map<string, ModelStats> = new Map();
   private policies: Map<string, RoutingPolicy> = new Map();
   private domainHealth: Map<string, DomainHealth> = new Map();
+  private supervisor: ModelSupervisor;
   private roundRobinIndex = 0;
 
-  constructor() {
+  constructor(supervisorConfig?: SupervisorConfig) {
+    this.supervisor = new ModelSupervisor(supervisorConfig || ModelSupervisor.getDefaultConfig());
     this.registerDefaultPolicies();
   }
 
@@ -87,6 +91,9 @@ export class ModelRouter {
         totalTokens: 0,
         lastUsed: new Date(),
         recentFailures: 0,
+        successEMA: 1.0,  // 初始乐观假设
+        latencyEMA: 1000, // 初始 1s
+        costEMA: 3,       // 初始中等成本
       });
     }
   }
@@ -173,7 +180,18 @@ export class ModelRouter {
     this.updateDomainHealthStates(); // 预选前先刷新熔断状态
 
     let policyName = 'balanced'; // Default
-    switch (routingConfig.strategy) {
+
+    // 5. 监督器介入 (Supervisor Override)
+    const suggestedStrategy = this.supervisor.evaluate(this.stats, this.domainHealth, routingConfig.strategy);
+    let activeStrategy: RoutingStrategy = routingConfig.strategy;
+    let supervisorNote = '';
+
+    if (suggestedStrategy) {
+      activeStrategy = suggestedStrategy;
+      supervisorNote = ` [监督器干预: 切换至 ${activeStrategy}]`;
+    }
+
+    switch (activeStrategy) {
       case RoutingStrategy.FASTEST_FIRST:
         policyName = 'latency-critical';
         break;
@@ -184,6 +202,8 @@ export class ModelRouter {
         policyName = 'quality-first';
         break;
       case RoutingStrategy.AUTO:
+      case RoutingStrategy.ROUND_ROBIN:
+      case RoutingStrategy.MANUAL:
       default:
         policyName = 'balanced';
         break;
@@ -194,10 +214,10 @@ export class ModelRouter {
       console.warn(`策略 ${policyName} 未找到，回退到 balanced 策略`);
       const fallbackPolicy = this.policies.get('balanced');
       if (!fallbackPolicy) throw new Error('核心策略丢失');
-      return this.executePolicyWithExploration(fallbackPolicy, allAdapters, taskConfig, routingConfig);
+      return this.executePolicyWithExploration(fallbackPolicy, allAdapters, taskConfig, routingConfig, supervisorNote);
     }
 
-    return this.executePolicyWithExploration(policy, allAdapters, taskConfig, routingConfig);
+    return this.executePolicyWithExploration(policy, allAdapters, taskConfig, routingConfig, supervisorNote);
   }
 
   /**
@@ -207,7 +227,8 @@ export class ModelRouter {
     policy: RoutingPolicy,
     adapters: ModelAdapter[],
     taskConfig: TaskConfig,
-    routingConfig: RoutingConfig
+    routingConfig: RoutingConfig,
+    supervisorNote?: string
   ): Promise<RoutingResult> {
     try {
       const result = await policy.select(adapters, taskConfig, routingConfig, this.stats, this.domainHealth);
@@ -225,7 +246,7 @@ export class ModelRouter {
       // 如果最优解被熔断拦截了，重新选分最高的可用者
       let bestCandidate = allowedCandidates.sort((a: any, b: any) => b.score - a.score)[0];
       let finalAdapter = this.adapters.get(bestCandidate.name)!;
-      let finalReason = `策略(${policy.name}): ${result.reason}`;
+      let finalReason = `策略(${policy.name}): ${result.reason}${supervisorNote || ''}`;
 
       // 3. 应用探索机制
       const exploration = routingConfig.exploration;
@@ -298,6 +319,12 @@ export class ModelRouter {
         stats.successCount++;
         stats.recentFailures = 0; // 重置该模型的连续失败次数
 
+        // 计算 EMA 参数 (α 基于总请求数动态调整)
+        const alpha = Math.max(0.05, Math.min(0.3, 1 / Math.sqrt(stats.totalRequests)));
+        stats.successEMA = (1 - alpha) * stats.successEMA + alpha * 1;
+        stats.latencyEMA = (1 - alpha) * stats.latencyEMA + alpha * result.executionTime;
+        stats.costEMA = (1 - alpha) * stats.costEMA + alpha * adapter.capabilities.costLevel;
+
         // 故障域探测成功：如果当前是 half-open，探测成功即恢复为 closed
         const health = this.domainHealth.get(domain);
         if (health && health.state === 'half-open') {
@@ -308,6 +335,9 @@ export class ModelRouter {
         stats.failureCount++;
         stats.recentFailures++;     // 累加连续失败
         stats.lastFailureAt = new Date();
+
+        const alpha = Math.max(0.05, Math.min(0.3, 1 / Math.sqrt(stats.totalRequests)));
+        stats.successEMA = (1 - alpha) * stats.successEMA + alpha * 0;
 
         // 故障域探测失败：如果是 half-open 时探测失败，立即滚回 open 并重置冷却
         const health = this.domainHealth.get(domain);
@@ -332,6 +362,9 @@ export class ModelRouter {
       stats.failureCount++;
       stats.recentFailures++;
       stats.lastFailureAt = new Date();
+
+      const alpha = Math.max(0.05, Math.min(0.3, 1 / Math.sqrt(stats.totalRequests)));
+      stats.successEMA = (1 - alpha) * stats.successEMA + alpha * 0;
 
       // 捕获到异常也视为探测失败
       const health = this.domainHealth.get(domain);
@@ -385,20 +418,31 @@ export class ModelRouter {
       }
 
       // 计算该域下是否有模型连续失败达到阈值 (3次)
+      // 决策规则: 连续失败 3 次 OR 成功率 EMA < 0.4 触发熔断
       const domainAdapters = adapters.filter(a => (a.failureDomain ?? a.provider) === domain);
-      const hasSeriousFailures = domainAdapters.some(a => {
+      const isUnstable = domainAdapters.some(a => {
         const s = this.stats.get(a.name);
-        return s && s.recentFailures >= 3;
+        return s && (s.recentFailures >= 3 || s.successEMA < 0.4);
       });
 
-      if (health.state === 'closed' && hasSeriousFailures) {
+      // 恢复逻辑 (EMA): 如果所有模型 EMA 都恢复到 0.85 以上
+      const isStable = domainAdapters.every(a => {
+          const s = this.stats.get(a.name);
+          return s && s.successEMA > 0.85;
+      });
+
+      if (health.state === 'closed' && isUnstable) {
         health.state = 'open';
         health.openedAt = now;
-        console.warn(`🚨 故障域 [${domain}] 连续错误，已触发熔断拦截 (Open)`);
+        console.warn(`🚨 故障域 [${domain}] 表现极差或连续错误，已触发熔断拦截 (Open)`);
       } else if (health.state === 'open' && now - (health.openedAt || 0) > 30000) {
         // 30秒冷却后进入尝试半开状态
         health.state = 'half-open';
         console.log(`📡 故障域 [${domain}] 进入半探测模式 (Half-Open)`);
+      } else if (health.state === 'half-open' && isStable) {
+          // 探测期间 EMA 恢复
+          health.state = 'closed';
+          console.log(`✅ 故障域 [${domain}] EMA 指标已恢复，熔断状态重置 (Closed)`);
       }
     }
   }
@@ -448,6 +492,9 @@ export class ModelRouter {
       totalTokens: 0,
       lastUsed: new Date(),
       recentFailures: 0,
+      successEMA: 1.0,
+      latencyEMA: 1000,
+      costEMA: 3,
     };
   }
 }

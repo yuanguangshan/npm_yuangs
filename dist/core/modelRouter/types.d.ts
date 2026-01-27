@@ -186,10 +186,16 @@ export interface ModelStats {
     totalTokens: number;
     /** 最后使用时间 */
     lastUsed: Date;
-    /** 最近连续失败次数 */
-    recentFailures: number;
     /** 最后一次失败时间 */
     lastFailureAt?: Date;
+    /** 最近连续失败次数 */
+    recentFailures: number;
+    /** 指数移动平均 (EMA) 成功率 (0.0 - 1.0) */
+    successEMA: number;
+    /** 指数移动平均 (EMA) 延迟 (ms) */
+    latencyEMA: number;
+    /** 指数移动平均 (EMA) 成本 (等级 1-5) */
+    costEMA: number;
 }
 /**
  * 故障域状态 (熔断器)
@@ -250,4 +256,24 @@ export interface PolicyDsl {
         requiredCapabilities?: string[];
     };
     weights: PolicyWeights;
+}
+/**
+ * 监督器触发条件 (Trigger)
+ */
+export interface SupervisorTrigger {
+    id: string;
+    metric: 'global_latency' | 'global_success_rate' | 'google_domain_error';
+    operator: '>' | '<' | '>=' | '<=';
+    threshold: number;
+    action: {
+        type: 'switch_strategy';
+        targetStrategy: RoutingStrategy;
+    };
+}
+/**
+ * 监督器配置
+ */
+export interface SupervisorConfig {
+    enabled: boolean;
+    triggers: SupervisorTrigger[];
 }

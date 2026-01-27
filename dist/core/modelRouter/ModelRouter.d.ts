@@ -1,4 +1,4 @@
-import { ModelAdapter, TaskConfig, RoutingConfig, RoutingResult, ModelExecutionResult, ModelStats } from './types';
+import { ModelAdapter, TaskConfig, RoutingConfig, RoutingResult, ModelExecutionResult, ModelStats, SupervisorConfig } from './types';
 import { RoutingPolicy } from './policies/types';
 /**
  * 模型路由器
@@ -9,8 +9,9 @@ export declare class ModelRouter {
     private stats;
     private policies;
     private domainHealth;
+    private supervisor;
     private roundRobinIndex;
-    constructor();
+    constructor(supervisorConfig?: SupervisorConfig);
     /**
      * 注册默认策略
      */
