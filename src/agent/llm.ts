@@ -68,17 +68,19 @@ export async function runLLM({
     model,
     stream,
     onChunk,
+    bypassRouter
   }: {
     prompt: AgentPrompt;
     model: string;
     stream: boolean;
     onChunk?: (s: string, type?: 'thought' | 'json') => void;
+    bypassRouter?: boolean;
   }): Promise<LLMResult> {
     const start = Date.now();
     const messages = prompt.system ? [{ role: 'system', content: prompt.system } as any, ...prompt.messages] : prompt.messages;
 
     // --- ModelRouter Integration ---
-    if (shouldUseRouter(messages, 'command')) {
+    if (!bypassRouter && shouldUseRouter(messages, 'command')) {
       try {
         const routerResult = await callLLMWithRouter(messages, 'command', {
           onChunk: onChunk,

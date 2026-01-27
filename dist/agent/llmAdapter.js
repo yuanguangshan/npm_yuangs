@@ -32,7 +32,8 @@ class LLMAdapter {
             prompt,
             model: finalModel,
             stream: !!onChunk,
-            onChunk
+            onChunk,
+            bypassRouter: !!model // Explicitly requested model bypasses routing
         });
         const thought = this.parseThought(result.rawText);
         thought.modelName = result.modelName || finalModel;

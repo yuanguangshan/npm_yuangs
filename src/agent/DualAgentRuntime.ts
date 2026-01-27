@@ -146,13 +146,19 @@ export class DualAgentRuntime {
     const messages = [{ role: 'user', content: prompt }] as any[];
     
     try {
-      console.log(chalk.gray(`[Planner] Choosing best model for planning...`));
-      const routerResult = await callLLMWithRouter(messages, 'command', {
-        taskType: 'analysis' as any, // Planning is primarily analysis
-        routingStrategy: 'best_quality' as any // We want high quality plans
-      });
-
-      const response = routerResult.rawText || await askAI(prompt, finalModel);
+      let response: string;
+      
+      if (model) {
+        console.log(chalk.gray(`[Planner] Using specified model: ${model}`));
+        response = await askAI(prompt, model);
+      } else {
+        console.log(chalk.gray(`[Planner] Choosing best model for planning...`));
+        const routerResult = await callLLMWithRouter(messages, 'command', {
+          taskType: 'analysis' as any, // Planning is primarily analysis
+          routingStrategy: 'best_quality' as any // We want high quality plans
+        });
+        response = routerResult.rawText || await askAI(prompt, finalModel);
+      }
 
       const jsonMatch = response.match(/```json\n([\s\S]*?)\n```/);
       if (jsonMatch) {

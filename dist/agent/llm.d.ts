@@ -26,9 +26,10 @@ export type AgentAction = z.infer<typeof AgentActionSchema>;
  * Check if a model supports native structured output
  */
 declare function supportsStructuredOutput(model: string): boolean;
-export declare function runLLM({ prompt, model, stream, onChunk, }: {
+export declare function runLLM({ prompt, model, stream, onChunk, bypassRouter }: {
     prompt: AgentPrompt;
     model: string;
     stream: boolean;
     onChunk?: (s: string, type?: 'thought' | 'json') => void;
+    bypassRouter?: boolean;
 }): Promise<LLMResult>;

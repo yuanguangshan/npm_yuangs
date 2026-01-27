@@ -57,11 +57,11 @@ function getUserConfig() {
     }
     return {};
 }
-async function runLLM({ prompt, model, stream, onChunk, }) {
+async function runLLM({ prompt, model, stream, onChunk, bypassRouter }) {
     const start = Date.now();
     const messages = prompt.system ? [{ role: 'system', content: prompt.system }, ...prompt.messages] : prompt.messages;
     // --- ModelRouter Integration ---
-    if ((0, modelRouterIntegration_1.shouldUseRouter)(messages, 'command')) {
+    if (!bypassRouter && (0, modelRouterIntegration_1.shouldUseRouter)(messages, 'command')) {
         try {
             const routerResult = await (0, modelRouterIntegration_1.callLLMWithRouter)(messages, 'command', {
                 onChunk: onChunk,
