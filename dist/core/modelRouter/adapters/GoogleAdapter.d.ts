@@ -1,8 +1,9 @@
 import { BaseAdapter } from '../BaseAdapter';
 import { ModelCapabilities, TaskConfig, ModelExecutionResult } from '../types';
 /**
- * Google CLI 适配器
+ * Gemini CLI 适配器
  * 支持 Gemini 系列模型
+ * 使用 https://github.com/google-gemini/gemini-cli
  */
 export declare class GoogleAdapter extends BaseAdapter {
     name: string;
@@ -10,7 +11,7 @@ export declare class GoogleAdapter extends BaseAdapter {
     provider: string;
     capabilities: ModelCapabilities;
     /**
-     * 健康检查：检查 gcloud CLI 是否安装
+     * 健康检查：检查 Gemini CLI 是否安装并已配置
      */
     healthCheck(): Promise<boolean>;
     /**
@@ -22,7 +23,7 @@ export declare class GoogleAdapter extends BaseAdapter {
      */
     private selectModel;
     /**
-     * 解析 Google CLI 输出
+     * 解析 Gemini CLI 输出
      */
-    private parseGoogleOutput;
+    private parseGeminiOutput;
 }

@@ -4,8 +4,9 @@ exports.GoogleAdapter = void 0;
 const BaseAdapter_1 = require("../BaseAdapter");
 const types_1 = require("../types");
 /**
- * Google CLI 适配器
+ * Gemini CLI 适配器
  * 支持 Gemini 系列模型
+ * 使用 https://github.com/google-gemini/gemini-cli
  */
 class GoogleAdapter extends BaseAdapter_1.BaseAdapter {
     name = 'google-gemini';
@@ -29,16 +30,27 @@ class GoogleAdapter extends BaseAdapter_1.BaseAdapter {
         specialCapabilities: ['long-context', 'multimodal'],
     };
     /**
-     * 健康检查：检查 gcloud CLI 是否安装
+     * 健康检查：检查 Gemini CLI 是否安装并已配置
      */
     async healthCheck() {
         try {
-            const available = await this.checkCommand('gcloud');
-            if (!available)
+            const available = await this.checkCommand('gemini');
+            if (!available) {
+                console.warn('⚠️  Gemini CLI 未安装');
                 return false;
-            // 检查是否已认证
-            const { stdout } = await this.runSpawnCommand('gcloud', ['auth', 'list', '--format=value(account)']);
-            return stdout.trim().length > 0;
+            }
+            // 检查版本以确认安装
+            const { stdout } = await this.runSpawnCommand('gemini', ['--version'], 5000);
+            if (!stdout.trim())
+                return false;
+            // 检查是否配置了 API key 环境变量
+            if (!process.env.GEMINI_API_KEY) {
+                console.warn('⚠️  未配置 GEMINI_API_KEY 环境变量');
+                return false;
+            }
+            // 基本检查通过，认为可用
+            // 实际的 API 调用会在 execute 中进行
+            return true;
         }
         catch {
             return false;
@@ -52,21 +64,22 @@ class GoogleAdapter extends BaseAdapter_1.BaseAdapter {
             const { result, executionTime } = await this.measureExecutionTime(async () => {
                 // 根据任务类型选择合适的模型
                 const model = this.selectModel(config.type);
-                // 构建参数数组，显式指定 JSON 格式输出
+                // 构建参数数组
                 const args = [
-                    'ai',
-                    'models',
-                    'generate-content',
-                    model,
-                    `--prompt=${prompt}`,
-                    '--format=json' // 关键：强制 JSON 输出格式
+                    '--model', model,
+                    '--prompt', prompt,
+                    '--output-format', 'json' // 使用 JSON 格式输出
                 ];
-                const { stdout, stderr } = await this.runSpawnCommand('gcloud', args, config.expectedResponseTime || 30000, onChunk);
+                const { stdout, stderr } = await this.runSpawnCommand('gemini', args, config.expectedResponseTime || 30000, onChunk);
+                // 检查是否有 API key 错误
+                if (stdout.includes('GEMINI_API_KEY') || stderr.includes('GEMINI_API_KEY')) {
+                    throw new Error('未配置 GEMINI_API_KEY 环境变量。请设置后重试。');
+                }
                 if (stderr && !stdout) {
                     throw new Error(stderr);
                 }
                 // 解析输出
-                return this.parseGoogleOutput(stdout);
+                return this.parseGeminiOutput(stdout);
             });
             return this.createSuccessResult(result, executionTime, {
                 model: this.selectModel(config.type),
@@ -74,7 +87,7 @@ class GoogleAdapter extends BaseAdapter_1.BaseAdapter {
             });
         }
         catch (error) {
-            return this.createErrorResult(`Google CLI 执行失败: ${error.message}`, 0);
+            return this.createErrorResult(`Gemini CLI 执行失败: ${error.message}`, 0);
         }
     }
     /**
@@ -93,22 +106,37 @@ class GoogleAdapter extends BaseAdapter_1.BaseAdapter {
         }
     }
     /**
-     * 解析 Google CLI 输出
+     * 解析 Gemini CLI 输出
      */
-    parseGoogleOutput(output) {
+    parseGeminiOutput(output) {
         try {
-            // 提取 JSON 内容
+            // Gemini CLI 在 JSON 模式下输出结构化数据
             const jsonContent = this.extractJsonContent(output);
             if (jsonContent !== output) {
                 try {
                     const parsed = JSON.parse(jsonContent);
-                    return parsed.candidates?.[0]?.content?.parts?.[0]?.text || jsonContent;
+                    // Gemini CLI JSON 输出格式: { response: "...", ... }
+                    if (parsed.response) {
+                        return parsed.response;
+                    }
+                    // 如果没有 response 字段，尝试其他可能的字段
+                    if (parsed.text) {
+                        return parsed.text;
+                    }
+                    if (parsed.content) {
+                        return parsed.content;
+                    }
+                    // 如果是 Google API 格式
+                    if (parsed.candidates?.[0]?.content?.parts?.[0]?.text) {
+                        return parsed.candidates[0].content.parts[0].text;
+                    }
+                    return jsonContent;
                 }
                 catch {
                     // JSON 解析失败，继续处理
                 }
             }
-            // 过滤掉日志行
+            // 如果不是 JSON 格式，直接返回清理后的文本
             const lines = output.split('\n').filter(line => {
                 const trimmed = line.trim();
                 return trimmed.length > 0 &&
