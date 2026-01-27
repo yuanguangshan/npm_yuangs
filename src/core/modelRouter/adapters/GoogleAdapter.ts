@@ -78,15 +78,15 @@ export class GoogleAdapter extends BaseAdapter {
 
         // 构建参数数组
         const args = [
+          prompt,                 // 提示词作为第一个位置参数
           '--model', model,
-          '--prompt', prompt,
           '--output-format', 'json'  // 使用 JSON 格式输出
         ];
 
         const { stdout, stderr } = await this.runSpawnCommand(
           'gemini',
           args,
-          config.expectedResponseTime || 30000,
+          config.expectedResponseTime || 60000,
           onChunk
         );
 
@@ -122,12 +122,12 @@ export class GoogleAdapter extends BaseAdapter {
     switch (taskType) {
       case TaskType.CODE_GENERATION:
       case TaskType.CODE_REVIEW:
-        return 'gemini-1.5-pro';
+        return 'gemini-2.5-pro';
       case TaskType.CONVERSATION:
       case TaskType.GENERAL:
-        return 'gemini-1.5-flash';
+        return 'gemini-2.5-flash';
       default:
-        return 'gemini-1.5-flash';
+        return 'gemini-2.5-flash';
     }
   }
 

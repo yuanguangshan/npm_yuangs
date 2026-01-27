@@ -67,11 +67,11 @@ class GoogleAdapter extends BaseAdapter_1.BaseAdapter {
                 const model = this.selectModel(config.type);
                 // 构建参数数组
                 const args = [
+                    prompt, // 提示词作为第一个位置参数
                     '--model', model,
-                    '--prompt', prompt,
                     '--output-format', 'json' // 使用 JSON 格式输出
                 ];
-                const { stdout, stderr } = await this.runSpawnCommand('gemini', args, config.expectedResponseTime || 30000, onChunk);
+                const { stdout, stderr } = await this.runSpawnCommand('gemini', args, config.expectedResponseTime || 60000, onChunk);
                 // 检查是否有 API key 错误
                 if (stdout.includes('GEMINI_API_KEY') || stderr.includes('GEMINI_API_KEY')) {
                     throw new Error('未配置 GEMINI_API_KEY 环境变量。请设置后重试。');
