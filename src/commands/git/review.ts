@@ -53,7 +53,7 @@ export function registerReviewCommand(gitCmd: Command) {
 
                 // 显示审查结果
                 console.log(chalk.bold.cyan('\n🔍 代码审查报告\n'));
-                console.log(chalk.bold(`评分: ${getScoreColor(result.score)}${result.score}/100${chalk.reset()}`));
+                console.log(chalk.bold(`评分: ${getScoreColor(result.score)(result.score.toString())}/100`));
                 console.log(chalk.gray(`审查文件: ${result.filesReviewed} 个\n`));
 
                 console.log(chalk.bold('📋 总体评价:'));

@@ -49,7 +49,7 @@ function registerReviewCommand(gitCmd) {
             spinner.succeed('代码审查完成');
             // 显示审查结果
             console.log(chalk_1.default.bold.cyan('\n🔍 代码审查报告\n'));
-            console.log(chalk_1.default.bold(`评分: ${getScoreColor(result.score)}${result.score}/100${chalk_1.default.reset()}`));
+            console.log(chalk_1.default.bold(`评分: ${getScoreColor(result.score)(result.score.toString())}/100`));
             console.log(chalk_1.default.gray(`审查文件: ${result.filesReviewed} 个\n`));
             console.log(chalk_1.default.bold('📋 总体评价:'));
             console.log(chalk_1.default.white(`  ${result.summary}\n`));
