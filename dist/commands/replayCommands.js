@@ -46,7 +46,7 @@ const Replayer_1 = require("../audit/Replayer");
 function registerReplayCommands(program) {
     program
         .command('replay <id_or_file>')
-        .description('Replay an execution (ID) or SSH session (.cast file)')
+        .description('Replay an execution (ID, or "last") or SSH session (.cast file)')
         .option('-s, --strict', 'Strict replay (use exact model)')
         .option('-c, --compatible', 'Compatible replay (allow fallback)')
         .option('-r, --re-evaluate', 'Re-evaluate with current config')
@@ -76,7 +76,16 @@ function registerReplayCommands(program) {
             }
         }
         // === Original Logic ===
-        const id = idOrFile;
+        let id = idOrFile;
+        if (id === 'last') {
+            const records = (0, executionStore_1.listExecutionRecords)(1);
+            if (records.length === 0) {
+                console.log(chalk_1.default.red('❌ No execution records found\n'));
+                return;
+            }
+            id = records[0].id;
+            console.log(chalk_1.default.gray(`Replaying most recent execution: ${id}\n`));
+        }
         const system = new capabilitySystem_1.CapabilitySystem();
         let mode = 'strict';
         if (options.compatible)

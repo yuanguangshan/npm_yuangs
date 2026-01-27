@@ -14,6 +14,7 @@ const path_1 = __importDefault(require("path"));
 const os_1 = __importDefault(require("os"));
 const validation_2 = require("../core/validation");
 const zod_1 = require("zod");
+const modelRouterIntegration_1 = require("./modelRouterIntegration");
 const CONFIG_FILE = path_1.default.join(os_1.default.homedir(), '.yuangs.json');
 exports.AgentActionSchema = zod_1.z.object({
     action_type: zod_1.z.enum(['tool_call', 'shell_cmd', 'answer', 'code_diff']),
@@ -58,6 +59,31 @@ function getUserConfig() {
 }
 async function runLLM({ prompt, model, stream, onChunk, }) {
     const start = Date.now();
+    const messages = prompt.system ? [{ role: 'system', content: prompt.system }, ...prompt.messages] : prompt.messages;
+    // --- ModelRouter Integration ---
+    if ((0, modelRouterIntegration_1.shouldUseRouter)(messages, 'command')) {
+        try {
+            const routerResult = await (0, modelRouterIntegration_1.callLLMWithRouter)(messages, 'command', {
+                onChunk: onChunk,
+                enableFallback: true // Let the router handle its own fallbacks too
+            });
+            if (routerResult.usedRouter && !routerResult.error) {
+                return {
+                    rawText: routerResult.rawText,
+                    latencyMs: Date.now() - start,
+                    modelName: routerResult.modelName,
+                    usedRouter: true
+                };
+            }
+            if (routerResult.error) {
+                console.warn(`[ModelRouter] Routing failed, falling back to legacy path: ${routerResult.error}`);
+            }
+        }
+        catch (error) {
+            console.warn(`[ModelRouter] Unexpected error: ${error.message}, falling back...`);
+        }
+    }
+    // --- End ModelRouter Integration ---
     if (stream) {
         let raw = '';
         const messages = prompt.system ? [{ role: 'system', content: prompt.system }, ...prompt.messages] : prompt.messages;
@@ -71,6 +97,8 @@ async function runLLM({ prompt, model, stream, onChunk, }) {
         return {
             rawText: raw,
             latencyMs: Date.now() - start,
+            modelName: model,
+            usedRouter: false
         };
     }
     // Non-streaming mode with optional schema
@@ -166,6 +194,8 @@ async function runLLM({ prompt, model, stream, onChunk, }) {
             rawText,
             parsed,
             latencyMs: Date.now() - start,
+            modelName: modelUsed,
+            usedRouter: false
         };
     }
     catch (error) {

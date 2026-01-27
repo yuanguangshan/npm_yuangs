@@ -11,7 +11,7 @@ import { Replayer } from '../audit/Replayer';
 export function registerReplayCommands(program: Command): void {
   program
     .command('replay <id_or_file>')
-    .description('Replay an execution (ID) or SSH session (.cast file)')
+    .description('Replay an execution (ID, or "last") or SSH session (.cast file)')
     .option('-s, --strict', 'Strict replay (use exact model)')
     .option('-c, --compatible', 'Compatible replay (allow fallback)')
     .option('-r, --re-evaluate', 'Re-evaluate with current config')
@@ -40,7 +40,17 @@ export function registerReplayCommands(program: Command): void {
       }
 
       // === Original Logic ===
-      const id = idOrFile;
+      let id = idOrFile;
+      if (id === 'last') {
+        const records = listExecutionRecords(1);
+        if (records.length === 0) {
+          console.log(chalk.red('❌ No execution records found\n'));
+          return;
+        }
+        id = records[0].id;
+        console.log(chalk.gray(`Replaying most recent execution: ${id}\n`));
+      }
+
       const system = new CapabilitySystem();
 
       let mode: ReplayMode = 'strict';

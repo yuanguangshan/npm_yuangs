@@ -8,6 +8,7 @@ import os from 'os';
 import { safeParseJSON } from '../core/validation';
 import { z } from 'zod';
 import { withRetry, RetryConfig } from './errorHandling';
+import { callLLMWithRouter, shouldUseRouter } from './modelRouterIntegration';
 
 const CONFIG_FILE = path.join(os.homedir(), '.yuangs.json');
 
@@ -74,6 +75,33 @@ export async function runLLM({
     onChunk?: (s: string, type?: 'thought' | 'json') => void;
   }): Promise<LLMResult> {
     const start = Date.now();
+    const messages = prompt.system ? [{ role: 'system', content: prompt.system } as any, ...prompt.messages] : prompt.messages;
+
+    // --- ModelRouter Integration ---
+    if (shouldUseRouter(messages, 'command')) {
+      try {
+        const routerResult = await callLLMWithRouter(messages, 'command', {
+          onChunk: onChunk,
+          enableFallback: true // Let the router handle its own fallbacks too
+        });
+
+        if (routerResult.usedRouter && !routerResult.error) {
+          return {
+            rawText: routerResult.rawText,
+            latencyMs: Date.now() - start,
+            modelName: routerResult.modelName,
+            usedRouter: true
+          };
+        }
+        
+        if (routerResult.error) {
+            console.warn(`[ModelRouter] Routing failed, falling back to legacy path: ${routerResult.error}`);
+        }
+      } catch (error: any) {
+        console.warn(`[ModelRouter] Unexpected error: ${error.message}, falling back...`);
+      }
+    }
+    // --- End ModelRouter Integration ---
 
     if (stream) {
         let raw = '';
@@ -91,6 +119,8 @@ export async function runLLM({
         return {
             rawText: raw,
             latencyMs: Date.now() - start,
+            modelName: model,
+            usedRouter: false
         };
     }
 
@@ -193,6 +223,8 @@ export async function runLLM({
             rawText,
             parsed,
             latencyMs: Date.now() - start,
+            modelName: modelUsed,
+            usedRouter: false
         };
     } catch (error: any) {
         // Safely extract error message without accessing circular references

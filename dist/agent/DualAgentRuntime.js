@@ -42,6 +42,7 @@ const crypto_1 = require("crypto");
 const executor_1 = require("./executor");
 const contextManager_1 = require("./contextManager");
 const client_1 = require("../ai/client");
+const modelRouterIntegration_1 = require("./modelRouterIntegration");
 class DualAgentRuntime {
     context;
     executionId;
@@ -142,7 +143,12 @@ class DualAgentRuntime {
         const prompt = this.buildPlannerPrompt(input);
         const messages = [{ role: 'user', content: prompt }];
         try {
-            const response = await (0, client_1.askAI)(prompt, finalModel);
+            console.log(chalk_1.default.gray(`[Planner] Choosing best model for planning...`));
+            const routerResult = await (0, modelRouterIntegration_1.callLLMWithRouter)(messages, 'command', {
+                taskType: 'analysis', // Planning is primarily analysis
+                routingStrategy: 'best_quality' // We want high quality plans
+            });
+            const response = routerResult.rawText || await (0, client_1.askAI)(prompt, finalModel);
             const jsonMatch = response.match(/```json\n([\s\S]*?)\n```/);
             if (jsonMatch) {
                 return JSON.parse(jsonMatch[1]);

@@ -45,6 +45,8 @@ export interface LLMResult {
         total: number;
     };
     costUsd?: number;
+    modelName?: string;
+    usedRouter?: boolean;
 }
 export type AgentAction = {
     type: 'print';

@@ -8,6 +8,7 @@ import { ProposedAction } from './state';
 import { TaskStep, TaskPlan } from './types';
 import { ToolExecutionResult } from './state';
 import { askAI, getUserConfig } from '../ai/client';
+import { callLLMWithRouter } from './modelRouterIntegration';
 
 export class DualAgentRuntime {
   private context: ContextManager;
@@ -142,10 +143,16 @@ export class DualAgentRuntime {
 
     const prompt = this.buildPlannerPrompt(input);
 
-    const messages = [{ role: 'user', content: prompt }];
-
+    const messages = [{ role: 'user', content: prompt }] as any[];
+    
     try {
-      const response = await askAI(prompt, finalModel);
+      console.log(chalk.gray(`[Planner] Choosing best model for planning...`));
+      const routerResult = await callLLMWithRouter(messages, 'command', {
+        taskType: 'analysis' as any, // Planning is primarily analysis
+        routingStrategy: 'best_quality' as any // We want high quality plans
+      });
+
+      const response = routerResult.rawText || await askAI(prompt, finalModel);
 
       const jsonMatch = response.match(/```json\n([\s\S]*?)\n```/);
       if (jsonMatch) {

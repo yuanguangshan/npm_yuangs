@@ -46,7 +46,10 @@ export class LLMAdapter {
       onChunk
     });
 
-    return this.parseThought(result.rawText);
+    const thought = this.parseThought(result.rawText);
+    thought.modelName = result.modelName || finalModel;
+    thought.usedRouter = result.usedRouter;
+    return thought;
   }
 
   static parseThought(raw: string): AgentThought {

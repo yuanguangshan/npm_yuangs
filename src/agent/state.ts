@@ -44,6 +44,8 @@ export interface AgentThought {
   type?: 'tool_call' | 'code_diff' | 'shell_cmd' | 'answer';
   payload?: any;
   reasoning?: string;
+  modelName?: string;
+  usedRouter?: boolean;
 }
 
 export interface ExecutionTurn {
