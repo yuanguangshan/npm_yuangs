@@ -35,7 +35,7 @@ async function handleSpecialSyntax(input, stdinData) {
             const alias = lineRangeMatch[4];
             const hasQuestion = !!lineRangeMatch[5] || !!stdinData;
             const question = lineRangeMatch[5] || (stdinData ? `分析以下文件内容：\n\n${stdinData}` : '请分析这个文件');
-            const res = await handleFileReference(filePath.trim(), startLine, endLine, question, alias);
+            const res = await handleFileReference(filePath.trim(), startLine, endLine, question, alias, !hasQuestion);
             return {
                 ...res,
                 isPureReference: !hasQuestion,
@@ -84,7 +84,7 @@ async function handleSpecialSyntax(input, stdinData) {
     // 如果不是特殊语法，返回未处理
     return { processed: false };
 }
-async function handleFileReference(filePath, startLine = null, endLine = null, question, alias) {
+async function handleFileReference(filePath, startLine = null, endLine = null, question, alias, isPureReference = false) {
     const fullPath = path_1.default.resolve(filePath);
     if (!fs_1.default.existsSync(fullPath) || !fs_1.default.statSync(fullPath).isFile()) {
         return {
@@ -129,12 +129,19 @@ async function handleFileReference(filePath, startLine = null, endLine = null, q
         });
         await (0, contextStorage_1.saveContext)(contextBuffer.export());
         const prompt = (0, fileReader_1.buildPromptWithFileContent)(`文件: ${filePath}${startLine !== null ? `:${startLine}${endLine ? `-${endLine}` : ''}` : ''}`, [filePath], contentMap, question || `请分析文件: ${filePath}`);
+        if (prompt.startsWith('错误:')) {
+            return { processed: true, result: prompt, error: true };
+        }
+        if (isPureReference) {
+            return { processed: true, result: `已将文件 ${filePath} 加入上下文` };
+        }
         return { processed: true, result: prompt };
     }
     catch (error) {
         return {
             processed: true,
-            result: `读取文件失败: ${error}`
+            result: `错误: 读取文件失败: ${error}`,
+            error: true
         };
     }
 }
@@ -163,19 +170,41 @@ async function handleDirectoryReference(dirPath, question) {
         const contextBuffer = new contextBuffer_1.ContextBuffer();
         const persisted = await (0, contextStorage_1.loadContext)();
         contextBuffer.import(persisted);
-        contextBuffer.add({
-            type: 'directory',
-            path: dirPath,
-            content: Array.from(contentMap.entries()).map(([p, c]) => `--- ${p} ---\n${c}`).join('\n\n')
-        });
+        let addedCount = 0;
+        let totalOriginalTokens = 0;
+        for (const [filePath, content] of contentMap) {
+            const tokens = Math.ceil(content.length / 4);
+            totalOriginalTokens += tokens;
+            // 如果单个文件太大，跳过它以免撑爆上下文
+            if (tokens > 10000) {
+                continue;
+            }
+            contextBuffer.add({
+                type: 'file',
+                path: filePath,
+                content: content
+            });
+            addedCount++;
+        }
+        if (addedCount === 0 && filePaths.length > 0) {
+            return {
+                processed: true,
+                result: `错误: 目录 "${dirPath}" 中的文件都太大，无法加入上下文`,
+                error: true
+            };
+        }
         await (0, contextStorage_1.saveContext)(contextBuffer.export());
-        const prompt = (0, fileReader_1.buildPromptWithFileContent)(`目录: ${dirPath}\n找到 ${filePaths.length} 个文件`, filePaths.map(p => path_1.default.relative(process.cwd(), p)), contentMap, question);
-        return { processed: true, result: prompt };
+        return {
+            processed: true,
+            result: `已成功加入 ${addedCount} 个文件到上下文 (共找到 ${filePaths.length} 个文件)`,
+            itemCount: addedCount
+        };
     }
     catch (error) {
         return {
             processed: true,
-            result: `读取目录失败: ${error}`
+            result: `错误: 读取目录失败: ${error}`,
+            error: true
         };
     }
 }

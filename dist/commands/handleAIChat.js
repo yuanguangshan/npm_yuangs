@@ -259,12 +259,18 @@ async function handleAIChat(initialQuestion, model) {
             if (result.result) {
                 if (result.type === 'management') {
                     console.log(result.result);
-                    return; // 管理命令直接退出
+                    return;
                 }
                 else if (result.isPureReference) {
-                    console.log(chalk_1.default.green(`✓ 已将${result.type === 'file' ? '文件' : '目录'}加入上下文`));
-                    // 继续进入对话模式，不设为 initialQuestion
-                    initialQuestion = null;
+                    // 纯引用且没有后续提问，输出提示并退出
+                    if (result.error) {
+                        console.log(chalk_1.default.red(result.result));
+                        process.exit(1);
+                    }
+                    else {
+                        console.log(chalk_1.default.green(`✓ ${result.result || '已加入上下文'}`));
+                        process.exit(0);
+                    }
                 }
                 else {
                     // 带问题的引用，将处理后的 prompt 作为新的 initialQuestion
@@ -327,10 +333,15 @@ async function handleAIChat(initialQuestion, model) {
                         console.log(specialResult.result);
                     }
                     else if (specialResult.isPureReference) {
-                        console.log(chalk_1.default.green(`✓ 已将${specialResult.type === 'file' ? '文件' : '目录'}加入上下文`));
+                        if (specialResult.error) {
+                            console.log(chalk_1.default.red(specialResult.result));
+                        }
+                        else {
+                            console.log(chalk_1.default.green(`✓ ${specialResult.result || '已加入上下文'}`));
+                        }
                     }
                     else {
-                        // 带问题的引用，发送给 AI
+                        // 带问题的引用，发送给 AI (注意：processInteraction 内部已处理 errors)
                         await processInteraction(specialResult.result);
                     }
                 }

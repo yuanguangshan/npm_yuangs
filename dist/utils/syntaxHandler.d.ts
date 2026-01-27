@@ -5,5 +5,7 @@ export declare function handleSpecialSyntax(input: string, stdinData?: string): 
     processed: boolean;
     result?: string;
     isPureReference?: boolean;
+    error?: boolean;
+    itemCount?: number;
     type?: 'file' | 'directory' | 'command' | 'management';
 }>;

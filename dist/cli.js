@@ -601,13 +601,12 @@ async function main() {
                             }
                             else if (result.isPureReference) {
                                 // 纯引用且没有后续提问，输出提示并退出
-                                if (result.result.startsWith('错误:')) {
+                                if (result.error) {
                                     console.log(chalk_1.default.red(result.result));
                                     process.exit(1);
                                 }
                                 else {
-                                    const typeName = result.type === 'file' ? '文件' : '目录';
-                                    console.log(chalk_1.default.green(`✓ 已将${typeName}加入上下文`));
+                                    console.log(chalk_1.default.green(`✓ ${result.result || '已加入上下文'}`));
                                     process.exit(0);
                                 }
                             }

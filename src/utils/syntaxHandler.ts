@@ -16,6 +16,8 @@ export async function handleSpecialSyntax(input: string, stdinData?: string): Pr
     processed: boolean; 
     result?: string; 
     isPureReference?: boolean;
+    error?: boolean;
+    itemCount?: number;
     type?: 'file' | 'directory' | 'command' | 'management';
 }> {
     const trimmed = input.trim();
@@ -39,7 +41,7 @@ export async function handleSpecialSyntax(input: string, stdinData?: string): Pr
             const hasQuestion = !!lineRangeMatch[5] || !!stdinData;
             const question = lineRangeMatch[5] || (stdinData ? `分析以下文件内容：\n\n${stdinData}` : '请分析这个文件');
 
-            const res = await handleFileReference(filePath.trim(), startLine, endLine, question, alias);
+            const res = await handleFileReference(filePath.trim(), startLine, endLine, question, alias, !hasQuestion);
             return {
                 ...res,
                 isPureReference: !hasQuestion,
@@ -95,7 +97,18 @@ export async function handleSpecialSyntax(input: string, stdinData?: string): Pr
     return { processed: false };
 }
 
-async function handleFileReference(filePath: string, startLine: number | null = null, endLine: number | null = null, question?: string, alias?: string): Promise<{ processed: boolean; result: string }> {
+async function handleFileReference(
+    filePath: string, 
+    startLine: number | null = null, 
+    endLine: number | null = null, 
+    question?: string, 
+    alias?: string,
+    isPureReference: boolean = false
+): Promise<{ 
+    processed: boolean; 
+    result: string;
+    error?: boolean;
+}> {
     const fullPath = path.resolve(filePath);
 
     if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isFile()) {
@@ -158,16 +171,30 @@ async function handleFileReference(filePath: string, startLine: number | null = 
             question || `请分析文件: ${filePath}`
         );
 
+        if (prompt.startsWith('错误:')) {
+            return { processed: true, result: prompt, error: true };
+        }
+
+        if (isPureReference) {
+            return { processed: true, result: `已将文件 ${filePath} 加入上下文` };
+        }
+
         return { processed: true, result: prompt };
     } catch (error) {
         return { 
             processed: true, 
-            result: `读取文件失败: ${error}` 
+            result: `错误: 读取文件失败: ${error}` ,
+            error: true
         };
     }
 }
 
-async function handleDirectoryReference(dirPath: string, question?: string): Promise<{ processed: boolean; result: string }> {
+async function handleDirectoryReference(dirPath: string, question?: string): Promise<{ 
+    processed: boolean; 
+    result: string;
+    error?: boolean;
+    itemCount?: number;
+}> {
     const fullPath = path.resolve(dirPath);
 
     if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isDirectory()) {
@@ -199,26 +226,46 @@ async function handleDirectoryReference(dirPath: string, question?: string): Pro
         const persisted = await loadContext();
         contextBuffer.import(persisted);
 
-        contextBuffer.add({
-            type: 'directory',
-            path: dirPath,
-            content: Array.from(contentMap.entries()).map(([p, c]) => `--- ${p} ---\n${c}`).join('\n\n')
-        });
+        let addedCount = 0;
+        let totalOriginalTokens = 0;
+
+        for (const [filePath, content] of contentMap) {
+            const tokens = Math.ceil(content.length / 4);
+            totalOriginalTokens += tokens;
+            
+            // 如果单个文件太大，跳过它以免撑爆上下文
+            if (tokens > 10000) {
+                continue;
+            }
+
+            contextBuffer.add({
+                type: 'file',
+                path: filePath,
+                content: content
+            });
+            addedCount++;
+        }
+
+        if (addedCount === 0 && filePaths.length > 0) {
+            return {
+                processed: true,
+                result: `错误: 目录 "${dirPath}" 中的文件都太大，无法加入上下文`,
+                error: true
+            };
+        }
 
         await saveContext(contextBuffer.export());
 
-        const prompt = buildPromptWithFileContent(
-            `目录: ${dirPath}\n找到 ${filePaths.length} 个文件`,
-            filePaths.map(p => path.relative(process.cwd(), p)),
-            contentMap,
-            question
-        );
-
-        return { processed: true, result: prompt };
+        return { 
+            processed: true, 
+            result: `已成功加入 ${addedCount} 个文件到上下文 (共找到 ${filePaths.length} 个文件)`,
+            itemCount: addedCount
+        };
     } catch (error) {
         return { 
             processed: true, 
-            result: `读取目录失败: ${error}` 
+            result: `错误: 读取目录失败: ${error}`,
+            error: true
         };
     }
 }
