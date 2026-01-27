@@ -53,6 +53,7 @@ const shellCompletions_1 = require("./shellCompletions");
 const macros_1 = require("../core/macros");
 const renderer_1 = require("../utils/renderer");
 const globDetector_1 = require("../utils/globDetector");
+const syntaxHandler_1 = require("../utils/syntaxHandler");
 const execAsync = (0, util_1.promisify)(child_process_1.exec);
 // 全局变量：存储最后的 AI 输出内容，用于快速插入
 let lastAIOutput = '';
@@ -237,30 +238,47 @@ async function handleDirectoryReference(input) {
     }
 }
 async function handleAIChat(initialQuestion, model) {
-    if (initialQuestion) {
-        // 先检查是否为特殊语法
-        const { handleSpecialSyntax } = await Promise.resolve().then(() => __importStar(require('../utils/syntaxHandler')));
-        const result = await handleSpecialSyntax(initialQuestion);
-        if (result.processed) {
-            // 如果是管理命令（:ls, :cat, :clear），直接输出结果
-            if (result.result) {
-                console.log(result.result);
-            }
-            return;
-        }
-        // 不是特殊语法，正常发给 AI
-        const { AgentRuntime } = await Promise.resolve().then(() => __importStar(require('../agent')));
-        const runtime = new AgentRuntime((0, client_1.getConversationHistory)());
+    // 初始化 AgentRuntime (v2.0 引擎)
+    const { AgentRuntime } = await Promise.resolve().then(() => __importStar(require('../agent')));
+    const runtime = new AgentRuntime((0, client_1.getConversationHistory)());
+    const processInteraction = async (question) => {
         const spinner = (0, ora_1.default)(chalk_1.default.cyan('AI 正在思考...')).start();
         const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
-        await runtime.run(initialQuestion, 'chat', (chunk) => {
+        await runtime.run(question, 'chat', (chunk) => {
             renderer.onChunk(chunk);
         }, model, renderer);
         const fullResponse = renderer.finish();
         lastAIOutput = fullResponse;
-        (0, client_1.addToConversationHistory)('user', initialQuestion);
+        (0, client_1.addToConversationHistory)('user', question);
         (0, client_1.addToConversationHistory)('assistant', fullResponse || '');
-        return;
+    };
+    if (initialQuestion) {
+        // 先检查是否为特殊语法
+        const result = await (0, syntaxHandler_1.handleSpecialSyntax)(initialQuestion);
+        if (result.processed) {
+            if (result.result) {
+                if (result.type === 'management') {
+                    console.log(result.result);
+                    return; // 管理命令直接退出
+                }
+                else if (result.isPureReference) {
+                    console.log(chalk_1.default.green(`✓ 已将${result.type === 'file' ? '文件' : '目录'}加入上下文`));
+                    // 继续进入对话模式，不设为 initialQuestion
+                    initialQuestion = null;
+                }
+                else {
+                    // 带问题的引用，将处理后的 prompt 作为新的 initialQuestion
+                    initialQuestion = result.result;
+                }
+            }
+            else {
+                return;
+            }
+        }
+        // 如果 initialQuestion 仍有效（且不是 null），发送给 AI
+        if (initialQuestion) {
+            await processInteraction(initialQuestion);
+        }
     }
     console.log(chalk_1.default.bold.cyan('\n🤖 进入 AI 交互模式 (输入 exit 退出)\n'));
     const contextStore = new context_1.ContextStore();
@@ -270,9 +288,6 @@ async function handleAIChat(initialQuestion, model) {
     if (persisted.length > 0) {
         console.log(chalk_1.default.yellow(`📦 已恢复 ${persisted.length} 条上下文\n`));
     }
-    // 初始化 AgentRuntime (v2.0 引擎)
-    const { AgentRuntime } = await Promise.resolve().then(() => __importStar(require('../agent')));
-    const runtime = new AgentRuntime((0, client_1.getConversationHistory)());
     const rl = readline_1.default.createInterface({
         input: process.stdin,
         output: process.stdout,
@@ -303,15 +318,27 @@ async function handleAIChat(initialQuestion, model) {
         while (true) {
             const input = await ask(chalk_1.default.green('你：'));
             const trimmed = input.trim();
-            const { handleSpecialSyntax } = await Promise.resolve().then(() => __importStar(require('../utils/syntaxHandler')));
-            const specialResult = await handleSpecialSyntax(trimmed);
+            if (!trimmed)
+                continue;
+            const specialResult = await (0, syntaxHandler_1.handleSpecialSyntax)(trimmed);
             if (specialResult.processed) {
                 if (specialResult.result) {
-                    console.log(specialResult.result);
+                    if (specialResult.type === 'management') {
+                        console.log(specialResult.result);
+                    }
+                    else if (specialResult.isPureReference) {
+                        console.log(chalk_1.default.green(`✓ 已将${specialResult.type === 'file' ? '文件' : '目录'}加入上下文`));
+                    }
+                    else {
+                        // 带问题的引用，发送给 AI
+                        await processInteraction(specialResult.result);
+                    }
                 }
+                // 同步本地 contextStore，因为 handleSpecialSyntax 可能修改了持久化上下文
+                const updatedPersisted = await (0, contextStorage_1.loadContext)();
+                contextStore.import(updatedPersisted);
                 continue;
             }
-            // === 场景 5.1: 原子执行 (:exec) ===
             if (trimmed.startsWith(':exec ')) {
                 const cmd = trimmed.slice(6).trim();
                 if (cmd) {
@@ -326,239 +353,6 @@ async function handleAIChat(initialQuestion, model) {
                     finally {
                         rl.resume();
                     }
-                }
-                continue;
-            }
-            if (trimmed.startsWith('@')) {
-                rl.pause();
-                try {
-                    // 新增：支持执行命令的语法
-                    // @ filename:command - 添加并执行命令
-                    // @!filename - 添加并立即执行文件
-                    const execMatch = trimmed.match(/^@\s*(.+?)\s*:\s*([^].*)?$/);
-                    const immediateExecMatch = trimmed.match(/^@\s*!\s*(.+?)$/);
-                    if (execMatch && execMatch[2]) {
-                        // @ filename:command - 添加并执行命令
-                        const filePath = execMatch[1].trim();
-                        const commandStr = execMatch[2].trim();
-                        const content = await readFileContent(filePath);
-                        contextStore.add({
-                            id: `file:${filePath}`,
-                            source: 'file',
-                            path: filePath,
-                            content,
-                            tokens: Math.ceil(content.length / 4),
-                            importance: 0.5,
-                            lastUsedAt: Date.now(),
-                            addedAt: Date.now(),
-                            status: 'active'
-                        });
-                        const displayName = filePath;
-                        console.log(chalk_1.default.green(`✓ 已加入文件上下文: ${displayName}\n`));
-                        await (0, contextStorage_1.saveContext)(contextStore.export());
-                        console.log(chalk_1.default.cyan(`⚡️  正在执行: ${commandStr}\n`));
-                        const { stdout, stderr } = await (0, child_process_1.exec)(commandStr, { cwd: path_1.default.dirname(filePath) });
-                        console.log(stdout);
-                        if (stderr)
-                            console.error(chalk_1.default.red(stderr));
-                        await (0, contextStorage_1.saveContext)(contextStore.export());
-                        console.log(chalk_1.default.green(`✓ 执行完成\n`));
-                        rl.resume();
-                        continue;
-                    }
-                    if (immediateExecMatch) {
-                        // 场景 3.2: @!filename - 添加脚本源码并捕获执行输出
-                        const filePath = immediateExecMatch[1].trim();
-                        const fullPath = path_1.default.resolve(filePath);
-                        if (fs_1.default.existsSync(fullPath)) {
-                            // 1. 读取源码
-                            const sourceContent = await readFileContent(filePath);
-                            console.log(chalk_1.default.cyan(`⚡️ 正在执行并捕获: ${filePath}\n`));
-                            // 2. 执行并捕获
-                            const { stdout, stderr } = await execAsync(`chmod +x "${fullPath}" && "${fullPath}"`, { cwd: process.cwd() });
-                            console.log(stdout); // 实时打印给用户看
-                            if (stderr)
-                                console.error(chalk_1.default.red(stderr));
-                            // 3. 构造组合上下文 (契约：命令内容 + 实际输出)
-                            const combinedContent = `
-=== Source: ${filePath} ===
-\`\`\`bash
-${sourceContent}
-\`\`\`
-
-=== Stdout ===
-\`\`\`
-${stdout}
-\`\`\`
-
-=== Stderr ===
-\`\`\`
-${stderr}
-\`\`\`
-`;
-                            contextStore.add({
-                                id: `file:${filePath} [Run Log]`,
-                                source: 'file',
-                                path: `${filePath} [Run Log]`,
-                                alias: 'Execution Log',
-                                content: combinedContent,
-                                tokens: Math.ceil(combinedContent.length / 4),
-                                importance: 0.5,
-                                lastUsedAt: Date.now(),
-                                addedAt: Date.now(),
-                                status: 'active'
-                            });
-                            await (0, contextStorage_1.saveContext)(contextStore.export());
-                            console.log(chalk_1.default.green(`\n✓ 已捕获脚本源码及执行日志到上下文\n`));
-                        }
-                        else {
-                            console.log(chalk_1.default.red(`错误: 文件 ${filePath} 不存在`));
-                        }
-                        rl.resume();
-                        continue;
-                    }
-                    // 增强的匹配模式，支持行号指定: @ filepath:startLine-endLine as alias
-                    const match = trimmed.match(/^@\s*(.+?)(?::(\d+)(?:-(\d+))?)?(?:\s+as\s+(.+))?$/);
-                    const filePath = match?.[1] ?? (await showFileSelector(rl));
-                    const lineStart = match?.[2] ? parseInt(match[2]) : null;
-                    const lineEnd = match?.[3] ? parseInt(match[3]) : null;
-                    const alias = match?.[4];
-                    if (!filePath)
-                        continue;
-                    const absolutePath = path_1.default.resolve(filePath);
-                    let content = await fs_1.default.promises.readFile(absolutePath, 'utf-8');
-                    // 如果指定了行号范围，则提取相应行
-                    if (lineStart !== null) {
-                        const lines = content.split('\n');
-                        // 验证行号范围
-                        if (lineStart < 1 || lineStart > lines.length) {
-                            console.log(chalk_1.default.red(`\n错误: 起始行号 ${lineStart} 超出文件范围 (文件共有 ${lines.length} 行)\n`));
-                            rl.resume();
-                            continue;
-                        }
-                        const startIdx = lineStart - 1; // 转换为数组索引（从0开始）
-                        let endIdx = lineEnd ? Math.min(lineEnd, lines.length) : lines.length; // 如果未指定结束行，则到文件末尾
-                        if (lineEnd && (lineEnd < lineStart || lineEnd > lines.length)) {
-                            console.log(chalk_1.default.red(`\n错误: 结束行号 ${lineEnd} 超出有效范围 (应在 ${lineStart}-${lines.length} 之间)\n`));
-                            rl.resume();
-                            continue;
-                        }
-                        // 提取指定范围的行
-                        content = lines.slice(startIdx, endIdx).join('\n');
-                        // 更新路径显示，包含行号信息
-                        const rangeInfo = lineEnd ? `${lineStart}-${lineEnd}` : `${lineStart}`;
-                        const pathWithRange = `${filePath}:${rangeInfo}`;
-                        contextStore.add({
-                            id: `file:${pathWithRange}`,
-                            source: 'file',
-                            path: pathWithRange,
-                            alias,
-                            content,
-                            tokens: Math.ceil(content.length / 4),
-                            importance: 0.5,
-                            lastUsedAt: Date.now(),
-                            addedAt: Date.now(),
-                            status: 'active'
-                        });
-                    }
-                    else {
-                        // 原始行为：添加整个文件
-                        contextStore.add({
-                            id: `file:${filePath}`,
-                            source: 'file',
-                            path: filePath,
-                            alias,
-                            content,
-                            tokens: Math.ceil(content.length / 4),
-                            importance: 0.5,
-                            lastUsedAt: Date.now(),
-                            addedAt: Date.now(),
-                            status: 'active'
-                        });
-                    }
-                    await (0, contextStorage_1.saveContext)(contextStore.export());
-                    const displayName = alias ? `${alias} (${filePath}${lineStart !== null ? `:${lineStart}${lineEnd ? `-${lineEnd}` : ''}` : ''})` :
-                        (filePath + (lineStart !== null ? `:${lineStart}${lineEnd ? `-${lineEnd}` : ''}` : ''));
-                    console.log(chalk_1.default.green(`✅ 已加入文件上下文: ${displayName}\n`));
-                }
-                catch (err) {
-                    const message = err instanceof Error ? err.message : String(err);
-                    console.error(chalk_1.default.red(`\n[处理错误]: ${message}\n`));
-                }
-                finally {
-                    rl.resume();
-                }
-                continue;
-            }
-            if (trimmed.startsWith('#')) {
-                rl.pause();
-                try {
-                    const match = trimmed.match(/^#\s*(.+?)\s*(?:\n(.*))?$/s);
-                    if (!match) {
-                        console.log(chalk_1.default.yellow('格式错误，正确用法: # 目录路径\n'));
-                        rl.resume();
-                        continue;
-                    }
-                    const dirPath = match[1].trim();
-                    const fullPath = path_1.default.resolve(dirPath);
-                    if (!fs_1.default.existsSync(fullPath) || !fs_1.default.statSync(fullPath).isDirectory()) {
-                        console.log(chalk_1.default.red(`错误: 目录 "${dirPath}" 不存在或不是一个目录\n`));
-                        rl.resume();
-                        continue;
-                    }
-                    const findCommand = process.platform === 'darwin' || process.platform === 'linux'
-                        ? `find "${fullPath}" -type f`
-                        : `dir /s /b "${fullPath}"`;
-                    const { stdout } = await execAsync(findCommand);
-                    const filePaths = stdout.trim().split('\n').filter(f => f);
-                    if (filePaths.length === 0) {
-                        console.log(chalk_1.default.yellow(`目录 "${dirPath}" 下没有文件\n`));
-                        rl.resume();
-                        continue;
-                    }
-                    const userConfig = (0, client_1.getUserConfig)();
-                    const maxFileTokens = userConfig.maxFileTokens || 20000;
-                    const maxTotalTokensLimit = userConfig.maxTotalTokens || 200000;
-                    const contentMap = (0, fileReader_1.readFilesContent)(filePaths);
-                    // 逐个添加文件，而不是将所有内容合并为一个大的目录项
-                    // 这样可以更好地控制token使用，并保留之前的上下文
-                    let addedCount = 0;
-                    for (const [filePath, content] of contentMap) {
-                        // 检查单个文件大小，如果太大则跳过
-                        const fileTokens = Math.ceil(content.length / 4);
-                        if (fileTokens > maxFileTokens) { // 使用配置的文件上限
-                            console.log(chalk_1.default.yellow(`⚠️  跳过大文件: ${filePath} (太大)`));
-                            continue;
-                        }
-                        contextStore.add({
-                            id: `file:${filePath}`,
-                            source: 'file',
-                            path: filePath,
-                            content: content,
-                            tokens: Math.ceil(content.length / 4),
-                            importance: 0.5,
-                            lastUsedAt: Date.now(),
-                            addedAt: Date.now(),
-                            status: 'active'
-                        });
-                        addedCount++;
-                        // 检查是否达到token限制，如果达到则停止添加更多文件
-                        // 我们需要手动计算总tokens，因为totalTokens是私有方法
-                        const currentTotalTokens = contextStore.export().reduce((sum, item) => sum + item.tokens, 0);
-                        if (currentTotalTokens > maxTotalTokensLimit) { // 使用总上下文上限
-                            console.log(chalk_1.default.yellow(`⚠️  达到token限制，停止添加更多文件`));
-                            break;
-                        }
-                    }
-                    await (0, contextStorage_1.saveContext)(contextStore.export());
-                    console.log(chalk_1.default.green(`✓ 已成功加入 ${addedCount} 个文件到上下文\n`));
-                }
-                catch (err) {
-                    const message = err instanceof Error ? err.message : String(err);
-                    console.error(chalk_1.default.red(`\n[处理错误]: ${message}\n`));
-                }
-                finally {
-                    rl.resume();
                 }
                 continue;
             }

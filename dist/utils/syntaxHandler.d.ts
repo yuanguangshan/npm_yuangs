@@ -4,4 +4,6 @@
 export declare function handleSpecialSyntax(input: string, stdinData?: string): Promise<{
     processed: boolean;
     result?: string;
+    isPureReference?: boolean;
+    type?: 'file' | 'directory' | 'command' | 'management';
 }>;

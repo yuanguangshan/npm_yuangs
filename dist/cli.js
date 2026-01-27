@@ -515,12 +515,27 @@ async function main() {
                 if (isStdinSpecialSyntax) {
                     const result = await (0, syntaxHandler_1.handleSpecialSyntax)(stdinData, '');
                     if (result.processed) {
-                        // 如果特殊语法被处理，使用处理结果作为问题
+                        // 如果特殊语法被处理
                         if (result.result) {
-                            question = result.result;
+                            if (result.type === 'management') {
+                                console.log(result.result);
+                                process.exit(0);
+                            }
+                            else if (result.isPureReference) {
+                                if (result.result.startsWith('错误:')) {
+                                    console.log(chalk_1.default.red(result.result));
+                                    process.exit(1);
+                                }
+                                else {
+                                    console.log(chalk_1.default.green(`✓ 已将${result.type === 'file' ? '文件' : '目录'}加入上下文`));
+                                    process.exit(0);
+                                }
+                            }
+                            else {
+                                question = result.result;
+                            }
                         }
                         else {
-                            // 如果没有结果，可能只是执行了命令，直接退出
                             process.exit(0);
                         }
                     }
@@ -578,17 +593,26 @@ async function main() {
                         if (result.result) {
                             // 检查是否是管理命令（如 :ls, :clear, :cat），这些命令的结果应该直接输出
                             const trimmedQuestion = question.trim();
-                            const isManagementCommand = trimmedQuestion === ':ls' ||
-                                trimmedQuestion === ':clear' ||
-                                trimmedQuestion === ':cat' ||
-                                trimmedQuestion.startsWith(':cat ');
+                            const isManagementCommand = result.type === 'management';
                             if (isManagementCommand) {
                                 // 直接输出结果并退出
                                 console.log(result.result);
                                 process.exit(0);
                             }
+                            else if (result.isPureReference) {
+                                // 纯引用且没有后续提问，输出提示并退出
+                                if (result.result.startsWith('错误:')) {
+                                    console.log(chalk_1.default.red(result.result));
+                                    process.exit(1);
+                                }
+                                else {
+                                    const typeName = result.type === 'file' ? '文件' : '目录';
+                                    console.log(chalk_1.default.green(`✓ 已将${typeName}加入上下文`));
+                                    process.exit(0);
+                                }
+                            }
                             else {
-                                // 对于文件/目录引用，将结果作为问题传递给AI
+                                // 对于带提问的引用，将结果作为问题传递给AI
                                 question = result.result;
                             }
                         }

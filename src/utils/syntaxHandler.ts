@@ -12,7 +12,12 @@ const execAsync = promisify(exec);
 /**
  * 解析并处理特殊语法（@、#、:ls 等）
  */
-export async function handleSpecialSyntax(input: string, stdinData?: string): Promise<{ processed: boolean; result?: string }> {
+export async function handleSpecialSyntax(input: string, stdinData?: string): Promise<{ 
+    processed: boolean; 
+    result?: string; 
+    isPureReference?: boolean;
+    type?: 'file' | 'directory' | 'command' | 'management';
+}> {
     const trimmed = input.trim();
 
     // 处理 @ 文件引用语法
@@ -24,15 +29,22 @@ export async function handleSpecialSyntax(input: string, stdinData?: string): Pr
             return await handleImmediateExec(filePath);
         }
 
-        // 检查是否是带行号的语法 @file:start-end
-        const lineRangeMatch = trimmed.match(/^@\s*(.+?)(?::(\d+)(?:-(\d+))?)?\s*(?:\n(.*))?$/s);
+        // 检查是否是带行号的语法 @file:start-end as alias
+        const lineRangeMatch = trimmed.match(/^@\s*(.+?)(?::(\d+)(?:-(\d+))?)?(?:\s+as\s+([^\s\n]+))?\s*(?:\n(.*))?$/s);
         if (lineRangeMatch) {
             const filePath = lineRangeMatch[1];
             const startLine = lineRangeMatch[2] ? parseInt(lineRangeMatch[2]) : null;
             const endLine = lineRangeMatch[3] ? parseInt(lineRangeMatch[3]) : null;
-            const question = lineRangeMatch[4] || (stdinData ? `分析以下文件内容：\n\n${stdinData}` : '请分析这个文件');
+            const alias = lineRangeMatch[4];
+            const hasQuestion = !!lineRangeMatch[5] || !!stdinData;
+            const question = lineRangeMatch[5] || (stdinData ? `分析以下文件内容：\n\n${stdinData}` : '请分析这个文件');
 
-            return await handleFileReference(filePath.trim(), startLine, endLine, question);
+            const res = await handleFileReference(filePath.trim(), startLine, endLine, question, alias);
+            return {
+                ...res,
+                isPureReference: !hasQuestion,
+                type: 'file'
+            };
         }
     }
 
@@ -41,39 +53,49 @@ export async function handleSpecialSyntax(input: string, stdinData?: string): Pr
         const dirMatch = trimmed.match(/^#\s*(.+?)\s*(?:\n(.*))?$/s);
         if (dirMatch) {
             const dirPath = dirMatch[1].trim();
+            const hasQuestion = !!dirMatch[2] || !!stdinData;
             const question = dirMatch[2] || (stdinData ? `分析以下目录内容：\n\n${stdinData}` : '请分析这个目录');
-            return await handleDirectoryReference(dirPath, question);
+            const res = await handleDirectoryReference(dirPath, question);
+            return {
+                ...res,
+                isPureReference: !hasQuestion,
+                type: 'directory'
+            };
         }
     }
 
     // 处理 :ls 命令
     if (trimmed === ':ls') {
-        return await handleListContext();
+        const res = await handleListContext();
+        return { ...res, type: 'management' };
     }
 
     // 场景 5.1: :exec 原子执行
     if (trimmed.startsWith(':exec ')) {
         const command = trimmed.slice(6).trim();
-        return await handleAtomicExec(command);
+        const res = await handleAtomicExec(command);
+        return { ...res, type: 'command' };
     }
 
     // 处理 :cat [index] 命令
     if (trimmed === ':cat' || trimmed.startsWith(':cat ')) {
         const parts = trimmed.split(' ');
         const index = parts.length > 1 ? parseInt(parts[1]) : null;
-        return await handleCatContext(index);
+        const res = await handleCatContext(index);
+        return { ...res, type: 'management' };
     }
 
     // 处理 :clear 命令
     if (trimmed === ':clear') {
-        return await handleClearContext();
+        const res = await handleClearContext();
+        return { ...res, type: 'management' };
     }
 
     // 如果不是特殊语法，返回未处理
     return { processed: false };
 }
 
-async function handleFileReference(filePath: string, startLine: number | null = null, endLine: number | null = null, question?: string): Promise<{ processed: boolean; result: string }> {
+async function handleFileReference(filePath: string, startLine: number | null = null, endLine: number | null = null, question?: string, alias?: string): Promise<{ processed: boolean; result: string }> {
     const fullPath = path.resolve(filePath);
 
     if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isFile()) {
@@ -123,7 +145,8 @@ async function handleFileReference(filePath: string, startLine: number | null = 
         contextBuffer.add({
             type: 'file',
             path: filePath + (startLine !== null ? `:${startLine}${endLine ? `-${endLine}` : ''}` : ''),
-            content: content
+            content: content,
+            alias: alias
         });
 
         await saveContext(contextBuffer.export());
