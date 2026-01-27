@@ -172,7 +172,7 @@ class ModelRouter {
         try {
             const result = await policy.select(adapters, taskConfig, routingConfig, this.stats, this.domainHealth);
             // 进一步通过熔断器(Circuit Breaker)过滤候选者
-            const allowedCandidates = result.candidates.filter(c => {
+            const allowedCandidates = result.candidates.filter((c) => {
                 const adapter = this.adapters.get(c.name);
                 return adapter ? this.isAdapterAllowedByCircuitBreaker(adapter) : false;
             });
@@ -189,7 +189,7 @@ class ModelRouter {
             if (strategy === types_1.ExplorationStrategy.EPSILON_GREEDY) {
                 const epsilon = exploration?.epsilon || 0;
                 if (epsilon > 0 && Math.random() < epsilon) {
-                    const otherCandidates = allowedCandidates.filter(c => c.name !== bestCandidate.name);
+                    const otherCandidates = allowedCandidates.filter((c) => c.name !== bestCandidate.name);
                     if (otherCandidates.length > 0) {
                         const picked = otherCandidates[Math.floor(Math.random() * otherCandidates.length)];
                         const pickedAdapter = this.adapters.get(picked.name);
@@ -203,7 +203,7 @@ class ModelRouter {
             else if (strategy === types_1.ExplorationStrategy.UCB1) {
                 // 计算 UCB1 分数并重新排序候选者
                 const totalRuns = Array.from(this.stats.values()).reduce((sum, s) => sum + s.totalRequests, 0);
-                const candidatesWithUCB = allowedCandidates.map(c => {
+                const candidatesWithUCB = allowedCandidates.map((c) => {
                     const s = this.stats.get(c.name);
                     const ucb = this.calculateUCB1(s, totalRuns);
                     // 综合原始 Score (0.7权重) 和 UCB (0.3权重)

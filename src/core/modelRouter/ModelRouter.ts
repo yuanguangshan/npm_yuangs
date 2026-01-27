@@ -11,6 +11,7 @@ import {
   DomainState,
   ExplorationStrategy
 } from './types';
+import { RoutingPolicy } from './policies/types';
 import { DslPolicy } from './policies/DslPolicy';
 
 /**
@@ -212,7 +213,7 @@ export class ModelRouter {
       const result = await policy.select(adapters, taskConfig, routingConfig, this.stats, this.domainHealth);
 
       // 进一步通过熔断器(Circuit Breaker)过滤候选者
-      const allowedCandidates = result.candidates.filter(c => {
+      const allowedCandidates = result.candidates.filter((c: any) => {
         const adapter = this.adapters.get(c.name);
         return adapter ? this.isAdapterAllowedByCircuitBreaker(adapter) : false;
       });
@@ -222,7 +223,7 @@ export class ModelRouter {
       }
 
       // 如果最优解被熔断拦截了，重新选分最高的可用者
-      let bestCandidate = allowedCandidates.sort((a, b) => b.score - a.score)[0];
+      let bestCandidate = allowedCandidates.sort((a: any, b: any) => b.score - a.score)[0];
       let finalAdapter = this.adapters.get(bestCandidate.name)!;
       let finalReason = `策略(${policy.name}): ${result.reason}`;
 
@@ -233,7 +234,7 @@ export class ModelRouter {
       if (strategy === ExplorationStrategy.EPSILON_GREEDY) {
         const epsilon = exploration?.epsilon || 0;
         if (epsilon > 0 && Math.random() < epsilon) {
-          const otherCandidates = allowedCandidates.filter(c => c.name !== bestCandidate.name);
+          const otherCandidates = allowedCandidates.filter((c: any) => c.name !== bestCandidate.name);
           if (otherCandidates.length > 0) {
             const picked = otherCandidates[Math.floor(Math.random() * otherCandidates.length)];
             const pickedAdapter = this.adapters.get(picked.name);
@@ -245,9 +246,9 @@ export class ModelRouter {
         }
       } else if (strategy === ExplorationStrategy.UCB1) {
         // 计算 UCB1 分数并重新排序候选者
-        const totalRuns = Array.from(this.stats.values()).reduce((sum, s) => sum + s.totalRequests, 0);
+        const totalRuns = Array.from(this.stats.values()).reduce((sum: number, s: ModelStats) => sum + s.totalRequests, 0);
 
-        const candidatesWithUCB = allowedCandidates.map(c => {
+        const candidatesWithUCB = allowedCandidates.map((c: any) => {
           const s = this.stats.get(c.name);
           const ucb = this.calculateUCB1(s, totalRuns);
           // 综合原始 Score (0.7权重) 和 UCB (0.3权重)
@@ -255,7 +256,7 @@ export class ModelRouter {
           return { ...c, combinedScore, ucb };
         });
 
-        candidatesWithUCB.sort((a, b) => b.combinedScore - a.combinedScore);
+        candidatesWithUCB.sort((a: any, b: any) => b.combinedScore - a.combinedScore);
         const topOne = candidatesWithUCB[0];
 
         if (topOne.name !== bestCandidate.name) {
