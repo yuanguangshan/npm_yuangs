@@ -22,94 +22,110 @@ function validateBranchName(branchName: string): boolean {
     // 2. 不能包含特殊字符 (除 -, _, ., /)
     // 3. 不能以 .. 开头（防止路径遍历）
     // 4. 不能以 . 开头或结尾（避免隐藏文件问题）
-    
+
     const branchNamePattern = /^[a-zA-Z0-9\-_\.]+(?:\/[a-zA-Z0-9\-_\.]+)*$/;
-    
+
     // 基本格式检查
     if (!branchNamePattern.test(branchName)) {
         return false;
     }
-    
+
     // 防止路径遍历
     if (branchName.includes('..')) {
         return false;
     }
-    
+
     // 防止以 . 开头或结尾
     if (branchName.startsWith('.') || branchName.endsWith('.')) {
         return false;
     }
-    
+
     // 限制长度
     if (branchName.length > 255) {
         return false;
     }
-    
+
     return true;
 }
 
 export function registerBranchCommand(gitCmd: Command) {
+    /**
+     * 列出分支的通用逻辑
+     */
+    async function listBranches() {
+        try {
+            const gitService = new GitService();
+            if (!(await gitService.isGitRepository())) {
+                console.log(chalk.red('当前目录不是 Git 仓库'));
+                return;
+            }
+
+            const [branches, status] = await Promise.all([
+                gitService.getBranches(),
+                gitService.getStatusSummary()
+            ]);
+
+            console.log(chalk.bold.cyan('\n🌿 分支列表\n'));
+
+            branches.details.forEach(b => {
+                const prefix = b.isCurrent ? chalk.green('*') : ' ';
+                const name = b.isCurrent ? chalk.green.bold(b.name) : chalk.white(b.name);
+                let meta = [];
+
+                if (b.upstream) {
+                    if (b.ahead) meta.push(chalk.green(`↑${b.ahead}`));
+                    if (b.behind) meta.push(chalk.red(`↓${b.behind}`));
+                    if (!b.ahead && !b.behind) meta.push(chalk.gray('sync'));
+                }
+
+                // 如果是当前分支，显示工作区状态
+                if (b.isCurrent) {
+                    const isDirty = status.modified > 0 || status.added > 0 || status.deleted > 0;
+                    if (isDirty) meta.push(chalk.yellow('(dirty)'));
+                    else meta.push(chalk.green('(clean)'));
+                }
+
+                const metaStr = meta.length ? ` ${meta.join(' ')}` : '';
+                console.log(`${prefix} ${name}${metaStr}`);
+                if (b.subject) {
+                    console.log(chalk.gray(`    └─ ${b.hash} ${b.subject}`));
+                }
+            });
+            console.log();
+
+        } catch (error: any) {
+            console.error(chalk.red(`错误: ${error.message}`));
+            process.exit(1);
+        }
+    }
+
     // git branch - 分支管理
     const branchCmd = gitCmd
         .command('branch')
-        .description('智能分支管理');
+        .description('智能分支管理')
+        .action(async (options: any, cmd: any) => {
+            // 如果没有子命令，默认执行 list
+            if (cmd.args.length === 0) {
+                await listBranches();
+            } else {
+                // 如果有子命令但没匹配到（虽然 Commander 通常会自动处理，但这里加个兜底以防万一出现 exit 1）
+                cmd.help();
+            }
+        });
 
     // branch list
     branchCmd
         .command('list')
         .description('列出分支及上下文信息')
         .action(async () => {
-            try {
-                const gitService = new GitService();
-                if (!(await gitService.isGitRepository())) {
-                    console.log(chalk.red('当前目录不是 Git 仓库'));
-                    return;
-                }
-
-                const [branches, status] = await Promise.all([
-                    gitService.getBranches(),
-                    gitService.getStatusSummary()
-                ]);
-
-                console.log(chalk.bold.cyan('\n🌿 分支列表\n'));
-
-                branches.details.forEach(b => {
-                    const prefix = b.isCurrent ? chalk.green('*') : ' ';
-                    const name = b.isCurrent ? chalk.green.bold(b.name) : chalk.white(b.name);
-                    let meta = [];
-
-                    if (b.upstream) {
-                        if (b.ahead) meta.push(chalk.green(`↑${b.ahead}`));
-                        if (b.behind) meta.push(chalk.red(`↓${b.behind}`));
-                        if (!b.ahead && !b.behind) meta.push(chalk.gray('sync'));
-                    }
-
-                    // 如果是当前分支，显示工作区状态
-                    if (b.isCurrent) {
-                        const isDirty = status.modified > 0 || status.added > 0 || status.deleted > 0;
-                        if (isDirty) meta.push(chalk.yellow('(dirty)'));
-                        else meta.push(chalk.green('(clean)'));
-                    }
-
-                    const metaStr = meta.length ? ` ${meta.join(' ')}` : '';
-                    console.log(`${prefix} ${name}${metaStr}`);
-                    if (b.subject) {
-                        console.log(chalk.gray(`    └─ ${b.hash} ${b.subject}`));
-                    }
-                });
-                console.log();
-
-            } catch (error: any) {
-                console.error(chalk.red(`错误: ${error.message}`));
-                process.exit(1);
-            }
+            await listBranches();
         });
 
     // branch switch
     branchCmd
         .command('switch <branch>')
         .description('安全切换分支')
-        .action(async (branchName) => {
+        .action(async (branchName: any) => {
             try {
                 // 安全检查：验证分支名称
                 if (!validateBranchName(branchName)) {

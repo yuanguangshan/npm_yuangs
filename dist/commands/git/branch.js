@@ -78,15 +78,10 @@ function validateBranchName(branchName) {
     return true;
 }
 function registerBranchCommand(gitCmd) {
-    // git branch - 分支管理
-    const branchCmd = gitCmd
-        .command('branch')
-        .description('智能分支管理');
-    // branch list
-    branchCmd
-        .command('list')
-        .description('列出分支及上下文信息')
-        .action(async () => {
+    /**
+     * 列出分支的通用逻辑
+     */
+    async function listBranches() {
         try {
             const gitService = new GitService_1.GitService();
             if (!(await gitService.isGitRepository())) {
@@ -130,6 +125,27 @@ function registerBranchCommand(gitCmd) {
             console.error(chalk_1.default.red(`错误: ${error.message}`));
             process.exit(1);
         }
+    }
+    // git branch - 分支管理
+    const branchCmd = gitCmd
+        .command('branch')
+        .description('智能分支管理')
+        .action(async (options, cmd) => {
+        // 如果没有子命令，默认执行 list
+        if (cmd.args.length === 0) {
+            await listBranches();
+        }
+        else {
+            // 如果有子命令但没匹配到（虽然 Commander 通常会自动处理，但这里加个兜底以防万一出现 exit 1）
+            cmd.help();
+        }
+    });
+    // branch list
+    branchCmd
+        .command('list')
+        .description('列出分支及上下文信息')
+        .action(async () => {
+        await listBranches();
     });
     // branch switch
     branchCmd
