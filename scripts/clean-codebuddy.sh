@@ -35,9 +35,13 @@ fi
 PATHS=(
     "$HOME/.codebuddy"
     "$HOME/.cb"
+    "$HOME/.codebuddy-code"
     "$HOME/Library/Application Support/codebuddy"
+    "$HOME/Library/Application Support/CodeBuddyExtension"
+    "$HOME/Library/Application Support/com.tencent.codebuddy"
     "$HOME/Library/Caches/codebuddy"
     "$HOME/Library/Logs/codebuddy"
+    "$HOME/.config/codebuddy"
 )
 
 info "清理本地文件与配置..."
