@@ -12,6 +12,9 @@ const execAsync = promisify(exec);
 /**
  * 解析并处理特殊语法（@、#、:ls 等）
  */
+const MAX_FILE_TOKENS = 10000;
+const CONTEXT_MAX_TOKENS = 100000;
+
 export async function handleSpecialSyntax(input: string, stdinData?: string): Promise<{ 
     processed: boolean; 
     result?: string; 
@@ -234,7 +237,7 @@ async function handleDirectoryReference(dirPath: string, question?: string): Pro
         const persisted = await loadContext();
         contextBuffer.import(persisted);
 
-        let addedCount = 0;
+        let successfullyAddedCount = 0;
         let totalOriginalTokens = 0;
 
         for (const [filePath, content] of contentMap) {
@@ -242,7 +245,7 @@ async function handleDirectoryReference(dirPath: string, question?: string): Pro
             totalOriginalTokens += tokens;
             
             // 如果单个文件太大，跳过它以免撑爆上下文
-            if (tokens > 10000) {
+            if (tokens > MAX_FILE_TOKENS) {
                 continue;
             }
 
@@ -251,10 +254,10 @@ async function handleDirectoryReference(dirPath: string, question?: string): Pro
                 path: filePath,
                 content: content
             });
-            addedCount++;
+            successfullyAddedCount++;
         }
 
-        if (addedCount === 0 && filePaths.length > 0) {
+        if (successfullyAddedCount === 0 && filePaths.length > 0) {
             return {
                 processed: true,
                 result: `错误: 目录 "${dirPath}" 中的文件都太大，无法加入上下文`,
@@ -266,8 +269,8 @@ async function handleDirectoryReference(dirPath: string, question?: string): Pro
 
         return { 
             processed: true, 
-            result: `已成功加入 ${addedCount} 个文件到上下文 (共找到 ${filePaths.length} 个文件)`,
-            itemCount: addedCount
+            result: `已成功加入 ${successfullyAddedCount} 个文件到上下文 (共找到 ${filePaths.length} 个文件)`,
+            itemCount: successfullyAddedCount
         };
     } catch (error) {
         return { 

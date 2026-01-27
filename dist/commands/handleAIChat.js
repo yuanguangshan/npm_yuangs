@@ -265,11 +265,11 @@ async function handleAIChat(initialQuestion, model) {
                     // 纯引用且没有后续提问，输出提示并退出
                     if (result.error) {
                         console.log(chalk_1.default.red(result.result));
-                        process.exit(1);
+                        throw new Error(result.result);
                     }
                     else {
                         console.log(chalk_1.default.green(`✓ ${result.result || '已加入上下文'}`));
-                        process.exit(0);
+                        return;
                     }
                 }
                 else {

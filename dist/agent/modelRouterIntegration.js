@@ -172,7 +172,7 @@ class ModelRouterIntegration {
     async executeWithRouter(messages, mode = 'chat', options = {}) {
         const startTime = Date.now();
         // 如果禁用路由，直接返回
-        if (!this.enableRouting || !options.enableRouting) {
+        if (this.enableRouting === false || options.enableRouting === false) {
             return {
                 rawText: '',
                 usedRouter: false,

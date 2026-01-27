@@ -16,6 +16,8 @@ const execAsync = (0, util_1.promisify)(child_process_1.exec);
 /**
  * 解析并处理特殊语法（@、#、:ls 等）
  */
+const MAX_FILE_TOKENS = 10000;
+const CONTEXT_MAX_TOKENS = 100000;
 async function handleSpecialSyntax(input, stdinData) {
     const trimmed = input.trim();
     // 处理 @ 文件引用语法
@@ -177,13 +179,13 @@ async function handleDirectoryReference(dirPath, question) {
         const contextBuffer = new contextBuffer_1.ContextBuffer();
         const persisted = await (0, contextStorage_1.loadContext)();
         contextBuffer.import(persisted);
-        let addedCount = 0;
+        let successfullyAddedCount = 0;
         let totalOriginalTokens = 0;
         for (const [filePath, content] of contentMap) {
             const tokens = Math.ceil(content.length / 4);
             totalOriginalTokens += tokens;
             // 如果单个文件太大，跳过它以免撑爆上下文
-            if (tokens > 10000) {
+            if (tokens > MAX_FILE_TOKENS) {
                 continue;
             }
             contextBuffer.add({
@@ -191,9 +193,9 @@ async function handleDirectoryReference(dirPath, question) {
                 path: filePath,
                 content: content
             });
-            addedCount++;
+            successfullyAddedCount++;
         }
-        if (addedCount === 0 && filePaths.length > 0) {
+        if (successfullyAddedCount === 0 && filePaths.length > 0) {
             return {
                 processed: true,
                 result: `错误: 目录 "${dirPath}" 中的文件都太大，无法加入上下文`,
@@ -203,8 +205,8 @@ async function handleDirectoryReference(dirPath, question) {
         await (0, contextStorage_1.saveContext)(contextBuffer.export());
         return {
             processed: true,
-            result: `已成功加入 ${addedCount} 个文件到上下文 (共找到 ${filePaths.length} 个文件)`,
-            itemCount: addedCount
+            result: `已成功加入 ${successfullyAddedCount} 个文件到上下文 (共找到 ${filePaths.length} 个文件)`,
+            itemCount: successfullyAddedCount
         };
     }
     catch (error) {

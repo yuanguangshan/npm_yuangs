@@ -281,10 +281,10 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
                     // 纯引用且没有后续提问，输出提示并退出
                     if (result.error) {
                         console.log(chalk.red(result.result));
-                        process.exit(1);
+                        throw new Error(result.result);
                     } else {
                         console.log(chalk.green(`✓ ${result.result || '已加入上下文'}`));
-                        process.exit(0);
+                        return;
                     }
                 } else {
                     // 带问题的引用，将处理后的 prompt 作为新的 initialQuestion
