@@ -231,20 +231,14 @@ ${config.detailed ? '如果有 body,用空行分隔 subject 和 body。' : ''}`;
     async generate(
         config: CommitMessageConfig = {}
     ): Promise<GeneratedCommitMessage> {
-        const diff = await this.gitService.getDiff();
+        const { GitContextAggregator } = await import('./GitContextAggregator');
+        const aggregator = new GitContextAggregator(this.gitService);
+        const ctx = await aggregator.collect();
 
-        if (!diff.staged) {
-            if (diff.unstaged) {
-                const unstagedFiles = diff.files.unstaged.length;
-                throw new Error(
-                    `Found ${unstagedFiles} unstaged file(s) but no staged changes.\n` +
-                    'Please stage your changes using "git add" or use "--all" option to auto-stage.'
-                );
-            }
-            throw new Error('No changes to commit (working tree clean).');
-        }
+        // 使用统一的 Policy 校验
+        aggregator.ensureStaged(ctx);
 
-        const diffContent = diff.staged;
+        const diffContent = ctx.diff.staged || '';
         const stats = this.analyzeDiff(diffContent);
 
         let message: string;

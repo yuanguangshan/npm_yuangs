@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BranchAdvisor = void 0;
 const types_1 = require("../modelRouter/types");
@@ -8,6 +41,7 @@ const types_1 = require("../modelRouter/types");
 class BranchAdvisor {
     gitService;
     router;
+    static VERSION = 'v1.0';
     constructor(gitService, router) {
         this.gitService = gitService;
         this.router = router;
@@ -31,28 +65,25 @@ class BranchAdvisor {
         return this.parseResponse(execution.content || '{}');
     }
     async collectContext() {
-        const [branchInfo, status, diff, commits] = await Promise.all([
-            this.gitService.getBranches(),
-            this.gitService.getStatusSummary(),
-            this.gitService.getDiff(), // 获取文件名
-            this.gitService.getRecentCommits(3) // 最近 3 条够了
-        ]);
+        const { GitContextAggregator } = await Promise.resolve().then(() => __importStar(require('./GitContextAggregator')));
+        const aggregator = new GitContextAggregator(this.gitService);
+        const ctx = await aggregator.collect();
         return {
-            currentBranch: branchInfo.current,
+            currentBranch: ctx.branches.current,
             workingTree: {
-                modified: status.modified,
-                added: status.added,
-                deleted: status.deleted,
-                untracked: status.untracked,
-                isClean: status.modified === 0 && status.added === 0 && status.deleted === 0 && status.untracked === 0
+                modified: ctx.status.modified,
+                added: ctx.status.added,
+                deleted: ctx.status.deleted,
+                untracked: ctx.status.untracked,
+                isClean: ctx.status.modified === 0 && ctx.status.added === 0 && ctx.status.deleted === 0 && ctx.status.untracked === 0
             },
-            stagedFiles: diff.files.staged,
-            unstagedFiles: diff.files.unstaged,
-            recentCommits: commits.map(c => ({
+            stagedFiles: ctx.diff.files.staged,
+            unstagedFiles: ctx.diff.files.unstaged,
+            recentCommits: ctx.recentCommits.map(c => ({
                 message: c.message,
                 date: c.date
             })),
-            branchList: branchInfo.all.slice(0, 20) // 限制数量防止 token 爆炸
+            branchList: ctx.branches.all.slice(0, 20)
         };
     }
     buildPrompt(ctx) {

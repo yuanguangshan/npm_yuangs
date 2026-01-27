@@ -30,6 +30,7 @@ var IssueSeverity;
 class CodeReviewer {
     gitService;
     router;
+    static VERSION = 'v1.0';
     constructor(gitService, router) {
         this.gitService = gitService;
         this.router = router;

@@ -40,6 +40,7 @@ export interface BranchSuggestion {
 export declare class BranchAdvisor {
     private gitService;
     private router;
+    static readonly VERSION = "v1.0";
     constructor(gitService: GitService, router: ModelRouter);
     /**
      * 获取分支建议

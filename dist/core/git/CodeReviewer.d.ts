@@ -60,6 +60,7 @@ export interface ReviewResult {
 export declare class CodeReviewer {
     private gitService;
     private router?;
+    static readonly VERSION = "v1.0";
     constructor(gitService: GitService, router?: ModelRouter | undefined);
     /**
      * 构建审查提示词

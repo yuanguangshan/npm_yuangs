@@ -40,8 +40,11 @@ export interface BranchSuggestion {
 
 /**
  * AI 分支顾问
+ * - 该模块目前仅提供建议 (Advisory)，不执行任何 Git 写操作。
  */
 export class BranchAdvisor {
+    public static readonly VERSION = 'v1.0';
+
     constructor(
         private gitService: GitService,
         private router: ModelRouter
@@ -75,29 +78,26 @@ export class BranchAdvisor {
     }
 
     private async collectContext(): Promise<BranchSuggestContext> {
-        const [branchInfo, status, diff, commits] = await Promise.all([
-            this.gitService.getBranches(),
-            this.gitService.getStatusSummary(),
-            this.gitService.getDiff(), // 获取文件名
-            this.gitService.getRecentCommits(3) // 最近 3 条够了
-        ]);
+        const { GitContextAggregator } = await import('./GitContextAggregator');
+        const aggregator = new GitContextAggregator(this.gitService);
+        const ctx = await aggregator.collect();
 
         return {
-            currentBranch: branchInfo.current,
+            currentBranch: ctx.branches.current,
             workingTree: {
-                modified: status.modified,
-                added: status.added,
-                deleted: status.deleted,
-                untracked: status.untracked,
-                isClean: status.modified === 0 && status.added === 0 && status.deleted === 0 && status.untracked === 0
+                modified: ctx.status.modified,
+                added: ctx.status.added,
+                deleted: ctx.status.deleted,
+                untracked: ctx.status.untracked,
+                isClean: ctx.status.modified === 0 && ctx.status.added === 0 && ctx.status.deleted === 0 && ctx.status.untracked === 0
             },
-            stagedFiles: diff.files.staged,
-            unstagedFiles: diff.files.unstaged,
-            recentCommits: commits.map(c => ({
+            stagedFiles: ctx.diff.files.staged,
+            unstagedFiles: ctx.diff.files.unstaged,
+            recentCommits: ctx.recentCommits.map(c => ({
                 message: c.message,
                 date: c.date
             })),
-            branchList: branchInfo.all.slice(0, 20) // 限制数量防止 token 爆炸
+            branchList: ctx.branches.all.slice(0, 20)
         };
     }
 

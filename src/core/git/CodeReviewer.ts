@@ -64,6 +64,8 @@ export interface ReviewResult {
  * AI 代码审查器
  */
 export class CodeReviewer {
+    public static readonly VERSION = 'v1.0';
+
     constructor(
         private gitService: GitService,
         private router?: ModelRouter
