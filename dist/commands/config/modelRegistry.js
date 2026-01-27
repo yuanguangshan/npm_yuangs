@@ -25,8 +25,6 @@ exports.SUPPORTED_MODELS = [
     'gemini-2.5-flash-lite',
     'gemini-3-flash-preview',
     'gemini-2.5-pro',
-    'gemini-2.5-pro',
-    'gemini-2.5-flash',
     // Legacy
     'Assistant'
 ];
@@ -88,18 +86,6 @@ const MODEL_METADATA = {
         provider: 'Google',
         category: 'pro',
         description: 'Google 的高性能模型',
-    },
-    'gemini-2.5-pro': {
-        name: 'Gemini 1.5 Pro',
-        provider: 'Google',
-        category: 'pro',
-        description: 'Gemini 1.5 高性能模型',
-    },
-    'gemini-2.5-flash': {
-        name: 'Gemini 1.5 Flash',
-        provider: 'Google',
-        category: 'flash',
-        description: 'Gemini 1.5 快速响应模型',
     },
     'Assistant': {
         name: 'Assistant',

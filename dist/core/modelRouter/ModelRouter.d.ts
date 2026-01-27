@@ -1,4 +1,5 @@
 import { ModelAdapter, TaskConfig, RoutingConfig, RoutingResult, ModelExecutionResult, ModelStats } from './types';
+import { RoutingPolicy } from './policies/types';
 /**
  * 模型路由器
  * 负责根据任务配置和路由策略选择合适的模型适配器
@@ -6,7 +7,17 @@ import { ModelAdapter, TaskConfig, RoutingConfig, RoutingResult, ModelExecutionR
 export declare class ModelRouter {
     private adapters;
     private stats;
+    private policies;
     private roundRobinIndex;
+    constructor();
+    /**
+     * 注册默认策略
+     */
+    private registerDefaultPolicies;
+    /**
+     * 注册路由策略
+     */
+    registerPolicy(policy: RoutingPolicy): void;
     /**
      * 注册模型适配器
      */
@@ -20,6 +31,10 @@ export declare class ModelRouter {
      */
     getAdapters(): ModelAdapter[];
     /**
+     * 获取所有已注册的策略
+     */
+    getPolicies(): RoutingPolicy[];
+    /**
      * 获取模型统计信息
      */
     getStats(modelName?: string): ModelStats | ModelStats[];
@@ -27,6 +42,10 @@ export declare class ModelRouter {
      * 路由任务到合适的模型
      */
     route(taskConfig: TaskConfig, routingConfig: RoutingConfig): Promise<RoutingResult>;
+    /**
+     * 执行策略
+     */
+    private executePolicy;
     /**
      * 执行任务（带统计）
      */
@@ -36,29 +55,9 @@ export declare class ModelRouter {
      */
     private getAvailableAdapters;
     /**
-     * 基于能力选择模型
-     */
-    private selectByCapabilities;
-    /**
      * 轮询选择
      */
     private selectRoundRobin;
-    /**
-     * 选择最快的模型
-     */
-    private selectFastest;
-    /**
-     * 选择成本最低的模型
-     */
-    private selectCheapest;
-    /**
-     * 选择质量最好的模型
-     */
-    private selectBestQuality;
-    /**
-     * 获取选择原因
-     */
-    private getReasonForSelection;
     /**
      * 创建空统计信息
      */

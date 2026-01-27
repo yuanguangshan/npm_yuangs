@@ -8,6 +8,11 @@ import {
   ModelStats,
   TaskType,
 } from './types';
+import { RoutingPolicy } from './policies/types';
+import { BalancedPolicy } from './policies/BalancedPolicy';
+import { CostSavingPolicy } from './policies/CostSavingPolicy';
+import { LatencyCriticalPolicy } from './policies/LatencyCriticalPolicy';
+import { QualityFirstPolicy } from './policies/QualityFirstPolicy';
 
 /**
  * 模型路由器
@@ -16,14 +21,36 @@ import {
 export class ModelRouter {
   private adapters: Map<string, ModelAdapter> = new Map();
   private stats: Map<string, ModelStats> = new Map();
+  private policies: Map<string, RoutingPolicy> = new Map();
   private roundRobinIndex = 0;
+
+  constructor() {
+    this.registerDefaultPolicies();
+  }
+
+  /**
+   * 注册默认策略
+   */
+  private registerDefaultPolicies() {
+    this.registerPolicy(new BalancedPolicy());
+    this.registerPolicy(new CostSavingPolicy());
+    this.registerPolicy(new LatencyCriticalPolicy());
+    this.registerPolicy(new QualityFirstPolicy());
+  }
+
+  /**
+   * 注册路由策略
+   */
+  registerPolicy(policy: RoutingPolicy) {
+    this.policies.set(policy.name, policy);
+  }
 
   /**
    * 注册模型适配器
    */
   registerAdapter(adapter: ModelAdapter): void {
     this.adapters.set(adapter.name, adapter);
-    
+
     // 初始化统计信息
     if (!this.stats.has(adapter.name)) {
       this.stats.set(adapter.name, {
@@ -53,6 +80,13 @@ export class ModelRouter {
   }
 
   /**
+   * 获取所有已注册的策略
+   */
+  getPolicies(): RoutingPolicy[] {
+    return Array.from(this.policies.values());
+  }
+
+  /**
    * 获取模型统计信息
    */
   getStats(modelName?: string): ModelStats | ModelStats[] {
@@ -69,13 +103,13 @@ export class ModelRouter {
     taskConfig: TaskConfig,
     routingConfig: RoutingConfig
   ): Promise<RoutingResult> {
-    // 手动指定模型
+    // 1. 手动指定模型 (最高优先级)
     if (routingConfig.strategy === RoutingStrategy.MANUAL && routingConfig.manualModelName) {
       const adapter = this.adapters.get(routingConfig.manualModelName);
       if (!adapter) {
         throw new Error(`模型 ${routingConfig.manualModelName} 未注册`);
       }
-      
+
       const isAvailable = await adapter.isAvailable();
       if (!isAvailable) {
         throw new Error(`模型 ${routingConfig.manualModelName} 不可用`);
@@ -89,58 +123,77 @@ export class ModelRouter {
       };
     }
 
-    // 获取可用的适配器
-    const availableAdapters = await this.getAvailableAdapters();
-    if (availableAdapters.length === 0) {
-      throw new Error('没有可用的模型适配器');
+    // 2. 检查是否有可用适配器
+    const allAdapters = this.getAdapters();
+    if (allAdapters.length === 0) {
+      throw new Error('没有任何已注册的模型适配器');
     }
 
-    // 根据策略选择模型
-    let selectedAdapter: ModelAdapter | null = null;
-    let candidates: Array<{ name: string; score: number; reason: string }> = [];
+    // 3. 轮询策略 (特殊处理，因为它是无状态的/简单的)
+    if (routingConfig.strategy === RoutingStrategy.ROUND_ROBIN) {
+      const availableAdapters = await this.getAvailableAdapters();
+      if (availableAdapters.length === 0) throw new Error('没有可用的模型适配器');
 
+      const adapter = this.selectRoundRobin(availableAdapters);
+      return {
+        adapter,
+        reason: `轮询选择 ${adapter.name}`,
+        candidates: [{ name: adapter.name, score: 1.0, reason: '轮询选择' }],
+        isFallback: false
+      };
+    }
+
+    // 4. 策略路由 (Policy Engine)
+    let policyName = 'balanced'; // Default
     switch (routingConfig.strategy) {
-      case RoutingStrategy.AUTO:
-        const result = this.selectByCapabilities(availableAdapters, taskConfig, routingConfig);
-        selectedAdapter = result.adapter;
-        candidates = result.candidates;
-        break;
-
-      case RoutingStrategy.ROUND_ROBIN:
-        selectedAdapter = this.selectRoundRobin(availableAdapters);
-        candidates = [{ name: selectedAdapter.name, score: 1.0, reason: '轮询选择' }];
-        break;
-
       case RoutingStrategy.FASTEST_FIRST:
-        selectedAdapter = this.selectFastest(availableAdapters);
-        candidates = [{ name: selectedAdapter.name, score: 1.0, reason: '最快响应' }];
+        policyName = 'latency-critical';
         break;
-
       case RoutingStrategy.CHEAPEST_FIRST:
-        selectedAdapter = this.selectCheapest(availableAdapters);
-        candidates = [{ name: selectedAdapter.name, score: 1.0, reason: '最低成本' }];
+        policyName = 'cost-saving';
         break;
-
       case RoutingStrategy.BEST_QUALITY:
-        selectedAdapter = this.selectBestQuality(availableAdapters, taskConfig);
-        candidates = [{ name: selectedAdapter.name, score: 1.0, reason: '最佳质量' }];
+        policyName = 'quality-first';
         break;
-
+      case RoutingStrategy.AUTO:
       default:
-        throw new Error(`不支持的路由策略: ${routingConfig.strategy}`);
+        policyName = 'balanced';
+        break;
     }
 
-    if (!selectedAdapter) {
-      throw new Error('无法选择合适的模型');
+    const policy = this.policies.get(policyName);
+    if (!policy) {
+      console.warn(`策略 ${policyName} 未找到，回退到 balanced 策略`);
+      const fallbackPolicy = this.policies.get('balanced');
+      if (!fallbackPolicy) throw new Error('核心策略丢失');
+      return this.executePolicy(fallbackPolicy, allAdapters, taskConfig, routingConfig);
     }
 
-    return {
-      adapter: selectedAdapter,
-      reason: this.getReasonForSelection(routingConfig.strategy, selectedAdapter),
-      candidates,
-      isFallback: false,
-    };
+    return this.executePolicy(policy, allAdapters, taskConfig, routingConfig);
   }
+
+  /**
+   * 执行策略
+   */
+  private async executePolicy(
+    policy: RoutingPolicy,
+    adapters: ModelAdapter[],
+    taskConfig: TaskConfig,
+    routingConfig: RoutingConfig
+  ): Promise<RoutingResult> {
+    try {
+      const result = await policy.select(adapters, taskConfig, routingConfig, this.stats);
+      return {
+        adapter: result.adapter,
+        reason: `策略(${policy.name}): ${result.reason}`,
+        candidates: result.candidates,
+        isFallback: false
+      }
+    } catch (error: any) {
+      throw new Error(`策略路由失败: ${error.message}`);
+    }
+  }
+
 
   /**
    * 执行任务（带统计）
@@ -157,7 +210,7 @@ export class ModelRouter {
 
     try {
       const result = await adapter.execute(prompt, config, onChunk);
-      
+
       if (result.success) {
         stats.successCount++;
       } else {
@@ -198,151 +251,12 @@ export class ModelRouter {
   }
 
   /**
-   * 基于能力选择模型
-   */
-  private selectByCapabilities(
-    adapters: ModelAdapter[],
-    taskConfig: TaskConfig,
-    routingConfig: RoutingConfig
-  ): { adapter: ModelAdapter; candidates: Array<{ name: string; score: number; reason: string }> } {
-    const scored = adapters.map((adapter) => {
-      let score = 0;
-      let reasons: string[] = [];
-
-      // 1. 任务类型匹配 (40%)
-      if (adapter.capabilities.supportedTaskTypes.includes(taskConfig.type)) {
-        score += 0.4;
-        reasons.push('支持任务类型');
-      }
-
-      // 2. 上下文窗口 (20%)
-      if (taskConfig.contextSize) {
-        if (adapter.capabilities.maxContextWindow >= taskConfig.contextSize) {
-          score += 0.2;
-          reasons.push('上下文窗口充足');
-        }
-      } else {
-        score += 0.2;
-      }
-
-      // 3. 响应时间 (20%)
-      if (taskConfig.expectedResponseTime) {
-        if (adapter.capabilities.avgResponseTime <= taskConfig.expectedResponseTime) {
-          score += 0.2;
-          reasons.push('响应时间符合要求');
-        }
-      } else {
-        score += 0.2;
-      }
-
-      // 4. 成本 (10%)
-      if (routingConfig.maxCostLevel) {
-        if (adapter.capabilities.costLevel <= routingConfig.maxCostLevel) {
-          score += 0.1;
-          reasons.push('成本符合预算');
-        }
-      } else {
-        score += 0.1;
-      }
-
-      // 5. 历史表现 (10%)
-      const stats = this.stats.get(adapter.name);
-      if (stats && stats.totalRequests > 0) {
-        const successRate = stats.successCount / stats.totalRequests;
-        score += successRate * 0.1;
-        if (successRate > 0.9) {
-          reasons.push('历史表现优秀');
-        }
-      } else {
-        score += 0.05; // 新模型给一半分数
-      }
-
-      return {
-        name: adapter.name,
-        adapter,
-        score,
-        reason: reasons.join('; ') || '基本符合要求',
-      };
-    });
-
-    // 按分数排序
-    scored.sort((a, b) => b.score - a.score);
-
-    return {
-      adapter: scored[0].adapter,
-      candidates: scored.map((s) => ({ name: s.name, score: s.score, reason: s.reason })),
-    };
-  }
-
-  /**
    * 轮询选择
    */
   private selectRoundRobin(adapters: ModelAdapter[]): ModelAdapter {
     const adapter = adapters[this.roundRobinIndex % adapters.length];
     this.roundRobinIndex++;
     return adapter;
-  }
-
-  /**
-   * 选择最快的模型
-   */
-  private selectFastest(adapters: ModelAdapter[]): ModelAdapter {
-    return adapters.reduce((fastest, current) =>
-      current.capabilities.avgResponseTime < fastest.capabilities.avgResponseTime
-        ? current
-        : fastest
-    );
-  }
-
-  /**
-   * 选择成本最低的模型
-   */
-  private selectCheapest(adapters: ModelAdapter[]): ModelAdapter {
-    return adapters.reduce((cheapest, current) =>
-      current.capabilities.costLevel < cheapest.capabilities.costLevel ? current : cheapest
-    );
-  }
-
-  /**
-   * 选择质量最好的模型
-   */
-  private selectBestQuality(adapters: ModelAdapter[], taskConfig: TaskConfig): ModelAdapter {
-    // 对于代码相关任务，优先选择专门的代码模型
-    if (
-      taskConfig.type === TaskType.CODE_GENERATION ||
-      taskConfig.type === TaskType.CODE_REVIEW ||
-      taskConfig.type === TaskType.DEBUG
-    ) {
-      const codeAdapter = adapters.find(
-        (a) => a.capabilities.specialCapabilities?.includes('code-expert')
-      );
-      if (codeAdapter) return codeAdapter;
-    }
-
-    // 否则选择成本最高的（通常质量最好）
-    return adapters.reduce((best, current) =>
-      current.capabilities.costLevel > best.capabilities.costLevel ? current : best
-    );
-  }
-
-  /**
-   * 获取选择原因
-   */
-  private getReasonForSelection(strategy: RoutingStrategy, adapter: ModelAdapter): string {
-    switch (strategy) {
-      case RoutingStrategy.AUTO:
-        return `自动选择 ${adapter.name}（基于任务类型和模型能力）`;
-      case RoutingStrategy.ROUND_ROBIN:
-        return `轮询选择 ${adapter.name}`;
-      case RoutingStrategy.FASTEST_FIRST:
-        return `选择 ${adapter.name}（最快响应时间 ~${adapter.capabilities.avgResponseTime}ms）`;
-      case RoutingStrategy.CHEAPEST_FIRST:
-        return `选择 ${adapter.name}（最低成本等级 ${adapter.capabilities.costLevel}）`;
-      case RoutingStrategy.BEST_QUALITY:
-        return `选择 ${adapter.name}（最佳质量）`;
-      default:
-        return `选择 ${adapter.name}`;
-    }
   }
 
   /**

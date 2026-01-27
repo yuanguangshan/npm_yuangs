@@ -146,6 +146,77 @@ export function registerRouterCommands(program: Command): void {
       }
     });
 
+  // 策略管理
+  const policyCmd = routerCmd
+    .command('policy')
+    .description('管理路由策略');
+
+  policyCmd
+    .command('list')
+    .description('列出所有可用的路由策略')
+    .action(() => {
+      try {
+        const router = getRouter();
+        const policies = router.getPolicies();
+        const config = loadConfig();
+
+        console.log(chalk.bold.cyan('\n📜 可用路由策略\n'));
+
+        for (const policy of policies) {
+          const isCurrent = (config.defaultStrategy === RoutingStrategy.AUTO && policy.name === 'balanced') ||
+            (config.defaultStrategy === RoutingStrategy.FASTEST_FIRST && policy.name === 'latency-critical') ||
+            (config.defaultStrategy === RoutingStrategy.CHEAPEST_FIRST && policy.name === 'cost-saving') ||
+            (config.defaultStrategy === RoutingStrategy.BEST_QUALITY && policy.name === 'quality-first');
+
+          const prefix = isCurrent ? chalk.green('→ ') : '  ';
+          console.log(`${prefix}${chalk.bold(policy.name)}`);
+          console.log(`    ${chalk.gray(policy.description)}`);
+          console.log();
+        }
+      } catch (error: any) {
+        console.error(chalk.red(`错误: ${error.message}`));
+        process.exit(1);
+      }
+    });
+
+  policyCmd
+    .command('set <name>')
+    .description('设置默认路由策略')
+    .action((name) => {
+      try {
+        const config = loadConfig();
+        let strategy: RoutingStrategy;
+
+        switch (name) {
+          case 'balanced':
+          case 'auto':
+            strategy = RoutingStrategy.AUTO;
+            break;
+          case 'latency-critical':
+          case 'fast':
+            strategy = RoutingStrategy.FASTEST_FIRST;
+            break;
+          case 'cost-saving':
+          case 'cheap':
+            strategy = RoutingStrategy.CHEAPEST_FIRST;
+            break;
+          case 'quality-first':
+          case 'best':
+            strategy = RoutingStrategy.BEST_QUALITY;
+            break;
+          default:
+            console.error(chalk.red(`未知策略: ${name}`));
+            process.exit(1);
+        }
+
+        saveConfig({ defaultStrategy: strategy });
+        console.log(chalk.green(`✓ 已将默认策略设置为: ${name}`));
+      } catch (error: any) {
+        console.error(chalk.red(`错误: ${error.message}`));
+        process.exit(1);
+      }
+    });
+
   // 配置管理
   const configCmd = routerCmd
     .command('config')
