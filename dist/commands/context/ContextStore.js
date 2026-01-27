@@ -8,7 +8,7 @@ const fs_1 = __importDefault(require("fs"));
 const crypto_1 = __importDefault(require("crypto"));
 class ContextStore {
     items = new Map();
-    maxTokens = 32000;
+    maxTokens = 100000;
     add(item) {
         this.items.set(item.id, item);
     }

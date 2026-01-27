@@ -19,7 +19,7 @@ const estimateTokens = (text: string) => Math.ceil(text.length / 4);
 
 export class ContextBuffer {
     private items: ContextItem[] = [];
-    private maxTokens = 32000;
+    private maxTokens = 100000;
 
     add(
         item: Partial<ContextItem> & { type: ContextItem['type']; path: string },

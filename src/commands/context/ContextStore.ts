@@ -5,7 +5,7 @@ import { ContextItem, ContextStatus, DriftReport } from './ContextTypes';
 
 export class ContextStore {
     private items = new Map<string, ContextItem>();
-    private maxTokens = 32000;
+    private maxTokens = 100000;
 
     add(item: ContextItem) {
         this.items.set(item.id, item);

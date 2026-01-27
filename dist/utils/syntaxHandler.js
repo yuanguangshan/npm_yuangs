@@ -26,6 +26,13 @@ async function handleSpecialSyntax(input, stdinData) {
             const filePath = immediateExecMatch[1].trim();
             return await handleImmediateExec(filePath);
         }
+        // 检查是否是 @filename:command 语法 (添加文件并执行命令)
+        const fileExecMatch = trimmed.match(/^@\s*(.+?)\s*:\s*([^0-9\s].*)$/);
+        if (fileExecMatch) {
+            const filePath = fileExecMatch[1].trim();
+            const command = fileExecMatch[2].trim();
+            return await handleFileAndCommand(filePath, command);
+        }
         // 检查是否是带行号的语法 @file:start-end as alias
         const lineRangeMatch = trimmed.match(/^@\s*(.+?)(?::(\d+)(?:-(\d+))?)?(?:\s+as\s+([^\s\n]+))?\s*(?:\n(.*))?$/s);
         if (lineRangeMatch) {
@@ -356,6 +363,45 @@ async function handleClearContext() {
         return {
             processed: true,
             result: `清除上下文失败: ${error}`
+        };
+    }
+}
+async function handleFileAndCommand(filePath, command) {
+    try {
+        const fullPath = path_1.default.resolve(filePath);
+        if (!fs_1.default.existsSync(fullPath)) {
+            return { processed: true, result: `错误: 文件 "${filePath}" 不存在`, isPureReference: true, type: 'file' };
+        }
+        const content = await fs_1.default.promises.readFile(fullPath, 'utf-8');
+        const contextBuffer = new contextBuffer_1.ContextBuffer();
+        const persisted = await (0, contextStorage_1.loadContext)();
+        contextBuffer.import(persisted);
+        contextBuffer.add({
+            type: 'file',
+            path: filePath,
+            content: content
+        });
+        await (0, contextStorage_1.saveContext)(contextBuffer.export());
+        console.log(chalk_1.default.green(`✓ 已将文件 "${filePath}" 加入上下文`));
+        console.log(chalk_1.default.cyan(`⚡️ 正在执行: ${command}\n`));
+        const { stdout, stderr } = await execAsync(command, { cwd: path_1.default.dirname(fullPath) });
+        if (stdout)
+            console.log(stdout);
+        if (stderr)
+            console.error(chalk_1.default.red(stderr));
+        return {
+            processed: true,
+            result: `命令执行完成`,
+            isPureReference: true,
+            type: 'command'
+        };
+    }
+    catch (error) {
+        return {
+            processed: true,
+            result: `错误: 执行失败: ${error}`,
+            isPureReference: true,
+            type: 'command'
         };
     }
 }
