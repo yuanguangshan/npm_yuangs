@@ -41,8 +41,11 @@ var __createBinding = (this && this.__createBinding) || (Object.create ? (functi
 var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CodebuddyAdapter = exports.QwenAdapter = exports.GoogleAdapter = void 0;
+exports.YuangsAdapter = exports.CodebuddyAdapter = exports.QwenAdapter = exports.GoogleAdapter = void 0;
 exports.createRouter = createRouter;
 exports.getRouter = getRouter;
 exports.resetRouter = resetRouter;
@@ -60,10 +63,14 @@ var QwenAdapter_1 = require("./adapters/QwenAdapter");
 Object.defineProperty(exports, "QwenAdapter", { enumerable: true, get: function () { return QwenAdapter_1.QwenAdapter; } });
 var CodebuddyAdapter_1 = require("./adapters/CodebuddyAdapter");
 Object.defineProperty(exports, "CodebuddyAdapter", { enumerable: true, get: function () { return CodebuddyAdapter_1.CodebuddyAdapter; } });
+var YuangsAdapter_1 = require("./adapters/YuangsAdapter");
+Object.defineProperty(exports, "YuangsAdapter", { enumerable: true, get: function () { return YuangsAdapter_1.YuangsAdapter; } });
+const chalk_1 = __importDefault(require("chalk"));
 const ModelRouter_1 = require("./ModelRouter");
 const GoogleAdapter_2 = require("./adapters/GoogleAdapter");
 const QwenAdapter_2 = require("./adapters/QwenAdapter");
 const CodebuddyAdapter_2 = require("./adapters/CodebuddyAdapter");
+const YuangsAdapter_2 = require("./adapters/YuangsAdapter");
 const config_1 = require("./config");
 const types_1 = require("./types");
 let globalRouter = null;
@@ -83,6 +90,8 @@ function createRouter() {
     if (config.enabledAdapters.includes('codebuddy')) {
         router.registerAdapter(new CodebuddyAdapter_2.CodebuddyAdapter());
     }
+    // 始终注册内置的 yuangs 适配器 (提供 Assistant 模型)
+    router.registerAdapter(new YuangsAdapter_2.YuangsAdapter());
     return router;
 }
 /**
@@ -121,8 +130,13 @@ async function executeTask(prompt, taskConfig, routingConfig, onChunk) {
     }
     // 路由到合适的模型
     const routingResult = await router.route(taskConfig, finalRoutingConfig);
-    console.log(`🤖 使用模型: ${routingResult.adapter.name}`);
-    console.log(`📋 原因: ${routingResult.reason}`);
+    if (routingResult.isFallback) {
+        console.log(chalk_1.default.yellow(`⚠️ [Router] 回退到备选模型: ${routingResult.adapter.name}`));
+    }
+    else {
+        console.log(chalk_1.default.cyan(`🤖 [Router] 智能路由 -> `) + chalk_1.default.bold.green(routingResult.adapter.name));
+    }
+    console.log(chalk_1.default.gray(`📋 选择理由: ${routingResult.reason}\n`));
     // 执行任务
     return router.executeTask(routingResult.adapter, prompt, taskConfig, onChunk);
 }

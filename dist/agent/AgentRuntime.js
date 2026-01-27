@@ -125,7 +125,7 @@ class AgentRuntime {
             if (action.reasoning && !onChunk) {
                 console.log(chalk_1.default.gray(`\n🤔 Reasoning: ${action.reasoning}`));
             }
-            if (thought.usedRouter && !onChunk) {
+            if (thought.usedRouter) {
                 console.log(chalk_1.default.gray(`[Router] 🤖 Model: ${thought.modelName}`));
             }
             // 如果 LLM 认为已经完成或者当前的动作就是回答

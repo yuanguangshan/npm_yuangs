@@ -37,11 +37,14 @@ export * from './ContextManager';
 export { GoogleAdapter } from './adapters/GoogleAdapter';
 export { QwenAdapter } from './adapters/QwenAdapter';
 export { CodebuddyAdapter } from './adapters/CodebuddyAdapter';
+export { YuangsAdapter } from './adapters/YuangsAdapter';
 
+import chalk from 'chalk';
 import { ModelRouter } from './ModelRouter';
 import { GoogleAdapter } from './adapters/GoogleAdapter';
 import { QwenAdapter } from './adapters/QwenAdapter';
 import { CodebuddyAdapter } from './adapters/CodebuddyAdapter';
+import { YuangsAdapter } from './adapters/YuangsAdapter';
 import { loadConfig } from './config';
 import {
   TaskConfig,
@@ -71,6 +74,9 @@ export function createRouter(): ModelRouter {
   if (config.enabledAdapters.includes('codebuddy')) {
     router.registerAdapter(new CodebuddyAdapter());
   }
+
+  // 始终注册内置的 yuangs 适配器 (提供 Assistant 模型)
+  router.registerAdapter(new YuangsAdapter());
 
   return router;
 }
@@ -121,9 +127,13 @@ export async function executeTask(
 
   // 路由到合适的模型
   const routingResult = await router.route(taskConfig, finalRoutingConfig);
-
-  console.log(`🤖 使用模型: ${routingResult.adapter.name}`);
-  console.log(`📋 原因: ${routingResult.reason}`);
+  
+  if (routingResult.isFallback) {
+    console.log(chalk.yellow(`⚠️ [Router] 回退到备选模型: ${routingResult.adapter.name}`));
+  } else {
+    console.log(chalk.cyan(`🤖 [Router] 智能路由 -> `) + chalk.bold.green(routingResult.adapter.name));
+  }
+  console.log(chalk.gray(`📋 选择理由: ${routingResult.reason}\n`));
 
   // 执行任务
   return router.executeTask(routingResult.adapter, prompt, taskConfig, onChunk);

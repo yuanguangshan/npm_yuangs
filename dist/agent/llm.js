@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AgentActionSchema = void 0;
 exports.supportsStructuredOutput = supportsStructuredOutput;
 exports.runLLM = runLLM;
+const chalk_1 = __importDefault(require("chalk"));
 const client_1 = require("../ai/client");
 const axios_1 = __importDefault(require("axios"));
 const validation_1 = require("../core/validation");
@@ -68,6 +69,7 @@ async function runLLM({ prompt, model, stream, onChunk, bypassRouter }) {
                 enableFallback: true // Let the router handle its own fallbacks too
             });
             if (routerResult.usedRouter && !routerResult.error) {
+                console.log(chalk_1.default.blue(`📡 [Router] 任务路由成功 -> `) + chalk_1.default.bold.green(routerResult.modelName));
                 return {
                     rawText: routerResult.rawText,
                     latencyMs: Date.now() - start,

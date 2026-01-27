@@ -1,6 +1,10 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CodeReviewer = exports.IssueSeverity = exports.ReviewLevel = void 0;
+const chalk_1 = __importDefault(require("chalk"));
 const types_1 = require("../modelRouter/types");
 /**
  * 代码审查级别
@@ -180,8 +184,10 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
         const routingConfig = {
             strategy: 'auto',
         };
-        const result = await this.router.route(taskConfig, routingConfig);
-        const execution = await this.router.executeTask(result.adapter, prompt, taskConfig);
+        const routingResult = await this.router.route(taskConfig, routingConfig);
+        console.log(chalk_1.default.cyan(`🤖 使用模型: ${routingResult.adapter.name}`));
+        console.log(chalk_1.default.gray(`📋 理由: ${routingResult.reason}\n`));
+        const execution = await this.router.executeTask(routingResult.adapter, prompt, taskConfig);
         if (!execution.success || !execution.content) {
             throw new Error('Failed to perform code review');
         }
@@ -214,8 +220,10 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
         const routingConfig = {
             strategy: 'auto',
         };
-        const result = await this.router.route(taskConfig, routingConfig);
-        const execution = await this.router.executeTask(result.adapter, prompt, taskConfig);
+        const routingResult = await this.router.route(taskConfig, routingConfig);
+        console.log(chalk_1.default.cyan(`🤖 使用模型: ${routingResult.adapter.name}`));
+        console.log(chalk_1.default.gray(`📋 理由: ${routingResult.reason}\n`));
+        const execution = await this.router.executeTask(routingResult.adapter, prompt, taskConfig);
         if (!execution.success || !execution.content) {
             throw new Error('Failed to perform code review');
         }

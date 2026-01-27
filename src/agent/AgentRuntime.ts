@@ -131,7 +131,7 @@ export class AgentRuntime {
         console.log(chalk.gray(`\n🤔 Reasoning: ${action.reasoning}`));
       }
 
-      if (thought.usedRouter && !onChunk) {
+      if (thought.usedRouter) {
         console.log(chalk.gray(`[Router] 🤖 Model: ${thought.modelName}`));
       }
 

@@ -34,6 +34,7 @@ export * from './ContextManager';
 export { GoogleAdapter } from './adapters/GoogleAdapter';
 export { QwenAdapter } from './adapters/QwenAdapter';
 export { CodebuddyAdapter } from './adapters/CodebuddyAdapter';
+export { YuangsAdapter } from './adapters/YuangsAdapter';
 import { ModelRouter } from './ModelRouter';
 import { TaskConfig, RoutingConfig, ModelExecutionResult } from './types';
 /**

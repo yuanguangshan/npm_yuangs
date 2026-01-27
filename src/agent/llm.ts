@@ -1,4 +1,5 @@
 import { AgentPrompt, LLMResult } from './types';
+import chalk from 'chalk';
 import { callAI_Stream } from '../ai/client';
 import axios from 'axios';
 import { DEFAULT_AI_PROXY_URL, DEFAULT_MODEL, DEFAULT_ACCOUNT_TYPE, type AIRequestMessage } from '../core/validation';
@@ -88,6 +89,7 @@ export async function runLLM({
         });
 
         if (routerResult.usedRouter && !routerResult.error) {
+          console.log(chalk.blue(`📡 [Router] 任务路由成功 -> `) + chalk.bold.green(routerResult.modelName));
           return {
             rawText: routerResult.rawText,
             latencyMs: Date.now() - start,

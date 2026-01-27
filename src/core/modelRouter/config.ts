@@ -40,8 +40,10 @@ const DEFAULT_CONFIG: ModelRouterConfig = {
   maxResponseTime: 30000,
   maxCostLevel: 5,
   enableFallback: true,
-  enabledAdapters: ['google-gemini', 'qwen', 'codebuddy'],
-  taskTypeMapping: {},
+  enabledAdapters: ['google-gemini', 'qwen', 'codebuddy', 'yuangs'],
+  taskTypeMapping: {
+    'code_review': 'yuangs'
+  },
   adapterConfigs: {},
   exploration: {
     strategy: 'none',

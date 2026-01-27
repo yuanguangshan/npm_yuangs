@@ -1,3 +1,4 @@
+import chalk from 'chalk';
 import { GitService } from './GitService';
 import { ModelRouter } from '../modelRouter/ModelRouter';
 import { TaskConfig, TaskType } from '../modelRouter/types';
@@ -233,9 +234,12 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
             strategy: 'auto' as any,
         };
 
-        const result = await this.router.route(taskConfig, routingConfig);
+        const routingResult = await this.router.route(taskConfig, routingConfig);
+        console.log(chalk.cyan(`🤖 使用模型: ${routingResult.adapter.name}`));
+        console.log(chalk.gray(`📋 理由: ${routingResult.reason}\n`));
+
         const execution = await this.router.executeTask(
-            result.adapter,
+            routingResult.adapter,
             prompt,
             taskConfig
         );
@@ -284,9 +288,12 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
             strategy: 'auto' as any,
         };
 
-        const result = await this.router.route(taskConfig, routingConfig);
+        const routingResult = await this.router.route(taskConfig, routingConfig);
+        console.log(chalk.cyan(`🤖 使用模型: ${routingResult.adapter.name}`));
+        console.log(chalk.gray(`📋 理由: ${routingResult.reason}\n`));
+
         const execution = await this.router.executeTask(
-            result.adapter,
+            routingResult.adapter,
             prompt,
             taskConfig
         );
