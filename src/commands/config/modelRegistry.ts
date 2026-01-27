@@ -8,19 +8,19 @@ export const SUPPORTED_MODELS = [
   'gpt-4o',
   'gpt-4o-mini',
   'gpt-4-turbo',
-  
+
   // Claude Models
   'claude-3.5-sonnet',
   'claude-3.5-haiku',
-  
+
   // Gemini Models
   'gemini-2.5-flash',
   'gemini-2.5-flash-lite',
   'gemini-3-flash-preview',
   'gemini-2.5-pro',
-  'gemini-1.5-pro',
-  'gemini-1.5-flash',
-  
+  'gemini-2.5-pro',
+  'gemini-2.5-flash',
+
   // Legacy
   'Assistant'
 ] as const;
@@ -97,13 +97,13 @@ const MODEL_METADATA: Record<SupportedModel, ModelMetadata> = {
     category: 'pro',
     description: 'Google 的高性能模型',
   },
-  'gemini-1.5-pro': {
+  'gemini-2.5-pro': {
     name: 'Gemini 1.5 Pro',
     provider: 'Google',
     category: 'pro',
     description: 'Gemini 1.5 高性能模型',
   },
-  'gemini-1.5-flash': {
+  'gemini-2.5-flash': {
     name: 'Gemini 1.5 Flash',
     provider: 'Google',
     category: 'flash',

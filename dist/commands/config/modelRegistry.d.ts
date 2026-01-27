@@ -1,7 +1,7 @@
 /**
  * 支持的 AI 模型列表
  */
-export declare const SUPPORTED_MODELS: readonly ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "claude-3.5-sonnet", "claude-3.5-haiku", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-3-flash-preview", "gemini-2.5-pro", "gemini-1.5-pro", "gemini-1.5-flash", "Assistant"];
+export declare const SUPPORTED_MODELS: readonly ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "claude-3.5-sonnet", "claude-3.5-haiku", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-3-flash-preview", "gemini-2.5-pro", "gemini-2.5-pro", "gemini-2.5-flash", "Assistant"];
 export type SupportedModel = typeof SUPPORTED_MODELS[number];
 /**
  * 模型元数据

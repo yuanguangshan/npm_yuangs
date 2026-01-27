@@ -68,8 +68,8 @@ Google:
     gemini-2.5-flash-lite     Gemini 2.5 的超轻量版本
     gemini-3-flash-preview    Gemini 3 预览版
     gemini-2.5-pro            Google 的高性能模型
-    gemini-1.5-pro            Gemini 1.5 高性能模型
-    gemini-1.5-flash          Gemini 1.5 快速响应模型
+    gemini-2.5-pro            Gemini 1.5 高性能模型
+    gemini-2.5-flash          Gemini 1.5 快速响应模型
 
 Legacy:
     Assistant                 默认助手模型
@@ -270,8 +270,8 @@ yuangs ai "分析这个问题" --model gemini-2.5-pro
 - `gemini-2.5-flash-lite` - 超轻量版本 ⭐ 系统默认
 - `gemini-3-flash-preview` - Gemini 3 预览版
 - `gemini-2.5-pro` - 高性能模型
-- `gemini-1.5-pro` - Gemini 1.5 高性能模型
-- `gemini-1.5-flash` - Gemini 1.5 快速响应模型
+- `gemini-2.5-pro` - Gemini 1.5 高性能模型
+- `gemini-2.5-flash` - Gemini 1.5 快速响应模型
 
 ### Legacy 模型
 - `Assistant` - 默认助手模型

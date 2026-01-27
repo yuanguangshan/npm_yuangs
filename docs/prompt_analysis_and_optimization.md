@@ -703,7 +703,7 @@ async function callLLMWithSchema(
   onChunk?: (chunk: string) => void
 ): Promise<AgentThought> {
   const supportsStructuredOutput = model.includes('gpt-4o') || 
-                                  model.includes('gemini-1.5') ||
+                                  model.includes('gemini-2.5') ||
                                   model.includes('claude-3.5');
   
   if (supportsStructuredOutput) {
