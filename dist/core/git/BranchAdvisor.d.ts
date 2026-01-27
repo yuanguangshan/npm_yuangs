@@ -36,6 +36,7 @@ export interface BranchSuggestion {
 }
 /**
  * AI 分支顾问
+ * - 该模块目前仅提供建议 (Advisory)，不执行任何 Git 写操作。
  */
 export declare class BranchAdvisor {
     private gitService;

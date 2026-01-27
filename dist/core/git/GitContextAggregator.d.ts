@@ -20,7 +20,11 @@ export interface GitContext {
 }
 /**
  * Git 上下文聚合器
- * 职责: 1. 高效收集状态 (并行 I/O) 2. 统一业务校验 (Policy)
+ * 职责: 1. 高效收集状态 (并行 I/O) 2. 统一业务语义规则 (Policy)
+ *
+ * 注意：
+ * - 本类只处理 Git 层事实与通用规则 (如是否有暂存、是否在主分支)
+ * - 严禁引入任何 AI、产品决策或特定工作流策略
  */
 export declare class GitContextAggregator {
     private gitService;
@@ -31,7 +35,6 @@ export declare class GitContextAggregator {
     collect(): Promise<GitContext>;
     /**
      * Policy: 确保有已暂存的变更
-     * 统一处理 "无暂存但有未暂存" 的 UX 提示语
      */
     ensureStaged(context: GitContext): void;
 }

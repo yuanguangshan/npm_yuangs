@@ -41,6 +41,42 @@ const chalk_1 = __importDefault(require("chalk"));
 const ora_1 = __importDefault(require("ora"));
 const GitService_1 = require("../../core/git/GitService");
 const modelRouter_1 = require("../../core/modelRouter");
+/**
+ * 允许的动态导入路径白名单
+ * 用于防止恶意代码注入
+ */
+const ALLOWED_IMPORTS = [
+    '../../core/git/BranchAdvisor'
+];
+/**
+ * 验证分支名称的安全性
+ * 防止命令注入和路径遍历攻击
+ */
+function validateBranchName(branchName) {
+    // Git 分支名称规范：
+    // 1. 不能包含空格
+    // 2. 不能包含特殊字符 (除 -, _, ., /)
+    // 3. 不能以 .. 开头（防止路径遍历）
+    // 4. 不能以 . 开头或结尾（避免隐藏文件问题）
+    const branchNamePattern = /^[a-zA-Z0-9\-_\.]+(?:\/[a-zA-Z0-9\-_\.]+)*$/;
+    // 基本格式检查
+    if (!branchNamePattern.test(branchName)) {
+        return false;
+    }
+    // 防止路径遍历
+    if (branchName.includes('..')) {
+        return false;
+    }
+    // 防止以 . 开头或结尾
+    if (branchName.startsWith('.') || branchName.endsWith('.')) {
+        return false;
+    }
+    // 限制长度
+    if (branchName.length > 255) {
+        return false;
+    }
+    return true;
+}
 function registerBranchCommand(gitCmd) {
     // git branch - 分支管理
     const branchCmd = gitCmd
@@ -101,6 +137,13 @@ function registerBranchCommand(gitCmd) {
         .description('安全切换分支')
         .action(async (branchName) => {
         try {
+            // 安全检查：验证分支名称
+            if (!validateBranchName(branchName)) {
+                console.log(chalk_1.default.red(`❌ 无效的分支名称: "${branchName}"`));
+                console.log(chalk_1.default.gray('分支名称只能包含字母、数字、连字符(-)、下划线(_)和点(.)'));
+                console.log(chalk_1.default.gray('示例: feature/new-feature, hotfix/bug-fix-123'));
+                return;
+            }
             const gitService = new GitService_1.GitService();
             if (!(await gitService.isGitRepository())) {
                 console.log(chalk_1.default.red('当前目录不是 Git 仓库'));
@@ -160,7 +203,12 @@ function registerBranchCommand(gitCmd) {
                 console.log(chalk_1.default.yellow('💡 请先运行 "yuangs config" 配置 AI 模型'));
                 return;
             }
-            const { BranchAdvisor } = await Promise.resolve().then(() => __importStar(require('../../core/git/BranchAdvisor')));
+            // 安全检查：动态导入路径白名单验证
+            const importPath = '../../core/git/BranchAdvisor';
+            if (!ALLOWED_IMPORTS.includes(importPath)) {
+                throw new Error('Security: Import path not in whitelist');
+            }
+            const { BranchAdvisor } = await Promise.resolve(`${importPath}`).then(s => __importStar(require(s)));
             const advisor = new BranchAdvisor(gitService, router);
             const suggestion = await advisor.suggest();
             spinner.stop();

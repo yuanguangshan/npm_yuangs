@@ -11,7 +11,17 @@ exports.attenuate = attenuate;
 exports.revoke = revoke;
 exports.checkRevoked = checkRevoked;
 const crypto_1 = __importDefault(require("crypto"));
-const SECRET = process.env.CAP_SECRET || "default-secret-change-in-production";
+/**
+ * 安全警告：必须通过环境变量 CAP_SECRET 提供密钥
+ * 如果未提供，将抛出错误而不是使用默认值
+ */
+const SECRET = (() => {
+    const secret = process.env.CAP_SECRET;
+    if (!secret || secret.length < 32) {
+        throw new Error("Security: CAP_SECRET environment variable is required and must be at least 32 characters");
+    }
+    return secret;
+})();
 function sign(data) {
     return crypto_1.default
         .createHmac("sha256", SECRET)

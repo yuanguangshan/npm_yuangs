@@ -37,6 +37,7 @@ exports.BranchAdvisor = void 0;
 const types_1 = require("../modelRouter/types");
 /**
  * AI 分支顾问
+ * - 该模块目前仅提供建议 (Advisory)，不执行任何 Git 写操作。
  */
 class BranchAdvisor {
     gitService;

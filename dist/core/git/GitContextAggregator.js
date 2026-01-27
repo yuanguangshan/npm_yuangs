@@ -3,7 +3,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.GitContextAggregator = void 0;
 /**
  * Git 上下文聚合器
- * 职责: 1. 高效收集状态 (并行 I/O) 2. 统一业务校验 (Policy)
+ * 职责: 1. 高效收集状态 (并行 I/O) 2. 统一业务语义规则 (Policy)
+ *
+ * 注意：
+ * - 本类只处理 Git 层事实与通用规则 (如是否有暂存、是否在主分支)
+ * - 严禁引入任何 AI、产品决策或特定工作流策略
  */
 class GitContextAggregator {
     gitService;
@@ -31,14 +35,17 @@ class GitContextAggregator {
     }
     /**
      * Policy: 确保有已暂存的变更
-     * 统一处理 "无暂存但有未暂存" 的 UX 提示语
      */
     ensureStaged(context) {
         if (!context.diff.staged) {
             if (context.diff.unstaged) {
-                const count = context.diff.files.unstaged.length;
-                throw new Error(`Found ${count} unstaged file(s) but no staged changes.\n` +
-                    'Please stage your changes using "git add" or use "--all" option.');
+                const files = context.diff.files.unstaged;
+                const count = files.length;
+                const fileList = files.slice(0, 3).join(', ') + (count > 3 ? '...' : '');
+                throw new Error(`Found ${count} unstaged file(s) [${fileList}], but nothing is staged.\n\n` +
+                    'Next steps:\n' +
+                    '  git add .             (Stage all changes)\n' +
+                    '  yuangs git commit -a  (Auto-stage and commit)\n');
             }
             throw new Error('No changes to commit (working tree clean).');
         }
