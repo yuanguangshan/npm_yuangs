@@ -7,12 +7,11 @@ import {
   ModelExecutionResult,
   ModelStats,
   TaskType,
+  DomainHealth,
+  DomainState,
+  ExplorationStrategy
 } from './types';
-import { RoutingPolicy } from './policies/types';
-import { BalancedPolicy } from './policies/BalancedPolicy';
-import { CostSavingPolicy } from './policies/CostSavingPolicy';
-import { LatencyCriticalPolicy } from './policies/LatencyCriticalPolicy';
-import { QualityFirstPolicy } from './policies/QualityFirstPolicy';
+import { DslPolicy } from './policies/DslPolicy';
 
 /**
  * 模型路由器
@@ -22,6 +21,7 @@ export class ModelRouter {
   private adapters: Map<string, ModelAdapter> = new Map();
   private stats: Map<string, ModelStats> = new Map();
   private policies: Map<string, RoutingPolicy> = new Map();
+  private domainHealth: Map<string, DomainHealth> = new Map();
   private roundRobinIndex = 0;
 
   constructor() {
@@ -32,10 +32,34 @@ export class ModelRouter {
    * 注册默认策略
    */
   private registerDefaultPolicies() {
-    this.registerPolicy(new BalancedPolicy());
-    this.registerPolicy(new CostSavingPolicy());
-    this.registerPolicy(new LatencyCriticalPolicy());
-    this.registerPolicy(new QualityFirstPolicy());
+    // 1. 均衡模式
+    this.registerPolicy(new DslPolicy({
+      name: 'balanced',
+      description: '均衡策略：综合考虑匹配度、性能、成本和历史表现',
+      weights: { taskMatch: 0.4, context: 0.2, latency: 0.2, cost: 0.1, history: 0.1 }
+    }));
+
+    // 2. 成本模式
+    this.registerPolicy(new DslPolicy({
+      name: 'cost-saving',
+      description: '成本优先模式：优先选择廉价的模型，保证基础可用',
+      weights: { cost: 0.7, taskMatch: 0.2, history: 0.1 }
+    }));
+
+    // 3. 低延迟模式
+    this.registerPolicy(new DslPolicy({
+      name: 'latency-critical',
+      description: '追求极致响应速度：优先选择平均响应时间最短的模型',
+      weights: { latency: 0.7, taskMatch: 0.2, history: 0.1 }
+    }));
+
+    // 4. 质量优先模式
+    this.registerPolicy(new DslPolicy({
+      name: 'quality-first',
+      description: '高复杂度任务优先：由代码专家和大型语言模型处理',
+      gate: { minContext: 32000 },
+      weights: { quality: 0.6, history: 0.2, taskMatch: 0.2 }
+    }));
   }
 
   /**
@@ -61,6 +85,7 @@ export class ModelRouter {
         avgResponseTime: 0,
         totalTokens: 0,
         lastUsed: new Date(),
+        recentFailures: 0,
       });
     }
   }
@@ -144,6 +169,8 @@ export class ModelRouter {
     }
 
     // 4. 策略路由 (Policy Engine)
+    this.updateDomainHealthStates(); // 预选前先刷新熔断状态
+
     let policyName = 'balanced'; // Default
     switch (routingConfig.strategy) {
       case RoutingStrategy.FASTEST_FIRST:
@@ -166,27 +193,81 @@ export class ModelRouter {
       console.warn(`策略 ${policyName} 未找到，回退到 balanced 策略`);
       const fallbackPolicy = this.policies.get('balanced');
       if (!fallbackPolicy) throw new Error('核心策略丢失');
-      return this.executePolicy(fallbackPolicy, allAdapters, taskConfig, routingConfig);
+      return this.executePolicyWithExploration(fallbackPolicy, allAdapters, taskConfig, routingConfig);
     }
 
-    return this.executePolicy(policy, allAdapters, taskConfig, routingConfig);
+    return this.executePolicyWithExploration(policy, allAdapters, taskConfig, routingConfig);
   }
 
   /**
-   * 执行策略
+   * 执行策略并加入探索机制
    */
-  private async executePolicy(
+  private async executePolicyWithExploration(
     policy: RoutingPolicy,
     adapters: ModelAdapter[],
     taskConfig: TaskConfig,
     routingConfig: RoutingConfig
   ): Promise<RoutingResult> {
     try {
-      const result = await policy.select(adapters, taskConfig, routingConfig, this.stats);
+      const result = await policy.select(adapters, taskConfig, routingConfig, this.stats, this.domainHealth);
+
+      // 进一步通过熔断器(Circuit Breaker)过滤候选者
+      const allowedCandidates = result.candidates.filter(c => {
+        const adapter = this.adapters.get(c.name);
+        return adapter ? this.isAdapterAllowedByCircuitBreaker(adapter) : false;
+      });
+
+      if (allowedCandidates.length === 0) {
+        throw new Error('所有策略候选均被当前熔断器拦截（故障域保护）');
+      }
+
+      // 如果最优解被熔断拦截了，重新选分最高的可用者
+      let bestCandidate = allowedCandidates.sort((a, b) => b.score - a.score)[0];
+      let finalAdapter = this.adapters.get(bestCandidate.name)!;
+      let finalReason = `策略(${policy.name}): ${result.reason}`;
+
+      // 3. 应用探索机制
+      const exploration = routingConfig.exploration;
+      const strategy = exploration?.strategy || ExplorationStrategy.NONE;
+
+      if (strategy === ExplorationStrategy.EPSILON_GREEDY) {
+        const epsilon = exploration?.epsilon || 0;
+        if (epsilon > 0 && Math.random() < epsilon) {
+          const otherCandidates = allowedCandidates.filter(c => c.name !== bestCandidate.name);
+          if (otherCandidates.length > 0) {
+            const picked = otherCandidates[Math.floor(Math.random() * otherCandidates.length)];
+            const pickedAdapter = this.adapters.get(picked.name);
+            if (pickedAdapter) {
+              finalAdapter = pickedAdapter;
+              finalReason = `ε-greedy 探索采样 (ε=${epsilon}): 随机选中了候选 [${picked.name}]，原定最优为 [${bestCandidate.name}] (原因: ${picked.reason})`;
+            }
+          }
+        }
+      } else if (strategy === ExplorationStrategy.UCB1) {
+        // 计算 UCB1 分数并重新排序候选者
+        const totalRuns = Array.from(this.stats.values()).reduce((sum, s) => sum + s.totalRequests, 0);
+
+        const candidatesWithUCB = allowedCandidates.map(c => {
+          const s = this.stats.get(c.name);
+          const ucb = this.calculateUCB1(s, totalRuns);
+          // 综合原始 Score (0.7权重) 和 UCB (0.3权重)
+          const combinedScore = c.score * 0.7 + ucb * 0.3;
+          return { ...c, combinedScore, ucb };
+        });
+
+        candidatesWithUCB.sort((a, b) => b.combinedScore - a.combinedScore);
+        const topOne = candidatesWithUCB[0];
+
+        if (topOne.name !== bestCandidate.name) {
+          finalAdapter = this.adapters.get(topOne.name)!;
+          finalReason = `UCB1 探索调优: 选中了 [${topOne.name}] (UCB分数=${topOne.ucb.toFixed(3)})，原定最优为 [${bestCandidate.name}]`;
+        }
+      }
+
       return {
-        adapter: result.adapter,
-        reason: `策略(${policy.name}): ${result.reason}`,
-        candidates: result.candidates,
+        adapter: finalAdapter,
+        reason: finalReason,
+        candidates: allowedCandidates,
         isFallback: false
       }
     } catch (error: any) {
@@ -205,6 +286,7 @@ export class ModelRouter {
     onChunk?: (chunk: string) => void
   ): Promise<ModelExecutionResult> {
     const stats = this.stats.get(adapter.name)!;
+    const domain = adapter.failureDomain ?? adapter.provider;
     stats.totalRequests++;
     stats.lastUsed = new Date();
 
@@ -213,8 +295,26 @@ export class ModelRouter {
 
       if (result.success) {
         stats.successCount++;
+        stats.recentFailures = 0; // 重置该模型的连续失败次数
+
+        // 故障域探测成功：如果当前是 half-open，探测成功即恢复为 closed
+        const health = this.domainHealth.get(domain);
+        if (health && health.state === 'half-open') {
+          health.state = 'closed';
+          console.log(`📡 故障域 [${domain}] 已自动恢复 (Closed)`);
+        }
       } else {
         stats.failureCount++;
+        stats.recentFailures++;     // 累加连续失败
+        stats.lastFailureAt = new Date();
+
+        // 故障域探测失败：如果是 half-open 时探测失败，立即滚回 open 并重置冷却
+        const health = this.domainHealth.get(domain);
+        if (health && health.state === 'half-open') {
+          health.state = 'open';
+          health.openedAt = Date.now();
+          console.warn(`📡 故障域 [${domain}] 探测失败，延长熔断时间 (Open)`);
+        }
       }
 
       // 更新平均响应时间
@@ -229,6 +329,15 @@ export class ModelRouter {
       return result;
     } catch (error: any) {
       stats.failureCount++;
+      stats.recentFailures++;
+      stats.lastFailureAt = new Date();
+
+      // 捕获到异常也视为探测失败
+      const health = this.domainHealth.get(domain);
+      if (health && health.state === 'half-open') {
+        health.state = 'open';
+        health.openedAt = Date.now();
+      }
       throw error;
     }
   }
@@ -260,6 +369,72 @@ export class ModelRouter {
   }
 
   /**
+   * 刷新所有故障域的熔断状态
+   */
+  private updateDomainHealthStates() {
+    const now = Date.now();
+    const adapters = Array.from(this.adapters.values());
+    const domains = new Set(adapters.map(a => a.failureDomain ?? a.provider));
+
+    for (const domain of domains) {
+      let health = this.domainHealth.get(domain);
+      if (!health) {
+        health = { state: 'closed' };
+        this.domainHealth.set(domain, health);
+      }
+
+      // 计算该域下是否有模型连续失败达到阈值 (3次)
+      const domainAdapters = adapters.filter(a => (a.failureDomain ?? a.provider) === domain);
+      const hasSeriousFailures = domainAdapters.some(a => {
+        const s = this.stats.get(a.name);
+        return s && s.recentFailures >= 3;
+      });
+
+      if (health.state === 'closed' && hasSeriousFailures) {
+        health.state = 'open';
+        health.openedAt = now;
+        console.warn(`🚨 故障域 [${domain}] 连续错误，已触发熔断拦截 (Open)`);
+      } else if (health.state === 'open' && now - (health.openedAt || 0) > 30000) {
+        // 30秒冷却后进入尝试半开状态
+        health.state = 'half-open';
+        console.log(`📡 故障域 [${domain}] 进入半探测模式 (Half-Open)`);
+      }
+    }
+  }
+
+  /**
+   * 检查熔断器状态是否允许适配器执行
+   */
+  private isAdapterAllowedByCircuitBreaker(adapter: ModelAdapter): boolean {
+    const domain = adapter.failureDomain ?? adapter.provider;
+    const health = this.domainHealth.get(domain);
+
+    if (!health || health.state === 'closed') return true;
+    if (health.state === 'open') return false;
+
+    // Half-Open 状态：仅 10% 流量作为探测请求，其余拦截
+    if (health.state === 'half-open') {
+      return Math.random() < 0.1;
+    }
+
+    return true;
+  }
+
+  /**
+   * 计算 UCB1 分数 (探索-利用平衡)
+   * 置信上限 = 平均成功率 + sqrt(2 * ln(总探索次数) / 该模型探测次数)
+   */
+  private calculateUCB1(stats: ModelStats | undefined, totalRuns: number): number {
+    if (!stats || stats.totalRequests === 0) return 1.0; // 新模型给予最高探索优先级
+
+    const mean = stats.successCount / stats.totalRequests;
+    const explorationBonus = Math.sqrt((2 * Math.log(Math.max(totalRuns, 1))) / stats.totalRequests);
+
+    // 归一化到 0-1 范围的一个启发式分数
+    return Math.min(mean + explorationBonus, 2.0) / 2.0;
+  }
+
+  /**
    * 创建空统计信息
    */
   private createEmptyStats(modelName: string): ModelStats {
@@ -271,6 +446,7 @@ export class ModelRouter {
       avgResponseTime: 0,
       totalTokens: 0,
       lastUsed: new Date(),
+      recentFailures: 0,
     };
   }
 }

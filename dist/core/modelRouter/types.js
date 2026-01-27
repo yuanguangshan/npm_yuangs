@@ -6,7 +6,7 @@
  * 根据任务特性和需求，智能路由到最合适的模型执行
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RoutingStrategy = exports.Priority = exports.TaskType = void 0;
+exports.ExplorationStrategy = exports.RoutingStrategy = exports.Priority = exports.TaskType = void 0;
 /**
  * 任务类型
  */
@@ -50,4 +50,13 @@ var RoutingStrategy;
     /** 手动指定 */
     RoutingStrategy["MANUAL"] = "manual";
 })(RoutingStrategy || (exports.RoutingStrategy = RoutingStrategy = {}));
+/**
+ * 探索策略
+ */
+var ExplorationStrategy;
+(function (ExplorationStrategy) {
+    ExplorationStrategy["NONE"] = "none";
+    ExplorationStrategy["EPSILON_GREEDY"] = "epsilon_greedy";
+    ExplorationStrategy["UCB1"] = "ucb1";
+})(ExplorationStrategy || (exports.ExplorationStrategy = ExplorationStrategy = {}));
 //# sourceMappingURL=types.js.map

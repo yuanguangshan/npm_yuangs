@@ -1,4 +1,4 @@
-import { ModelAdapter, TaskConfig, RoutingConfig, ModelStats } from '../types';
+import { ModelAdapter, TaskConfig, RoutingConfig, ModelStats, DomainHealth } from '../types';
 
 export interface ScoredCandidate {
     adapter: ModelAdapter;
@@ -19,6 +19,7 @@ export interface RoutingPolicy {
         adapters: ModelAdapter[],
         taskConfig: TaskConfig,
         routingConfig: RoutingConfig,
-        modelStats: Map<string, ModelStats>
+        modelStats: Map<string, ModelStats>,
+        domainHealth: Map<string, DomainHealth>
     ): Promise<PolicyResult>;
 }

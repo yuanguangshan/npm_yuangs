@@ -12,6 +12,7 @@ class GoogleAdapter extends BaseAdapter_1.BaseAdapter {
     name = 'google-gemini';
     version = '1.0.0';
     provider = 'Google';
+    failureDomain = 'google';
     capabilities = {
         supportedTaskTypes: [
             types_1.TaskType.CODE_GENERATION,

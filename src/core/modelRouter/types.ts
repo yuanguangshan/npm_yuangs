@@ -93,26 +93,29 @@ export interface ModelExecutionResult {
 export interface ModelAdapter {
   /** 适配器名称 */
   name: string;
-  
+
   /** 适配器版本 */
   version: string;
-  
+
   /** 提供者（如 Google、Qwen、Codebuddy 等） */
   provider: string;
-  
+
   /** 模型能力描述 */
   capabilities: ModelCapabilities;
-  
+
+  /** 故障域（可选，如 'google', 'alibaba'，缺省则使用 provider） */
+  failureDomain?: string;
+
   /** 是否可用 */
   isAvailable(): Promise<boolean>;
-  
+
   /** 执行任务 */
   execute(
     prompt: string,
     config: TaskConfig,
     onChunk?: (chunk: string) => void
   ): Promise<ModelExecutionResult>;
-  
+
   /** 健康检查 */
   healthCheck(): Promise<boolean>;
 }
@@ -136,6 +139,15 @@ export enum RoutingStrategy {
 }
 
 /**
+ * 探索策略
+ */
+export enum ExplorationStrategy {
+  NONE = 'none',
+  EPSILON_GREEDY = 'epsilon_greedy',
+  UCB1 = 'ucb1'
+}
+
+/**
  * 路由配置
  */
 export interface RoutingConfig {
@@ -151,6 +163,13 @@ export interface RoutingConfig {
   enableFallback?: boolean;
   /** 后备模型列表 */
   fallbackModels?: string[];
+  /** 探索配置 (ε-greedy / UCB1) */
+  exploration?: {
+    /** 探索策略 */
+    strategy?: ExplorationStrategy;
+    /** 探索概率 (仅用于 epsilon_greedy) */
+    epsilon?: number;
+  };
 }
 
 /**
@@ -189,6 +208,24 @@ export interface ModelStats {
   totalTokens: number;
   /** 最后使用时间 */
   lastUsed: Date;
+  /** 最近连续失败次数 */
+  recentFailures: number;
+  /** 最后一次失败时间 */
+  lastFailureAt?: Date;
+}
+
+/**
+ * 故障域状态 (熔断器)
+ */
+export type DomainState = 'closed' | 'open' | 'half-open';
+
+/**
+ * 故障域监控状态
+ */
+export interface DomainHealth {
+  state: DomainState;
+  openedAt?: number;
+  lastProbeAt?: number;
 }
 
 /**
@@ -215,4 +252,30 @@ export interface ConversationContext {
   maxMessages?: number;
   /** 最大token数（估算） */
   maxTokens?: number;
+}
+
+/**
+ * 策略权重配置 (DSL)
+ */
+export interface PolicyWeights {
+  taskMatch?: number;
+  context?: number;
+  latency?: number;
+  cost?: number;
+  history?: number;
+  quality?: number;
+}
+
+/**
+ * 策略定义 (DSL)
+ */
+export interface PolicyDsl {
+  name: string;
+  description: string;
+  gate?: {
+    minContext?: number;
+    requireStreaming?: boolean;
+    requiredCapabilities?: string[];
+  };
+  weights: PolicyWeights;
 }

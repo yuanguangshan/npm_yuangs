@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { RoutingStrategy } from './types';
+import { RoutingStrategy, ExplorationStrategy } from './types';
 
 /**
  * 模型路由配置文件
@@ -9,24 +9,30 @@ import { RoutingStrategy } from './types';
 export interface ModelRouterConfig {
   /** 默认路由策略 */
   defaultStrategy: RoutingStrategy;
-  
+
   /** 最大响应时间（毫秒） */
   maxResponseTime?: number;
-  
+
   /** 最大成本等级 */
   maxCostLevel?: number;
-  
+
   /** 是否启用后备模型 */
   enableFallback: boolean;
-  
+
   /** 启用的适配器列表 */
   enabledAdapters: string[];
-  
+
   /** 任务类型到模型的映射（可选） */
   taskTypeMapping?: Record<string, string>;
-  
+
   /** 适配器配置 */
   adapterConfigs?: Record<string, any>;
+
+  /** 探索配置 */
+  exploration?: {
+    strategy: ExplorationStrategy | string;
+    epsilon?: number;
+  };
 }
 
 const DEFAULT_CONFIG: ModelRouterConfig = {
@@ -37,6 +43,10 @@ const DEFAULT_CONFIG: ModelRouterConfig = {
   enabledAdapters: ['google-gemini', 'qwen', 'codebuddy'],
   taskTypeMapping: {},
   adapterConfigs: {},
+  exploration: {
+    strategy: 'none',
+    epsilon: 0.1
+  }
 };
 
 const CONFIG_FILE = path.join(os.homedir(), '.yuangs-router.json');

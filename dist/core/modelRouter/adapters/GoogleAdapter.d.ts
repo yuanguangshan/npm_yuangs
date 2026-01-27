@@ -9,6 +9,7 @@ export declare class GoogleAdapter extends BaseAdapter {
     name: string;
     version: string;
     provider: string;
+    failureDomain: string;
     capabilities: ModelCapabilities;
     /**
      * 健康检查：检查 Gemini CLI 是否安装并已配置

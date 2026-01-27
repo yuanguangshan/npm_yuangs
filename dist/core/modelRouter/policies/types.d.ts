@@ -1,4 +1,4 @@
-import { ModelAdapter, TaskConfig, RoutingConfig, ModelStats } from '../types';
+import { ModelAdapter, TaskConfig, RoutingConfig, ModelStats, DomainHealth } from '../types';
 export interface ScoredCandidate {
     adapter: ModelAdapter;
     score: number;
@@ -16,5 +16,5 @@ export interface PolicyResult {
 export interface RoutingPolicy {
     name: string;
     description: string;
-    select(adapters: ModelAdapter[], taskConfig: TaskConfig, routingConfig: RoutingConfig, modelStats: Map<string, ModelStats>): Promise<PolicyResult>;
+    select(adapters: ModelAdapter[], taskConfig: TaskConfig, routingConfig: RoutingConfig, modelStats: Map<string, ModelStats>, domainHealth: Map<string, DomainHealth>): Promise<PolicyResult>;
 }

@@ -2,11 +2,11 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BasePolicy = void 0;
 class BasePolicy {
-    async select(adapters, taskConfig, routingConfig, modelStats) {
-        // 1. Gate (Filter) - 硬约束
-        const candidates = await this.gate(adapters, taskConfig);
+    async select(adapters, taskConfig, routingConfig, modelStats, domainHealth) {
+        // 1. Gate (Filter) - 硬约束 (包含故障域隔离)
+        const candidates = await this.gate(adapters, taskConfig, modelStats, domainHealth);
         if (candidates.length === 0) {
-            throw new Error('没有可用的模型（已被 Gate 过滤）');
+            throw new Error('没有可用的模型（已被 Gate 过滤，可能触发了故障域保护）');
         }
         // 2. Score (Sort) - 软排序
         const scoredCandidates = this.score(candidates, taskConfig, routingConfig, modelStats);
@@ -27,9 +27,9 @@ class BasePolicy {
         };
     }
     /**
-     * Gate 阶段：过滤掉不符合硬性要求的模型
+     * Gate 阶段：过滤掉不符合硬性要求的模型，包含故障域识别
      */
-    async gate(adapters, task) {
+    async gate(adapters, task, modelStats, domainHealthMap) {
         const passedAdapters = [];
         // 并行检查可用性
         const availabilityResults = await Promise.all(adapters.map(async (adapter) => ({
@@ -39,6 +39,18 @@ class BasePolicy {
         for (const { adapter, available } of availabilityResults) {
             if (!available)
                 continue;
+            const domain = adapter.failureDomain ?? adapter.provider;
+            const health = domainHealthMap.get(domain);
+            // 熔断保护过滤
+            if (health) {
+                if (health.state === 'open')
+                    continue;
+                if (health.state === 'half-open') {
+                    // Half-open 仅允许 10% 探测流量通过 Gate
+                    if (Math.random() >= 0.1)
+                        continue;
+                }
+            }
             // 检查上下文窗口
             if (task.contextSize && adapter.capabilities.maxContextWindow < task.contextSize) {
                 continue;

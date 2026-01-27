@@ -10,6 +10,7 @@ export class GoogleAdapter extends BaseAdapter {
   name = 'google-gemini';
   version = '1.0.0';
   provider = 'Google';
+  failureDomain = 'google';
 
   capabilities: ModelCapabilities = {
     supportedTaskTypes: [

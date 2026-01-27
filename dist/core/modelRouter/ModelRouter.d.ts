@@ -8,6 +8,7 @@ export declare class ModelRouter {
     private adapters;
     private stats;
     private policies;
+    private domainHealth;
     private roundRobinIndex;
     constructor();
     /**
@@ -43,9 +44,9 @@ export declare class ModelRouter {
      */
     route(taskConfig: TaskConfig, routingConfig: RoutingConfig): Promise<RoutingResult>;
     /**
-     * 执行策略
+     * 执行策略并加入探索机制
      */
-    private executePolicy;
+    private executePolicyWithExploration;
     /**
      * 执行任务（带统计）
      */
@@ -58,6 +59,19 @@ export declare class ModelRouter {
      * 轮询选择
      */
     private selectRoundRobin;
+    /**
+     * 刷新所有故障域的熔断状态
+     */
+    private updateDomainHealthStates;
+    /**
+     * 检查熔断器状态是否允许适配器执行
+     */
+    private isAdapterAllowedByCircuitBreaker;
+    /**
+     * 计算 UCB1 分数 (探索-利用平衡)
+     * 置信上限 = 平均成功率 + sqrt(2 * ln(总探索次数) / 该模型探测次数)
+     */
+    private calculateUCB1;
     /**
      * 创建空统计信息
      */

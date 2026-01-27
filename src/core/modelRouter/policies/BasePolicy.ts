@@ -1,4 +1,4 @@
-import { ModelAdapter, TaskConfig, RoutingConfig, ModelStats } from '../types';
+import { ModelAdapter, TaskConfig, RoutingConfig, ModelStats, DomainHealth } from '../types';
 import { RoutingPolicy, PolicyResult, ScoredCandidate } from './types';
 
 export abstract class BasePolicy implements RoutingPolicy {
@@ -9,13 +9,14 @@ export abstract class BasePolicy implements RoutingPolicy {
         adapters: ModelAdapter[],
         taskConfig: TaskConfig,
         routingConfig: RoutingConfig,
-        modelStats: Map<string, ModelStats>
+        modelStats: Map<string, ModelStats>,
+        domainHealth: Map<string, DomainHealth>
     ): Promise<PolicyResult> {
-        // 1. Gate (Filter) - 硬约束
-        const candidates = await this.gate(adapters, taskConfig);
+        // 1. Gate (Filter) - 硬约束 (包含故障域隔离)
+        const candidates = await this.gate(adapters, taskConfig, modelStats, domainHealth);
 
         if (candidates.length === 0) {
-            throw new Error('没有可用的模型（已被 Gate 过滤）');
+            throw new Error('没有可用的模型（已被 Gate 过滤，可能触发了故障域保护）');
         }
 
         // 2. Score (Sort) - 软排序
@@ -42,9 +43,14 @@ export abstract class BasePolicy implements RoutingPolicy {
     }
 
     /**
-     * Gate 阶段：过滤掉不符合硬性要求的模型
+     * Gate 阶段：过滤掉不符合硬性要求的模型，包含故障域识别
      */
-    protected async gate(adapters: ModelAdapter[], task: TaskConfig): Promise<ModelAdapter[]> {
+    protected async gate(
+        adapters: ModelAdapter[],
+        task: TaskConfig,
+        modelStats: Map<string, ModelStats>,
+        domainHealthMap: Map<string, DomainHealth>
+    ): Promise<ModelAdapter[]> {
         const passedAdapters: ModelAdapter[] = [];
 
         // 并行检查可用性
@@ -57,6 +63,18 @@ export abstract class BasePolicy implements RoutingPolicy {
 
         for (const { adapter, available } of availabilityResults) {
             if (!available) continue;
+
+            const domain = adapter.failureDomain ?? adapter.provider;
+            const health = domainHealthMap.get(domain);
+
+            // 熔断保护过滤
+            if (health) {
+                if (health.state === 'open') continue;
+                if (health.state === 'half-open') {
+                    // Half-open 仅允许 10% 探测流量通过 Gate
+                    if (Math.random() >= 0.1) continue;
+                }
+            }
 
             // 检查上下文窗口
             if (task.contextSize && adapter.capabilities.maxContextWindow < task.contextSize) {

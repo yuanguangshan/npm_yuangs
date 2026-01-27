@@ -1,4 +1,4 @@
-import { RoutingStrategy } from './types';
+import { RoutingStrategy, ExplorationStrategy } from './types';
 /**
  * 模型路由配置文件
  */
@@ -17,6 +17,11 @@ export interface ModelRouterConfig {
     taskTypeMapping?: Record<string, string>;
     /** 适配器配置 */
     adapterConfigs?: Record<string, any>;
+    /** 探索配置 */
+    exploration?: {
+        strategy: ExplorationStrategy | string;
+        epsilon?: number;
+    };
 }
 /**
  * 加载配置

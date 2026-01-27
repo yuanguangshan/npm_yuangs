@@ -24,6 +24,10 @@ const DEFAULT_CONFIG = {
     enabledAdapters: ['google-gemini', 'qwen', 'codebuddy'],
     taskTypeMapping: {},
     adapterConfigs: {},
+    exploration: {
+        strategy: 'none',
+        epsilon: 0.1
+    }
 };
 const CONFIG_FILE = path_1.default.join(os_1.default.homedir(), '.yuangs-router.json');
 /**
