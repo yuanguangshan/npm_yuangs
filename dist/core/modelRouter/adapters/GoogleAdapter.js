@@ -113,29 +113,27 @@ class GoogleAdapter extends BaseAdapter_1.BaseAdapter {
         try {
             // Gemini CLI 在 JSON 模式下输出结构化数据
             const jsonContent = this.extractJsonContent(output);
-            if (jsonContent !== output) {
-                try {
-                    const parsed = JSON.parse(jsonContent);
-                    // Gemini CLI JSON 输出格式: { response: "...", ... }
-                    if (parsed.response) {
-                        return parsed.response;
-                    }
-                    // 如果没有 response 字段，尝试其他可能的字段
-                    if (parsed.text) {
-                        return parsed.text;
-                    }
-                    if (parsed.content) {
-                        return parsed.content;
-                    }
-                    // 如果是 Google API 格式
-                    if (parsed.candidates?.[0]?.content?.parts?.[0]?.text) {
-                        return parsed.candidates[0].content.parts[0].text;
-                    }
-                    return jsonContent;
+            try {
+                const parsed = JSON.parse(jsonContent);
+                // Gemini CLI JSON 输出格式: { response: "...", ... }
+                if (parsed.response) {
+                    return parsed.response;
                 }
-                catch {
-                    // JSON 解析失败，继续处理
+                // 如果没有 response 字段，尝试其他可能的字段
+                if (parsed.text) {
+                    return parsed.text;
                 }
+                if (parsed.content) {
+                    return parsed.content;
+                }
+                // 如果是 Google API 格式
+                if (parsed.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    return parsed.candidates[0].content.parts[0].text;
+                }
+                return jsonContent;
+            }
+            catch {
+                // JSON 解析失败，继续处理
             }
             // 如果不是 JSON 格式，直接返回清理后的文本
             const lines = output.split('\n').filter(line => {
