@@ -4,6 +4,50 @@ import ora from 'ora';
 import { GitService } from '../../core/git/GitService';
 import { getRouter } from '../../core/modelRouter';
 
+/**
+ * 允许的动态导入路径白名单
+ * 用于防止恶意代码注入
+ */
+const ALLOWED_IMPORTS = [
+    '../../core/git/BranchAdvisor'
+] as const;
+
+/**
+ * 验证分支名称的安全性
+ * 防止命令注入和路径遍历攻击
+ */
+function validateBranchName(branchName: string): boolean {
+    // Git 分支名称规范：
+    // 1. 不能包含空格
+    // 2. 不能包含特殊字符 (除 -, _, ., /)
+    // 3. 不能以 .. 开头（防止路径遍历）
+    // 4. 不能以 . 开头或结尾（避免隐藏文件问题）
+    
+    const branchNamePattern = /^[a-zA-Z0-9\-_\.]+(?:\/[a-zA-Z0-9\-_\.]+)*$/;
+    
+    // 基本格式检查
+    if (!branchNamePattern.test(branchName)) {
+        return false;
+    }
+    
+    // 防止路径遍历
+    if (branchName.includes('..')) {
+        return false;
+    }
+    
+    // 防止以 . 开头或结尾
+    if (branchName.startsWith('.') || branchName.endsWith('.')) {
+        return false;
+    }
+    
+    // 限制长度
+    if (branchName.length > 255) {
+        return false;
+    }
+    
+    return true;
+}
+
 export function registerBranchCommand(gitCmd: Command) {
     // git branch - 分支管理
     const branchCmd = gitCmd
@@ -67,6 +111,14 @@ export function registerBranchCommand(gitCmd: Command) {
         .description('安全切换分支')
         .action(async (branchName) => {
             try {
+                // 安全检查：验证分支名称
+                if (!validateBranchName(branchName)) {
+                    console.log(chalk.red(`❌ 无效的分支名称: "${branchName}"`));
+                    console.log(chalk.gray('分支名称只能包含字母、数字、连字符(-)、下划线(_)和点(.)'));
+                    console.log(chalk.gray('示例: feature/new-feature, hotfix/bug-fix-123'));
+                    return;
+                }
+
                 const gitService = new GitService();
                 if (!(await gitService.isGitRepository())) {
                     console.log(chalk.red('当前目录不是 Git 仓库'));
@@ -131,7 +183,13 @@ export function registerBranchCommand(gitCmd: Command) {
                     return;
                 }
 
-                const { BranchAdvisor } = await import('../../core/git/BranchAdvisor');
+                // 安全检查：动态导入路径白名单验证
+                const importPath = '../../core/git/BranchAdvisor';
+                if (!ALLOWED_IMPORTS.includes(importPath as any)) {
+                    throw new Error('Security: Import path not in whitelist');
+                }
+
+                const { BranchAdvisor } = await import(importPath);
                 const advisor = new BranchAdvisor(gitService, router);
 
                 const suggestion = await advisor.suggest();
