@@ -67,7 +67,7 @@ export function registerBranchCommand(gitCmd: Command) {
 
     // 关键修复：定义父命令的 action 
     // 当输入 "yuangs git branch" (无子命令) 时触发
-    branchCmd.action(async (_options, cmd) => {
+    branchCmd.action(async (options: Record<string, any>, cmd: Command) => {
         if (cmd.args.length === 0) {
             await listBranchesAction();
         }
@@ -76,7 +76,7 @@ export function registerBranchCommand(gitCmd: Command) {
     // branch list
     branchCmd
         .command('list')
-        .description('列出分支及上下文信息说明')
+        .description('列出分支及上下文信息')
         .action(listBranchesAction);
 
     // branch switch
