@@ -98,12 +98,12 @@ class GoogleAdapter extends BaseAdapter_1.BaseAdapter {
         switch (taskType) {
             case types_1.TaskType.CODE_GENERATION:
             case types_1.TaskType.CODE_REVIEW:
-                return 'gemini-1.5-pro';
+                return 'gemini-2.5-pro';
             case types_1.TaskType.CONVERSATION:
             case types_1.TaskType.GENERAL:
-                return 'gemini-1.5-flash';
+                return 'gemini-2.5-flash';
             default:
-                return 'gemini-1.5-flash';
+                return 'gemini-2.5-flash';
         }
     }
     /**
