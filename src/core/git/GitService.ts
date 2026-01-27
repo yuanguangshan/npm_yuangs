@@ -357,4 +357,17 @@ export class GitService {
         const args = startPoint ? ['checkout', '-b', name, startPoint] : ['checkout', '-b', name];
         await this.execArgs(args);
     }
+
+    /**
+     * 验证分支名称是否符合 Git 规范
+     */
+    async isValidBranchName(name: string): Promise<boolean> {
+        try {
+            // 使用 git check-ref-format --branch 验证分支名
+            await this.exec(`check-ref-format --branch "${name}"`);
+            return true;
+        } catch {
+            return false;
+        }
+    }
 }
