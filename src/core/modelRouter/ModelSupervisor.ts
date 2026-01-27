@@ -1,14 +1,13 @@
 import {
-    ModelStats,
     SupervisorConfig,
     RoutingStrategy,
-    SupervisorTrigger,
-    DomainHealth
 } from './types';
+import { MetricsSnapshot } from '../metrics/MetricsCollector';
+import { SupervisorAction } from '../observability/SupervisorActionLog';
 
 /**
- * 监督器 (Supervisor)
- * 负责监控系统全局状态并根据预设 Triggers 执行纠偏动作（如切换策略）
+ * 监督器 (Supervisor) - 控制面
+ * 基于纯函数决策模型，负责分析指标并建议纠偏动作
  */
 export class ModelSupervisor {
     private config: SupervisorConfig;
@@ -18,35 +17,27 @@ export class ModelSupervisor {
     }
 
     /**
-     * 根据当前统计数据评估是否需要切换策略
-     * @returns 建议采取的目标策略，若不需要切换则返回 null
+     * 评估系统态势并决定是否产生 Action
      */
     evaluate(
-        allStats: Map<string, ModelStats>,
-        domainHealth: Map<string, DomainHealth>,
+        snapshot: MetricsSnapshot,
         currentStrategy: RoutingStrategy
-    ): RoutingStrategy | null {
+    ): SupervisorAction | null {
         if (!this.config.enabled) return null;
 
-        // 计算全局 EMA 指标
-        const statsArray = Array.from(allStats.values());
-        if (statsArray.length === 0) return null;
-
-        const globalLatency = statsArray.reduce((sum, s) => sum + s.latencyEMA, 0) / statsArray.length;
-        const globalSuccess = statsArray.reduce((sum, s) => sum + s.successEMA, 0) / statsArray.length;
+        const { globalLatencyEMA, globalSuccessRateEMA, domainHealth } = snapshot;
 
         for (const trigger of this.config.triggers) {
             let metricValue = 0;
 
             switch (trigger.metric) {
                 case 'global_latency':
-                    metricValue = globalLatency;
+                    metricValue = globalLatencyEMA;
                     break;
                 case 'global_success_rate':
-                    metricValue = globalSuccess;
+                    metricValue = globalSuccessRateEMA;
                     break;
                 case 'google_domain_error':
-                    // 示例：检查 google 域名下的整体稳定性
                     const googleHealth = domainHealth.get('google');
                     metricValue = (googleHealth?.state === 'open') ? 1 : 0;
                     break;
@@ -56,8 +47,11 @@ export class ModelSupervisor {
                 // 如果当前策略已经目标策略，则跳过
                 if (currentStrategy === trigger.action.targetStrategy) continue;
 
-                console.warn(`[Supervisor] 触发条件 [${trigger.id}]: ${trigger.metric}(${metricValue.toFixed(2)}) ${trigger.operator} ${trigger.threshold}`);
-                return trigger.action.targetStrategy;
+                return {
+                    type: 'switch_strategy',
+                    targetStrategy: trigger.action.targetStrategy,
+                    reason: `Trigger[${trigger.id}] fired: ${trigger.metric}(${metricValue.toFixed(2)}) ${trigger.operator} ${trigger.threshold}`
+                };
             }
         }
 
@@ -75,7 +69,7 @@ export class ModelSupervisor {
     }
 
     /**
-     * 获取默认的监督配置
+     * 系统级默认应急预案
      */
     static getDefaultConfig(): SupervisorConfig {
         return {
@@ -85,7 +79,7 @@ export class ModelSupervisor {
                     id: 'high_latency_circuit_breaker',
                     metric: 'global_latency',
                     operator: '>',
-                    threshold: 5000, // 全局延迟超过 5s
+                    threshold: 5000,
                     action: {
                         type: 'switch_strategy',
                         targetStrategy: RoutingStrategy.FASTEST_FIRST
@@ -95,10 +89,10 @@ export class ModelSupervisor {
                     id: 'severe_success_rate_drop',
                     metric: 'global_success_rate',
                     operator: '<',
-                    threshold: 0.5, // 整体成功率低于 50%
+                    threshold: 0.5,
                     action: {
                         type: 'switch_strategy',
-                        targetStrategy: RoutingStrategy.CHEAPEST_FIRST // 回退到稳健/廉价模型
+                        targetStrategy: RoutingStrategy.CHEAPEST_FIRST
                     }
                 }
             ]
