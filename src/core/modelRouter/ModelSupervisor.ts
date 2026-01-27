@@ -1,13 +1,29 @@
 import {
     SupervisorConfig,
     RoutingStrategy,
+    SupervisorContext,
+    ActionType
 } from './types';
 import { MetricsSnapshot } from '../metrics/MetricsCollector';
 import { SupervisorAction } from '../observability/SupervisorActionLog';
 
 /**
- * 监督器 (Supervisor) - 控制面
- * 基于纯函数决策模型，负责分析指标并建议纠偏动作
+ * 监督决策结果封装
+ */
+export interface SupervisorDecision {
+    action: SupervisorAction;
+    /** 为 Context 提供的更新补丁 */
+    contextPatch: Partial<SupervisorContext>;
+}
+
+/**
+ * 监督器 (Supervisor) v3 - 控制面
+ * 
+ * 特性：
+ * 1. 纯函数决策 (基于 Snapshot + Context)
+ * 2. 连续命中过滤 (Hysteresis/Trigger Counts)
+ * 3. 动态冷却期 (Cooldown)
+ * 4. 可复盘的数据结构 (JSON-native)
  */
 export class ModelSupervisor {
     private config: SupervisorConfig;
@@ -17,45 +33,83 @@ export class ModelSupervisor {
     }
 
     /**
-     * 评估系统态势并决定是否产生 Action
+     * 核心决策评估函数 (Replayable)
      */
     evaluate(
         snapshot: MetricsSnapshot,
+        ctx: SupervisorContext,
         currentStrategy: RoutingStrategy
-    ): SupervisorAction | null {
-        if (!this.config.enabled) return null;
+    ): SupervisorDecision {
+        const nextHitCounts = { ...(ctx.triggerHitCounts || {}) };
 
-        const { globalLatencyEMA, globalSuccessRateEMA, domainHealth } = snapshot;
+        if (!this.config.enabled) {
+            return { action: this.noop('Supervisor disabled'), contextPatch: {} };
+        }
 
+        // 1. 冷却期检查
+        if (ctx.cooldownUntil && ctx.now < ctx.cooldownUntil) {
+            return { action: this.noop('Cooldown active'), contextPatch: {} };
+        }
+
+        // 2. 依次检查 Triggers
         for (const trigger of this.config.triggers) {
             let metricValue = 0;
 
             switch (trigger.metric) {
                 case 'global_latency':
-                    metricValue = globalLatencyEMA;
+                    metricValue = snapshot.globalLatencyEMA;
                     break;
                 case 'global_success_rate':
-                    metricValue = globalSuccessRateEMA;
+                    metricValue = snapshot.globalSuccessRateEMA;
                     break;
-                case 'google_domain_error':
-                    const googleHealth = domainHealth.get('google');
-                    metricValue = (googleHealth?.state === 'open') ? 1 : 0;
+                case 'domain_error_rate':
+                    const openDomains = Array.from(snapshot.domainHealth.values()).filter(d => d.state === 'open').length;
+                    metricValue = openDomains / Math.max(snapshot.domainHealth.size, 1);
                     break;
             }
 
             if (this.checkCondition(metricValue, trigger.operator, trigger.threshold)) {
-                // 如果当前策略已经目标策略，则跳过
-                if (currentStrategy === trigger.action.targetStrategy) continue;
+                const currentHits = (nextHitCounts[trigger.id] || 0) + 1;
+                nextHitCounts[trigger.id] = currentHits;
 
-                return {
-                    type: 'switch_strategy',
-                    targetStrategy: trigger.action.targetStrategy,
-                    reason: `Trigger[${trigger.id}] fired: ${trigger.metric}(${metricValue.toFixed(2)}) ${trigger.operator} ${trigger.threshold}`
-                };
+                if (currentHits >= (trigger.hysteresisCount || 1)) {
+                    if (currentStrategy === trigger.action.targetStrategy) continue;
+
+                    const confidence = this.computeConfidence(metricValue, trigger.threshold);
+                    const baseCooldown = trigger.cooldownMs || this.config.baseCooldownMs || 30000;
+                    const dynamicCooldown = Math.round(baseCooldown * (1 / Math.max(confidence, 0.1)));
+
+                    // 决策达成，该触发器计数清零
+                    nextHitCounts[trigger.id] = 0;
+
+                    const action: SupervisorAction = {
+                        type: ActionType.SWITCH_STRATEGY,
+                        targetStrategy: trigger.action.targetStrategy,
+                        reason: `Trigger[${trigger.id}] fired: ${trigger.metric}(${metricValue.toFixed(2)}) ${trigger.operator} ${trigger.threshold} (Confidence: ${confidence.toFixed(2)})`,
+                    };
+
+                    return {
+                        action,
+                        contextPatch: {
+                            cooldownUntil: ctx.now + dynamicCooldown,
+                            triggerHitCounts: nextHitCounts,
+                            lastAction: {
+                                type: action.type,
+                                targetStrategy: action.targetStrategy,
+                                timestamp: ctx.now
+                            }
+                        }
+                    };
+                }
+            } else {
+                nextHitCounts[trigger.id] = 0;
             }
         }
 
-        return null;
+        return {
+            action: this.noop('Steady state'),
+            contextPatch: { triggerHitCounts: nextHitCounts }
+        };
     }
 
     private checkCondition(value: number, operator: string, threshold: number): boolean {
@@ -68,30 +122,42 @@ export class ModelSupervisor {
         }
     }
 
-    /**
-     * 系统级默认应急预案
-     */
+    private computeConfidence(value: number, threshold: number): number {
+        const diff = Math.abs(value - threshold);
+        return Math.min(diff / (threshold || 1), 1.0);
+    }
+
+    private noop(reason: string): SupervisorAction {
+        return {
+            type: ActionType.NOOP,
+            reason
+        };
+    }
+
     static getDefaultConfig(): SupervisorConfig {
         return {
             enabled: true,
+            baseCooldownMs: 30000,
             triggers: [
                 {
-                    id: 'high_latency_circuit_breaker',
+                    id: 'critical_latency_spike',
                     metric: 'global_latency',
                     operator: '>',
                     threshold: 5000,
+                    hysteresisCount: 3,
                     action: {
-                        type: 'switch_strategy',
+                        type: ActionType.SWITCH_STRATEGY,
                         targetStrategy: RoutingStrategy.FASTEST_FIRST
                     }
                 },
                 {
-                    id: 'severe_success_rate_drop',
+                    id: 'severe_success_drop',
                     metric: 'global_success_rate',
                     operator: '<',
-                    threshold: 0.5,
+                    threshold: 0.6,
+                    hysteresisCount: 2,
                     action: {
-                        type: 'switch_strategy',
+                        type: ActionType.SWITCH_STRATEGY,
                         targetStrategy: RoutingStrategy.CHEAPEST_FIRST
                     }
                 }

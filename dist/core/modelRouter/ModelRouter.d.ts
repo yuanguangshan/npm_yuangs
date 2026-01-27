@@ -14,7 +14,7 @@ export declare class ModelRouter {
     private supervisor;
     private supervisorLogger;
     private roundRobinIndex;
-    private activeOverrideStrategy;
+    private supervisorContext;
     constructor(supervisorConfig?: SupervisorConfig, metrics?: MetricsCollector, logger?: SupervisorActionLogger);
     private registerDefaultPolicies;
     registerPolicy(policy: RoutingPolicy): void;

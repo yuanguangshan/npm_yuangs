@@ -6,7 +6,7 @@
  * 根据任务特性和需求，智能路由到最合适的模型执行
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ExplorationStrategy = exports.RoutingStrategy = exports.Priority = exports.TaskType = void 0;
+exports.ActionType = exports.ExplorationStrategy = exports.RoutingStrategy = exports.Priority = exports.TaskType = void 0;
 /**
  * 任务类型
  */
@@ -59,4 +59,13 @@ var ExplorationStrategy;
     ExplorationStrategy["EPSILON_GREEDY"] = "epsilon_greedy";
     ExplorationStrategy["UCB1"] = "ucb1";
 })(ExplorationStrategy || (exports.ExplorationStrategy = ExplorationStrategy = {}));
+/**
+ * 动作类型定义
+ */
+var ActionType;
+(function (ActionType) {
+    ActionType["SWITCH_STRATEGY"] = "switch_strategy";
+    ActionType["ROLLBACK"] = "rollback";
+    ActionType["NOOP"] = "noop";
+})(ActionType || (exports.ActionType = ActionType = {}));
 //# sourceMappingURL=types.js.map

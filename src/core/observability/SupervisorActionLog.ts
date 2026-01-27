@@ -1,11 +1,11 @@
-import { RoutingStrategy } from '../modelRouter/types';
+import { RoutingStrategy, ActionType } from '../modelRouter/types';
 
 /**
  * 监督器执行动作
  */
 export interface SupervisorAction {
-    type: 'switch_strategy';
-    targetStrategy: RoutingStrategy;
+    type: ActionType;
+    targetStrategy?: RoutingStrategy;
     reason: string;
 }
 

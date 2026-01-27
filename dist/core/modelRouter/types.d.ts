@@ -128,6 +128,14 @@ export declare enum ExplorationStrategy {
     UCB1 = "ucb1"
 }
 /**
+ * 动作类型定义
+ */
+export declare enum ActionType {
+    SWITCH_STRATEGY = "switch_strategy",
+    ROLLBACK = "rollback",
+    NOOP = "noop"
+}
+/**
  * 路由配置
  */
 export interface RoutingConfig {
@@ -262,13 +270,36 @@ export interface PolicyDsl {
  */
 export interface SupervisorTrigger {
     id: string;
-    metric: 'global_latency' | 'global_success_rate' | 'google_domain_error';
+    metric: 'global_latency' | 'global_success_rate' | 'domain_error_rate';
     operator: '>' | '<' | '>=' | '<=';
     threshold: number;
+    /** 最小持续次数 (Hysteresis) */
+    hysteresisCount?: number;
+    /** 冷却时间补偿 (ms) */
+    cooldownMs?: number;
     action: {
-        type: 'switch_strategy';
+        type: ActionType;
         targetStrategy: RoutingStrategy;
     };
+}
+/**
+ * 监督器上下文 (持有必要的状态轨迹)
+ */
+export interface SupervisorContext {
+    /** 决策时刻的时间戳 */
+    now: number;
+    /** 上一次动作 */
+    lastAction?: {
+        type: ActionType;
+        targetStrategy?: RoutingStrategy;
+        timestamp: number;
+    };
+    /** 冷却截止时间 */
+    cooldownUntil?: number;
+    /** 上一个稳定的策略 (用于 Rollback) */
+    lastStableStrategy?: RoutingStrategy;
+    /** 每个触发器连续命中的计数 (ID -> count) */
+    triggerHitCounts?: Record<string, number>;
 }
 /**
  * 监督器配置
@@ -276,4 +307,6 @@ export interface SupervisorTrigger {
 export interface SupervisorConfig {
     enabled: boolean;
     triggers: SupervisorTrigger[];
+    /** 基础冷却时间 */
+    baseCooldownMs?: number;
 }

@@ -52,7 +52,11 @@ class ModelRouter {
     supervisor;
     supervisorLogger;
     roundRobinIndex = 0;
-    activeOverrideStrategy = null;
+    // 唯一监督状态轨迹 (Context)
+    supervisorContext = {
+        now: Date.now(),
+        triggerHitCounts: {}
+    };
     constructor(supervisorConfig, metrics, logger) {
         this.metrics = metrics || new MetricsCollector_1.DefaultMetricsCollector();
         this.supervisor = new ModelSupervisor_1.ModelSupervisor(supervisorConfig || ModelSupervisor_1.ModelSupervisor.getDefaultConfig());
@@ -132,23 +136,27 @@ class ModelRouter {
                 isFallback: false
             };
         }
-        // 更新系统环态 (CB/CB probe)
-        this.updateDomainHealthStates();
-        // 监督评估
+        // 5. 监督评估 (v3 stateless)
+        this.supervisorContext.now = Date.now();
         const snapshot = this.metrics.snapshot(this.domainHealth);
-        const action = this.supervisor.evaluate(snapshot, routingConfig.strategy);
+        const decision = this.supervisor.evaluate(snapshot, this.supervisorContext, routingConfig.strategy);
+        // 唯一状态推进 (Context evolution)
+        this.supervisorContext = {
+            ...this.supervisorContext,
+            ...decision.contextPatch
+        };
         let activeStrategy = routingConfig.strategy;
         let supervisorNote = '';
-        if (action && action.type === 'switch_strategy') {
-            const previous = activeStrategy;
-            activeStrategy = action.targetStrategy;
-            supervisorNote = ` [监督器干预: ${action.reason}]`;
+        // 显式语义检查: 只有 SWITCH_STRATEGY 且 targetStrategy 存在时才干预
+        if (decision.action.type === types_1.ActionType.SWITCH_STRATEGY && decision.action.targetStrategy) {
+            activeStrategy = decision.action.targetStrategy;
+            supervisorNote = ` [监督器干预: ${decision.action.reason}]`;
             // 记录结构化日志
             this.supervisorLogger.log({
                 eventId: crypto.randomUUID(),
                 timestamp: Date.now(),
-                action,
-                previousStrategy: previous,
+                action: decision.action,
+                previousStrategy: routingConfig.strategy,
                 currentStrategy: activeStrategy,
                 snapshot: {
                     globalLatencyEMA: snapshot.globalLatencyEMA,
