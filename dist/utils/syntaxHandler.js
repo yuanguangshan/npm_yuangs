@@ -4,6 +4,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleSpecialSyntax = handleSpecialSyntax;
+exports.tokenizeWithQuotes = tokenizeWithQuotes;
+exports.resolveFilePathsAndQuestion = resolveFilePathsAndQuestion;
 const fs_1 = __importDefault(require("fs"));
 const chalk_1 = __importDefault(require("chalk"));
 const path_1 = __importDefault(require("path"));
@@ -22,35 +24,8 @@ async function handleSpecialSyntax(input, stdinData) {
     const trimmed = input.trim();
     // 处理 @ 文件引用语法
     if (trimmed.startsWith('@')) {
-        // 检查是否是 @! 立即执行语法
-        const immediateExecMatch = trimmed.match(/^@\s*!\s*(.+?)$/);
-        if (immediateExecMatch) {
-            const filePath = immediateExecMatch[1].trim();
-            return await handleImmediateExec(filePath);
-        }
-        // 检查是否是 @filename:command 语法 (添加文件并执行命令)
-        const fileExecMatch = trimmed.match(/^@\s*(.+?)\s*:\s*([^0-9\s].*)$/);
-        if (fileExecMatch) {
-            const filePath = fileExecMatch[1].trim();
-            const command = fileExecMatch[2].trim();
-            return await handleFileAndCommand(filePath, command);
-        }
-        // 检查是否是带行号的语法 @file:start-end as alias
-        const lineRangeMatch = trimmed.match(/^@\s*(.+?)(?::(\d+)(?:-(\d+))?)?(?:\s+as\s+([^\s\n]+))?\s*(?:\n(.*))?$/s);
-        if (lineRangeMatch) {
-            const filePath = lineRangeMatch[1];
-            const startLine = lineRangeMatch[2] ? parseInt(lineRangeMatch[2]) : null;
-            const endLine = lineRangeMatch[3] ? parseInt(lineRangeMatch[3]) : null;
-            const alias = lineRangeMatch[4];
-            const hasQuestion = !!lineRangeMatch[5] || !!stdinData;
-            const question = lineRangeMatch[5] || (stdinData ? `分析以下文件内容：\n\n${stdinData}` : '请分析这个文件');
-            const res = await handleFileReference(filePath.trim(), startLine, endLine, question, alias, !hasQuestion);
-            return {
-                ...res,
-                isPureReference: !hasQuestion,
-                type: 'file'
-            };
-        }
+        // 如果是 @ 开头的语法，跳转到独立的处理器
+        return await handleAtSyntax(trimmed, stdinData);
     }
     // 处理 # 目录引用语法
     if (trimmed.startsWith('#')) {
@@ -93,35 +68,286 @@ async function handleSpecialSyntax(input, stdinData) {
     // 如果不是特殊语法，返回未处理
     return { processed: false };
 }
-async function handleFileReference(filePath, startLine = null, endLine = null, question, alias, isPureReference = false) {
-    const fullPath = path_1.default.resolve(filePath);
-    if (!fs_1.default.existsSync(fullPath) || !fs_1.default.statSync(fullPath).isFile()) {
+/**
+ * 带引号支持的 Tokenizer (导用于测试)
+ * 支持转义字符 \ 和引号包裹
+ */
+function tokenizeWithQuotes(input) {
+    const tokens = [];
+    const isQuoted = [];
+    let current = '';
+    let inQuotes = false;
+    let quoteChar = '';
+    let escaped = false;
+    for (let i = 0; i < input.length; i++) {
+        const char = input[i];
+        if (escaped) {
+            current += char;
+            escaped = false;
+            continue;
+        }
+        if (char === '\\') {
+            escaped = true;
+            continue;
+        }
+        if (!inQuotes && (char === '"' || char === "'")) {
+            inQuotes = true;
+            quoteChar = char;
+        }
+        else if (inQuotes && char === quoteChar) {
+            inQuotes = false;
+            tokens.push(current);
+            isQuoted.push(true);
+            current = '';
+        }
+        else if (!inQuotes && (char === ',' || char === '，' || char === ' ')) {
+            if (current) {
+                tokens.push(current.trim());
+                isQuoted.push(false);
+                current = '';
+            }
+        }
+        else {
+            current += char;
+        }
+    }
+    if (current || inQuotes) {
+        tokens.push(current.trim());
+        isQuoted.push(inQuotes);
+    }
+    return { tokens, isQuoted };
+}
+/**
+ * 处理 @ 语法的独立函数
+ */
+async function handleAtSyntax(trimmed, stdinData) {
+    // 1. @! 立即执行语法
+    const immediateExecMatch = trimmed.match(/^@\s*!\s*(.+?)$/);
+    if (immediateExecMatch) {
+        const filePath = immediateExecMatch[1].trim();
+        return await handleImmediateExec(filePath);
+    }
+    // 2. @filename:command 语法 (添加文件并执行命令)
+    const fileExecMatch = trimmed.match(/^@\s*(.+?)\s*:\s*([^0-9\s].*)$/);
+    if (fileExecMatch) {
+        const filePath = fileExecMatch[1].trim();
+        const command = fileExecMatch[2].trim();
+        return await handleFileAndCommand(filePath, command);
+    }
+    // 3. 带行号或批量引用的语法 @file:start-end as alias
+    const lineRangeMatch = trimmed.match(/^@\s*(.+?)(?::(\d+)(?:-(\d+))?)?(?:\s+as\s+([^\s\n]+))?\s*(?:\n(.*))?$/s);
+    if (lineRangeMatch) {
+        const rawPart = lineRangeMatch[1].trim();
+        const startLine = lineRangeMatch[2] ? parseInt(lineRangeMatch[2]) : null;
+        const endLine = lineRangeMatch[3] ? parseInt(lineRangeMatch[3]) : null;
+        const alias = lineRangeMatch[4];
+        let question = lineRangeMatch[5] || (stdinData ? `分析以下内容：\n\n${stdinData}` : undefined);
+        const { filePaths, extraQuestion } = await resolveFilePathsAndQuestion(rawPart);
+        if (extraQuestion) {
+            question = question ? `${extraQuestion}\n\n${question}` : extraQuestion;
+        }
+        const hasQuestion = !!question || !!stdinData;
+        if (filePaths.length > 1) {
+            let warningPrefix = '';
+            if (alias) {
+                warningPrefix += chalk_1.default.yellow('⚠️ 警告: 别名 (alias) 仅支持单个文件引用，当前多个文件引用将忽略别名。\n');
+            }
+            if (startLine !== null) {
+                warningPrefix += chalk_1.default.yellow('⚠️ 警告: 行号范围仅支持单个文件引用，当前多个文件引用将忽略行号范围。\n');
+            }
+            const res = await handleMultipleFileReferences(filePaths, question, !hasQuestion);
+            return {
+                ...res,
+                result: warningPrefix + res.result,
+                isPureReference: !hasQuestion,
+                type: 'file'
+            };
+        }
+        else if (filePaths.length === 1) {
+            const res = await handleFileReference(filePaths[0], startLine, endLine, question, alias, !hasQuestion);
+            return {
+                ...res,
+                isPureReference: !hasQuestion,
+                type: 'file'
+            };
+        }
+        else {
+            return {
+                processed: true,
+                result: `错误: 未找到有效的文件或序号引用 "${rawPart}"`,
+                error: true
+            };
+        }
+    }
+    return { processed: false };
+}
+/**
+ * 解析增强的路径语法 (识别路径列表与同行提问)
+ *
+ * 💡 识别优先级与规则 (Heuristic Rules):
+ * 1. 引号包裹: 只要被 "" 或 '' 包裹，一律视为文件路径 (支持空格)。
+ * 2. 范围语法: 符合 n-m 格式且为数字，视为上下文序号范围。
+ * 3. 磁盘存在: 如果字符串在当前工作目录真实存在 (文件或目录)，视为路径。
+ *    - 注意：如果文件名叫 "1" 且磁盘存在，它会覆盖序号 1 的语义 (文件优先)。
+ * 4. 上下文索引: 如果是纯数字且在当前 ContextBuffer 范围内，视为序号引用。
+ * 5. 提问边界: 遇到第一个不满足上述任何条件的单词时，该单词及其后内容均识别为提问。
+ */
+async function resolveFilePathsAndQuestion(input) {
+    const persisted = await (0, contextStorage_1.loadContext)();
+    const filePaths = [];
+    // 1. 获取初步 Token
+    const { tokens, isQuoted } = tokenizeWithQuotes(input);
+    let questionStartIndex = -1;
+    // 2. 预先并行检查所有 Token 的磁盘状态，避免循环中同步 I/O
+    const stats = await Promise.all(tokens.map(async (t, i) => {
+        if (isQuoted[i])
+            return { exists: true }; // 引号包裹强制视为路径
+        try {
+            const fullPath = path_1.default.resolve(t);
+            await fs_1.default.promises.access(fullPath, fs_1.default.constants.F_OK);
+            return { exists: true };
+        }
+        catch {
+            return { exists: false };
+        }
+    }));
+    // 3. 扫描识别边界
+    for (let i = 0; i < tokens.length; i++) {
+        const token = tokens[i];
+        const quoted = isQuoted[i];
+        const existsOnDisk = stats[i].exists;
+        if (quoted)
+            continue;
+        const isRange = /^\d+-\d+$/.test(token);
+        const isIndex = !isNaN(parseInt(token)) && parseInt(token) > 0 && parseInt(token) <= persisted.length;
+        // 判定逻辑：既不是物理路径，也不是范围/序号 -> 提问开始
+        if (!existsOnDisk && !isRange && !isIndex) {
+            questionStartIndex = i;
+            break;
+        }
+    }
+    let pathTokens = tokens;
+    let pathStats = stats;
+    let extraQuestion;
+    if (questionStartIndex !== -1) {
+        pathTokens = tokens.slice(0, questionStartIndex);
+        pathStats = stats.slice(0, questionStartIndex);
+        extraQuestion = tokens.slice(questionStartIndex).join(' ');
+    }
+    // 4. 解析确定的路径部分
+    for (let i = 0; i < pathTokens.length; i++) {
+        const part = pathTokens[i];
+        const existsOnDisk = pathStats[i].exists;
+        // A. 物理路径 (磁盘存在) 或强制路径 (带有引号)
+        // 优先级最高：磁盘上真的有这个文件，直接用路径
+        if (existsOnDisk || isQuoted[i]) {
+            filePaths.push(part);
+            continue;
+        }
+        // B. 范围语法: 1-5
+        const rangeMatch = part.match(/^(\d+)-(\d+)$/);
+        if (rangeMatch) {
+            const start = Math.min(parseInt(rangeMatch[1]), parseInt(rangeMatch[2]));
+            const end = Math.max(parseInt(rangeMatch[1]), parseInt(rangeMatch[2]));
+            for (let j = start; j <= end; j++) {
+                if (j > 0 && j <= persisted.length) {
+                    filePaths.push(persisted[j - 1].path);
+                }
+            }
+            continue;
+        }
+        // C. 上下文序号: 1
+        const idx = parseInt(part);
+        if (!isNaN(idx) && idx > 0 && idx <= persisted.length) {
+            filePaths.push(persisted[idx - 1].path);
+            continue;
+        }
+    }
+    return {
+        filePaths: [...new Set(filePaths)],
+        extraQuestion
+    };
+}
+/**
+ * 批量处理多个文件引用 (异步并行版)
+ */
+async function handleMultipleFileReferences(filePaths, question, isPureReference = false) {
+    const contextBuffer = new contextBuffer_1.ContextBuffer();
+    const persisted = await (0, contextStorage_1.loadContext)();
+    contextBuffer.import(persisted);
+    const contentMap = new Map();
+    const addedFiles = [];
+    const warningList = [];
+    // 并行读取文件
+    const readPromises = filePaths.map(async (filePath) => {
+        const fullPath = path_1.default.resolve(filePath);
+        try {
+            await fs_1.default.promises.access(fullPath, fs_1.default.constants.F_OK);
+            const content = await fs_1.default.promises.readFile(fullPath, 'utf-8');
+            return { filePath, content, success: true };
+        }
+        catch (e) {
+            return { filePath, success: false, error: e.message };
+        }
+    });
+    const results = await Promise.all(readPromises);
+    for (const res of results) {
+        if (res.success && res.content !== undefined) {
+            contentMap.set(res.filePath, res.content);
+            contextBuffer.add({
+                type: 'file',
+                path: res.filePath,
+                content: res.content
+            });
+            addedFiles.push(res.filePath);
+        }
+        else {
+            warningList.push(`警告: 跳过 "${res.filePath}": ${res.error}`);
+        }
+    }
+    const warnings = warningList.length > 0 ? warningList.join('\n') + '\n' : '';
+    if (addedFiles.length === 0) {
         return {
             processed: true,
-            result: `错误: 文件 "${filePath}" 不存在或不是一个文件`
+            result: warnings || '❌ 未找到任何有效的文件引用',
+            error: true
         };
     }
+    await (0, contextStorage_1.saveContext)(contextBuffer.export());
+    if (isPureReference) {
+        return {
+            processed: true,
+            result: `${warnings}✅ 已将 ${addedFiles.length} 个文件加入上下文：\n${addedFiles.map(f => `  • ${f}`).join('\n')}`
+        };
+    }
+    const prompt = (0, fileReader_1.buildPromptWithFileContent)(`引用了 ${addedFiles.length} 个文件`, addedFiles, contentMap, question || '请分析以上文件');
+    return { processed: true, result: warnings + prompt };
+}
+async function handleFileReference(filePath, startLine = null, endLine = null, question, alias, isPureReference = false) {
+    const fullPath = path_1.default.resolve(filePath);
     try {
-        let content = fs_1.default.readFileSync(fullPath, 'utf-8');
+        await fs_1.default.promises.access(fullPath, fs_1.default.constants.F_OK);
+        const stats = await fs_1.default.promises.stat(fullPath);
+        if (!stats.isFile())
+            throw new Error('不是一个文件');
+        let content = await fs_1.default.promises.readFile(fullPath, 'utf-8');
         // 如果指定了行号范围，则提取相应行
         if (startLine !== null) {
             const lines = content.split('\n');
-            // 验证行号范围
             if (startLine < 1 || startLine > lines.length) {
                 return {
                     processed: true,
                     result: `错误: 起始行号 ${startLine} 超出文件范围 (文件共有 ${lines.length} 行)`
                 };
             }
-            const startIdx = startLine - 1; // 转换为数组索引（从0开始）
-            let endIdx = endLine ? Math.min(endLine, lines.length) : lines.length; // 如果未指定结束行，则到文件末尾
+            const startIdx = startLine - 1;
+            let endIdx = endLine ? Math.min(endLine, lines.length) : lines.length;
             if (endLine && (endLine < startLine || endLine > lines.length)) {
                 return {
                     processed: true,
                     result: `错误: 结束行号 ${endLine} 超出有效范围 (应在 ${startLine}-${lines.length} 之间)`
                 };
             }
-            // 提取指定范围的行
             content = lines.slice(startIdx, endIdx).join('\n');
         }
         const contentMap = new Map();
@@ -137,19 +363,16 @@ async function handleFileReference(filePath, startLine = null, endLine = null, q
             alias: alias
         });
         await (0, contextStorage_1.saveContext)(contextBuffer.export());
-        const prompt = (0, fileReader_1.buildPromptWithFileContent)(`文件: ${filePath}${startLine !== null ? `:${startLine}${endLine ? `-${endLine}` : ''}` : ''}`, [filePath], contentMap, question || `请分析文件: ${filePath}`);
-        if (prompt.startsWith('错误:')) {
-            return { processed: true, result: prompt, error: true };
-        }
         if (isPureReference) {
-            return { processed: true, result: `已将文件 ${filePath} 加入上下文` };
+            return { processed: true, result: `✅ 已将文件 ${filePath} 加入上下文` };
         }
+        const prompt = (0, fileReader_1.buildPromptWithFileContent)(`文件: ${filePath}${startLine !== null ? `:${startLine}${endLine ? `-${endLine}` : ''}` : ''}`, [filePath], contentMap, question || `请分析文件: ${filePath}`);
         return { processed: true, result: prompt };
     }
     catch (error) {
         return {
             processed: true,
-            result: `错误: 读取文件失败: ${error}`,
+            result: `错误: 无法处理文件 "${filePath}": ${error.message}`,
             error: true
         };
     }
@@ -328,39 +551,42 @@ async function handleListContext() {
                 return chalk_1.default.green('★☆☆');
             return chalk_1.default.gray('☆☆☆');
         };
-        // 计算列宽
+        // 列宽常量定义
+        const IMPORTANCE_WIDTH = 6; // "重要度"文本宽度
+        const AGE_WIDTH = 10;
+        const TOKENS_WIDTH = 6;
+        const PINNED_WIDTH = 2; // 📌 表情占 2 个字符位
+        const MAX_PATH_DISPLAY_WIDTH = 40;
+        // 计算动态列宽
         const maxIndexWidth = Math.max(String(list.length).length, 1);
         const maxTypeWidth = Math.max(...list.map(item => item.type.length), 4);
-        const maxPathWidth = Math.max(...list.map(item => item.path.length), 40); // 限制最大宽度
-        const maxAliasWidth = Math.max(...list.map(item => item.alias?.length || 0), 5);
-        const importanceWidth = 3; // 星级固定宽度
-        const ageWidth = 10;
-        const tokensWidth = 6;
-        const pinnedWidth = 2;
+        const pathColWidth = Math.min(Math.max(...list.map(item => item.path.length), 4), MAX_PATH_DISPLAY_WIDTH);
         // 构建表格边框
-        const header = `┌${'─'.repeat(maxIndexWidth + 2)}┬${'─'.repeat(pinnedWidth + 2)}┬${'─'.repeat(maxTypeWidth + 2)}┬${'─'.repeat(Math.min(maxPathWidth, 40) + 2)}┬${'─'.repeat(importanceWidth + 2)}┬${'─'.repeat(ageWidth + 2)}┬${'─'.repeat(tokensWidth + 2)}┐`;
-        const separator = `├${'─'.repeat(maxIndexWidth + 2)}┼${'─'.repeat(pinnedWidth + 2)}┼${'─'.repeat(maxTypeWidth + 2)}┼${'─'.repeat(Math.min(maxPathWidth, 40) + 2)}┼${'─'.repeat(importanceWidth + 2)}┼${'─'.repeat(ageWidth + 2)}┼${'─'.repeat(tokensWidth + 2)}┤`;
-        const footer = `└${'─'.repeat(maxIndexWidth + 2)}┴${'─'.repeat(pinnedWidth + 2)}┴${'─'.repeat(maxTypeWidth + 2)}┴${'─'.repeat(Math.min(maxPathWidth, 40) + 2)}┴${'─'.repeat(importanceWidth + 2)}┴${'─'.repeat(ageWidth + 2)}┴${'─'.repeat(tokensWidth + 2)}┘`;
+        const header = `┌${'─'.repeat(maxIndexWidth + 2)}┬${'─'.repeat(PINNED_WIDTH + 2)}┬${'─'.repeat(maxTypeWidth + 2)}┬${'─'.repeat(pathColWidth + 2)}┬${'─'.repeat(IMPORTANCE_WIDTH + 2)}┬${'─'.repeat(AGE_WIDTH + 2)}┬${'─'.repeat(TOKENS_WIDTH + 2)}┐`;
+        const separator = `├${'─'.repeat(maxIndexWidth + 2)}┼${'─'.repeat(PINNED_WIDTH + 2)}┼${'─'.repeat(maxTypeWidth + 2)}┼${'─'.repeat(pathColWidth + 2)}┼${'─'.repeat(IMPORTANCE_WIDTH + 2)}┼${'─'.repeat(AGE_WIDTH + 2)}┼${'─'.repeat(TOKENS_WIDTH + 2)}┤`;
+        const footer = `└${'─'.repeat(maxIndexWidth + 2)}┴${'─'.repeat(PINNED_WIDTH + 2)}┴${'─'.repeat(maxTypeWidth + 2)}┴${'─'.repeat(pathColWidth + 2)}┴${'─'.repeat(IMPORTANCE_WIDTH + 2)}┴${'─'.repeat(AGE_WIDTH + 2)}┴${'─'.repeat(TOKENS_WIDTH + 2)}┘`;
         // 表头
-        const headerRow = `│ ${chalk_1.default.bold('#'.padEnd(maxIndexWidth))} │ ${chalk_1.default.bold('📌'.padEnd(pinnedWidth))} │ ${chalk_1.default.bold('Type'.padEnd(maxTypeWidth))} │ ${chalk_1.default.bold('Path'.padEnd(Math.min(maxPathWidth, 40)))} │ ${chalk_1.default.bold('重要度')} │ ${chalk_1.default.bold('添加时间'.padEnd(ageWidth))} │ ${chalk_1.default.bold('Tokens'.padEnd(tokensWidth))} │`;
+        const headerRow = `│ ${chalk_1.default.bold('#'.padEnd(maxIndexWidth))} │ ${chalk_1.default.bold('📌'.padEnd(PINNED_WIDTH))} │ ${chalk_1.default.bold('Type'.padEnd(maxTypeWidth))} │ ${chalk_1.default.bold('Path'.padEnd(pathColWidth))} │ ${chalk_1.default.bold('重要度')} │ ${chalk_1.default.bold('添加时间'.padEnd(AGE_WIDTH))} │ ${chalk_1.default.bold('Tokens'.padEnd(TOKENS_WIDTH))} │`;
         let result = chalk_1.default.cyan.bold('📋 当前上下文列表\n\n');
-        result += chalk_1.default.gray(header) + '\n';
+        result += chalk_1.default.blue.dim(header) + '\n';
         result += headerRow + '\n';
-        result += chalk_1.default.gray(separator) + '\n';
+        result += chalk_1.default.blue.dim(separator) + '\n';
+        // 行内虚线分隔符 (使用更清晰的蓝色和更饱满的字符)
+        const rowSeparator = `├${'┈'.repeat(maxIndexWidth + 2)}┼${'┈'.repeat(PINNED_WIDTH + 2)}┼${'┈'.repeat(maxTypeWidth + 2)}┼${'┈'.repeat(pathColWidth + 2)}┼${'┈'.repeat(IMPORTANCE_WIDTH + 2)}┼${'┈'.repeat(AGE_WIDTH + 2)}┼${'┈'.repeat(TOKENS_WIDTH + 2)}┤`;
         // 数据行
         list.forEach((item, index) => {
             const indexStr = String(index + 1).padEnd(maxIndexWidth);
-            const pinnedStr = (item.pinned || '').padEnd(pinnedWidth);
+            const pinnedStr = (item.pinned ? '📌' : '  ').padEnd(PINNED_WIDTH);
             const typeStr = item.type.padEnd(maxTypeWidth);
             // 路径截断处理
             let pathStr = item.path;
-            if (pathStr.length > 40) {
-                pathStr = '...' + pathStr.slice(-37);
+            if (pathStr.length > MAX_PATH_DISPLAY_WIDTH) {
+                pathStr = '...' + pathStr.slice(-(MAX_PATH_DISPLAY_WIDTH - 3));
             }
-            pathStr = pathStr.padEnd(Math.min(maxPathWidth, 40));
+            pathStr = pathStr.padEnd(pathColWidth);
             const importanceStr = formatImportance(item.importance);
-            const ageStr = formatAge(item.ageMin).padEnd(ageWidth);
-            const tokensStr = String(item.tokens).padStart(tokensWidth);
+            const ageStr = formatAge(item.ageMin).padEnd(AGE_WIDTH);
+            const tokensStr = String(item.tokens).padStart(TOKENS_WIDTH);
             // 根据类型着色
             let typeColor = chalk_1.default.cyan;
             if (item.type === 'memory')
@@ -368,8 +594,12 @@ async function handleListContext() {
             if (item.type === 'antipattern')
                 typeColor = chalk_1.default.red;
             result += `│ ${chalk_1.default.yellow(indexStr)} │ ${pinnedStr} │ ${typeColor(typeStr)} │ ${chalk_1.default.white(pathStr)} │ ${importanceStr} │ ${chalk_1.default.gray(ageStr)} │ ${chalk_1.default.green(tokensStr)} │\n`;
+            // 如果不是最后一行，添加虚线分隔符
+            if (index < list.length - 1) {
+                result += chalk_1.default.blue.dim(rowSeparator) + '\n';
+            }
         });
-        result += chalk_1.default.gray(footer);
+        result += chalk_1.default.blue.dim(footer);
         // 统计信息（单行）
         const totalTokens = list.reduce((sum, item) => sum + item.tokens, 0);
         const pinnedCount = list.filter(item => item.pinned).length;

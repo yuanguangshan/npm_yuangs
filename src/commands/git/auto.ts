@@ -38,6 +38,7 @@ import {
     getSuggestion
 } from '../../core/git/ErrorHandler';
 import { ProgressManager } from '../../core/git/ProgressManager';
+import { ContextGatherer } from '../../core/git/ContextGatherer';
 
 /**
  * 执行单个任务
@@ -135,7 +136,7 @@ ${previousFeedback ? `\n[上次实现的问题]\n${previousFeedback}\n\n请根�
 /**
  * 执行代码审查
  */
-async function reviewCode(): Promise<{ score: number; issues: string[]; error?: string }> {
+async function reviewCode(staged: boolean = true): Promise<{ score: number; issues: string[]; error?: string }> {
     try {
         const { CodeReviewer } = await import('../../core/git/CodeReviewer');
         const { getRouter } = await import('../../core/modelRouter');
@@ -145,7 +146,7 @@ async function reviewCode(): Promise<{ score: number; issues: string[]; error?: 
         const reviewer = new CodeReviewer(gitService, router);
         
         const result = await withRetry(
-            () => reviewer.review(ReviewLevel.STANDARD, true),
+            () => reviewer.review(ReviewLevel.STANDARD, staged),
             {
                 maxAttempts: 2,
                 delay: 500,
@@ -261,9 +262,17 @@ export function registerAutoCommand(gitCmd: Command) {
                             ? nextTask.reviewIssues.join('\n') 
                             : undefined;
                         
+                        // 采集真实上下文
+                        spinner.text = `[尝试 ${attempts}] 正在采集项目上下文...`;
+                        const gitService = new GitService();
+                        const gatherer = new ContextGatherer(gitService);
+                        const gathered = await gatherer.gather(nextTask.description);
+                        
+                        spinner.text = `[尝试 ${attempts}/${MAX_RETRY_ATTEMPTS + 1}] 正在生成实现方案...`;
+
                         const { code, success } = await executeTask(
                             nextTask,
-                            rawContent,
+                            gathered.summary,
                             options.model,
                             previousFeedback
                         );
@@ -335,7 +344,8 @@ export function registerAutoCommand(gitCmd: Command) {
                         if (!options.skipReview) {
                             spinner.start('正在进行代码审查...');
                             
-                            const review = await reviewCode();
+                            // 审查刚刚写入但尚未暂存的文件 (staged: false)
+                            const review = await reviewCode(false);
                             
                             spinner.succeed(`审查完成 (评分: ${review.score}/100)`);
                             
