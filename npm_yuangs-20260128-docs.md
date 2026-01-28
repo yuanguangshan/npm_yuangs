@@ -1,20 +1,18 @@
 # Project Documentation
 
-- **Generated at:** 2026-01-28 10:34:44
+- **Generated at:** 2026-01-28 18:10:08
 - **Root Dir:** `.`
-- **File Count:** 299
-- **Total Size:** 2033.62 KB
+- **File Count:** 308
+- **Total Size:** 2110.89 KB
 
 <a name="toc"></a>
 ## 📂 扫描目录
-- [.gitignore](#📄-gitignore) (19 lines, 0.21 KB)
+- [.gitignore](#📄-gitignore) (20 lines, 0.22 KB)
 - [GEMINI_SETUP.md](#📄-gemini_setupmd) (168 lines, 3.42 KB)
 - [INSTALL_GUIDE.md](#📄-install_guidemd) (94 lines, 2.25 KB)
 - [MODEL_ROUTER_README.md](#📄-model_router_readmemd) (432 lines, 8.16 KB)
 - [MODEL_ROUTER_TEST_REPORT.md](#📄-model_router_test_reportmd) (41 lines, 2.54 KB)
-- [README.md](#📄-readmemd) (741 lines, 18.87 KB)
-- [change.patch](#📄-changepatch) (31 lines, 0.75 KB)
-- [changes.patch](#📄-changespatch) (31 lines, 0.75 KB)
+- [README.md](#📄-readmemd) (742 lines, 18.88 KB)
 - [cli_vs_tmux_AI.code-workspace](#📄-cli_vs_tmux_aicode-workspace) (21 lines, 0.26 KB)
 - [commit_diff.txt](#📄-commit_difftxt) (91 lines, 5.03 KB)
 - [docs/AGENT_GOVERNANCE_DRAFT.md](#📄-docsagent_governance_draftmd) (111 lines, 4.15 KB)
@@ -49,9 +47,10 @@
 - [docs/implementation_principles.md](#📄-docsimplementation_principlesmd) (496 lines, 11.60 KB)
 - [docs/non-goals.md](#📄-docsnon-goalsmd) (192 lines, 4.10 KB)
 - [docs/prompt_analysis_and_optimization.md](#📄-docsprompt_analysis_and_optimizationmd) (1619 lines, 41.38 KB)
+- [docs/router-example.ts](#📄-docsrouter-examplets) (206 lines, 6.23 KB)
+- [docs/validate-markdown.yml](#📄-docsvalidate-markdownyml) (191 lines, 7.02 KB)
 - [docs/yuangs.config.example.json](#📄-docsyuangsconfigexamplejson) (11 lines, 0.39 KB)
 - [docs/yuangs.config.example.yaml](#📄-docsyuangsconfigexampleyaml) (23 lines, 0.78 KB)
-- [examples/router-example.ts](#📄-examplesrouter-examplets) (206 lines, 6.23 KB)
 - [install-latest.sh](#📄-install-latestsh) (166 lines, 4.16 KB)
 - [jest.config.js](#📄-jestconfigjs) (35 lines, 0.89 KB)
 - [npm.code-workspace](#📄-npmcode-workspace) (9 lines, 0.08 KB)
@@ -61,8 +60,11 @@
 - [public/manifest.json](#📄-publicmanifestjson) (21 lines, 0.51 KB)
 - [public/sw.js](#📄-publicswjs) (25 lines, 0.68 KB)
 - [scripts/clean-codebuddy.sh](#📄-scriptsclean-codebuddysh) (62 lines, 2.00 KB)
+- [scripts/validate-gfm-compatibility.js](#📄-scriptsvalidate-gfm-compatibilityjs) (190 lines, 7.01 KB)
 - [scripts/yuangs-install.sh](#📄-scriptsyuangs-installsh) (242 lines, 5.88 KB)
 - [scripts/yuangs.zsh](#📄-scriptsyuangszsh) (38 lines, 0.98 KB)
+- [src/__tests__/core/git/ErrorHandler.test.ts](#📄-src__tests__coregiterrorhandlertestts) (239 lines, 8.44 KB)
+- [src/__tests__/core/git/TodoManager.test.ts](#📄-src__tests__coregittodomanagertestts) (278 lines, 9.53 KB)
 - [src/__tests__/core/kernel/XResolver.test.ts](#📄-src__tests__corekernelxresolvertestts) (216 lines, 7.31 KB)
 - [src/agent/AgentRuntime.ts](#📄-srcagentagentruntimets) (382 lines, 13.09 KB)
 - [src/agent/DualAgentRuntime.ts](#📄-srcagentdualagentruntimets) (346 lines, 10.83 KB)
@@ -119,24 +121,24 @@
 - [src/commands/context/ContextStore.ts](#📄-srccommandscontextcontextstorets) (200 lines, 5.39 KB)
 - [src/commands/context/ContextTypes.ts](#📄-srccommandscontextcontexttypests) (40 lines, 0.75 KB)
 - [src/commands/context/index.ts](#📄-srccommandscontextindexts) (9 lines, 0.23 KB)
-- [src/commands/contextBuffer.ts](#📄-srccommandscontextbufferts) (222 lines, 5.92 KB)
+- [src/commands/contextBuffer.ts](#📄-srccommandscontextbufferts) (248 lines, 6.73 KB)
 - [src/commands/contextStorage.ts](#📄-srccommandscontextstoragets) (24 lines, 0.68 KB)
 - [src/commands/explainCommands.ts](#📄-srccommandsexplaincommandsts) (32 lines, 1.01 KB)
-- [src/commands/git/auto.ts](#📄-srccommandsgitautots) (334 lines, 14.27 KB)
+- [src/commands/git/auto.ts](#📄-srccommandsgitautots) (515 lines, 23.59 KB)
 - [src/commands/git/branch.ts](#📄-srccommandsgitbranchts) (171 lines, 6.24 KB)
-- [src/commands/git/exec.ts](#📄-srccommandsgitexects) (168 lines, 6.36 KB)
+- [src/commands/git/exec.ts](#📄-srccommandsgitexects) (216 lines, 8.85 KB)
 - [src/commands/git/plan.ts](#📄-srccommandsgitplants) (247 lines, 9.88 KB)
-- [src/commands/git/review.ts](#📄-srccommandsgitreviewts) (136 lines, 5.82 KB)
+- [src/commands/git/review.ts](#📄-srccommandsgitreviewts) (148 lines, 6.63 KB)
 - [src/commands/git/status.ts](#📄-srccommandsgitstatusts) (74 lines, 3.14 KB)
 - [src/commands/gitCommands.ts](#📄-srccommandsgitcommandsts) (30 lines, 1.01 KB)
 - [src/commands/gitContext.ts](#📄-srccommandsgitcontextts) (32 lines, 0.77 KB)
-- [src/commands/handleAIChat.ts](#📄-srccommandshandleaichatts) (668 lines, 25.89 KB)
+- [src/commands/handleAIChat.ts](#📄-srccommandshandleaichatts) (763 lines, 29.02 KB)
 - [src/commands/handleAICommand.ts](#📄-srccommandshandleaicommandts) (298 lines, 10.59 KB)
 - [src/commands/handleConfig.ts](#📄-srccommandshandleconfigts) (72 lines, 2.28 KB)
 - [src/commands/preferencesCommands.ts](#📄-srccommandspreferencescommandsts) (246 lines, 7.58 KB)
 - [src/commands/replayCommands.ts](#📄-srccommandsreplaycommandsts) (110 lines, 3.86 KB)
 - [src/commands/routerCommands.ts](#📄-srccommandsroutercommandsts) (497 lines, 16.46 KB)
-- [src/commands/shellCompletions.ts](#📄-srccommandsshellcompletionsts) (504 lines, 13.64 KB)
+- [src/commands/shellCompletions.ts](#📄-srccommandsshellcompletionsts) (528 lines, 14.36 KB)
 - [src/commands/skillsCommands.ts](#📄-srccommandsskillscommandsts) (126 lines, 4.64 KB)
 - [src/commands/ssh/index.ts](#📄-srccommandssshindexts) (303 lines, 8.16 KB)
 - [src/commands/ssh/server.ts](#📄-srccommandssshserverts) (243 lines, 10.04 KB)
@@ -161,11 +163,15 @@
 - [src/core/explain.ts](#📄-srccoreexplaints) (106 lines, 2.99 KB)
 - [src/core/fileReader.ts](#📄-srccorefilereaderts) (72 lines, 2.03 KB)
 - [src/core/git/BranchAdvisor.ts](#📄-srccoregitbranchadvisorts) (232 lines, 7.61 KB)
-- [src/core/git/CodeGenerator.ts](#📄-srccoregitcodegeneratorts) (124 lines, 3.75 KB)
+- [src/core/git/CodeGenerator.ts](#📄-srccoregitcodegeneratorts) (286 lines, 8.99 KB)
 - [src/core/git/CodeReviewer.ts](#📄-srccoregitcodereviewerts) (316 lines, 9.09 KB)
 - [src/core/git/CommitMessageGenerator.ts](#📄-srccoregitcommitmessagegeneratorts) (274 lines, 7.88 KB)
-- [src/core/git/GitService.ts](#📄-srccoregitgitservicets) (373 lines, 10.42 KB)
-- [src/core/git/TodoManager.ts](#📄-srccoregittodomanagerts) (205 lines, 6.38 KB)
+- [src/core/git/ContextGatherer.ts](#📄-srccoregitcontextgathererts) (188 lines, 7.10 KB)
+- [src/core/git/ErrorHandler.ts](#📄-srccoregiterrorhandlerts) (223 lines, 5.36 KB)
+- [src/core/git/GitConfigManager.ts](#📄-srccoregitgitconfigmanagerts) (314 lines, 9.78 KB)
+- [src/core/git/GitService.ts](#📄-srccoregitgitservicets) (414 lines, 11.65 KB)
+- [src/core/git/ProgressManager.ts](#📄-srccoregitprogressmanagerts) (209 lines, 5.84 KB)
+- [src/core/git/TodoManager.ts](#📄-srccoregittodomanagerts) (357 lines, 10.95 KB)
 - [src/core/git/constants.ts](#📄-srccoregitconstantsts) (24 lines, 0.56 KB)
 - [src/core/kernel/ASTParser.ts](#📄-srccorekernelastparserts) (221 lines, 5.87 KB)
 - [src/core/kernel/AtomicTransactionManager.ts](#📄-srccorekernelatomictransactionmanagerts) (298 lines, 7.56 KB)
@@ -229,8 +235,8 @@
 - [src/utils/confirm.ts](#📄-srcutilsconfirmts) (17 lines, 0.44 KB)
 - [src/utils/globDetector.ts](#📄-srcutilsglobdetectorts) (116 lines, 3.89 KB)
 - [src/utils/history.ts](#📄-srcutilshistoryts) (28 lines, 0.89 KB)
-- [src/utils/renderer.ts](#📄-srcutilsrendererts) (538 lines, 14.55 KB)
-- [src/utils/syntaxHandler.ts](#📄-srcutilssyntaxhandlerts) (491 lines, 16.38 KB)
+- [src/utils/renderer.ts](#📄-srcutilsrendererts) (499 lines, 13.66 KB)
+- [src/utils/syntaxHandler.ts](#📄-srcutilssyntaxhandlerts) (972 lines, 35.53 KB)
 - [sshclient/EXAMPLES.md](#📄-sshclientexamplesmd) (495 lines, 9.52 KB)
 - [sshclient/IMPLEMENTATION_PLAN.md](#📄-sshclientimplementation_planmd) (226 lines, 5.81 KB)
 - [sshclient/INDEX.md](#📄-sshclientindexmd) (183 lines, 4.79 KB)
@@ -251,6 +257,7 @@
 - [test/__tests__/agent/dynamicPrompt.test.ts](#📄-test__tests__agentdynamicprompttestts) (322 lines, 10.21 KB)
 - [test/__tests__/agent/errorHandling.test.ts](#📄-test__tests__agenterrorhandlingtestts) (310 lines, 10.56 KB)
 - [test/__tests__/agent/riskDisclosure.test.ts](#📄-test__tests__agentriskdisclosuretestts) (508 lines, 15.25 KB)
+- [test/__tests__/commands/pipeline.test.ts](#📄-test__tests__commandspipelinetestts) (74 lines, 3.06 KB)
 - [test/__tests__/completion/index.test.ts](#📄-test__tests__completionindextestts) (114 lines, 2.96 KB)
 - [test/__tests__/completion/resolver.test.ts](#📄-test__tests__completionresolvertestts) (71 lines, 1.77 KB)
 - [test/__tests__/completion/types.test.ts](#📄-test__tests__completiontypestestts) (113 lines, 2.94 KB)
@@ -264,6 +271,8 @@
 - [test/__tests__/tokenPolicy/TokenEstimator.T2.test.ts](#📄-test__tests__tokenpolicytokenestimatort2testts) (75 lines, 2.60 KB)
 - [test/__tests__/tokenPolicy/TokenEstimator.T5.test.ts](#📄-test__tests__tokenpolicytokenestimatort5testts) (51 lines, 1.70 KB)
 - [test/__tests__/tokenPolicy/TokenEstimator.T6.test.ts](#📄-test__tests__tokenpolicytokenestimatort6testts) (41 lines, 1.33 KB)
+- [test/__tests__/utils/renderer.test.ts](#📄-test__tests__utilsrenderertestts) (69 lines, 2.34 KB)
+- [test/__tests__/utils/syntaxHandler.test.ts](#📄-test__tests__utilssyntaxhandlertestts) (107 lines, 4.46 KB)
 - [test/contextBuffer.test.js](#📄-testcontextbuffertestjs) (138 lines, 4.27 KB)
 - [test/demo_ssh.sh](#📄-testdemo_sshsh) (131 lines, 3.32 KB)
 - [test/display_anomaly_fix_summary.md](#📄-testdisplay_anomaly_fix_summarymd) (55 lines, 2.11 KB)
@@ -302,7 +311,7 @@
 - [test/test_tab_completion_debug.js](#📄-testtest_tab_completion_debugjs) (122 lines, 3.58 KB)
 - [test/test_table_now.js](#📄-testtest_table_nowjs) (17 lines, 0.47 KB)
 - [test/test_table_quiet.js](#📄-testtest_table_quietjs) (17 lines, 0.51 KB)
-- [todo.md](#📄-todomd) (821 lines, 39.69 KB)
+- [todo.md](#📄-todomd) (36 lines, 1.93 KB)
 - [tsconfig.json](#📄-tsconfigjson) (23 lines, 0.50 KB)
 - [verify.sh](#📄-verifysh) (114 lines, 2.79 KB)
 - [yuangs.config.json](#📄-yuangsconfigjson) (11 lines, 0.39 KB)
@@ -331,7 +340,7 @@ node_modules/
 .ai/context.json
 .DS_Store
 gcloud init
-
+.yuangs
 ````
 
 [⬆ 回到目录](#toc)
@@ -1847,84 +1856,7 @@ yuangs diff-edit status <id>        # Check action status
 
 diff-edit使本项目有了质的变化。^-^
 
-
-````
-
-[⬆ 回到目录](#toc)
-
-## 📄 change.patch
-
-````text
-diff --git a/package-lock.json b/package-lock.json
-index 7cc3bc7..0f7c5f8 100644
---- a/package-lock.json
-+++ b/package-lock.json
-@@ -1,12 +1,12 @@
- {
-   "name": "yuangs",
--  "version": "5.32.0",
-+  "version": "5.31.0",
-   "lockfileVersion": 3,
-   "requires": true,
-   "packages": {
-     "": {
-       "name": "yuangs",
--      "version": "5.32.0",
-+      "version": "5.31.0",
-       "license": "ISC",
-       "dependencies": {
-         "axios": "^1.13.2",
-diff --git a/package.json b/package.json
-index b1c78c6..7e85f4f 100644
---- a/package.json
-+++ b/package.json
-@@ -1,6 +1,6 @@
- {
-   "name": "yuangs",
--  "version": "5.32.0",
-+  "version": "5.31.0",
-   "description": "苑广山的个人应用集合 CLI（彩色版）",
-   "author": "苑广山",
-   "license": "ISC",
-
-````
-
-[⬆ 回到目录](#toc)
-
-## 📄 changes.patch
-
-````text
-diff --git a/package-lock.json b/package-lock.json
-index 7cc3bc7..0f7c5f8 100644
---- a/package-lock.json
-+++ b/package-lock.json
-@@ -1,12 +1,12 @@
- {
-   "name": "yuangs",
--  "version": "5.32.0",
-+  "version": "5.31.0",
-   "lockfileVersion": 3,
-   "requires": true,
-   "packages": {
-     "": {
-       "name": "yuangs",
--      "version": "5.32.0",
-+      "version": "5.31.0",
-       "license": "ISC",
-       "dependencies": {
-         "axios": "^1.13.2",
-diff --git a/package.json b/package.json
-index b1c78c6..7e85f4f 100644
---- a/package.json
-+++ b/package.json
-@@ -1,6 +1,6 @@
- {
-   "name": "yuangs",
--  "version": "5.32.0",
-+  "version": "5.31.0",
-   "description": "苑广山的个人应用集合 CLI（彩色版）",
-   "author": "苑广山",
-   "license": "ISC",
+// test change
 
 ````
 
@@ -17220,56 +17152,7 @@ This is a safe operation with low risk.
 
 [⬆ 回到目录](#toc)
 
-## 📄 docs/yuangs.config.example.json
-
-````json
-{
-  "shici": "https://wealth.want.biz/shici/index.html",
-  "dict": "https://wealth.want.biz/pages/dict.html",
-  "pong": "https://wealth.want.biz/pages/pong.html",
-  "github": "https://github.com",
-  "calendar": "https://calendar.google.com",
-  "mail": "https://mail.google.com",
-  "aiProxyUrl": "https://aiproxy.want.biz/v1/chat/completions",
-  "defaultModel": "Assistant",
-  "accountType": "free"
-}
-````
-
-[⬆ 回到目录](#toc)
-
-## 📄 docs/yuangs.config.example.yaml
-
-````yaml
-# Example configuration file for yuangs CLI
-# Add your custom applications here
-
-shici: "https://wealth.want.biz/shici/index.html"
-dict: "https://wealth.want.biz/pages/dict.html"
-pong: "https://wealth.want.biz/pages/pong.html"
-github: "https://github.com"
-calendar: "https://calendar.google.com"
-mail: "https://mail.google.com"
-
-# AI Configuration
-aiProxyUrl: "https://aiproxy.want.biz/v1/chat/completions"
-defaultModel: "Assistant"
-accountType: "free"
-
-# You can also use the apps property if you prefer to group them
-# apps:
-#   shici: "https://wealth.want.biz/shici/index.html"
-#   dict: "https://wealth.want.biz/pages/dict.html"
-#   pong: "https://wealth.want.biz/pages/pong.html"
-#   github: "https://github.com"
-#   calendar: "https://calendar.google.com"
-#   mail: "https://mail.google.com"
-
-````
-
-[⬆ 回到目录](#toc)
-
-## 📄 examples/router-example.ts
+## 📄 docs/router-example.ts
 
 ````typescript
 #!/usr/bin/env ts-node
@@ -17478,6 +17361,253 @@ main().catch((error) => {
   console.error('示例执行出错:', error);
   process.exit(1);
 });
+
+````
+
+[⬆ 回到目录](#toc)
+
+## 📄 docs/validate-markdown.yml
+
+````yaml
+```code
+/**
+ * @fileoverview A script to validate the GitHub Flavored Markdown (GFM) compatibility of markdown files.
+ * It uses the 'marked' library to parse markdown and can be extended with GFM-specific checks.
+ */
+
+const fs = require('fs');
+const path = require('path');
+const marked = require('marked');
+const { markedHighlight } = require('marked-highlight');
+const hljs = require('highlight.js'); // Assuming highlight.js is used for code highlighting
+
+// --- Configuration ---
+// Directories to scan for markdown files. Adjust as needed.
+const MARKDOWN_DIRS = [
+    '.', // Root directory
+    'docs', // Example: if you have a docs folder
+    // Add other directories containing markdown files
+];
+
+// File extensions to consider as markdown.
+const MARKDOWN_EXTENSIONS = ['.md', '.markdown'];
+
+// --- GFM Compatibility Rules (Conceptual) ---
+// This section outlines potential checks for GFM compatibility.
+// Currently, 'marked' itself handles much of the GFM parsing.
+// For stricter validation, custom rules can be implemented here.
+
+/**
+ * Checks if a given markdown string adheres to GFM compatibility.
+ * This is a conceptual function that can be expanded.
+ * @param {string} markdownContent The markdown content to validate.
+ * @returns {{isValid: boolean, errors: string[]}} Validation result.
+ */
+function checkGfmCompatibility(markdownContent) {
+    const errors = [];
+    let isValid = true;
+
+    // --- Example GFM Checks ---
+    // 1. Table Syntax: GFM has specific table syntax. 'marked' generally handles this.
+    //    You could add checks for malformed tables if needed.
+    // 2. Task Lists: GFM supports task lists like "- [ ] task".
+    //    You might want to check for correct formatting if 'marked' doesn't flag it.
+    // 3. Strikethrough: GFM supports `~~strikethrough~~`.
+    // 4. Autolinks: GFM auto-links URLs.
+    // 5. Footnotes: GFM supports footnotes (though this might be less common in project READMEs).
+
+    // For now, we rely on 'marked' parsing to implicitly validate.
+    // If 'marked' throws an error during parsing, it would be caught below.
+
+    // Example: Check for common markdown pitfalls that might render differently
+    // For instance, excessive use of raw HTML that might not be allowed or escaped.
+    if (markdownContent.includes('<script>')) {
+        errors.push("Potentially unsafe raw HTML: <script> tag detected. GFM might sanitize or disallow this.");
+        isValid = false;
+    }
+
+    // Add more specific GFM checks here.
+    // For example, check for correct usage of code block delimiters with language specifiers.
+    // Or ensure emoji shortcodes are correctly formatted if they are used.
+
+    return { isValid, errors };
+}
+
+// --- Marked Renderer Configuration ---
+// Configure marked for GFM features.
+// The 'gfm: true' option enables GFM features like tables, strikethrough, etc.
+const markedRenderer = new marked.Renderer();
+
+// Configure code highlighting
+markedRenderer.code = (code, language) => {
+    const highlighted = language ? hljs.highlight(code, { language }).value : code;
+    return `<pre><code class="language-${language || 'plaintext'}">${highlighted}</code></pre>`;
+};
+
+marked.use({
+    renderer: markedRenderer,
+    pedantic: false, // Set to true for stricter parsing, but GFM is more lenient
+    gfm: true,       // Enable GitHub Flavored Markdown
+    breaks: false,   // Set to true if you want newline characters to create line breaks
+});
+
+// --- File Discovery and Validation ---
+
+/**
+ * Recursively finds all markdown files in a given directory.
+ * @param {string} dirPath The directory to start searching from.
+ * @returns {string[]} An array of absolute paths to markdown files.
+ */
+function findMarkdownFiles(dirPath) {
+    let markdownFiles = [];
+    const files = fs.readdirSync(dirPath);
+
+    for (const file of files) {
+        const filePath = path.join(dirPath, file);
+        const stat = fs.statSync(filePath);
+
+        if (stat.isDirectory()) {
+            markdownFiles = markdownFiles.concat(findMarkdownFiles(filePath));
+        } else if (MARKDOWN_EXTENSIONS.some(ext => filePath.endsWith(ext))) {
+            markdownFiles.push(path.resolve(filePath));
+        }
+    }
+    return markdownFiles;
+}
+
+/**
+ * Main function to discover and validate markdown files.
+ */
+async function validateMarkdownFiles() {
+    let allMarkdownFiles = [];
+    for (const dir of MARKDOWN_DIRS) {
+        const absolutePath = path.resolve(dir);
+        if (fs.existsSync(absolutePath) && fs.statSync(absolutePath).isDirectory()) {
+            allMarkdownFiles = allMarkdownFiles.concat(findMarkdownFiles(absolutePath));
+        } else {
+            console.warn(`Warning: Directory "${absolutePath}" does not exist or is not a directory. Skipping.`);
+        }
+    }
+
+    if (allMarkdownFiles.length === 0) {
+        console.log("No markdown files found to validate.");
+        return;
+    }
+
+    console.log(`Found ${allMarkdownFiles.length} markdown files. Validating GFM compatibility...`);
+
+    let overallValid = true;
+    const results = [];
+
+    for (const filePath of allMarkdownFiles) {
+        try {
+            const content = fs.readFileSync(filePath, 'utf-8');
+            const { isValid, errors } = checkGfmCompatibility(content);
+
+            // Attempt to parse to catch potential rendering issues marked might encounter
+            try {
+                marked.parse(content);
+            } catch (parseError) {
+                errors.push(`Markdown parsing error: ${parseError.message}`);
+                overallValid = false;
+            }
+
+            if (!isValid || errors.length > 0) {
+                overallValid = false;
+                results.push({
+                    file: path.relative(process.cwd(), filePath),
+                    isValid: false,
+                    errors: errors.length > 0 ? errors : ["GFM compatibility check failed (details pending)."]
+                });
+            } else {
+                results.push({
+                    file: path.relative(process.cwd(), filePath),
+                    isValid: true,
+                    errors: []
+                });
+            }
+        } catch (error) {
+            overallValid = false;
+            results.push({
+                file: path.relative(process.cwd(), filePath),
+                isValid: false,
+                errors: [`Error reading or processing file: ${error.message}`]
+            });
+        }
+    }
+
+    console.log("\n--- GFM Compatibility Validation Summary ---");
+    results.forEach(({ file, isValid, errors }) => {
+        if (isValid) {
+            console.log(`✅ ${file}: OK`);
+        } else {
+            console.error(`❌ ${file}: FAILED`);
+            errors.forEach(err => console.error(`  - ${err}`));
+        }
+    });
+
+    if (overallValid) {
+        console.log("\n🎉 All markdown files appear to be GFM compatible.");
+        process.exit(0);
+    } else {
+        console.error("\n🚨 Some markdown files failed GFM compatibility checks.");
+        process.exit(1);
+    }
+}
+
+// Execute the validation
+validateMarkdownFiles().catch(err => {
+    console.error("An unexpected error occurred during validation:", err);
+    process.exit(1);
+});
+````
+
+[⬆ 回到目录](#toc)
+
+## 📄 docs/yuangs.config.example.json
+
+````json
+{
+  "shici": "https://wealth.want.biz/shici/index.html",
+  "dict": "https://wealth.want.biz/pages/dict.html",
+  "pong": "https://wealth.want.biz/pages/pong.html",
+  "github": "https://github.com",
+  "calendar": "https://calendar.google.com",
+  "mail": "https://mail.google.com",
+  "aiProxyUrl": "https://aiproxy.want.biz/v1/chat/completions",
+  "defaultModel": "Assistant",
+  "accountType": "free"
+}
+````
+
+[⬆ 回到目录](#toc)
+
+## 📄 docs/yuangs.config.example.yaml
+
+````yaml
+# Example configuration file for yuangs CLI
+# Add your custom applications here
+
+shici: "https://wealth.want.biz/shici/index.html"
+dict: "https://wealth.want.biz/pages/dict.html"
+pong: "https://wealth.want.biz/pages/pong.html"
+github: "https://github.com"
+calendar: "https://calendar.google.com"
+mail: "https://mail.google.com"
+
+# AI Configuration
+aiProxyUrl: "https://aiproxy.want.biz/v1/chat/completions"
+defaultModel: "Assistant"
+accountType: "free"
+
+# You can also use the apps property if you prefer to group them
+# apps:
+#   shici: "https://wealth.want.biz/shici/index.html"
+#   dict: "https://wealth.want.biz/pages/dict.html"
+#   pong: "https://wealth.want.biz/pages/pong.html"
+#   github: "https://github.com"
+#   calendar: "https://calendar.google.com"
+#   mail: "https://mail.google.com"
 
 ````
 
@@ -17721,13 +17851,13 @@ module.exports = {
 ````json
 {
   "name": "yuangs",
-  "version": "5.35.0",
+  "version": "5.39.0",
   "lockfileVersion": 3,
   "requires": true,
   "packages": {
     "": {
       "name": "yuangs",
-      "version": "5.35.0",
+      "version": "5.39.0",
       "license": "ISC",
       "dependencies": {
         "axios": "^1.13.2",
@@ -25793,7 +25923,7 @@ module.exports = {
 ````json
 {
   "name": "yuangs",
-  "version": "5.35.0",
+  "version": "5.39.0",
   "description": "苑广山的个人应用集合 CLI（彩色版）",
   "author": "苑广山",
   "license": "ISC",
@@ -27580,6 +27710,203 @@ fi
 
 [⬆ 回到目录](#toc)
 
+## 📄 scripts/validate-gfm-compatibility.js
+
+````javascript
+/**
+ * @fileoverview A script to validate the GitHub Flavored Markdown (GFM) compatibility of markdown files.
+ * It uses the 'marked' library to parse markdown and can be extended with GFM-specific checks.
+ */
+
+const fs = require('fs');
+const path = require('path');
+const marked = require('marked');
+const { markedHighlight } = require('marked-highlight');
+const hljs = require('highlight.js'); // Assuming highlight.js is used for code highlighting
+
+// --- Configuration ---
+// Directories to scan for markdown files. Adjust as needed.
+const MARKDOWN_DIRS = [
+    '.', // Root directory
+    'docs', // Example: if you have a docs folder
+    // Add other directories containing markdown files
+];
+
+// File extensions to consider as markdown.
+const MARKDOWN_EXTENSIONS = ['.md', '.markdown'];
+
+// --- GFM Compatibility Rules (Conceptual) ---
+// This section outlines potential checks for GFM compatibility.
+// Currently, 'marked' itself handles much of the GFM parsing.
+// For stricter validation, custom rules can be implemented here.
+
+/**
+ * Checks if a given markdown string adheres to GFM compatibility.
+ * This is a conceptual function that can be expanded.
+ * @param {string} markdownContent The markdown content to validate.
+ * @returns {{isValid: boolean, errors: string[]}} Validation result.
+ */
+function checkGfmCompatibility(markdownContent) {
+    const errors = [];
+    let isValid = true;
+
+    // --- Example GFM Checks ---
+    // 1. Table Syntax: GFM has specific table syntax. 'marked' generally handles this.
+    //    You could add checks for malformed tables if needed.
+    // 2. Task Lists: GFM supports task lists like "- [ ] task".
+    //    You might want to check for correct formatting if 'marked' doesn't flag it.
+    // 3. Strikethrough: GFM supports `~~strikethrough~~`.
+    // 4. Autolinks: GFM auto-links URLs.
+    // 5. Footnotes: GFM supports footnotes (though this might be less common in project READMEs).
+
+    // For now, we rely on 'marked' parsing to implicitly validate.
+    // If 'marked' throws an error during parsing, it would be caught below.
+
+    // Example: Check for common markdown pitfalls that might render differently
+    // For instance, excessive use of raw HTML that might not be allowed or escaped.
+    if (markdownContent.includes('<script>')) {
+        errors.push("Potentially unsafe raw HTML: <script> tag detected. GFM might sanitize or disallow this.");
+        isValid = false;
+    }
+
+    // Add more specific GFM checks here.
+    // For example, check for correct usage of code block delimiters with language specifiers.
+    // Or ensure emoji shortcodes are correctly formatted if they are used.
+
+    return { isValid, errors };
+}
+
+// --- Marked Renderer Configuration ---
+// Configure marked for GFM features.
+// The 'gfm: true' option enables GFM features like tables, strikethrough, etc.
+const markedRenderer = new marked.Renderer();
+
+// Configure code highlighting
+markedRenderer.code = (code, language) => {
+    const highlighted = language ? hljs.highlight(code, { language }).value : code;
+    return `<pre><code class="language-${language || 'plaintext'}">${highlighted}</code></pre>`;
+};
+
+marked.use({
+    renderer: markedRenderer,
+    pedantic: false, // Set to true for stricter parsing, but GFM is more lenient
+    gfm: true,       // Enable GitHub Flavored Markdown
+    breaks: false,   // Set to true if you want newline characters to create line breaks
+});
+
+// --- File Discovery and Validation ---
+
+/**
+ * Recursively finds all markdown files in a given directory.
+ * @param {string} dirPath The directory to start searching from.
+ * @returns {string[]} An array of absolute paths to markdown files.
+ */
+function findMarkdownFiles(dirPath) {
+    let markdownFiles = [];
+    const files = fs.readdirSync(dirPath);
+
+    for (const file of files) {
+        const filePath = path.join(dirPath, file);
+        const stat = fs.statSync(filePath);
+
+        if (stat.isDirectory()) {
+            markdownFiles = markdownFiles.concat(findMarkdownFiles(filePath));
+        } else if (MARKDOWN_EXTENSIONS.some(ext => filePath.endsWith(ext))) {
+            markdownFiles.push(path.resolve(filePath));
+        }
+    }
+    return markdownFiles;
+}
+
+/**
+ * Main function to discover and validate markdown files.
+ */
+async function validateMarkdownFiles() {
+    let allMarkdownFiles = [];
+    for (const dir of MARKDOWN_DIRS) {
+        const absolutePath = path.resolve(dir);
+        if (fs.existsSync(absolutePath) && fs.statSync(absolutePath).isDirectory()) {
+            allMarkdownFiles = allMarkdownFiles.concat(findMarkdownFiles(absolutePath));
+        } else {
+            console.warn(`Warning: Directory "${absolutePath}" does not exist or is not a directory. Skipping.`);
+        }
+    }
+
+    if (allMarkdownFiles.length === 0) {
+        console.log("No markdown files found to validate.");
+        return;
+    }
+
+    console.log(`Found ${allMarkdownFiles.length} markdown files. Validating GFM compatibility...`);
+
+    let overallValid = true;
+    const results = [];
+
+    for (const filePath of allMarkdownFiles) {
+        try {
+            const content = fs.readFileSync(filePath, 'utf-8');
+            const { isValid, errors } = checkGfmCompatibility(content);
+
+            // Attempt to parse to catch potential rendering issues marked might encounter
+            try {
+                marked.parse(content);
+            } catch (parseError) {
+                errors.push(`Markdown parsing error: ${parseError.message}`);
+                overallValid = false;
+            }
+
+            if (!isValid || errors.length > 0) {
+                overallValid = false;
+                results.push({
+                    file: path.relative(process.cwd(), filePath),
+                    isValid: false,
+                    errors: errors.length > 0 ? errors : ["GFM compatibility check failed (details pending)."]
+                });
+            } else {
+                results.push({
+                    file: path.relative(process.cwd(), filePath),
+                    isValid: true,
+                    errors: []
+                });
+            }
+        } catch (error) {
+            overallValid = false;
+            results.push({
+                file: path.relative(process.cwd(), filePath),
+                isValid: false,
+                errors: [`Error reading or processing file: ${error.message}`]
+            });
+        }
+    }
+
+    console.log("\n--- GFM Compatibility Validation Summary ---");
+    results.forEach(({ file, isValid, errors }) => {
+        if (isValid) {
+            console.log(`✅ ${file}: OK`);
+        } else {
+            console.error(`❌ ${file}: FAILED`);
+            errors.forEach(err => console.error(`  - ${err}`));
+        }
+    });
+
+    if (overallValid) {
+        console.log("\n🎉 All markdown files appear to be GFM compatible.");
+        process.exit(0);
+    } else {
+        console.error("\n🚨 Some markdown files failed GFM compatibility checks.");
+        process.exit(1);
+    }
+}
+
+// Execute the validation
+validateMarkdownFiles().catch(err => {
+    console.error("An unexpected error occurred during validation:", err);
+    process.exit(1);
+});
+````
+
+[⬆ 回到目录](#toc)
+
 ## 📄 scripts/yuangs-install.sh
 
 ````bash
@@ -27871,6 +28198,539 @@ _yuangs() {
 }
 
 _yuangs
+
+````
+
+[⬆ 回到目录](#toc)
+
+## 📄 src/__tests__/core/git/ErrorHandler.test.ts
+
+````typescript
+import { describe, it, expect } from '@jest/globals';
+import {
+    withRetry,
+    isRetryableError,
+    formatError,
+    getSuggestion,
+    identifyErrorType,
+    ErrorType
+} from '../../../core/git/ErrorHandler';
+
+describe('ErrorHandler', () => {
+    describe('isRetryableError', () => {
+        it('should identify network errors as retryable', () => {
+            const networkError = new Error('Network connection failed');
+            expect(isRetryableError(networkError)).toBe(true);
+        });
+
+        it('should identify timeout errors as retryable', () => {
+            const timeoutError = new Error('Request timeout');
+            expect(isRetryableError(timeoutError)).toBe(true);
+        });
+
+        it('should identify 5xx errors as retryable', () => {
+            const error: any = new Error('Internal server error');
+            error.statusCode = 500;
+            expect(isRetryableError(error)).toBe(true);
+        });
+
+        it('should identify 429 errors as retryable', () => {
+            const error: any = new Error('Too many requests');
+            error.statusCode = 429;
+            expect(isRetryableError(error)).toBe(true);
+        });
+
+        it('should not identify 4xx errors as retryable', () => {
+            const error: any = new Error('Not found');
+            error.statusCode = 404;
+            expect(isRetryableError(error)).toBe(false);
+        });
+
+        it('should not identify validation errors as retryable', () => {
+            const validationError = new Error('Invalid input');
+            expect(isRetryableError(validationError)).toBe(false);
+        });
+    });
+
+    describe('withRetry', () => {
+        it('should succeed on first attempt', async () => {
+            let attempts = 0;
+            const fn = async () => {
+                attempts++;
+                return 'success';
+            };
+            
+            const result = await withRetry(fn, { maxAttempts: 3 });
+            expect(result).toBe('success');
+            expect(attempts).toBe(1);
+        });
+
+        it('should retry on retryable error', async () => {
+            let attempts = 0;
+            const fn = async () => {
+                attempts++;
+                if (attempts < 2) {
+                    throw new Error('Network timeout');
+                }
+                return 'success';
+            };
+            
+            const result = await withRetry(fn, {
+                maxAttempts: 3,
+                shouldRetry: isRetryableError
+            });
+            
+            expect(result).toBe('success');
+            expect(attempts).toBe(2);
+        });
+
+        it('should throw on non-retryable error', async () => {
+            const fn = async () => {
+                throw new Error('Validation failed');
+            };
+            
+            await expect(withRetry(fn, {
+                maxAttempts: 3,
+                shouldRetry: isRetryableError
+            })).rejects.toThrow('Validation failed');
+        });
+
+        it('should call onRetry callback', async () => {
+            let attempts = 0;
+            const fn = async () => {
+                attempts++;
+                if (attempts < 2) {
+                    throw new Error('Network timeout');
+                }
+                return 'success';
+            };
+            
+            const onRetryCalls: any[] = [];
+            const result = await withRetry(fn, {
+                maxAttempts: 3,
+                shouldRetry: isRetryableError,
+                onRetry: (error, attempt) => {
+                    onRetryCalls.push({ error: error.message, attempt });
+                }
+            });
+            
+            expect(result).toBe('success');
+            expect(onRetryCalls).toHaveLength(1);
+            expect(onRetryCalls[0]).toEqual({
+                error: 'Network timeout',
+                attempt: 1
+            });
+        });
+
+        it('should support exponential backoff', async () => {
+            let attempts = 0;
+            const timestamps: number[] = [];
+            
+            const fn = async () => {
+                timestamps.push(Date.now());
+                attempts++;
+                if (attempts < 3) {
+                    throw new Error('Network timeout');
+                }
+                return 'success';
+            };
+            
+            await withRetry(fn, {
+                maxAttempts: 3,
+                delay: 100,
+                backoff: true,
+                shouldRetry: isRetryableError
+            });
+            
+            expect(timestamps).toHaveLength(3);
+            const delay1 = timestamps[1] - timestamps[0];
+            const delay2 = timestamps[2] - timestamps[1];
+            
+            expect(delay2).toBeGreaterThan(delay1);
+        });
+    });
+
+    describe('identifyErrorType', () => {
+        it('should identify network errors', () => {
+            const error = new Error('Network connection failed');
+            expect(identifyErrorType(error)).toBe(ErrorType.NETWORK);
+        });
+
+        it('should identify timeout errors', () => {
+            const error = new Error('Request timeout');
+            expect(identifyErrorType(error)).toBe(ErrorType.TIMEOUT);
+        });
+
+        it('should identify Git errors', () => {
+            const error = new Error('git: command failed');
+            expect(identifyErrorType(error)).toBe(ErrorType.GIT);
+        });
+
+        it('should identify filesystem errors', () => {
+            const error = new Error('ENOENT: no such file');
+            expect(identifyErrorType(error)).toBe(ErrorType.FILESYSTEM);
+        });
+
+        it('should identify permission errors', () => {
+            const error = new Error('Permission denied');
+            expect(identifyErrorType(error)).toBe(ErrorType.PERMISSION);
+        });
+
+        it('should return UNKNOWN for unrecognized errors', () => {
+            const error = new Error('Unknown error');
+            expect(identifyErrorType(error)).toBe(ErrorType.UNKNOWN);
+        });
+    });
+
+    describe('formatError', () => {
+        it('should format error with context', () => {
+            const error: any = new Error('Something went wrong');
+            error.code = 'ERR_001';
+            
+            const formatted = formatError(error, 'Test context');
+            expect(formatted).toContain('Test context');
+            expect(formatted).toContain('Something went wrong');
+            expect(formatted).toContain('code: ERR_001');
+        });
+
+        it('should format error without context', () => {
+            const error = new Error('Something went wrong');
+            const formatted = formatError(error);
+            expect(formatted).toBe('Something went wrong');
+        });
+
+        it('should include error name if different from Error', () => {
+            const error = new TypeError('Invalid type');
+            const formatted = formatError(error);
+            expect(formatted).toContain('TypeError');
+            expect(formatted).toContain('Invalid type');
+        });
+    });
+
+    describe('getSuggestion', () => {
+        it('should return suggestion for network errors', () => {
+            const error = new Error('Network connection failed');
+            const suggestion = getSuggestion(error);
+            expect(suggestion).toBe('请检查网络连接，稍后重试');
+        });
+
+        it('should return suggestion for timeout errors', () => {
+            const error = new Error('Request timeout');
+            const suggestion = getSuggestion(error);
+            expect(suggestion).toBe('请求超时，请稍后重试');
+        });
+
+        it('should return suggestion for Git errors', () => {
+            const error = new Error('git: command failed');
+            const suggestion = getSuggestion(error);
+            expect(suggestion).toBe('请检查 Git 仓库状态，确保没有锁定');
+        });
+
+        it('should return suggestion for filesystem errors', () => {
+            const error = new Error('ENOENT: no such file');
+            const suggestion = getSuggestion(error);
+            expect(suggestion).toBe('请检查文件路径和权限');
+        });
+
+        it('should return suggestion for permission errors', () => {
+            const error = new Error('Permission denied');
+            const suggestion = getSuggestion(error);
+            expect(suggestion).toBe('请检查文件访问权限');
+        });
+
+        it('should return null for unknown errors', () => {
+            const error = new Error('Unknown error');
+            const suggestion = getSuggestion(error);
+            expect(suggestion).toBeNull();
+        });
+    });
+});
+
+````
+
+[⬆ 回到目录](#toc)
+
+## 📄 src/__tests__/core/git/TodoManager.test.ts
+
+````typescript
+import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import fs from 'fs';
+import path from 'path';
+import {
+    parseTodoFile,
+    updateTaskStatus,
+    updateMetadata,
+    getNextTask,
+    calculateProgress,
+    validateDependencies,
+    getExecutionOrder
+} from '../../../core/git/TodoManager';
+
+describe('TodoManager', () => {
+    let testDir: string;
+    let todoPath: string;
+
+    beforeEach(() => {
+        testDir = path.join(__dirname, 'test-todos');
+        fs.mkdirSync(testDir, { recursive: true });
+        todoPath = path.join(testDir, 'todo.md');
+    });
+
+    afterEach(() => {
+        if (fs.existsSync(testDir)) {
+            fs.rmSync(testDir, { recursive: true, force: true });
+        }
+    });
+
+    describe('parseTodoFile', () => {
+        it('should parse simple todo file', async () => {
+            const content = `> Generated by Yuangs
+> Progress: 1/3
+
+# Task List
+
+- [ ] First task
+- [x] Second task
+- [ ] Third task
+`;
+            fs.writeFileSync(todoPath, content, 'utf8');
+
+            const result = await parseTodoFile(todoPath);
+            expect(result.tasks).toHaveLength(3);
+            expect(result.tasks[0].completed).toBe(false);
+            expect(result.tasks[1].completed).toBe(true);
+            expect(result.tasks[2].completed).toBe(false);
+        });
+
+        it('should parse metadata', async () => {
+            const content = `> Generated by Yuangs Git Plan at 2024-01-28T10:00:00.000Z
+> Context: Add new feature
+> 📊 Progress: 2/5 tasks completed
+> 🔄 Current Task: 3
+
+- [ ] Task 1
+- [x] Task 2
+`;
+            fs.writeFileSync(todoPath, content, 'utf8');
+
+            const result = await parseTodoFile(todoPath);
+            expect(result.metadata.generatedAt).toBe('2024-01-28T10:00:00.000Z');
+            expect(result.metadata.context).toBe('Add new feature');
+            expect(result.metadata.progress).toEqual({ completed: 2, total: 5 });
+            expect(result.metadata.currentTask).toBe(3);
+        });
+
+        it('should parse task dependencies', async () => {
+            const content = `# Tasks
+
+- [ ] Task 1
+- [ ] Task 2 [depends: 1]
+- [ ] Task 3 [depends: 1,2]
+`;
+            fs.writeFileSync(todoPath, content, 'utf8');
+
+            const result = await parseTodoFile(todoPath);
+            expect(result.tasks[0].dependsOn).toBeUndefined();
+            expect(result.tasks[1].dependsOn).toEqual([0]);
+            expect(result.tasks[2].dependsOn).toEqual([0, 1]);
+        });
+
+        it('should parse task priorities', async () => {
+            const content = `# Tasks
+
+- [ ] Task 1 [priority: high]
+- [ ] Task 2 [priority: low]
+`;
+            fs.writeFileSync(todoPath, content, 'utf8');
+
+            const result = await parseTodoFile(todoPath);
+            expect(result.tasks[0].priority).toBe('high');
+            expect(result.tasks[1].priority).toBe('low');
+        });
+
+        it('should parse task status from comments', async () => {
+            const content = `# Tasks
+
+- [ ] Task 1 <!-- exec:in_progress, attempts:2 -->
+`;
+            fs.writeFileSync(todoPath, content, 'utf8');
+
+            const result = await parseTodoFile(todoPath);
+            expect(result.tasks[0].execStatus).toBe('in_progress');
+            expect(result.tasks[0].attempts).toBe(2);
+        });
+    });
+
+    describe('updateTaskStatus', () => {
+        it('should update task completion status', async () => {
+            const content = `> Context: Test
+
+- [ ] Task 1
+- [ ] Task 2
+`;
+            fs.writeFileSync(todoPath, content, 'utf8');
+
+            await updateTaskStatus(todoPath, 0, { completed: true });
+            const result = await fs.promises.readFile(todoPath, 'utf8');
+            
+            expect(result).toContain('- [x] Task 1');
+            expect(result).toContain('- [ ] Task 2');
+        });
+
+        it('should update task status comment', async () => {
+            const content = `> Context: Test
+
+- [ ] Task 1
+`;
+            fs.writeFileSync(todoPath, content, 'utf8');
+
+            await updateTaskStatus(todoPath, 0, {
+                execStatus: 'in_progress',
+                attempts: 2
+            });
+            const result = await fs.promises.readFile(todoPath, 'utf8');
+            
+            expect(result).toContain('<!-- exec:in_progress, attempts:2 -->');
+        });
+    });
+
+    describe('updateMetadata', () => {
+        it('should update progress metadata', async () => {
+            const content = `> Context: Test
+
+- [ ] Task 1
+`;
+            fs.writeFileSync(todoPath, content, 'utf8');
+
+            await updateMetadata(todoPath, {
+                progress: { completed: 1, total: 5 },
+                currentTask: 2
+            });
+            const result = await fs.promises.readFile(todoPath, 'utf8');
+            
+            expect(result).toContain('> 📊 Progress: 1/5 tasks completed');
+            expect(result).toContain('> 🔄 Current Task: 2');
+        });
+    });
+
+    describe('getNextTask', () => {
+        it('should return first pending task', () => {
+            const tasks = [
+                { index: 0, description: 'Task 1', completed: true },
+                { index: 1, description: 'Task 2', completed: false },
+                { index: 2, description: 'Task 3', completed: false }
+            ];
+            
+            const next = getNextTask(tasks);
+            expect(next?.description).toBe('Task 2');
+        });
+
+        it('should respect dependencies', () => {
+            const tasks = [
+                { index: 0, description: 'Task 1', completed: false, dependsOn: [] },
+                { index: 1, description: 'Task 2', completed: false, dependsOn: [0] }
+            ];
+            
+            const next = getNextTask(tasks);
+            expect(next?.description).toBe('Task 1');
+        });
+
+        it('should return task with completed dependencies', () => {
+            const tasks = [
+                { index: 0, description: 'Task 1', completed: true, dependsOn: [] },
+                { index: 1, description: 'Task 2', completed: false, dependsOn: [0] }
+            ];
+            
+            const next = getNextTask(tasks);
+            expect(next?.description).toBe('Task 2');
+        });
+
+        it('should respect priority', () => {
+            const tasks = [
+                { index: 0, description: 'Task 1', completed: false, priority: 'low' as const },
+                { index: 1, description: 'Task 2', completed: false, priority: 'high' as const },
+                { index: 2, description: 'Task 3', completed: false, priority: 'medium' as const }
+            ];
+            
+            const next = getNextTask(tasks);
+            expect(next?.description).toBe('Task 2');
+        });
+
+        it('should return null if no tasks', () => {
+            const tasks: any[] = [];
+            expect(getNextTask(tasks)).toBeNull();
+        });
+    });
+
+    describe('validateDependencies', () => {
+        it('should detect circular dependencies', () => {
+            const tasks = [
+                { index: 0, description: 'Task 1', completed: false, dependsOn: [1] },
+                { index: 1, description: 'Task 2', completed: false, dependsOn: [0] }
+            ];
+            
+            const result = validateDependencies(tasks);
+            expect(result.valid).toBe(false);
+            expect(result.errors).toContain('检测到循环依赖: 任务 #1 <-> #2');
+        });
+
+        it('should detect self-dependencies', () => {
+            const tasks = [
+                { index: 0, description: 'Task 1', completed: false, dependsOn: [0] }
+            ];
+            
+            const result = validateDependencies(tasks);
+            expect(result.valid).toBe(false);
+            expect(result.errors).toContain('任务 #1 不能依赖自己');
+        });
+
+        it('should detect invalid dependency indices', () => {
+            const tasks = [
+                { index: 0, description: 'Task 1', completed: false, dependsOn: [99] }
+            ];
+            
+            const result = validateDependencies(tasks);
+            expect(result.valid).toBe(false);
+            expect(result.errors).toContain('任务 #1 依赖了无效的任务索引: 100');
+        });
+
+        it('should validate correct dependencies', () => {
+            const tasks = [
+                { index: 0, description: 'Task 1', completed: false, dependsOn: [] },
+                { index: 1, description: 'Task 2', completed: false, dependsOn: [0] }
+            ];
+            
+            const result = validateDependencies(tasks);
+            expect(result.valid).toBe(true);
+            expect(result.errors).toHaveLength(0);
+        });
+    });
+
+    describe('getExecutionOrder', () => {
+        it('should return correct topological order', () => {
+            const tasks = [
+                { index: 0, description: 'Task 1', completed: false },
+                { index: 1, description: 'Task 2', completed: false, dependsOn: [0] },
+                { index: 2, description: 'Task 3', completed: false, dependsOn: [1] }
+            ];
+            
+            const order = getExecutionOrder(tasks);
+            expect(order).toEqual([0, 1, 2]);
+        });
+
+        it('should handle multiple dependencies', () => {
+            const tasks = [
+                { index: 0, description: 'Task 1', completed: false },
+                { index: 1, description: 'Task 2', completed: false },
+                { index: 2, description: 'Task 3', completed: false, dependsOn: [0, 1] }
+            ];
+            
+            const order = getExecutionOrder(tasks);
+            expect(order.indexOf(2)).toBeGreaterThan(order.indexOf(0));
+            expect(order.indexOf(2)).toBeGreaterThan(order.indexOf(1));
+        });
+    });
+});
 
 ````
 
@@ -36046,16 +36906,33 @@ export class ContextBuffer {
         const text = item.content ?? item.summary ?? '';
         const tokens = estimateTokens(text);
 
-        const itemId = item.id || `${item.type}:${item.path}:${Date.now()}`;
-        const full: ContextItem = {
-            ...item,
-            id: itemId,
-            tokens,
-            importance: 0.5,
-            lastUsedAt: Date.now()
-        };
+        // 查找是否已存在相同路径和类型的项
+        const existingIndex = this.items.findIndex(
+            i => i.path === item.path && i.type === item.type
+        );
 
-        this.items.push(full);
+        if (existingIndex !== -1) {
+            // 更新现有项
+            this.items[existingIndex] = {
+                ...this.items[existingIndex],
+                ...item,
+                tokens,
+                lastUsedAt: Date.now()
+            };
+        } else {
+            // 添加新项
+            const itemId = item.id || `${item.type}:${item.path}`;
+            const full: ContextItem = {
+                ...item,
+                id: itemId,
+                tokens,
+                importance: 0.5,
+                lastUsedAt: Date.now()
+            };
+
+            this.items.push(full);
+        }
+
         if (!bypassTokenLimit) {
             this.trimIfNeeded();
         }
@@ -36088,12 +36965,21 @@ export class ContextBuffer {
     }
 
     import(items: ContextItem[]) {
-        this.items = items.map(i => ({
-            ...i,
-            id: i.id || `${i.type}:${i.path}`,
-            importance: i.importance ?? 0.5,
-            lastUsedAt: i.lastUsedAt ?? Date.now()
-        }));
+        const uniqueItems = new Map<string, ContextItem>();
+        
+        items.forEach(i => {
+            const key = `${i.type}:${i.path}`;
+            const item = {
+                ...i,
+                id: i.id || key,
+                importance: i.importance ?? 0.5,
+                lastUsedAt: i.lastUsedAt ?? Date.now()
+            };
+            // 存入 Map 以去重，后来的覆盖先来的
+            uniqueItems.set(key, item);
+        });
+
+        this.items = Array.from(uniqueItems.values());
     }
 
     private totalTokens() {
@@ -36344,8 +37230,21 @@ import {
 import {
     parseGeneratedCode,
     writeGeneratedCode,
-    saveRawOutput
+    saveRawOutput,
+    backupFiles,
+    restoreFromBackup,
+    cleanOldBackups,
+    BackupInfo
 } from '../../core/git/CodeGenerator';
+import { CommitMessageGenerator } from '../../core/git/CommitMessageGenerator';
+import {
+    withRetry,
+    isRetryableError,
+    formatError,
+    getSuggestion
+} from '../../core/git/ErrorHandler';
+import { ProgressManager } from '../../core/git/ProgressManager';
+import { ContextGatherer } from '../../core/git/ContextGatherer';
 
 /**
  * 执行单个任务
@@ -36355,25 +37254,37 @@ async function executeTask(
     context: string,
     model: string,
     previousFeedback?: string
-): Promise<{ code: string; success: boolean }> {
+): Promise<{ code: string; success: boolean; error?: string }> {
     const prompt: AIRequestMessage[] = [
         {
             role: 'system',
-            content: `你是一个资深软件工程师。请根据任务描述生成完整的代码实现。
+            content: `你是一个全方位的交付专家。
+1. 如果当前任务涉及代码（如 .ts, .js, .py 等文件），请扮演**资深软件工程师**，确保代码健壮、注释详尽、遵循最佳实践，并追求极致的模块化与性能。
+2. 如果当前任务涉及文档（如 .md, .yaml, .html 等文件），请扮演**资深内容专家或历史学者**，确保叙事优美、逻辑严密、事实准确。
 
 **重要输出格式要求：**
-对于每个需要创建或修改的文件，请使用以下格式：
+对于每个需要创建或修改的文件，请使用以下格式之一标明：
 
-### 文件: src/path/to/file.ts
-\`\`\`typescript
-// 完整的文件代码
+### 文件: path/to/file.ext
+\`\`\`language
+// 完整的具体内容
+\`\`\`
+
+或
+
+\`\`\`filepath
+文件路径
+\`\`\`
+\`\`\`code
+文件具体内容
 \`\`\`
 
 要求：
-1. 明确指出每个文件的完整路径
-2. 提供完整的、可直接使用的代码
-3. 包含必要的注释
-4. 遵循最佳实践`
+1. 明确指出每个文件的完整路径。
+2. 提供完整的、可直接使用的内容，禁止使用占位符（如 "// rest of code..."）。
+3. 遵循所属领域（代码或文学）的全球最高标准最佳实践。
+4. 确保文件路径格式与 todo.md 中的定义 100% 匹配。
+5. 必须使用合适的代码块语法标明对应格式，便于解析引擎识别。`
         },
         {
             role: 'user',
@@ -36392,23 +37303,36 @@ ${previousFeedback ? `\n[上次实现的问题]\n${previousFeedback}\n\n请根�
     ];
 
     try {
-        const response = await runLLM({
-            prompt: { messages: prompt },
-            model,
-            stream: false,
-            bypassRouter: true
-        });
+        const response = await withRetry(
+            () => runLLM({
+                prompt: { messages: prompt },
+                model,
+                stream: false,
+                bypassRouter: true
+            }),
+            {
+                maxAttempts: 3,
+                delay: 1000,
+                backoff: true,
+                shouldRetry: isRetryableError,
+                onRetry: (error, attempt) => {
+                    console.log(chalk.yellow(`⚠️  AI 调用失败，第 ${attempt} 次重试...`));
+                }
+            }
+        );
 
         return { code: response.rawText, success: true };
-    } catch (e) {
-        return { code: '', success: false };
+    } catch (e: any) {
+        const errorMsg = e.message || '未知错误';
+        console.error(chalk.red(`\n❌ AI 执行阶段发生异常: ${errorMsg}`));
+        return { code: '', success: false, error: errorMsg };
     }
 }
 
 /**
  * 执行代码审查
  */
-async function reviewCode(): Promise<{ score: number; issues: string[]; error?: string }> {
+async function reviewCode(staged: boolean = true): Promise<{ score: number; issues: string[]; error?: string }> {
     try {
         const { CodeReviewer } = await import('../../core/git/CodeReviewer');
         const { getRouter } = await import('../../core/modelRouter');
@@ -36417,7 +37341,18 @@ async function reviewCode(): Promise<{ score: number; issues: string[]; error?: 
         const router = getRouter();
         const reviewer = new CodeReviewer(gitService, router);
         
-        const result = await reviewer.review(ReviewLevel.STANDARD, true);
+        const result = await withRetry(
+            () => reviewer.review(ReviewLevel.STANDARD, staged),
+            {
+                maxAttempts: 2,
+                delay: 500,
+                backoff: true,
+                shouldRetry: isRetryableError,
+                onRetry: (error, attempt) => {
+                    console.log(chalk.yellow(`⚠️  代码审查失败，第 ${attempt} 次重试...`));
+                }
+            }
+        );
         
         return {
             score: result.score,
@@ -36448,10 +37383,14 @@ export function registerAutoCommand(gitCmd: Command) {
         .option('--min-score <score>', '最低审查分数', '85')
         .option('--skip-review', '跳过代码审查')
         .option('--save-only', '只保存代码，不写入文件系统')
+        .option('--commit', '所有任务完成后自动提交')
+        .option('--commit-message <msg>', '自定义提交信息（使用 --commit 时生效）')
         .action(async (options) => {
             const todoPath = path.join(process.cwd(), 'todo.md');
             const maxTasks = parseInt(options.maxTasks) || 5;
             const minScore = parseInt(options.minScore) || MIN_REVIEW_SCORE;
+            
+            const progressManager = new ProgressManager();
             
             console.log(chalk.bold.cyan('\n🤖 启动全自动 AI 开发工作流...\n'));
             console.log(chalk.gray(`📋 最大任务数: ${maxTasks}`));
@@ -36477,6 +37416,15 @@ export function registerAutoCommand(gitCmd: Command) {
                 
                 const progress = calculateProgress(tasks);
                 console.log(chalk.cyan(`📊 当前进度: ${progress.completed}/${progress.total}\n`));
+                
+                // 初始化进度管理器
+                await progressManager.initialize({
+                    minScore,
+                    skipReview: options.skipReview,
+                    saveOnly: options.saveOnly,
+                    commit: options.commit,
+                    commitMessage: options.commitMessage
+                });
                 
                 let tasksExecuted = 0;
                 
@@ -36510,9 +37458,17 @@ export function registerAutoCommand(gitCmd: Command) {
                             ? nextTask.reviewIssues.join('\n') 
                             : undefined;
                         
+                        // 采集真实上下文
+                        spinner.text = `[尝试 ${attempts}] 正在采集项目上下文...`;
+                        const gitService = new GitService();
+                        const gatherer = new ContextGatherer(gitService);
+                        const gathered = await gatherer.gather(nextTask.description);
+                        
+                        spinner.text = `[尝试 ${attempts}/${MAX_RETRY_ATTEMPTS + 1}] 正在生成实现方案...`;
+
                         const { code, success } = await executeTask(
                             nextTask,
-                            rawContent,
+                            gathered.summary,
                             options.model,
                             previousFeedback
                         );
@@ -36538,14 +37494,31 @@ export function registerAutoCommand(gitCmd: Command) {
                             console.log(chalk.cyan(`\n📦 检测到 ${generated.files.length} 个文件:\n`));
                             
                             if (!options.saveOnly) {
-                                const { written, skipped } = await writeGeneratedCode(generated);
-                                
-                                if (written.length > 0) {
-                                    console.log(chalk.green(`\n✅ 成功写入 ${written.length} 个文件`));
-                                }
-                                if (skipped.length > 0) {
-                                    console.log(chalk.yellow(`⚠️  跳过 ${skipped.length} 个文件`));
-                                }
+                            // 写入前备份
+                            spinner.start('正在备份当前文件状态...');
+                            let backupId: string | undefined;
+                            try {
+                                const backup = await backupFiles(generated.files);
+                                backupId = backup.id;
+                                spinner.succeed('文件状态已备份');
+                            } catch (e: unknown) {
+                                spinner.warn('备份失败，继续执行');
+                            }
+                            
+                            const { written, skipped } = await writeGeneratedCode(generated);
+                            
+                            if (written.length > 0) {
+                                console.log(chalk.green(`\n✅ 成功写入 ${written.length} 个文件`));
+                            }
+                            if (skipped.length > 0) {
+                                console.log(chalk.yellow(`⚠️  跳过 ${skipped.length} 个文件`));
+                            }
+                            
+                            // 保存备份ID
+                            await updateTaskStatus(todoPath, nextTask.index, {
+                                backupId
+                            });
+                            nextTask.backupId = backupId;
                             } else {
                                 console.log(chalk.gray('  (--save-only 模式，未写入文件系统)'));
                                 generated.files.forEach(f => {
@@ -36554,14 +37527,21 @@ export function registerAutoCommand(gitCmd: Command) {
                             }
                         } else {
                             console.log(chalk.yellow('\n⚠️  未检测到可解析的文件路径和代码'));
-                            console.log(chalk.gray('💡 提示：请检查 AI 输出格式，或查看原始输出文件'));
+                            console.log(chalk.yellow('\n💡 可能的原因：'));
+                            console.log(chalk.gray('  1. AI 输出格式不符合要求'));
+                            console.log(chalk.gray('  2. 文件路径标识不正确'));
+                            console.log(chalk.gray('  3. 代码块格式错误'));
+                            console.log(chalk.cyan(`\n📄 原始输出文件: ${path.relative(process.cwd(), savedPath)}`));
+                            console.log(chalk.gray('\n💡 提示：请检查原始输出文件，确认格式是否正确'));
+                            console.log(chalk.gray('\n支持的格式: ### 文件: path, **path**, ```filepath/path```, ## 📄 文件：`path``'));
                         }
                         
                         // 3b. 代码审查（如果未跳过）
                         if (!options.skipReview) {
                             spinner.start('正在进行代码审查...');
                             
-                            const review = await reviewCode();
+                            // 审查刚刚写入但尚未暂存的文件 (staged: false)
+                            const review = await reviewCode(false);
                             
                             spinner.succeed(`审查完成 (评分: ${review.score}/100)`);
                             
@@ -36595,6 +37575,19 @@ export function registerAutoCommand(gitCmd: Command) {
                                     console.log(chalk.cyan(`\n🔄 将根据反馈重新生成...\n`));
                                 } else {
                                     console.log(chalk.red(`\n❌ 已达最大重试次数，跳过此任务\n`));
+                                    
+                                    // 回滚代码
+                                    if (nextTask.backupId) {
+                                        spinner.start('正在回滚代码变更...');
+                                        try {
+                                            await restoreFromBackup(nextTask.backupId);
+                                            spinner.succeed('代码已回滚');
+                                        } catch (e: unknown) {
+                                            const errorMsg = e instanceof Error ? e.message : '未知错误';
+                                            spinner.warn(`回滚失败: ${errorMsg}`);
+                                        }
+                                    }
+                                    
                                     await updateTaskStatus(todoPath, nextTask.index, {
                                         execStatus: 'failed'
                                     });
@@ -36616,6 +37609,10 @@ export function registerAutoCommand(gitCmd: Command) {
                     
                     tasksExecuted++;
                     
+                    // 更新进度管理器
+                    await progressManager.incrementTaskExecuted();
+                    await progressManager.updateCurrentTask(nextTask.index + 1);
+                    
                     // 更新总体进度
                     const newProgress = calculateProgress(tasks);
                     await updateMetadata(todoPath, {
@@ -36636,6 +37633,68 @@ export function registerAutoCommand(gitCmd: Command) {
                     console.log(chalk.yellow('💡 提示：还有未完成的任务，可以再次运行 yuangs git auto 继续'));
                 }
                 
+                // 导出进度报告
+                const reportMetadata = {
+                    ...metadata,
+                    progress: finalProgress
+                };
+                const reportPath = await progressManager.exportReport(reportMetadata);
+                console.log(chalk.gray(`\n📊 进度报告已保存: ${path.relative(process.cwd(), reportPath)}`));
+                
+                // 清理状态
+                if (finalProgress.completed === finalProgress.total) {
+                    await progressManager.clear();
+                }
+                
+                if (options.commit && finalProgress.completed === finalProgress.total) {
+                    // 5. 自动提交
+                    const gitService = new GitService();
+                    const isClean = await gitService.isWorkingTreeClean();
+                    
+                    if (!isClean) {
+                        console.log(chalk.cyan('🚀 准备自动提交...\n'));
+                        
+                        // 暂存所有变更
+                        spinner.start('正在暂存所有变更...');
+                        await gitService.stageAll();
+                        spinner.succeed('已暂存所有变更');
+                        
+                        // 生成提交信息
+                        let commitMessage: string;
+                        if (options.commitMessage) {
+                            commitMessage = options.commitMessage;
+                            spinner.succeed('使用自定义提交信息');
+                        } else {
+                            spinner.start('正在生成提交信息...');
+                            const router = await (await import('../../core/modelRouter')).getRouter();
+                            const commitGen = new CommitMessageGenerator(gitService, router);
+                            const commit = await commitGen.generate({ detailed: false });
+                            commitMessage = commit.full;
+                            spinner.succeed('提交信息已生成');
+                        }
+                        
+                        console.log(chalk.gray(`\n📝 提交信息:\n  ${commitMessage}\n`));
+                        
+                        // 执行提交
+                        spinner.start('正在提交...');
+                        try {
+                            await gitService.commit(commitMessage);
+                            spinner.succeed('提交成功！');
+                            
+                            console.log(chalk.green('✅ 代码已自动提交到 Git 仓库'));
+                        } catch (error: any) {
+                            spinner.fail('提交失败');
+                            console.log(chalk.red(`错误: ${error.message}`));
+                            console.log(chalk.yellow('💡 请手动提交代码'));
+                        }
+                    } else {
+                        console.log(chalk.yellow('\n⚠️  没有需要提交的变更'));
+                    }
+                } else if (finalProgress.completed === finalProgress.total) {
+                    console.log(chalk.cyan('\n💡 提示：所有任务已完成'));
+                    console.log(chalk.gray('   使用 --commit 选项可以自动提交代码'));
+                }
+                
             } catch (e: unknown) {
                 if (e instanceof Error && (e as NodeJS.ErrnoException).code === 'ENOENT') {
                     spinner.fail('未找到 todo.md 文件');
@@ -36643,9 +37702,17 @@ export function registerAutoCommand(gitCmd: Command) {
                     console.log(chalk.gray('  1. yuangs git plan "你的需求"  # 生成任务清单'));
                     console.log(chalk.gray('  2. yuangs git auto            # 启动自动化工作流\n'));
                 } else if (e instanceof AIError) {
-                    spinner.fail(`AI 调用失败: ${e.message}`);
+                    spinner.fail(formatError(e, 'AI 调用失败'));
+                    const suggestion = getSuggestion(e);
+                    if (suggestion) {
+                        console.log(chalk.yellow(`💡 ${suggestion}`));
+                    }
                 } else if (e instanceof Error) {
-                    spinner.fail(`执行失败: ${e.message}`);
+                    spinner.fail(formatError(e, '执行失败'));
+                    const suggestion = getSuggestion(e);
+                    if (suggestion) {
+                        console.log(chalk.yellow(`💡 ${suggestion}`));
+                    }
                 } else {
                     spinner.fail('未知错误');
                 }
@@ -36846,6 +37913,7 @@ import fs from 'fs';
 import path from 'path';
 import { runLLM, AIError } from '../../agent/llm';
 import { AIRequestMessage } from '../../core/validation';
+import { parseGeneratedCode, writeGeneratedCode, saveRawOutput } from '../../core/git/CodeGenerator';
 
 const METADATA_PREFIX = '>';
 
@@ -36985,9 +38053,56 @@ ${currentTask}
                 readline.close();
                 
                 if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
-                    // 7. 解析并应用代码（这里需要实现文件写入逻辑）
-                    console.log(chalk.green('\n✅ 代码已应用（文件写入功能待实现）'));
-                    console.log(chalk.gray('💡 提示：请手动复制代码到对应文件，或等待自动写入功能完善'));
+                    // 7. 解析并应用代码
+                    spinner.start('正在解析生成的代码...');
+                    
+                    const generated = parseGeneratedCode(response.rawText);
+                    
+                    if (generated.files.length > 0) {
+                        spinner.succeed(`检测到 ${generated.files.length} 个文件`);
+                        
+                        // 保存原始输出
+                        const savedPath = await saveRawOutput(response.rawText, taskIndex);
+                        console.log(chalk.gray(`📄 原始输出已保存: ${path.relative(process.cwd(), savedPath)}\n`));
+                        
+                        // 写入文件
+                        console.log(chalk.cyan('开始写入文件...\n'));
+                        const { written, skipped } = await writeGeneratedCode(generated);
+                        
+                        if (written.length > 0) {
+                            console.log(chalk.green(`\n✅ 成功写入 ${written.length} 个文件`));
+                        }
+                        if (skipped.length > 0) {
+                            console.log(chalk.yellow(`⚠️  跳过 ${skipped.length} 个文件`));
+                        }
+                        
+                        // 更新 todo.md 任务状态
+                        const todoLineRegex = /^(\s*)-\s*\[\s*\]\s*(.+)$/;
+                        const todoContent = await fs.promises.readFile(todoPath, 'utf8');
+                        const lines = todoContent.split('\n');
+                        
+                        let taskFound = false;
+                        for (let i = 0; i < lines.length; i++) {
+                            const match = lines[i].match(todoLineRegex);
+                            if (match && taskIndex > 0) {
+                                taskIndex--;
+                                continue;
+                            }
+                            if (match && taskIndex === 0) {
+                                lines[i] = `${match[1]}- [x] ${match[2]}`;
+                                taskFound = true;
+                                break;
+                            }
+                        }
+                        
+                        if (taskFound) {
+                            await fs.promises.writeFile(todoPath, lines.join('\n'), 'utf8');
+                            console.log(chalk.green('\n✅ 任务已标记为完成'));
+                        }
+                    } else {
+                        spinner.fail('未检测到可解析的文件路径和代码');
+                        console.log(chalk.yellow('\n💡 请检查 AI 输出格式，或查看原始输出文件'));
+                    }
                 } else {
                     console.log(chalk.gray('\n已取消应用'));
                 }
@@ -37372,6 +38487,18 @@ export function registerReviewCommand(gitCmd: Command) {
                     console.log(chalk.yellow('💡 建议：'));
                     console.log('  • 使用 --level standard');
                     console.log('  • 或指定 --file 进行重点审查');
+                } else if (error.message.includes('No changes to review')) {
+                    const gitService = new GitService();
+                    const diff = await gitService.getDiff();
+                    
+                    if (!options.unstaged && diff.files.unstaged.length > 0) {
+                        spinner.warn('当前没有已暂存 (staged) 的文件变更');
+                        console.log(chalk.cyan('\n💡 建议：'));
+                        console.log(`  • 运行 ${chalk.green('git add <file>')} 将文件加入暂存区`);
+                        console.log(`  • 或运行 ${chalk.green('yuangs git review --unstaged')} 直接审查未暂存的变更`);
+                    } else {
+                        spinner.fail('没有检测到任何代码变更');
+                    }
                 } else {
                     spinner.fail(`错误: ${error.message}`);
                 }
@@ -37925,6 +39052,11 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
 
             if (!trimmed) continue;
 
+            if (trimmed.includes('|')) {
+                await runPipeline(trimmed, rl, runtime, model, contextStore, processInteraction);
+                continue;
+            }
+
             const specialResult = await handleSpecialSyntax(trimmed);
             if (specialResult.processed) {
                 if (specialResult.result) {
@@ -38214,6 +39346,96 @@ ${finalPrompt}
     } finally {
         rl.close();
     }
+}
+
+/**
+ * 管道流水线执行核心引擎
+ */
+export async function runPipeline(
+    input: string,
+    rl: readline.Interface,
+    runtime: any,
+    model: string | undefined,
+    contextStore: ContextStore,
+    processInteraction: (q: string) => Promise<void>
+) {
+    const segments = input.split('|').map(s => s.trim());
+    let currentData: string | undefined = undefined;
+
+    try {
+        for (let i = 0; i < segments.length; i++) {
+            const segment = segments[i];
+            if (!segment) continue;
+            const isLast = i === segments.length - 1;
+
+            currentData = await processPipelineSegment(segment, currentData, isLast, rl, processInteraction);
+        }
+
+        // 管道执行完后，同步一下上下文状态
+        const updatedPersisted = await loadContext();
+        contextStore.import(updatedPersisted);
+    } catch (err: any) {
+        console.error(chalk.red(`\n[Pipeline Error]: ${err.message}`));
+        if (err.stack) {
+            console.error(chalk.gray(err.stack));
+        }
+    }
+}
+
+/**
+ * 分发并处理单个管道片段
+ */
+export async function processPipelineSegment(
+    segment: string,
+    upstreamData: string | undefined,
+    isLast: boolean,
+    rl: readline.Interface,
+    processInteraction: (q: string) => Promise<void>
+): Promise<string | undefined> {
+    // 1. 尝试处理特殊语法 (@, #, :cat 等)
+    const specialResult = await handleSpecialSyntax(segment, upstreamData);
+    if (specialResult.processed) {
+        if (isLast) {
+            if (specialResult.result) {
+                if (specialResult.type === 'management') {
+                    console.log(specialResult.result);
+                } else if (specialResult.isPureReference) {
+                    console.log(chalk.green(`✓ ${specialResult.result || '已加入上下文'}`));
+                } else {
+                    await processInteraction(specialResult.result);
+                }
+            }
+            return undefined;
+        }
+        return specialResult.result;
+    }
+
+    // 2. 尝试处理 Shell 命令
+    const mode = detectMode(segment);
+    if (mode === 'command' || segment.startsWith(':exec ')) {
+        const cmd = segment.startsWith(':exec ') ? segment.slice(6).trim() : segment;
+        rl.pause();
+        try {
+            // 如果是最后一段，直接展示输出；否则捕获输出传给下一环
+            const output = await shellExecuteCommand(cmd, undefined, upstreamData, !isLast);
+            return isLast ? undefined : output;
+        } finally {
+            rl.resume();
+        }
+    }
+
+    // 3. 兜底逻辑：作为对话文本或 AI 提问
+    if (isLast) {
+        let finalPrompt = segment;
+        if (upstreamData) {
+            finalPrompt = `以下是来自上游指令的输入内容：\n\n${upstreamData}\n\n问题：${segment}`;
+        }
+        await processInteraction(finalPrompt);
+        return undefined;
+    }
+
+    // 非最后一段的纯文本，作为下一段的输入
+    return segment;
 }
 
 async function askOnceStream(question: string, model?: string) {
@@ -39885,32 +41107,56 @@ export function createCompleter(): readline.Completer {
 
 export async function executeCommand(
     cmdLine: string,
-    onExit?: (code: number | null) => void
-): Promise<void> {
+    onExit?: (code: number | null) => void,
+    stdinData?: string,
+    captureStdout: boolean = false
+): Promise<string | undefined> {
     const trimmed = cmdLine.trim();
     const command = trimmed.replace(/^[$!]\s*/, '');
 
-    const child = spawn(command, {
-        stdio: 'inherit',
-        shell: true,
-        cwd: process.cwd()
-    });
-
-    child.on('exit', (code) => {
-        if (onExit) {
-            onExit(code);
-        }
-    });
-
-    child.on('error', (err) => {
-        console.error(`\n[Command Error]: ${err.message}`);
-        if (onExit) {
-            onExit(1);
-        }
-    });
-
     return new Promise((resolve) => {
-        child.on('close', () => resolve());
+        const child = spawn(command, {
+            stdio: [
+                stdinData ? 'pipe' : 'inherit',
+                captureStdout ? 'pipe' : 'inherit',
+                'inherit'
+            ],
+            shell: true,
+            cwd: process.cwd()
+        });
+
+        let stdout = '';
+        if (captureStdout && child.stdout) {
+            child.stdout.on('data', (data) => {
+                stdout += data.toString();
+            });
+        }
+
+        if (stdinData && child.stdin) {
+            child.stdin.write(stdinData);
+            child.stdin.end();
+        }
+
+        child.on('exit', (code) => {
+            if (onExit) {
+                onExit(code);
+            }
+        });
+
+        child.on('error', (err) => {
+            console.error(`\n[Command Error]: ${err.message}`);
+            if (onExit) {
+                onExit(1);
+            }
+        });
+
+        child.on('close', () => {
+            if (captureStdout) {
+                resolve(stdout.trim());
+            } else {
+                resolve(undefined as any);
+            }
+        });
     });
 }
 
@@ -42510,6 +43756,7 @@ ${ctx.branchList.join(', ')}
 import fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
+import crypto from 'crypto';
 
 /**
  * 代码生成结果
@@ -42521,6 +43768,15 @@ export interface GeneratedCode {
         action: 'create' | 'modify';
     }>;
     rawOutput: string;
+}
+
+/**
+ * 备份信息
+ */
+export interface BackupInfo {
+    id: string;
+    timestamp: string;
+    files: string[];
 }
 
 /**
@@ -42558,8 +43814,8 @@ export function parseGeneratedCode(llmOutput: string): GeneratedCode {
     }
     
     // 格式 3: **path/to/file.ts**\n```typescript\n代码\n```
-    const pattern3 = /\*\*([^*]+\.(?:ts|js|tsx|jsx|json|md))\*\*\s*\n```(?:typescript|javascript|ts|js|json|markdown|code)?\s*\n([\s\S]*?)\n```/gi;
-    
+    const pattern3 = /\*\*([^*]+\.(?:ts|js|tsx|jsx|json|md|html))\*\*\s*\n```(?:typescript|javascript|ts|js|json|markdown|code|html)?\s*\n([\s\S]*?)\n```/gi;
+
     while ((match = pattern3.exec(llmOutput)) !== null) {
         const filePath = match[1].trim();
         if (!files.some(f => f.path === filePath)) {
@@ -42570,7 +43826,55 @@ export function parseGeneratedCode(llmOutput: string): GeneratedCode {
             });
         }
     }
-    
+
+    // 格式 4: ## 📄 文件：`filename.ext`\n```code\n代码\n```
+    const pattern4 = /##\s*[^\n]*文件[：:]\s*`([^`]+)`\s*\n```(?:code|html|typescript|javascript)?\s*\n([\s\S]*?)\n```/gi;
+
+    while ((match = pattern4.exec(llmOutput)) !== null) {
+        const filePath = match[1].trim();
+        if (!files.some(f => f.path === filePath)) {
+            files.push({
+                path: filePath,
+                content: match[2].trim(),
+                action: 'create'
+            });
+        }
+    }
+
+    // 格式 5: ### 📄 文件：`filename.ext`\n```html\n代码\n```
+    const pattern5 = /###.*文件.*\`([^`]+)\`.*\n\`\`\`.*\n\`\`\`/gis;
+
+    while ((match = pattern5.exec(llmOutput)) !== null) {
+        const filePath = match[1].trim();
+        if (!files.some(f => f.path === filePath)) {
+            // 提取代码内容：从第一个 ``` 到第二个 ```
+            const parts = match[0].split('\`\`\`\n');
+            if (parts.length >= 3) {
+                const contentParts = parts[2].split('\n\`\`\`');
+                const content = contentParts[0].trim();
+                files.push({
+                    path: filePath,
+                    content: content,
+                    action: 'create'
+                });
+            }
+        }
+    }
+
+    // 格式 6: ## 📄 文件：`filename.ext`\n说明\n```html\n代码\n```（支持多行说明）
+    const pattern6 = /##\s*[^\n]*文件[：:]\s*\`([^`]+)\`[\s\S]*?\n\`\`\`(?:html|code|typescript|javascript|css|json)?\s*\n([\s\S]+?)\n\`\`\`/gis;
+
+    while ((match = pattern6.exec(llmOutput)) !== null) {
+        const filePath = match[1].trim();
+        if (!files.some(f => f.path === filePath)) {
+            files.push({
+                path: filePath,
+                content: match[2].trim(),
+                action: 'create'
+            });
+        }
+    }
+
     return {
         files,
         rawOutput: llmOutput
@@ -42630,6 +43934,110 @@ export async function saveRawOutput(
     await fs.promises.writeFile(filepath, content, 'utf8');
     
     return filepath;
+}
+
+/**
+ * 备份受影响的文件（在写入前）
+ */
+export async function backupFiles(
+    files: Array<{ path: string; content: string }>,
+    baseDir: string = process.cwd()
+): Promise<BackupInfo> {
+    const backupId = crypto.randomBytes(8).toString('hex');
+    const backupDir = path.join(baseDir, '.yuangs', 'backups', backupId);
+    const manifest: string[] = [];
+    
+    await fs.promises.mkdir(backupDir, { recursive: true });
+    
+    for (const file of files) {
+        const fullPath = path.isAbsolute(file.path) 
+            ? file.path 
+            : path.join(baseDir, file.path);
+        
+        if (fs.existsSync(fullPath)) {
+            const backupFile = path.join(backupDir, path.relative(baseDir, fullPath));
+            const backupDirPath = path.dirname(backupFile);
+            
+            await fs.promises.mkdir(backupDirPath, { recursive: true });
+            await fs.promises.copyFile(fullPath, backupFile);
+            manifest.push(file.path);
+        }
+    }
+    
+    const info: BackupInfo = {
+        id: backupId,
+        timestamp: new Date().toISOString(),
+        files: manifest
+    };
+    
+    const manifestPath = path.join(backupDir, 'manifest.json');
+    await fs.promises.writeFile(manifestPath, JSON.stringify(info, null, 2), 'utf8');
+    
+    return info;
+}
+
+/**
+ * 从备份恢复文件
+ */
+export async function restoreFromBackup(
+    backupId: string,
+    baseDir: string = process.cwd()
+): Promise<void> {
+    const backupDir = path.join(baseDir, '.yuangs', 'backups', backupId);
+    const manifestPath = path.join(backupDir, 'manifest.json');
+    
+    if (!fs.existsSync(manifestPath)) {
+        throw new Error(`Backup ${backupId} not found`);
+    }
+    
+    const manifest = JSON.parse(await fs.promises.readFile(manifestPath, 'utf8')) as BackupInfo;
+    
+    for (const filePath of manifest.files) {
+        const backupFile = path.join(backupDir, filePath);
+        const originalPath = path.isAbsolute(filePath) 
+            ? filePath 
+            : path.join(baseDir, filePath);
+        
+        if (fs.existsSync(backupFile)) {
+            await fs.promises.copyFile(backupFile, originalPath);
+        }
+    }
+}
+
+/**
+ * 清理旧备份
+ */
+export async function cleanOldBackups(
+    keepCount: number = 5,
+    baseDir: string = process.cwd()
+): Promise<void> {
+    const backupsDir = path.join(baseDir, '.yuangs', 'backups');
+    
+    if (!fs.existsSync(backupsDir)) {
+        return;
+    }
+    
+    const entries = await fs.promises.readdir(backupsDir, { withFileTypes: true });
+    const backups = entries
+        .filter(entry => entry.isDirectory())
+        .map(async entry => {
+            const manifestPath = path.join(backupsDir, entry.name, 'manifest.json');
+            const manifest = JSON.parse(
+                await fs.promises.readFile(manifestPath, 'utf8')
+            ) as BackupInfo;
+            return { id: entry.name, timestamp: manifest.timestamp };
+        });
+    
+    const backupInfos = await Promise.all(backups);
+    backupInfos.sort((a, b) => 
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+    
+    const toDelete = backupInfos.slice(0, -keepCount);
+    for (const backup of toDelete) {
+        const backupPath = path.join(backupsDir, backup.id);
+        await fs.promises.rm(backupPath, { recursive: true, force: true });
+    }
 }
 
 ````
@@ -43242,6 +44650,755 @@ ${config.detailed ? '如果有 body,用空行分隔 subject 和 body。' : ''}`;
 
 [⬆ 回到目录](#toc)
 
+## 📄 src/core/git/ContextGatherer.ts
+
+````typescript
+import fs from 'fs';
+import path from 'path';
+import { GitService } from './GitService';
+
+/**
+ * 收集到的项目上下文接口
+ */
+export interface GatheredContext {
+    fileTree: string;
+    packageJson?: any;
+    relevantFiles: { path: string; content: string }[];
+    summary: string;
+}
+
+/**
+ * 项目上下文采集器
+ * 负责为 LLM 提供项目现状的真实快照
+ */
+export class ContextGatherer {
+    private MAX_FILE_CONTENT_LENGTH = 10000; // 单个文件读取上限
+    private MAX_TOTAL_CONTEXT_LENGTH = 50000; // 总上限
+
+    constructor(private gitService: GitService) {}
+
+    /**
+     * 采集项目上下文
+     * @param taskDescription 当前任务描述，用于启发式搜索相关文件
+     */
+    async gather(taskDescription: string): Promise<GatheredContext> {
+        const repoRoot = await this.gitService.getRepoRoot();
+        const fileTree = await this.getFileTree(repoRoot);
+
+        // 领域探测：结合任务描述和文件后缀进行判定
+        const isDocTask = /docs?\/|\.md$|\.html$|文章|章节|文档/.test(taskDescription.toLowerCase());
+
+        const packageJson = isDocTask ? undefined : await this.getPackageJson(repoRoot);
+        const relevantFiles = await this.getRelevantFiles(taskDescription, repoRoot, fileTree, isDocTask, packageJson);
+
+        // 构建综合摘要
+        let summary = `[项目文件树 (主要结构)]\n${fileTree}\n\n`;
+        
+        if (!isDocTask && packageJson) {
+            const deps = packageJson.dependencies ? Object.keys(packageJson.dependencies).join(', ') : 'none';
+            const devDeps = packageJson.devDependencies ? Object.keys(packageJson.devDependencies).join(', ') : 'none';
+            summary += `[技术栈摘要]\n名称: ${packageJson.name}\n依赖: ${deps}\n测试/开发依赖: ${devDeps}\n\n`;
+        }
+
+        if (relevantFiles.length > 0) {
+            summary += `[关键上下文文件内容]\n`;
+            relevantFiles.forEach(file => {
+                summary += `--- 文件: ${file.path} ---\n${file.content}\n\n`;
+            });
+        }
+
+        return {
+            fileTree,
+            packageJson,
+            relevantFiles,
+            summary
+        };
+    }
+
+    /**
+     * 获取文件树 (git 管理的文件)
+     */
+    private async getFileTree(cwd: string): Promise<string> {
+        try {
+            const { exec } = require('child_process');
+            const { promisify } = require('util');
+            const execAsync = promisify(exec);
+            
+            // 明确指定执行目录
+            const { stdout } = await execAsync('git ls-files', { cwd });
+            let files = stdout.split('\n').filter(Boolean);
+
+            // 全局黑名单过滤：屏蔽所有二进制和媒体类噪音文件
+            const noiseExtension = /\.(png|jpe?g|gif|svg|ico|pdf|zip|tar|gz|exe|dll|so|bin|pyc|woff2?|ttf|eot)$/i;
+            files = files.filter((f: string) => !noiseExtension.test(f));
+            
+            if (files.length > 150) {
+                return files.slice(0, 150).join('\n') + `\n... (为了保护 Token 空间，已截断其余 ${files.length - 150} 个文件)`;
+            }
+            return files.join('\n');
+        } catch (e: any) {
+            console.error(`[ContextGatherer] 无法获取文件树: ${e.message}`);
+            return '无法获取完整文件树';
+        }
+    }
+
+    /**
+     * 读取 package.json
+     */
+    private async getPackageJson(repoRoot: string): Promise<any> {
+        const pPath = path.join(repoRoot, 'package.json');
+        try {
+            if (fs.existsSync(pPath)) {
+                return JSON.parse(fs.readFileSync(pPath, 'utf8'));
+            }
+        } catch (e) {
+            return undefined;
+        }
+    }
+
+    /**
+     * 根据任务描述寻找相关文件
+     */
+    private async getRelevantFiles(
+        description: string, 
+        repoRoot: string, 
+        fileList: string,
+        isDocTask: boolean,
+        packageJson?: any
+    ): Promise<{ path: string; content: string }[]> {
+        const results: { path: string; content: string }[] = [];
+        let allFiles = fileList.split('\n');
+
+        if (isDocTask) {
+            // 针对文档任务，优先筛选文档相关文件
+            allFiles = allFiles.filter(f => 
+                f.startsWith('docs/') || 
+                f.endsWith('.md') || 
+                f.endsWith('.yaml') || 
+                f.endsWith('.txt') || 
+                f.endsWith('.rst') || 
+                f.endsWith('.adoc') ||
+                f.endsWith('.html')
+            );
+        }
+        
+        const words = description.replace(/`/g, ' ').match(/[a-zA-Z0-9_.\-\/]+/g) || [];
+        const potentialPaths = new Set<string>();
+
+        // 1. 精准匹配：从描述中提取路径
+        for (const word of words) {
+            if (word.includes('.') || word.includes('/')) {
+                // 尝试直接匹配或后缀匹配
+                const match = allFiles.find(f => f === word || f.endsWith('/' + word) || f.endsWith(word));
+                if (match) potentialPaths.add(match);
+            }
+        }
+
+        // 2. 智能探测核心文件
+        if (isDocTask) {
+            // 尝试找 README.md 或 index.md (作为上下文基准)
+            const globalDocs = ['README.md', 'docs/index.md'];
+            globalDocs.forEach(f => { if (allFiles.includes(f)) potentialPaths.add(f); });
+            
+            // 如果发现了目标文件路径，也尝试加载它的 meta.yaml 或同级 index.md
+            for (const p of Array.from(potentialPaths)) {
+                const dir = path.dirname(p);
+                const siblings = ['meta.yaml', 'index.md'].map(s => path.join(dir, s));
+                siblings.forEach(s => { if (allFiles.includes(s)) potentialPaths.add(s); });
+            }
+        } else {
+            // 从 package.json 中提取入口
+            if (packageJson?.main) {
+                const main = packageJson.main.replace(/^\.\//, '');
+                if (allFiles.includes(main)) potentialPaths.add(main);
+            }
+            // 常规入口
+            ['src/index.ts', 'src/main.ts', 'src/cli.ts'].forEach(f => {
+                if (allFiles.includes(f)) potentialPaths.add(f);
+            });
+        }
+
+        // 3. 读取内容 (带上限)
+        let currentTotalLength = 0;
+        for (const filePath of potentialPaths) {
+            if (currentTotalLength > this.MAX_TOTAL_CONTEXT_LENGTH) break;
+
+            const fullPath = path.join(repoRoot, filePath);
+            try {
+                if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
+                    let content = fs.readFileSync(fullPath, 'utf8');
+                    if (content.length > this.MAX_FILE_CONTENT_LENGTH) {
+                        content = content.substring(0, this.MAX_FILE_CONTENT_LENGTH) + '\n... (内容过长已截断)';
+                    }
+                    results.push({ path: filePath, content });
+                    currentTotalLength += content.length;
+                }
+            } catch (e: any) {
+                console.warn(`[ContextGatherer] 警告：无法读取相关上下文文件 "${filePath}": ${e.message}`);
+            }
+        }
+
+        return results;
+    }
+}
+
+````
+
+[⬆ 回到目录](#toc)
+
+## 📄 src/core/git/ErrorHandler.ts
+
+````typescript
+import chalk from 'chalk';
+
+export class GitWorkflowError extends Error {
+    constructor(
+        message: string,
+        public readonly code: string,
+        public readonly recoverable: boolean = true
+    ) {
+        super(message);
+        this.name = 'GitWorkflowError';
+    }
+}
+
+export class RetryableError extends Error {
+    constructor(
+        message: string,
+        public readonly attempt: number,
+        public readonly maxAttempts: number
+    ) {
+        super(message);
+        this.name = 'RetryableError';
+    }
+}
+
+export type RetryCondition = (error: any, attempt: number) => boolean;
+
+export interface RetryOptions {
+    maxAttempts?: number;
+    delay?: number;
+    backoff?: boolean;
+    onRetry?: (error: any, attempt: number) => void;
+    shouldRetry?: RetryCondition;
+}
+
+const DEFAULT_RETRY_OPTIONS: Required<RetryOptions> = {
+    maxAttempts: 3,
+    delay: 1000,
+    backoff: true,
+    onRetry: () => {},
+    shouldRetry: () => true
+};
+
+/**
+ * 可重试的异步函数包装器
+ */
+export async function withRetry<T>(
+    fn: () => Promise<T>,
+    options: RetryOptions = {}
+): Promise<T> {
+    const opts = { ...DEFAULT_RETRY_OPTIONS, ...options };
+    let lastError: any;
+    
+    for (let attempt = 1; attempt <= opts.maxAttempts; attempt++) {
+        try {
+            return await fn();
+        } catch (error) {
+            lastError = error;
+            
+            // 检查是否应该重试
+            if (attempt >= opts.maxAttempts || !opts.shouldRetry(error, attempt)) {
+                throw error;
+            }
+            
+            // 计算延迟时间（支持指数退避）
+            const delay = opts.backoff 
+                ? opts.delay * Math.pow(2, attempt - 1) 
+                : opts.delay;
+            
+            // 调用重试回调
+            if (opts.onRetry) {
+                opts.onRetry(error, attempt);
+            }
+            
+            // 等待
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+    
+    throw lastError;
+}
+
+/**
+ * 判断错误是否可重试
+ */
+export function isRetryableError(error: any): boolean {
+    if (!error) return false;
+    
+    const message = error.message?.toLowerCase() || '';
+    
+    // 网络相关错误
+    if (message.includes('network') || 
+        message.includes('timeout') ||
+        message.includes('econnrefused') ||
+        message.includes('econnreset') ||
+        message.includes('etimedout')) {
+        return true;
+    }
+    
+    // HTTP 状态码
+    if (error.statusCode) {
+        return error.statusCode >= 500 || error.statusCode === 429;
+    }
+    
+    // Git 相关错误
+    if (message.includes('git') && (
+        message.includes('lock') ||
+        message.includes('busy')
+    )) {
+        return true;
+    }
+    
+    return false;
+}
+
+/**
+ * 格式化错误消息
+ */
+export function formatError(error: any, context?: string): string {
+    const parts: string[] = [];
+    
+    if (context) {
+        parts.push(chalk.red(`[${context}]`));
+    }
+    
+    if (error.name && error.name !== 'Error') {
+        parts.push(chalk.yellow(error.name));
+    }
+    
+    if (error.message) {
+        parts.push(error.message);
+    }
+    
+    if (error.code) {
+        parts.push(chalk.gray(`(code: ${error.code})`));
+    }
+    
+    return parts.join(' ');
+}
+
+/**
+ * 创建带有重试的 AI 调用包装器
+ */
+export function createRetryableAIAdapter<T extends (...args: any[]) => Promise<any>>(
+    fn: T,
+    options?: RetryOptions
+): T {
+    return (async (...args: any[]) => {
+        return withRetry(() => fn(...args), {
+            ...options,
+            shouldRetry: (error) => isRetryableError(error)
+        });
+    }) as T;
+}
+
+/**
+ * 错误类型
+ */
+export enum ErrorType {
+    NETWORK = 'NETWORK',
+    TIMEOUT = 'TIMEOUT',
+    GIT = 'GIT',
+    FILESYSTEM = 'FILESYSTEM',
+    VALIDATION = 'VALIDATION',
+    PERMISSION = 'PERMISSION',
+    UNKNOWN = 'UNKNOWN'
+}
+
+/**
+ * 识别错误类型
+ */
+export function identifyErrorType(error: any): ErrorType {
+    if (!error) return ErrorType.UNKNOWN;
+    
+    const message = error.message?.toLowerCase() || '';
+    
+    if (message.includes('network') || message.includes('econn')) {
+        return ErrorType.NETWORK;
+    }
+    
+    if (message.includes('timeout') || message.includes('etimedout')) {
+        return ErrorType.TIMEOUT;
+    }
+    
+    if (message.includes('git')) {
+        return ErrorType.GIT;
+    }
+    
+    if (message.includes('enoent') || message.includes('eacces')) {
+        return ErrorType.FILESYSTEM;
+    }
+    
+    if (message.includes('permission') || message.includes('eacces')) {
+        return ErrorType.PERMISSION;
+    }
+    
+    if (error.name === 'ValidationError') {
+        return ErrorType.VALIDATION;
+    }
+    
+    return ErrorType.UNKNOWN;
+}
+
+/**
+ * 根据错误类型提供解决建议
+ */
+export function getSuggestion(error: any): string | null {
+    const type = identifyErrorType(error);
+    
+    switch (type) {
+        case ErrorType.NETWORK:
+            return '请检查网络连接，稍后重试';
+        case ErrorType.TIMEOUT:
+            return '请求超时，请稍后重试';
+        case ErrorType.GIT:
+            return '请检查 Git 仓库状态，确保没有锁定';
+        case ErrorType.FILESYSTEM:
+            return '请检查文件路径和权限';
+        case ErrorType.PERMISSION:
+            return '请检查文件访问权限';
+        default:
+            return null;
+    }
+}
+
+````
+
+[⬆ 回到目录](#toc)
+
+## 📄 src/core/git/GitConfigManager.ts
+
+````typescript
+import fs from 'fs';
+import path from 'path';
+
+export interface GitAutoConfig {
+    /** AI 模型 */
+    model?: string;
+    /** 最大任务数 */
+    maxTasks?: number;
+    /** 最低审查分数 */
+    minScore?: number;
+    /** 最大重试次数 */
+    maxRetryAttempts?: number;
+    /** 是否跳过代码审查 */
+    skipReview?: boolean;
+    /** 是否只保存不写入 */
+    saveOnly?: boolean;
+    /** 是否自动提交 */
+    commit?: boolean;
+    /** 自定义提交消息 */
+    commitMessage?: string;
+    /** 审查级别 */
+    reviewLevel?: 'quick' | 'standard' | 'deep';
+    /** 是否清理旧备份 */
+    cleanOldBackups?: boolean;
+    /** 保留的备份数量 */
+    keepBackupCount?: number;
+}
+
+export interface GitWorkflowConfig {
+    /** git auto 配置 */
+    auto: GitAutoConfig;
+    /** git plan 配置 */
+    plan?: {
+        /** 对话轮数 */
+        rounds?: number;
+        /** 架构师模型 */
+        architectModel?: string;
+        /** 审查员模型 */
+        reviewerModel?: string;
+    };
+    /** git review 配置 */
+    review?: {
+        /** 默认审查级别 */
+        level?: 'quick' | 'standard' | 'deep';
+    };
+}
+
+const DEFAULT_CONFIG: Required<GitWorkflowConfig> = {
+    auto: {
+        model: 'Assistant',
+        maxTasks: 5,
+        minScore: 85,
+        maxRetryAttempts: 2,
+        skipReview: false,
+        saveOnly: false,
+        commit: false,
+        commitMessage: '',
+        reviewLevel: 'standard',
+        cleanOldBackups: true,
+        keepBackupCount: 5
+    },
+    plan: {
+        rounds: 2,
+        architectModel: 'Assistant',
+        reviewerModel: 'gemini-2.5-flash-lite'
+    },
+    review: {
+        level: 'standard'
+    }
+};
+
+const CONFIG_FILENAMES = [
+    'yuangs-git.config.json',
+    '.yuangs-git.config.json',
+    'yuangs-git.config.js',
+    '.yuangs-git.config.js'
+];
+
+export class GitConfigManager {
+    private config: GitWorkflowConfig;
+    private configPath: string | null;
+
+    constructor(private baseDir: string = process.cwd()) {
+        this.config = this.loadDefault();
+        this.configPath = null;
+    }
+
+    /**
+     * 加载默认配置
+     */
+    private loadDefault(): GitWorkflowConfig {
+        return JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+    }
+
+    /**
+     * 查找配置文件
+     */
+    findConfigFile(): string | null {
+        for (const filename of CONFIG_FILENAMES) {
+            const filePath = path.join(this.baseDir, filename);
+            if (fs.existsSync(filePath)) {
+                return filePath;
+            }
+        }
+        
+        // 检查父目录
+        let parentDir = path.dirname(this.baseDir);
+        let depth = 0;
+        while (depth < 5) {
+            for (const filename of CONFIG_FILENAMES) {
+                const filePath = path.join(parentDir, filename);
+                if (fs.existsSync(filePath)) {
+                    return filePath;
+                }
+            }
+            
+            const newParent = path.dirname(parentDir);
+            if (newParent === parentDir) break;
+            parentDir = newParent;
+            depth++;
+        }
+        
+        return null;
+    }
+
+    /**
+     * 加载配置文件
+     */
+    async loadConfig(): Promise<void> {
+        const configPath = this.findConfigFile();
+        
+        if (!configPath) {
+            return;
+        }
+        
+        this.configPath = configPath;
+        
+        try {
+            let userConfig: GitWorkflowConfig;
+            
+            if (configPath.endsWith('.js')) {
+                delete require.cache[require.resolve(configPath)];
+                userConfig = require(configPath);
+            } else {
+                const content = await fs.promises.readFile(configPath, 'utf8');
+                userConfig = JSON.parse(content);
+            }
+            
+            // 合并配置（用户配置覆盖默认配置）
+            this.config = this.mergeConfig(this.config, userConfig);
+        } catch (error: any) {
+            throw new Error(`Failed to load config from ${configPath}: ${error.message}`);
+        }
+    }
+
+    /**
+     * 合并配置
+     */
+    private mergeConfig(
+        base: GitWorkflowConfig,
+        override: GitWorkflowConfig
+    ): GitWorkflowConfig {
+        return {
+            auto: { ...base.auto, ...override.auto },
+            plan: { ...base.plan, ...override.plan },
+            review: { ...base.review, ...override.review }
+        };
+    }
+
+    /**
+     * 获取 git auto 配置
+     */
+    getAutoConfig(options: Partial<GitAutoConfig> = {}): Required<GitAutoConfig> {
+        const autoConfig = this.config.auto || {};
+        
+        const cliOptions = {
+            model: options.model,
+            maxTasks: options.maxTasks !== undefined ? parseInt(options.maxTasks.toString()) : undefined,
+            minScore: options.minScore !== undefined ? parseInt(options.minScore.toString()) : undefined,
+            skipReview: options.skipReview,
+            saveOnly: options.saveOnly,
+            commit: options.commit,
+            commitMessage: options.commitMessage,
+            reviewLevel: options.reviewLevel
+        };
+        
+        return {
+            model: (cliOptions.model ?? autoConfig.model ?? DEFAULT_CONFIG.auto.model) as string,
+            maxTasks: (cliOptions.maxTasks ?? autoConfig.maxTasks ?? DEFAULT_CONFIG.auto.maxTasks) as number,
+            minScore: (cliOptions.minScore ?? autoConfig.minScore ?? DEFAULT_CONFIG.auto.minScore) as number,
+            maxRetryAttempts: (autoConfig.maxRetryAttempts ?? DEFAULT_CONFIG.auto.maxRetryAttempts) as number,
+            skipReview: (cliOptions.skipReview ?? autoConfig.skipReview ?? DEFAULT_CONFIG.auto.skipReview) as boolean,
+            saveOnly: (cliOptions.saveOnly ?? autoConfig.saveOnly ?? DEFAULT_CONFIG.auto.saveOnly) as boolean,
+            commit: (cliOptions.commit ?? autoConfig.commit ?? DEFAULT_CONFIG.auto.commit) as boolean,
+            commitMessage: (cliOptions.commitMessage ?? autoConfig.commitMessage ?? DEFAULT_CONFIG.auto.commitMessage) as string,
+            reviewLevel: (cliOptions.reviewLevel ?? autoConfig.reviewLevel ?? DEFAULT_CONFIG.auto.reviewLevel) as 'quick' | 'standard' | 'deep',
+            cleanOldBackups: (autoConfig.cleanOldBackups ?? DEFAULT_CONFIG.auto.cleanOldBackups) as boolean,
+            keepBackupCount: (autoConfig.keepBackupCount ?? DEFAULT_CONFIG.auto.keepBackupCount) as number
+        };
+    }
+
+    /**
+     * 获取 git plan 配置
+     */
+    getPlanConfig(options: { rounds?: string } = {}): typeof DEFAULT_CONFIG.plan {
+        const rounds = options.rounds !== undefined ? parseInt(options.rounds) : undefined;
+        
+        return {
+            rounds: rounds || this.config.plan?.rounds || DEFAULT_CONFIG.plan.rounds,
+            architectModel: this.config.plan?.architectModel || DEFAULT_CONFIG.plan.architectModel,
+            reviewerModel: this.config.plan?.reviewerModel || DEFAULT_CONFIG.plan.reviewerModel
+        };
+    }
+
+    /**
+     * 获取 git review 配置
+     */
+    getReviewConfig(options: { level?: string } = {}): typeof DEFAULT_CONFIG.review {
+        return {
+            level: (options.level as any) || this.config.review?.level || DEFAULT_CONFIG.review.level
+        };
+    }
+
+    /**
+     * 获取当前配置
+     */
+    getConfig(): GitWorkflowConfig {
+        return this.config;
+    }
+
+    /**
+     * 获取配置文件路径
+     */
+    getConfigPath(): string | null {
+        return this.configPath;
+    }
+
+    /**
+     * 验证配置
+     */
+    validateConfig(): { valid: boolean; errors: string[] } {
+        const errors: string[] = [];
+        const auto = this.config.auto;
+        
+        if (auto) {
+            if (auto.minScore !== undefined && (auto.minScore < 0 || auto.minScore > 100)) {
+                errors.push('minScore 必须在 0-100 之间');
+            }
+            
+            if (auto.maxTasks !== undefined && (auto.maxTasks < 1 || auto.maxTasks > 100)) {
+                errors.push('maxTasks 必须在 1-100 之间');
+            }
+            
+            if (auto.maxRetryAttempts !== undefined && (auto.maxRetryAttempts < 0 || auto.maxRetryAttempts > 10)) {
+                errors.push('maxRetryAttempts 必须在 0-10 之间');
+            }
+            
+            if (auto.keepBackupCount !== undefined && (auto.keepBackupCount < 1 || auto.keepBackupCount > 50)) {
+                errors.push('keepBackupCount 必须在 1-50 之间');
+            }
+        }
+        
+        if (this.config.plan) {
+            const plan = this.config.plan;
+            if (plan.rounds !== undefined && plan.rounds < 1) {
+                errors.push('plan.rounds 必须大于 0');
+            }
+        }
+        
+        return {
+            valid: errors.length === 0,
+            errors
+        };
+    }
+
+    /**
+     * 创建示例配置文件
+     */
+    static async createExampleConfig(baseDir: string = process.cwd()): Promise<string> {
+        const examplePath = path.join(baseDir, 'yuangs-git.config.json');
+        
+        const exampleConfig: GitWorkflowConfig = {
+            auto: {
+                model: 'Assistant',
+                maxTasks: 5,
+                minScore: 85,
+                maxRetryAttempts: 2,
+                skipReview: false,
+                saveOnly: false,
+                commit: false,
+                reviewLevel: 'standard',
+                cleanOldBackups: true,
+                keepBackupCount: 5
+            },
+            plan: {
+                rounds: 2,
+                architectModel: 'Assistant',
+                reviewerModel: 'gemini-2.5-flash-lite'
+            },
+            review: {
+                level: 'standard'
+            }
+        };
+        
+        const content = JSON.stringify(exampleConfig, null, 2);
+        const header = `// Yuangs Git Workflow Configuration
+// 更多选项请参考文档
+`;
+        
+        await fs.promises.writeFile(examplePath, header + content, 'utf8');
+        
+        return examplePath;
+    }
+}
+
+````
+
+[⬆ 回到目录](#toc)
+
 ## 📄 src/core/git/GitService.ts
 
 ````typescript
@@ -43617,6 +45774,264 @@ export class GitService {
             return false;
         }
     }
+
+    /**
+     * 保存当前工作目录快照（用于回滚）
+     */
+    async saveSnapshot(snapshotName: string): Promise<string> {
+        const stashResult = await this.execSafe(`save --include-untracked -m "${snapshotName}"`);
+        if (stashResult) {
+            return 'stashed';
+        }
+        
+        const status = await this.getStatusSummary();
+        if (status.modified === 0 && status.added === 0 && status.deleted === 0 && status.untracked === 0) {
+            return 'clean';
+        }
+        
+        throw new Error('Unable to save snapshot');
+    }
+
+    /**
+     * 恢复到之前的快照
+     */
+    async restoreSnapshot(): Promise<void> {
+        await this.execArgs(['reset', '--hard', 'HEAD']);
+        await this.execArgs(['clean', '-fd']);
+        
+        const stashes = await this.execSafe('stash list');
+        if (stashes) {
+            const stashRef = stashes.split('\n')[0]?.split(':')[0];
+            if (stashRef) {
+                await this.execArgs(['stash', 'drop', stashRef]);
+            }
+        }
+    }
+
+    /**
+     * 放弃未提交的变更
+     */
+    async discardChanges(): Promise<void> {
+        await this.execArgs(['reset', '--hard', 'HEAD']);
+        await this.execArgs(['clean', '-fd']);
+    }
+}
+
+````
+
+[⬆ 回到目录](#toc)
+
+## 📄 src/core/git/ProgressManager.ts
+
+````typescript
+import fs from 'fs';
+import path from 'path';
+import { TodoMetadata } from './TodoManager';
+
+export interface WorkflowState {
+    sessionId: string;
+    startTime: string;
+    lastUpdateTime: string;
+    maxTasks: number;
+    tasksExecuted: number;
+    currentTaskIndex?: number;
+    model: string;
+    options: {
+        minScore: number;
+        skipReview: boolean;
+        saveOnly: boolean;
+        commit?: boolean;
+        commitMessage?: string;
+    };
+}
+
+export class ProgressManager {
+    private state: WorkflowState | null = null;
+    private stateFilePath: string;
+
+    constructor(private baseDir: string = process.cwd()) {
+        const stateDir = path.join(baseDir, '.yuangs', 'progress');
+        this.stateFilePath = path.join(stateDir, 'workflow-state.json');
+    }
+
+    /**
+     * 初始化新的工作流
+     */
+    async initialize(options: WorkflowState['options']): Promise<void> {
+        await fs.promises.mkdir(path.dirname(this.stateFilePath), { recursive: true });
+        
+        const sessionId = Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+        const now = new Date().toISOString();
+        
+        this.state = {
+            sessionId,
+            startTime: now,
+            lastUpdateTime: now,
+            maxTasks: options.commit ? parseInt(options.commit as any) || 5 : 5,
+            tasksExecuted: 0,
+            model: 'Assistant',
+            options
+        };
+        
+        await this.save();
+    }
+
+    /**
+     * 保存当前状态
+     */
+    async save(): Promise<void> {
+        if (!this.state) {
+            throw new Error('No workflow state to save');
+        }
+        
+        this.state.lastUpdateTime = new Date().toISOString();
+        
+        const stateDir = path.dirname(this.stateFilePath);
+        await fs.promises.mkdir(stateDir, { recursive: true });
+        await fs.promises.writeFile(
+            this.stateFilePath,
+            JSON.stringify(this.state, null, 2),
+            'utf8'
+        );
+    }
+
+    /**
+     * 加载之前的状态
+     */
+    async load(): Promise<WorkflowState | null> {
+        try {
+            const content = await fs.promises.readFile(this.stateFilePath, 'utf8');
+            this.state = JSON.parse(content) as WorkflowState;
+            return this.state;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    /**
+     * 更新任务执行计数
+     */
+    async incrementTaskExecuted(): Promise<void> {
+        if (!this.state) return;
+        
+        this.state.tasksExecuted++;
+        await this.save();
+    }
+
+    /**
+     * 更新当前任务索引
+     */
+    async updateCurrentTask(index: number): Promise<void> {
+        if (!this.state) return;
+        
+        this.state.currentTaskIndex = index;
+        await this.save();
+    }
+
+    /**
+     * 清除状态
+     */
+    async clear(): Promise<void> {
+        try {
+            await fs.promises.unlink(this.stateFilePath);
+            this.state = null;
+        } catch (error) {
+            // 忽略文件不存在的错误
+        }
+    }
+
+    /**
+     * 检查是否有未完成的工作流
+     */
+    async hasIncompleteWorkflow(): Promise<boolean> {
+        const state = await this.load();
+        if (!state) return false;
+        
+        // 检查 todo.md 是否存在
+        const todoPath = path.join(this.baseDir, 'todo.md');
+        if (!fs.existsSync(todoPath)) return false;
+        
+        return true;
+    }
+
+    /**
+     * 获取当前状态
+     */
+    getState(): WorkflowState | null {
+        return this.state;
+    }
+
+    /**
+     * 获取工作流摘要
+     */
+    getSummary(): string | null {
+        if (!this.state) return null;
+        
+        const elapsed = Date.now() - new Date(this.state.startTime).getTime();
+        const elapsedMinutes = Math.floor(elapsed / 60000);
+        
+        return `
+工作流会话: ${this.state.sessionId}
+开始时间: ${new Date(this.state.startTime).toLocaleString()}
+已运行: ${elapsedMinutes} 分钟
+已执行任务: ${this.state.tasksExecuted}/${this.state.maxTasks}
+当前任务: ${this.state.currentTaskIndex !== undefined ? `#${this.state.currentTaskIndex + 1}` : 'N/A'}
+`;
+    }
+
+    /**
+     * 恢复工作流选项
+     */
+    async resume(): Promise<WorkflowState> {
+        const state = await this.load();
+        if (!state) {
+            throw new Error('No workflow state to resume');
+        }
+        
+        return state;
+    }
+
+    /**
+     * 导出进度报告
+     */
+    async exportReport(todoMetadata: TodoMetadata): Promise<string> {
+        const state = await this.load();
+        if (!state) {
+            throw new Error('No workflow state found');
+        }
+        
+        const reportPath = path.join(path.dirname(this.stateFilePath), `report-${state.sessionId}.md`);
+        
+        const report = `# Git Auto Workflow Report
+
+## 会话信息
+- **Session ID**: ${state.sessionId}
+- **开始时间**: ${new Date(state.startTime).toLocaleString()}
+- **最后更新**: ${new Date(state.lastUpdateTime).toLocaleString()}
+
+## 工作流配置
+- **最大任务数**: ${state.maxTasks}
+- **AI 模型**: ${state.model}
+- **最低审查分数**: ${state.options.minScore}
+- **跳过审查**: ${state.options.skipReview ? '是' : '否'}
+
+## 执行进度
+- **已执行任务**: ${state.tasksExecuted}
+- **当前任务**: #${state.currentTaskIndex ? state.currentTaskIndex + 1 : 'N/A'}
+
+## Todo 文件进度
+${todoMetadata.progress ? `- 已完成: ${todoMetadata.progress.completed}/${todoMetadata.progress.total}` : '- 未可用'}
+${todoMetadata.currentTask ? `- 当前任务: #${todoMetadata.currentTask}` : ''}
+
+## 选项
+- **自动提交**: ${state.options.commit ? '是' : '否'}
+- **保存模式**: ${state.options.saveOnly ? '仅保存' : '写入文件'}
+${state.options.commitMessage ? `- **提交消息**: ${state.options.commitMessage}` : ''}
+`;
+        
+        await fs.promises.writeFile(reportPath, report, 'utf8');
+        return reportPath;
+    }
 }
 
 ````
@@ -43637,6 +46052,9 @@ export interface TaskStatus {
     reviewScore?: number;
     reviewIssues?: string[];
     attempts?: number;
+    backupId?: string;
+    dependsOn?: number[];
+    priority?: 'high' | 'medium' | 'low';
 }
 
 export interface TodoMetadata {
@@ -43648,6 +46066,8 @@ export interface TodoMetadata {
 
 const METADATA_PREFIX = '>';
 const TASK_REGEX = /^[\s]*-\s*\[([x\s])\]\s*(.+?)(?:\s*<!--\s*(.+?)\s*-->)?$/;
+const DEPENDENCY_REGEX = /\[depends:\s*(.+?)\]/i;
+const PRIORITY_REGEX = /\[priority:\s*(high|medium|low)\]/i;
 
 /**
  * 解析 todo.md 文件
@@ -43673,7 +46093,10 @@ export async function parseTodoFile(filePath: string): Promise<{
         
         // 解析特定元数据
         if (line.includes('Generated by Yuangs Git Plan at')) {
-            metadata.generatedAt = line.split('at')[1]?.trim();
+            const match = line.match(/at (.+)$/);
+            if (match) {
+                metadata.generatedAt = match[1].trim();
+            }
         } else if (line.includes('Context:')) {
             metadata.context = line.split('Context:')[1]?.trim();
         } else if (line.includes('Progress:')) {
@@ -43705,15 +46128,34 @@ export async function parseTodoFile(filePath: string): Promise<{
                 attempts: 0
             };
             
+            // 解析描述中的依赖关系
+            const depMatch = description.match(DEPENDENCY_REGEX);
+            if (depMatch) {
+                const depIndices = depMatch[1].split(',')
+                    .map(s => parseInt(s.trim()) - 1)
+                    .filter(n => !isNaN(n) && n >= 0);
+                if (depIndices.length > 0) {
+                    task.dependsOn = depIndices;
+                }
+            }
+            
+            // 解析描述中的优先级
+            const priorityMatch = description.match(PRIORITY_REGEX);
+            if (priorityMatch) {
+                task.priority = priorityMatch[1] as 'high' | 'medium' | 'low';
+            }
+            
             // 解析注释中的状态
             if (comment) {
                 const execMatch = comment.match(/exec:(\w+)/);
                 const reviewMatch = comment.match(/review:(\d+)/);
                 const attemptsMatch = comment.match(/attempts:(\d+)/);
+                const backupMatch = comment.match(/backup:([a-f0-9]+)/);
                 
                 if (execMatch) task.execStatus = execMatch[1] as any;
                 if (reviewMatch) task.reviewScore = parseInt(reviewMatch[1]);
                 if (attemptsMatch) task.attempts = parseInt(attemptsMatch[1]);
+                if (backupMatch) task.backupId = backupMatch[1];
             }
             
             tasks.push(task);
@@ -43816,10 +46258,135 @@ export async function updateMetadata(
 }
 
 /**
- * 获取下一个待执行的任务
+ * 获取下一个待执行的任务（考虑依赖关系）
  */
 export function getNextTask(tasks: TaskStatus[]): TaskStatus | null {
-    return tasks.find(t => !t.completed) || null;
+    const pendingTasks = tasks.filter(t => !t.completed && t.execStatus !== 'failed');
+    
+    if (pendingTasks.length === 0) {
+        return null;
+    }
+    
+    // 检查哪些任务可以执行（所有依赖都已完成）
+    const availableTasks = pendingTasks.filter(task => {
+        if (!task.dependsOn || task.dependsOn.length === 0) {
+            return true;
+        }
+        
+        return task.dependsOn.every(depIndex => {
+            const depTask = tasks[depIndex];
+            return depTask && depTask.completed;
+        });
+    });
+    
+    if (availableTasks.length === 0) {
+        // 如果没有可执行的任务，返回第一个失败的任务（如果有）
+        const firstFailed = tasks.find(t => t.execStatus === 'failed');
+        return firstFailed || null;
+    }
+    
+    // 按优先级排序：high > medium > low
+    const priorityOrder = { high: 0, medium: 1, low: 2 };
+    availableTasks.sort((a, b) => {
+        const priorityA = a.priority ? priorityOrder[a.priority] : 1;
+        const priorityB = b.priority ? priorityOrder[b.priority] : 1;
+        return priorityA - priorityB;
+    });
+    
+    // 返回优先级最高的可执行任务
+    return availableTasks[0];
+}
+
+/**
+ * 验证任务的依赖关系
+ */
+export function validateDependencies(tasks: TaskStatus[]): { valid: boolean; errors: string[] } {
+    const errors: string[] = [];
+    
+    for (const task of tasks) {
+        if (task.dependsOn && task.dependsOn.length > 0) {
+            for (const depIndex of task.dependsOn) {
+                // 检查依赖索引是否有效
+                if (depIndex < 0 || depIndex >= tasks.length) {
+                    errors.push(`任务 #${task.index + 1} 依赖了无效的任务索引: ${depIndex + 1}`);
+                    continue;
+                }
+                
+                // 检查循环依赖
+                if (hasCircularDependency(tasks, task.index, depIndex, new Set())) {
+                    errors.push(`检测到循环依赖: 任务 #${task.index + 1} <-> #${depIndex + 1}`);
+                }
+                
+                // 检查自依赖
+                if (depIndex === task.index) {
+                    errors.push(`任务 #${task.index + 1} 不能依赖自己`);
+                }
+            }
+        }
+    }
+    
+    return { valid: errors.length === 0, errors };
+}
+
+/**
+ * 检查循环依赖
+ */
+function hasCircularDependency(
+    tasks: TaskStatus[],
+    from: number,
+    to: number,
+    visited: Set<number>
+): boolean {
+    if (visited.has(to)) {
+        return true;
+    }
+    
+    visited.add(to);
+    const toTask = tasks[to];
+    
+    if (!toTask || !toTask.dependsOn) {
+        return false;
+    }
+    
+    for (const dep of toTask.dependsOn) {
+        if (dep === from || hasCircularDependency(tasks, from, dep, new Set(visited))) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+/**
+ * 获取任务的执行顺序
+ */
+export function getExecutionOrder(tasks: TaskStatus[]): number[] {
+    const order: number[] = [];
+    const visited = new Set<number>();
+    
+    function visit(index: number) {
+        if (visited.has(index)) {
+            return;
+        }
+        
+        visited.add(index);
+        const task = tasks[index];
+        
+        // 先访问依赖的任务
+        if (task.dependsOn) {
+            for (const depIndex of task.dependsOn) {
+                visit(depIndex);
+            }
+        }
+        
+        order.push(index);
+    }
+    
+    for (let i = 0; i < tasks.length; i++) {
+        visit(i);
+    }
+    
+    return order;
 }
 
 /**
@@ -52859,8 +55426,6 @@ import Table from 'cli-table3';
  * - 直接使用 markdown-it 的 md.parse() 解析为 Tokens
  * - 遍历 Tokens 并直接映射为 ANSI 样式
  * - 无需 HTML 中转，性能最优
- * 
- * 这是 ChatGPT CLI / Warp / Claude CLI 的做法
  */
 
 // 定义终端样式配置
@@ -52881,41 +55446,14 @@ const STYLES = {
   blockquote: (t: string) => chalk.hex('#A0AEC0')(`> ${t}`),
 };
 
-interface RendererOptions {
-  prefix?: string;
-  autoFinish?: boolean;
-  onChunkCallback?: (chunk: string) => void;
-  quietMode?: boolean;
-}
+/**
+ * 核心渲染引擎：Markdown -> ANSI 映射
+ * 将该逻辑剥离以便在流式和静态场景下复用
+ */
+export class MarkdownRenderer {
+  protected md: MarkdownIt;
 
-export class StreamMarkdownRenderer {
-  private md: MarkdownIt;
-  private prefix: string;
-  private buffer: string = '';
-  private isFirstOutput: boolean = true;
-  private spinner: Ora | null = null;
-  private startTime: number;
-  private quietMode: boolean;
-  private autoFinish: boolean;
-  private onChunkCallback: ((chunk: string) => void) | null;
-
-  constructor(prefix: string = chalk.bold.blue('🤖 AI：'), spinner?: Ora, options?: RendererOptions | boolean) {
-    this.prefix = prefix;
-    this.spinner = spinner || null;
-    this.startTime = Date.now();
-
-    // Support both old boolean quietMode and new options object
-    if (typeof options === 'boolean') {
-      this.quietMode = options;
-      this.autoFinish = false;
-      this.onChunkCallback = null;
-    } else {
-      this.quietMode = options?.quietMode ?? false;
-      this.autoFinish = options?.autoFinish ?? false;
-      this.onChunkCallback = options?.onChunkCallback || null;
-    }
-
-    // 初始化 markdown-it（禁用 HTML）
+  constructor() {
     this.md = new MarkdownIt({
       html: false,
       xhtmlOut: false,
@@ -52928,99 +55466,17 @@ export class StreamMarkdownRenderer {
   }
 
   /**
-   * 处理流式 chunk
-   * 
-   * 策略：
-   * 1. 累积到 buffer
-   * 2. 实时输出纯文本（不解析 Markdown）
-   * 3. finish() 时重新渲染完整内容
+   * 将 Markdown 字符串直接转换为带有 ANSI 样式的文本
    */
-  public onChunk(chunk: string): void {
-    if (this.spinner && this.spinner.isSpinning) {
-      this.spinner.stop();
-    }
-
-    if (!this.quietMode) {
-      if (this.isFirstOutput) {
-        process.stdout.write(this.prefix);
-        this.isFirstOutput = false;
-      }
-
-      // 实时输出纯文本
-      process.stdout.write(chunk);
-    }
-
-    this.buffer += chunk;
-
-    // Call external callback if provided
-    if (this.onChunkCallback) {
-      this.onChunkCallback(chunk);
-    }
-  }
-
-  /**
-   * 流结束，渲染完整 Markdown
-   * 
-   * 使用 md.parse() 解析 Tokens，直接映射为 ANSI
-   */
-  public finish(): string {
-    // 如果 Spinner 还在转（说明没有任何输出），先停掉
-    if (this.spinner && this.spinner.isSpinning) {
-      this.spinner.stop();
-    }
-
-    // 使用 Token 遍历渲染
-    const rendered = this.render(this.buffer);
-
-    if (this.quietMode) {
-      if (this.buffer.trim()) {
-        process.stdout.write(this.prefix + rendered + '\n');
-      }
-    } else if (this.buffer.trim()) {
-      if (process.stdout.isTTY) {
-        // TTY 模式：回滚并渲染格式化内容
-        const screenWidth = process.stdout.columns || 80;
-        const totalContent = this.prefix + this.buffer;
-
-        // 计算原始文本占用的可视行数
-        const lineCount = this.getVisualLineCount(totalContent, screenWidth);
-
-        // 1. 清除当前行剩余内容
-        process.stdout.write('\r\x1b[K');
-        // 2. 向上回滚并清除之前的行
-        for (let i = 0; i < lineCount - 1; i++) {
-          process.stdout.write('\x1b[A\x1b[K');
-        }
-
-        // 3. 输出格式化后的 Markdown
-        process.stdout.write(this.prefix + rendered + '\n');
-      } else {
-        // 非 TTY 模式（如管道）：输出格式化内容，不回滚
-        process.stdout.write(this.prefix + rendered + '\n');
-      }
-    }
-
-    const elapsed = (Date.now() - this.startTime) / 1000;
-    const separator = '─'.repeat(20);
-    process.stdout.write(`\n${chalk.gray(separator)} (耗时: ${elapsed.toFixed(2)}s) ${separator}\n\n`);
-
-    return this.buffer;
-  }
-
-  /**
-   * 使用 markdown-it 的 Token 渲染 Markdown
-   * 
-   * 这是核心函数：Token -> ANSI 直接映射
-   */
-  private render(markdown: string): string {
+  public render(markdown: string): string {
     const tokens = this.md.parse(markdown, {});
     return this.traverse(tokens);
   }
 
   /**
-   * 遍历 Tokens 并转换为 ANSI
+   * 遍历 Tokens 并映射为 ANSI 样式 (从 renderer.ts 原 traverse 迁移)
    */
-  private traverse(tokens: any[]): string {
+  public traverse(tokens: any[]): string {
     let output = '';
     let i = 0;
     let orderedListIndex = 1;
@@ -53080,24 +55536,22 @@ export class StreamMarkdownRenderer {
       // 处理标题
       if (token.type === 'heading_open') {
         const level = token.tag as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
-        // 查找 inline token
         const inlineToken = tokens[i + 1];
         const content = inlineToken?.type === 'inline' 
           ? this.renderInline(inlineToken.children || [])
           : '';
         output += (STYLES[level] || STYLES.h6)(content) + '\n\n';
-        i += 3; // 跳过 inline 和 close token
+        i += 3; 
         continue;
       }
 
       // 处理段落
       if (token.type === 'paragraph_open') {
-        // 查找 inline token
         const inlineToken = tokens[i + 1];
         if (inlineToken?.type === 'inline') {
           output += this.renderInline(inlineToken.children || []) + '\n\n';
         }
-        i += 3; // 跳过 inline 和 close token
+        i += 3;
         continue;
       }
 
@@ -53131,7 +55585,6 @@ export class StreamMarkdownRenderer {
         continue;
       }
       if (token.type === 'list_item_open') {
-        // list_item 可能包含多个 token，我们需要收集所有文本
         let content = '';
         let j = i + 1;
         let depth = 1;
@@ -53163,7 +55616,6 @@ export class StreamMarkdownRenderer {
         i += 1;
         continue;
       }
-      // 有序列表的 list_item_open
       if (token.type === 'list_item_open' && i > 0 && tokens[i - 1]?.type === 'ordered_list_open') {
         let content = '';
         let j = i + 1;
@@ -53223,7 +55675,6 @@ export class StreamMarkdownRenderer {
         continue;
       }
 
-      // 跳过其他 token
       i += 1;
     }
 
@@ -53231,20 +55682,7 @@ export class StreamMarkdownRenderer {
   }
 
   /**
-   * 提取 inline token 的文本内容
-   */
-  private extractInlineText(tokens: any[], index: number): string {
-    const token = tokens[index];
-    if (!token || token.type !== 'inline') {
-      return '';
-    }
-    return this.renderInline(token.children || []);
-  }
-
-  /**
    * 渲染内联样式
-   * 
-   * 这是最关键的部分：加粗、斜体、内联代码、链接
    */
   private renderInline(children: any[]): string {
     let result = '';
@@ -53256,38 +55694,171 @@ export class StreamMarkdownRenderer {
         case 'text':
           result += child.content;
           break;
-          
         case 'strong_open':
           result += STYLES.bold(children[++i].content);
-          i++; // skip close
+          i++; 
           break;
-          
         case 'em_open':
         case 'italic_open':
           result += STYLES.italic(children[++i].content);
           i++;
           break;
-          
         case 'code_inline':
           result += STYLES.code(child.content);
           break;
-          
         case 'link_open':
           result += STYLES.link(children[++i].content);
-          i++; // skip close
+          i++; 
           break;
-          
         case 'softbreak':
         case 'hardbreak':
           result += '\n';
           break;
-          
         default:
           result += child.content || '';
       }
     }
     
     return result;
+  }
+
+  /**
+   * 渲染表格 (cli-table3)
+   */
+  private renderTable(tableData: string[][]): string {
+    if (tableData.length === 0) return '';
+    const headers = tableData[0];
+    const rows = tableData.slice(1);
+    const table = new Table({
+      head: headers,
+      style: { head: ['cyan', 'bold'], border: ['gray'] },
+      wordWrap: true,
+      chars: {
+        'top': '─', 'top-mid': '┬', 'top-left': '┌', 'top-right': '┐',
+        'bottom': '─', 'bottom-mid': '┴', 'bottom-left': '└', 'bottom-right': '┘',
+        'left': '│', 'left-mid': '', 'mid': '', 'mid-mid': '', 'right': '│', 'right-mid': '', 'middle': '│'
+      }
+    });
+    rows.forEach(row => table.push(row));
+    return table.toString() + '\n';
+  }
+}
+
+/**
+ * 将 Markdown 字符串渲染为带有终端 ANSI 样态的字符串 (静态专用)
+ */
+export function renderMarkdown(markdown: string): string {
+  const renderer = new MarkdownRenderer();
+  return renderer.render(markdown);
+}
+
+interface RendererOptions {
+  prefix?: string;
+  autoFinish?: boolean;
+  onChunkCallback?: (chunk: string) => void;
+  quietMode?: boolean;
+}
+
+/**
+ * 流式 Markdown 渲染器
+ * 继承逻辑引擎，增加流状态管理
+ */
+export class StreamMarkdownRenderer extends MarkdownRenderer {
+  private prefix: string;
+  private buffer: string = '';
+  private isFirstOutput: boolean = true;
+  private spinner: Ora | null = null;
+  private startTime: number;
+  private quietMode: boolean;
+  private autoFinish: boolean;
+  private onChunkCallback: ((chunk: string) => void) | null;
+
+  constructor(prefix: string = chalk.bold.blue('🤖 AI：'), spinner?: Ora, options?: RendererOptions | boolean) {
+    super(); 
+    this.prefix = prefix;
+    this.spinner = spinner || null;
+    this.startTime = Date.now();
+
+    // Support both old boolean quietMode and new options object
+    if (typeof options === 'boolean') {
+      this.quietMode = options;
+      this.autoFinish = false;
+      this.onChunkCallback = null;
+    } else {
+      this.quietMode = options?.quietMode ?? false;
+      this.autoFinish = options?.autoFinish ?? false;
+      this.onChunkCallback = options?.onChunkCallback || null;
+    }
+  }
+
+  /**
+   * 处理流式 chunk
+   * 
+   * 策略：
+   * 1. 累积到 buffer
+   * 2. 实时输出纯文本（不解析 Markdown）
+   * 3. finish() 时重新渲染完整内容
+   */
+  public onChunk(chunk: string): void {
+    if (this.spinner && this.spinner.isSpinning) {
+      this.spinner.stop();
+    }
+
+    if (!this.quietMode) {
+      if (this.isFirstOutput) {
+        process.stdout.write(this.prefix);
+        this.isFirstOutput = false;
+      }
+
+      // 实时输出纯文本
+      process.stdout.write(chunk);
+    }
+
+    this.buffer += chunk;
+
+    // Call external callback if provided
+    if (this.onChunkCallback) {
+      this.onChunkCallback(chunk);
+    }
+  }
+
+  /**
+   * 流结束，渲染完整 Markdown
+   * 
+   * 使用 md.parse() 解析 Tokens，直接映射为 ANSI
+   */
+  public finish(): string {
+    if (this.spinner && this.spinner.isSpinning) {
+      this.spinner.stop();
+    }
+
+    const rendered = this.render(this.buffer);
+
+    if (this.quietMode) {
+      if (this.buffer.trim()) {
+        process.stdout.write(this.prefix + rendered + '\n');
+      }
+    } else if (this.buffer.trim()) {
+      if (process.stdout.isTTY) {
+        const screenWidth = process.stdout.columns || 80;
+        const totalContent = this.prefix + this.buffer;
+        const lineCount = this.getVisualLineCount(totalContent, screenWidth);
+
+        process.stdout.write('\r\x1b[K');
+        for (let i = 0; i < lineCount - 1; i++) {
+          process.stdout.write('\x1b[A\x1b[K');
+        }
+        process.stdout.write(this.prefix + rendered + '\n');
+      } else {
+        process.stdout.write(this.prefix + rendered + '\n');
+      }
+    }
+
+    const elapsed = (Date.now() - this.startTime) / 1000;
+    const separator = '─'.repeat(20);
+    process.stdout.write(`\n${chalk.gray(separator)} (耗时: ${elapsed.toFixed(2)}s) ${separator}\n\n`);
+
+    return this.buffer;
   }
 
   /**
@@ -53333,49 +55904,6 @@ export class StreamMarkdownRenderer {
   }
 
   /**
-   * 渲染表格（使用 cli-table3）
-   */
-  private renderTable(tableData: string[][]): string {
-    if (tableData.length === 0) return '';
-
-    const headers = tableData[0];
-    const rows = tableData.slice(1);
-
-    const table = new Table({
-      head: headers,
-      style: {
-        head: ['cyan', 'bold'],
-        border: ['gray'],
-      },
-      wordWrap: true,
-      // 简化边框：只保留表头下的分隔线
-      chars: {
-        'top': '─',
-        'top-mid': '┬',
-        'top-left': '┌',
-        'top-right': '┐',
-        'bottom': '─',
-        'bottom-mid': '┴',
-        'bottom-left': '└',
-        'bottom-right': '┘',
-        'left': '│',
-        'left-mid': '',
-        'mid': '',
-        'mid-mid': '',
-        'right': '│',
-        'right-mid': '',
-        'middle': '│'
-      }
-    });
-
-    rows.forEach(row => {
-      table.push(row);
-    });
-
-    return table.toString() + '\n';
-  }
-
-  /**
    * Check if response appears complete
    */
   private isComplete(): boolean {
@@ -53401,6 +55929,7 @@ import { promisify } from 'util';
 import { buildPromptWithFileContent, readFilesContent } from '../core/fileReader';
 import { ContextBuffer } from '../commands/contextBuffer';
 import { loadContext, saveContext } from '../commands/contextStorage';
+import { renderMarkdown } from './renderer';
 
 const execAsync = promisify(exec);
 
@@ -53422,38 +55951,8 @@ export async function handleSpecialSyntax(input: string, stdinData?: string): Pr
 
     // 处理 @ 文件引用语法
     if (trimmed.startsWith('@')) {
-        // 检查是否是 @! 立即执行语法
-        const immediateExecMatch = trimmed.match(/^@\s*!\s*(.+?)$/);
-        if (immediateExecMatch) {
-            const filePath = immediateExecMatch[1].trim();
-            return await handleImmediateExec(filePath);
-        }
-
-        // 检查是否是 @filename:command 语法 (添加文件并执行命令)
-        const fileExecMatch = trimmed.match(/^@\s*(.+?)\s*:\s*([^0-9\s].*)$/);
-        if (fileExecMatch) {
-            const filePath = fileExecMatch[1].trim();
-            const command = fileExecMatch[2].trim();
-            return await handleFileAndCommand(filePath, command);
-        }
-
-        // 检查是否是带行号的语法 @file:start-end as alias
-        const lineRangeMatch = trimmed.match(/^@\s*(.+?)(?::(\d+)(?:-(\d+))?)?(?:\s+as\s+([^\s\n]+))?\s*(?:\n(.*))?$/s);
-        if (lineRangeMatch) {
-            const filePath = lineRangeMatch[1];
-            const startLine = lineRangeMatch[2] ? parseInt(lineRangeMatch[2]) : null;
-            const endLine = lineRangeMatch[3] ? parseInt(lineRangeMatch[3]) : null;
-            const alias = lineRangeMatch[4];
-            const hasQuestion = !!lineRangeMatch[5] || !!stdinData;
-            const question = lineRangeMatch[5] || (stdinData ? `分析以下文件内容：\n\n${stdinData}` : '请分析这个文件');
-
-            const res = await handleFileReference(filePath.trim(), startLine, endLine, question, alias, !hasQuestion);
-            return {
-                ...res,
-                isPureReference: !hasQuestion,
-                type: 'file'
-            };
-        }
+        // 如果是 @ 开头的语法，跳转到独立的处理器
+        return await handleAtSyntax(trimmed, stdinData);
     }
 
     // 处理 # 目录引用语法
@@ -53485,11 +55984,20 @@ export async function handleSpecialSyntax(input: string, stdinData?: string): Pr
         return { ...res, type: 'command' };
     }
 
-    // 处理 :cat [index] 命令
+    // 处理 :cat [index] 命令 (支持 :cat index:start-end)
     if (trimmed === ':cat' || trimmed.startsWith(':cat ')) {
-        const parts = trimmed.split(' ');
-        const index = parts.length > 1 ? parseInt(parts[1]) : null;
-        const res = await handleCatContext(index);
+        const spec = trimmed.slice(4).trim();
+        if (!spec) {
+            const res = await handleCatContext(null);
+            return { ...res, type: 'management' };
+        }
+
+        const parsed = parseCatSpec(spec);
+        if (parsed.error) {
+            return { processed: true, result: parsed.error, error: true, type: 'management' };
+        }
+
+        const res = await handleCatContext(parsed.index, parsed.startLine, parsed.endLine);
         return { ...res, type: 'management' };
     }
 
@@ -53501,6 +56009,351 @@ export async function handleSpecialSyntax(input: string, stdinData?: string): Pr
 
     // 如果不是特殊语法，返回未处理
     return { processed: false };
+}
+
+/**
+ * 解析 :cat 命名的参数定义 (如 "1:10-20")
+ */
+function parseCatSpec(spec: string): { index: number | null, startLine: number | null, endLine: number | null, error?: string } {
+    // 兼容只有数字的情况
+    if (/^\d+$/.test(spec)) {
+        return { index: parseInt(spec), startLine: null, endLine: null };
+    }
+
+    const match = spec.match(/^(\d+)(?::(\d+)(?:-(\d+))?)?$/);
+    if (!match) {
+        return { index: null, startLine: null, endLine: null, error: `错误: 无效的索引格式 "${spec}"。请使用 :cat index 或 :cat index:start-end (例如 :cat 1:10-20)` };
+    }
+
+    const index = parseInt(match[1]);
+    const startLine = match[2] ? parseInt(match[2]) : null;
+    const endLine = match[3] ? parseInt(match[3]) : null;
+
+    if (isNaN(index)) {
+        return { index: null, startLine: null, endLine: null, error: `错误: 索引 "${match[1]}" 不是有效的数字` };
+    }
+
+    return { index, startLine, endLine };
+}
+
+/**
+ * 引号感知的令牌解析器 (Tokenizer)
+ * 用于解析包含空格、引号及转义字符的复杂路径列表。
+ * 
+ * 行为特性：
+ * 1. 支持使用 ' 或 " 包裹路径，支持内部嵌套转义。
+ * 2. 自动修剪非引号部分的空格。
+ * 3. 容错处理：若引号未闭合，自动将剩余全量内容视为一个带引号的 Token。
+ */
+export function tokenizeWithQuotes(input: string): { tokens: string[], isQuoted: boolean[] } {
+    const tokens: string[] = [];
+    const isQuoted: boolean[] = [];
+    let current = '';
+    let inQuotes = false;
+    let quoteChar = '';
+    let escaped = false;
+
+    for (let i = 0; i < input.length; i++) {
+        const char = input[i];
+
+        if (escaped) {
+            current += char;
+            escaped = false;
+            continue;
+        }
+
+        if (char === '\\') {
+            escaped = true;
+            continue;
+        }
+
+        if (!inQuotes && (char === '"' || char === "'")) {
+            inQuotes = true;
+            quoteChar = char;
+        } else if (inQuotes && char === quoteChar) {
+            inQuotes = false;
+            tokens.push(current);
+            isQuoted.push(true);
+            current = '';
+        } else if (!inQuotes && (char === ',' || char === '，' || char === ' ')) {
+            if (current) {
+                tokens.push(current.trim());
+                isQuoted.push(false);
+                current = '';
+            }
+        } else {
+            current += char;
+        }
+    }
+
+    if (current || inQuotes) {
+        tokens.push(current.trim());
+        isQuoted.push(inQuotes);
+    }
+    
+    return { tokens, isQuoted };
+}
+
+/**
+ * 处理 @ 语法的独立函数
+ */
+async function handleAtSyntax(trimmed: string, stdinData?: string): Promise<{ 
+    processed: boolean; 
+    result?: string; 
+    error?: boolean; 
+    isPureReference?: boolean; 
+    type?: 'file' | 'directory' | 'command' | 'management' 
+}> {
+    // 1. @! 立即执行语法
+    const immediateExecMatch = trimmed.match(/^@\s*!\s*(.+?)$/);
+    if (immediateExecMatch) {
+        const filePath = immediateExecMatch[1].trim();
+        return await handleImmediateExec(filePath);
+    }
+
+    // 2. @filename:command 语法 (添加文件并执行命令)
+    const fileExecMatch = trimmed.match(/^@\s*(.+?)\s*:\s*([^0-9\s].*)$/);
+    if (fileExecMatch) {
+        const filePath = fileExecMatch[1].trim();
+        const command = fileExecMatch[2].trim();
+        return await handleFileAndCommand(filePath, command);
+    }
+
+    // 3. 带行号或批量引用的语法 @file:start-end as alias (优化正则，非贪婪捕获路径部分)
+    // 路径部分 ([^\s\n]+) 不应包含空格，遇到空格、换行或 as 则认为路径结束
+    const lineRangeMatch = trimmed.match(/^@\s*([^\s\n]+)(?::(\d+)(?:-(\d+))?)?(?:\s+as\s+([^\s\n]+))?\s*(.*)$/s);
+    if (lineRangeMatch) {
+        const rawPart = lineRangeMatch[1].trim();
+        const startLine = lineRangeMatch[2] ? parseInt(lineRangeMatch[2]) : null;
+        const endLine = lineRangeMatch[3] ? parseInt(lineRangeMatch[3]) : null;
+        const alias = lineRangeMatch[4];
+        let question = lineRangeMatch[5]?.trim() || (stdinData ? `分析以下内容：\n\n${stdinData}` : undefined);
+
+        const { filePaths, extraQuestion } = await resolveFilePathsAndQuestion(rawPart);
+        
+        if (extraQuestion) {
+            question = question ? `${extraQuestion}\n\n${question}` : extraQuestion;
+        }
+
+        const hasQuestion = !!question || !!stdinData;
+
+        if (filePaths.length > 1) {
+            let warningPrefix = '';
+            if (alias) {
+                warningPrefix += chalk.yellow('⚠️ 警告: 别名 (alias) 仅支持单个文件引用，当前多个文件引用将忽略别名。\n');
+            }
+            if (startLine !== null) {
+                warningPrefix += chalk.yellow('⚠️ 警告: 行号范围仅支持单个文件引用，当前多个文件引用将忽略行号范围。\n');
+            }
+            const res = await handleMultipleFileReferences(filePaths, question, !hasQuestion);
+            return {
+                ...res,
+                result: warningPrefix + res.result,
+                isPureReference: !hasQuestion,
+                type: 'file'
+            };
+        } else if (filePaths.length === 1) {
+            const res = await handleFileReference(filePaths[0], startLine, endLine, question, alias, !hasQuestion);
+            return {
+                ...res,
+                isPureReference: !hasQuestion,
+                type: 'file'
+            };
+        } else {
+            return {
+                processed: true,
+                result: `错误: 未找到有效的文件或序号引用 "${rawPart}"`,
+                error: true
+            };
+        }
+    }
+
+    return { processed: false };
+}
+
+/**
+ * 解析增强的路径语法 (识别路径列表与同行提问)
+ * 
+ * 💡 识别优先级与规则 (Heuristic Rules):
+ * 1. 引号包裹: 只要被 "" 或 '' 包裹，一律视为文件路径 (支持空格)。
+ * 2. 范围语法: 符合 n-m 格式且为数字，视为上下文序号范围。
+ * 3. 磁盘存在: 如果字符串在当前工作目录真实存在 (文件或目录)，视为路径。
+ *    - 注意：如果文件名叫 "1" 且磁盘存在，它会覆盖序号 1 的语义 (文件优先)。
+ * 4. 上下文索引: 如果是纯数字且在当前 ContextBuffer 范围内，视为序号引用。
+ * 5. 提问边界: 遇到第一个不满足上述任何条件的单词时，该单词及其后内容均识别为提问。
+ */
+export async function resolveFilePathsAndQuestion(input: string): Promise<{ filePaths: string[], extraQuestion?: string }> {
+    const persisted = await loadContext();
+    const filePaths: string[] = [];
+    
+    // 1. 获取初步 Token
+    const { tokens, isQuoted } = tokenizeWithQuotes(input);
+    let questionStartIndex = -1;
+
+    // 2. 预先并行检查所有 Token 的磁盘状态，避免循环中同步 I/O
+    const stats = await Promise.all(tokens.map(async (t, i) => {
+        if (isQuoted[i]) return { exists: true }; // 引号包裹强制视为路径
+        try {
+            const fullPath = path.resolve(t);
+            await fs.promises.access(fullPath, fs.constants.F_OK);
+            return { exists: true };
+        } catch {
+            return { exists: false };
+        }
+    }));
+
+    // 3. 扫描识别边界
+    for (let i = 0; i < tokens.length; i++) {
+        const token = tokens[i];
+        const quoted = isQuoted[i];
+        const existsOnDisk = stats[i].exists;
+        
+        if (quoted) continue;
+
+        const isRange = /^\d+-\d+$/.test(token);
+        const isIndex = !isNaN(parseInt(token)) && parseInt(token) > 0 && parseInt(token) <= persisted.length;
+        
+        // 【智能边界识别】即便没有空格，如果 token 开头是序号但后面跟着非数字(如 @1分析)，也要切分
+        // 或者当前的 token 本身就不可识别为路径/索引
+        if (!existsOnDisk) {
+            if (isRange || isIndex) {
+                continue;
+            }
+            
+            // 如果 token 开头是数字但包含非数字字符，且不是范围，尝试二次切分 (处理 @1分析 这种 Case)
+            const numMatch = token.match(/^(\d+)(.+)$/);
+            if (numMatch && parseInt(numMatch[1]) <= persisted.length) {
+                 // 这是一个混合 Token，我们需要重构 tokens 数组（较复杂，此处采用简化的截断策略）
+                 questionStartIndex = i;
+                 break;
+            }
+
+            // 既不是物理路径，也不是范围/序号 -> 提问开始
+            questionStartIndex = i;
+            break;
+        }
+    }
+
+    let pathTokens = tokens;
+    let pathStats = stats;
+    let extraQuestion: string | undefined;
+
+    if (questionStartIndex !== -1) {
+        pathTokens = tokens.slice(0, questionStartIndex);
+        pathStats = stats.slice(0, questionStartIndex);
+        extraQuestion = tokens.slice(questionStartIndex).join(' ');
+    }
+
+    // 4. 解析确定的路径部分
+    for (let i = 0; i < pathTokens.length; i++) {
+        const part = pathTokens[i];
+        const existsOnDisk = pathStats[i].exists;
+        
+        // A. 物理路径 (磁盘存在) 或强制路径 (带有引号)
+        // 优先级最高：磁盘上真的有这个文件，直接用路径
+        if (existsOnDisk || isQuoted[i]) {
+            filePaths.push(part);
+            continue;
+        }
+
+        // B. 范围语法: 1-5
+        const rangeMatch = part.match(/^(\d+)-(\d+)$/);
+        if (rangeMatch) {
+            const start = Math.min(parseInt(rangeMatch[1]), parseInt(rangeMatch[2]));
+            const end = Math.max(parseInt(rangeMatch[1]), parseInt(rangeMatch[2]));
+            for (let j = start; j <= end; j++) {
+                if (j > 0 && j <= persisted.length) {
+                    filePaths.push(persisted[j - 1].path);
+                }
+            }
+            continue;
+        }
+        
+        // C. 上下文序号: 1
+        const idx = parseInt(part);
+        if (!isNaN(idx) && idx > 0 && idx <= persisted.length) {
+            filePaths.push(persisted[idx - 1].path);
+            continue;
+        }
+    }
+    
+    return { 
+        filePaths: [...new Set(filePaths)], 
+        extraQuestion 
+    };
+}
+
+/**
+ * 批量处理多个文件引用 (异步并行版)
+ */
+async function handleMultipleFileReferences(
+    filePaths: string[],
+    question?: string,
+    isPureReference: boolean = false
+): Promise<{ processed: boolean; result: string; error?: boolean }> {
+    const contextBuffer = new ContextBuffer();
+    const persisted = await loadContext();
+    contextBuffer.import(persisted);
+
+    const contentMap = new Map<string, string>();
+    const addedFiles: string[] = [];
+    const warningList: string[] = [];
+
+    // 并行读取文件
+    const readPromises = filePaths.map(async (filePath) => {
+        const fullPath = path.resolve(filePath);
+        try {
+            await fs.promises.access(fullPath, fs.constants.F_OK);
+            const content = await fs.promises.readFile(fullPath, 'utf-8');
+            return { filePath, content, success: true };
+        } catch (e: any) {
+            return { filePath, success: false, error: e.message };
+        }
+    });
+
+    const results = await Promise.all(readPromises);
+
+    for (const res of results) {
+        if (res.success && res.content !== undefined) {
+            contentMap.set(res.filePath, res.content);
+            contextBuffer.add({
+                type: 'file',
+                path: res.filePath,
+                content: res.content
+            });
+            addedFiles.push(res.filePath);
+        } else {
+            warningList.push(`警告: 跳过 "${res.filePath}": ${res.error}`);
+        }
+    }
+
+    const warnings = warningList.length > 0 ? warningList.join('\n') + '\n' : '';
+
+    if (addedFiles.length === 0) {
+        return { 
+            processed: true, 
+            result: warnings || '❌ 未找到任何有效的文件引用',
+            error: true
+        };
+    }
+
+    await saveContext(contextBuffer.export());
+
+    if (isPureReference) {
+        return { 
+            processed: true, 
+            result: `${warnings}✅ 已将 ${addedFiles.length} 个文件加入上下文：\n${addedFiles.map(f => `  • ${f}`).join('\n')}` 
+        };
+    }
+
+    const prompt = buildPromptWithFileContent(
+        `引用了 ${addedFiles.length} 个文件`,
+        addedFiles,
+        contentMap,
+        question || '请分析以上文件'
+    );
+
+    return { processed: true, result: warnings + prompt };
 }
 
 async function handleFileReference(
@@ -53517,39 +56370,30 @@ async function handleFileReference(
 }> {
     const fullPath = path.resolve(filePath);
 
-    if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isFile()) {
-        return { 
-            processed: true, 
-            result: `错误: 文件 "${filePath}" 不存在或不是一个文件` 
-        };
-    }
-
     try {
-        let content = fs.readFileSync(fullPath, 'utf-8');
+        await fs.promises.access(fullPath, fs.constants.F_OK);
+        const stats = await fs.promises.stat(fullPath);
+        if (!stats.isFile()) throw new Error('不是一个文件');
+
+        let content = await fs.promises.readFile(fullPath, 'utf-8');
         
         // 如果指定了行号范围，则提取相应行
         if (startLine !== null) {
             const lines = content.split('\n');
-            
-            // 验证行号范围
             if (startLine < 1 || startLine > lines.length) {
                 return { 
                     processed: true, 
                     result: `错误: 起始行号 ${startLine} 超出文件范围 (文件共有 ${lines.length} 行)` 
                 };
             }
-
-            const startIdx = startLine - 1; // 转换为数组索引（从0开始）
-            let endIdx = endLine ? Math.min(endLine, lines.length) : lines.length; // 如果未指定结束行，则到文件末尾
-
+            const startIdx = startLine - 1;
+            let endIdx = endLine ? Math.min(endLine, lines.length) : lines.length;
             if (endLine && (endLine < startLine || endLine > lines.length)) {
                 return { 
                     processed: true, 
                     result: `错误: 结束行号 ${endLine} 超出有效范围 (应在 ${startLine}-${lines.length} 之间)` 
                 };
             }
-
-            // 提取指定范围的行
             content = lines.slice(startIdx, endIdx).join('\n');
         }
 
@@ -53570,6 +56414,10 @@ async function handleFileReference(
 
         await saveContext(contextBuffer.export());
 
+        if (isPureReference) {
+            return { processed: true, result: `✅ 已将文件 ${filePath} 加入上下文` };
+        }
+
         const prompt = buildPromptWithFileContent(
             `文件: ${filePath}${startLine !== null ? `:${startLine}${endLine ? `-${endLine}` : ''}` : ''}`,
             [filePath],
@@ -53577,19 +56425,11 @@ async function handleFileReference(
             question || `请分析文件: ${filePath}`
         );
 
-        if (prompt.startsWith('错误:')) {
-            return { processed: true, result: prompt, error: true };
-        }
-
-        if (isPureReference) {
-            return { processed: true, result: `已将文件 ${filePath} 加入上下文` };
-        }
-
         return { processed: true, result: prompt };
-    } catch (error) {
+    } catch (error: any) {
         return { 
             processed: true, 
-            result: `错误: 读取文件失败: ${error}` ,
+            result: `错误: 无法处理文件 "${filePath}": ${error.message}`,
             error: true
         };
     }
@@ -53776,10 +56616,92 @@ async function handleListContext(): Promise<{ processed: boolean; result: string
         }
 
         const list = contextBuffer.list();
-        let result = '当前上下文列表：\n';
+        
+        // 格式化时间显示
+        const formatAge = (ageMin: number): string => {
+            if (ageMin < 1) return '刚刚';
+            if (ageMin < 60) return `${ageMin}分钟前`;
+            const hours = Math.floor(ageMin / 60);
+            if (hours < 24) return `${hours}小时前`;
+            const days = Math.floor(hours / 24);
+            return `${days}天前`;
+        };
+        
+        // 格式化重要度显示
+        const formatImportance = (importance: string): string => {
+            const value = parseFloat(importance);
+            if (value >= 0.8) return chalk.red('★★★');
+            if (value >= 0.6) return chalk.yellow('★★☆');
+            if (value >= 0.4) return chalk.green('★☆☆');
+            return chalk.gray('☆☆☆');
+        };
+        
+        // 列宽常量定义
+        const IMPORTANCE_WIDTH = 6; // "重要度"文本宽度
+        const AGE_WIDTH = 10;
+        const TOKENS_WIDTH = 6;
+        const PINNED_WIDTH = 2; // 📌 表情占 2 个字符位
+        const MAX_PATH_DISPLAY_WIDTH = 40;
+
+        // 计算动态列宽
+        const maxIndexWidth = Math.max(String(list.length).length, 1);
+        const maxTypeWidth = Math.max(...list.map(item => item.type.length), 4);
+        const pathColWidth = Math.min(Math.max(...list.map(item => item.path.length), 4), MAX_PATH_DISPLAY_WIDTH);
+        
+        // 构建表格边框
+        const header = `┌${'─'.repeat(maxIndexWidth + 2)}┬${'─'.repeat(PINNED_WIDTH + 2)}┬${'─'.repeat(maxTypeWidth + 2)}┬${'─'.repeat(pathColWidth + 2)}┬${'─'.repeat(IMPORTANCE_WIDTH + 2)}┬${'─'.repeat(AGE_WIDTH + 2)}┬${'─'.repeat(TOKENS_WIDTH + 2)}┐`;
+        const separator = `├${'─'.repeat(maxIndexWidth + 2)}┼${'─'.repeat(PINNED_WIDTH + 2)}┼${'─'.repeat(maxTypeWidth + 2)}┼${'─'.repeat(pathColWidth + 2)}┼${'─'.repeat(IMPORTANCE_WIDTH + 2)}┼${'─'.repeat(AGE_WIDTH + 2)}┼${'─'.repeat(TOKENS_WIDTH + 2)}┤`;
+        const footer = `└${'─'.repeat(maxIndexWidth + 2)}┴${'─'.repeat(PINNED_WIDTH + 2)}┴${'─'.repeat(maxTypeWidth + 2)}┴${'─'.repeat(pathColWidth + 2)}┴${'─'.repeat(IMPORTANCE_WIDTH + 2)}┴${'─'.repeat(AGE_WIDTH + 2)}┴${'─'.repeat(TOKENS_WIDTH + 2)}┘`;
+        
+        // 表头
+        const headerRow = `│ ${chalk.bold('#'.padEnd(maxIndexWidth))} │ ${chalk.bold('📌'.padEnd(PINNED_WIDTH))} │ ${chalk.bold('Type'.padEnd(maxTypeWidth))} │ ${chalk.bold('Path'.padEnd(pathColWidth))} │ ${chalk.bold('重要度')} │ ${chalk.bold('添加时间'.padEnd(AGE_WIDTH))} │ ${chalk.bold('Tokens'.padEnd(TOKENS_WIDTH))} │`;
+        
+        let result = chalk.cyan.bold('📋 当前上下文列表\n\n');
+        result += chalk.blue.dim(header) + '\n';
+        result += headerRow + '\n';
+        result += chalk.blue.dim(separator) + '\n';
+        
+        // 行内虚线分隔符 (使用更清晰的蓝色和更饱满的字符)
+        const rowSeparator = `├${'┈'.repeat(maxIndexWidth + 2)}┼${'┈'.repeat(PINNED_WIDTH + 2)}┼${'┈'.repeat(maxTypeWidth + 2)}┼${'┈'.repeat(pathColWidth + 2)}┼${'┈'.repeat(IMPORTANCE_WIDTH + 2)}┼${'┈'.repeat(AGE_WIDTH + 2)}┼${'┈'.repeat(TOKENS_WIDTH + 2)}┤`;
+        
+        // 数据行
         list.forEach((item, index) => {
-            result += `${index + 1}. ${item.type}: ${item.path} (${item.tokens} tokens)\n`;
+            const indexStr = String(index + 1).padEnd(maxIndexWidth);
+            const pinnedStr = (item.pinned ? '📌' : '  ').padEnd(PINNED_WIDTH);
+            const typeStr = item.type.padEnd(maxTypeWidth);
+            
+            // 路径截断处理
+            let pathStr = item.path;
+            if (pathStr.length > MAX_PATH_DISPLAY_WIDTH) {
+                pathStr = '...' + pathStr.slice(-(MAX_PATH_DISPLAY_WIDTH - 3));
+            }
+            pathStr = pathStr.padEnd(pathColWidth);
+            
+            const importanceStr = formatImportance(item.importance);
+            const ageStr = formatAge(item.ageMin).padEnd(AGE_WIDTH);
+            const tokensStr = String(item.tokens).padStart(TOKENS_WIDTH);
+            
+            // 根据类型着色
+            let typeColor = chalk.cyan;
+            if (item.type === 'memory') typeColor = chalk.magenta;
+            if (item.type === 'antipattern') typeColor = chalk.red;
+            
+            result += `│ ${chalk.yellow(indexStr)} │ ${pinnedStr} │ ${typeColor(typeStr)} │ ${chalk.white(pathStr)} │ ${importanceStr} │ ${chalk.gray(ageStr)} │ ${chalk.green(tokensStr)} │\n`;
+            
+            // 如果不是最后一行，添加虚线分隔符
+            if (index < list.length - 1) {
+                result += chalk.blue.dim(rowSeparator) + '\n';
+            }
         });
+        
+        result += chalk.blue.dim(footer);
+        
+        // 统计信息（单行）
+        const totalTokens = list.reduce((sum, item) => sum + item.tokens, 0);
+        const pinnedCount = list.filter(item => item.pinned).length;
+        const memoryCount = list.filter(item => item.type === 'memory').length;
+        
+        result += `\n\n${chalk.cyan('📊')} ${chalk.gray('总计:')} ${chalk.yellow(list.length)} ${chalk.gray('|')} ${chalk.gray('固定:')} ${chalk.yellow(pinnedCount)} ${chalk.gray('|')} ${chalk.gray('记忆:')} ${chalk.magenta(memoryCount)} ${chalk.gray('|')} ${chalk.gray('Token:')} ${chalk.green(totalTokens.toLocaleString())}`;
 
         return { processed: true, result };
     } catch (error) {
@@ -53790,7 +56712,11 @@ async function handleListContext(): Promise<{ processed: boolean; result: string
     }
 }
 
-async function handleCatContext(index: number | null): Promise<{ processed: boolean; result: string }> {
+async function handleCatContext(
+    index: number | null,
+    startLine: number | null = null,
+    endLine: number | null = null
+): Promise<{ processed: boolean; result: string }> {
     try {
         const persisted = await loadContext();
         const contextBuffer = new ContextBuffer();
@@ -53808,17 +56734,61 @@ async function handleCatContext(index: number | null): Promise<{ processed: bool
                 return { processed: true, result: `错误: 索引 ${index} 超出范围 (共有 ${items.length} 个项目)` };
             }
             const item = items[index - 1];
+            let content = item.content || '(无内容)';
+
+            // 获取语言提示 (使用增强的识别逻辑)
+            const lang = getLanguageByPath(item.path);
+
+            // 行号切片
+            if (startLine !== null) {
+                const lines = content.split('\n');
+                
+                // 边界校验：起始行号归一化 (不允许小于 1)
+                const clampedStart = Math.max(1, startLine);
+                const startIdx = clampedStart - 1;
+                
+                // 边界校验：结束行号处理
+                let endIdx = lines.length;
+                if (endLine !== null) {
+                    if (endLine < clampedStart) {
+                        return { processed: true, result: `错误: 结束行号 ${endLine} 不能小于起始行号 ${clampedStart}` };
+                    }
+                    endIdx = Math.min(endLine, lines.length);
+                }
+                
+                if (startIdx >= lines.length) {
+                    return { processed: true, result: `错误: 起始行号 ${startLine} 超出范围 (该文件共有 ${lines.length} 行)` };
+                }
+                
+                content = lines.slice(startIdx, endIdx).join('\n');
+                const rangeLabel = endLine ? `${clampedStart}-${endIdx}` : `${clampedStart}-末尾`;
+                
+                // 渲染高亮内容
+                const highlighted = renderMarkdown(`\`\`\`${lang}\n${content}\n\`\`\``);
+                
+                return { 
+                    processed: true, 
+                    result: `${chalk.blue.bold(`--- [${index}] ${item.type}: ${item.path} (第 ${rangeLabel} 行) ---`)}\n${highlighted}\n${chalk.blue.bold('--- End ---')}` 
+                };
+            }
+
+            // 渲染完整内容的高亮
+            const highlighted = renderMarkdown(`\`\`\`${lang}\n${content}\n\`\`\``);
+
             return { 
                 processed: true, 
-                result: `--- [${index}] ${item.type}: ${item.path} ---\n${item.content}\n--- End ---` 
+                result: `${chalk.blue.bold(`--- [${index}] ${item.type}: ${item.path} ---`)}\n${highlighted}\n${chalk.blue.bold('--- End ---')}` 
             };
         } else {
-            // 查看全部
-            let result = '=== 当前完整上下文内容 ===\n\n';
+            // 查看全部 (也要高亮每一个)
+            let result = chalk.cyan.bold('=== 当前完整上下文内容 ===\n\n');
             items.forEach((item, i) => {
-                result += `--- [${i + 1}] ${item.type}: ${item.path} ---\n${item.content}\n\n`;
+                const lang = getLanguageByPath(item.path);
+                const highlighted = renderMarkdown(`\`\`\`${lang}\n${item.content || '(空)'}\n\`\`\``);
+                
+                result += `${chalk.blue.bold(`--- [${i + 1}] ${item.type}: ${item.path} ---`)}\n${highlighted}\n\n`;
             });
-            result += '==========================';
+            result += chalk.cyan.bold('==========================');
             return { processed: true, result };
         }
     } catch (error) {
@@ -53883,6 +56853,45 @@ async function handleFileAndCommand(filePath: string, command: string): Promise<
             type: 'command'
         };
     }
+}
+
+/**
+ * 根据文件路径智能识别编程语言
+ */
+function getLanguageByPath(filePath: string): string {
+    const ext = path.extname(filePath).toLowerCase().slice(1);
+    if (!ext) return 'text';
+
+    const langMap: Record<string, string> = {
+        'ts': 'typescript',
+        'js': 'javascript',
+        'tsx': 'typescript',
+        'jsx': 'javascript',
+        'py': 'python',
+        'rb': 'ruby',
+        'sh': 'bash',
+        'zsh': 'bash',
+        'yml': 'yaml',
+        'yaml': 'yaml',
+        'md': 'markdown',
+        'json': 'json',
+        'rs': 'rust',
+        'go': 'go',
+        'c': 'c',
+        'cpp': 'cpp',
+        'h': 'cpp',
+        'java': 'java',
+        'kt': 'kotlin',
+        'css': 'css',
+        'scss': 'scss',
+        'html': 'html',
+        'sql': 'sql',
+        'vue': 'html',
+        'makefile': 'makefile',
+        'dockerfile': 'dockerfile'
+    };
+
+    return langMap[ext] || ext;
 }
 
 ````
@@ -64962,6 +67971,88 @@ describe('riskDisclosure', () => {
 
 [⬆ 回到目录](#toc)
 
+## 📄 test/__tests__/commands/pipeline.test.ts
+
+````typescript
+import { processPipelineSegment } from '../../../src/commands/handleAIChat';
+import * as syntaxHandler from '../../../src/utils/syntaxHandler';
+import * as shellCompletions from '../../../src/commands/shellCompletions';
+import chalk from 'chalk';
+
+// Mock dependencies
+jest.mock('../../../src/utils/syntaxHandler');
+jest.mock('../../../src/commands/shellCompletions');
+jest.mock('chalk', () => ({
+    green: jest.fn((s) => s),
+    red: jest.fn((s) => s),
+    blue: { bold: jest.fn((s) => s) },
+    cyan: jest.fn((s) => s),
+    gray: jest.fn((s) => s)
+}));
+
+describe('processPipelineSegment', () => {
+    let mockRl: any;
+    let mockProcessInteraction: jest.Mock;
+
+    beforeEach(() => {
+        mockRl = {
+            pause: jest.fn(),
+            resume: jest.fn()
+        };
+        mockProcessInteraction = jest.fn();
+        jest.clearAllMocks();
+    });
+
+    it('should handle special syntax segment', async () => {
+        (syntaxHandler.handleSpecialSyntax as jest.Mock).mockResolvedValue({
+            processed: true,
+            result: 'some context content',
+            type: 'file'
+        });
+
+        const result = await processPipelineSegment('@file.txt', undefined, false, mockRl, mockProcessInteraction);
+
+        expect(result).toBe('some context content');
+        expect(syntaxHandler.handleSpecialSyntax).toHaveBeenCalledWith('@file.txt', undefined);
+    });
+
+    it('should handle shell command segment', async () => {
+        (syntaxHandler.handleSpecialSyntax as jest.Mock).mockResolvedValue({ processed: false });
+        (shellCompletions.detectMode as jest.Mock).mockReturnValue('command');
+        (shellCompletions.executeCommand as jest.Mock).mockResolvedValue('command output');
+
+        const result = await processPipelineSegment('grep foo', 'upstream input', false, mockRl, mockProcessInteraction);
+
+        expect(result).toBe('command output');
+        expect(shellCompletions.executeCommand).toHaveBeenCalledWith('grep foo', undefined, 'upstream input', true);
+        expect(mockRl.pause).toHaveBeenCalled();
+        expect(mockRl.resume).toHaveBeenCalled();
+    });
+
+    it('should trigger AI interaction on last segment if it is a question', async () => {
+        (syntaxHandler.handleSpecialSyntax as jest.Mock).mockResolvedValue({ processed: false });
+        (shellCompletions.detectMode as jest.Mock).mockReturnValue('chat');
+
+        await processPipelineSegment('explain this', 'some code data', true, mockRl, mockProcessInteraction);
+
+        expect(mockProcessInteraction).toHaveBeenCalledWith(expect.stringContaining('explain this'));
+        expect(mockProcessInteraction).toHaveBeenCalledWith(expect.stringContaining('some code data'));
+    });
+
+    it('should return verbatim if not special, command, and not last', async () => {
+        (syntaxHandler.handleSpecialSyntax as jest.Mock).mockResolvedValue({ processed: false });
+        (shellCompletions.detectMode as jest.Mock).mockReturnValue('chat');
+
+        const result = await processPipelineSegment('pure text', undefined, false, mockRl, mockProcessInteraction);
+
+        expect(result).toBe('pure text');
+    });
+});
+
+````
+
+[⬆ 回到目录](#toc)
+
 ## 📄 test/__tests__/completion/index.test.ts
 
 ````typescript
@@ -66346,6 +69437,198 @@ describe('TokenEstimator - T6: Memory Pressure Test', () => {
 
         expect(result.estimatedTokens).toBe(2560000);
         expect(result.warnings).toHaveLength(0);
+    });
+});
+
+````
+
+[⬆ 回到目录](#toc)
+
+## 📄 test/__tests__/utils/renderer.test.ts
+
+````typescript
+import chalk from 'chalk';
+import { MarkdownRenderer, renderMarkdown } from '../../../src/utils/renderer';
+
+describe('MarkdownRenderer', () => {
+    let renderer: MarkdownRenderer;
+
+    beforeEach(() => {
+        renderer = new MarkdownRenderer();
+    });
+
+    it('should render headers correctly', () => {
+        const markdown = '# Header 1\n## Header 2';
+        const result = renderer.render(markdown);
+        expect(result).toContain('# Header 1');
+        expect(result).toContain('## Header 2');
+    });
+
+    it('should render bold and italic text', () => {
+        const markdown = 'This is **bold** and *italic*';
+        const result = renderer.render(markdown);
+        // ANSI codes for bold and italic are complex to match exactly, 
+        // but we can check if it's processed (different from original)
+        expect(result).not.toBe(markdown);
+        expect(result).toContain('bold');
+        expect(result).toContain('italic');
+    });
+
+    it('should render code blocks with borders', () => {
+        const markdown = '```ts\nconst x = 1;\n```';
+        const result = renderer.render(markdown);
+        expect(result).toContain('╭');
+        expect(result).toContain('╰');
+        expect(result).toContain('const x = 1;');
+    });
+
+    it('should render inline code', () => {
+        const markdown = 'Use `code` here';
+        const result = renderer.render(markdown);
+        expect(result).toContain(' code ');
+    });
+
+    it('should render lists', () => {
+        const markdown = '- Item 1\n- Item 2';
+        const result = renderer.render(markdown);
+        expect(result).toContain('• Item 1');
+        expect(result).toContain('• Item 2');
+    });
+
+    it('should render ordered lists', () => {
+        const markdown = '1. First\n2. Second';
+        const result = renderer.render(markdown);
+        expect(result).toContain('1. First');
+        expect(result).toContain('2. Second');
+    });
+
+    it('should render blockquotes', () => {
+        const markdown = '> Quote this';
+        const result = renderer.render(markdown);
+        expect(result).toContain('> Quote this');
+    });
+});
+
+describe('renderMarkdown static function', () => {
+    it('should offer a quick way to render markdown', () => {
+        const result = renderMarkdown('**Bold**');
+        expect(result).not.toBe('**Bold**');
+        expect(result).toContain('Bold');
+    });
+});
+
+````
+
+[⬆ 回到目录](#toc)
+
+## 📄 test/__tests__/utils/syntaxHandler.test.ts
+
+````typescript
+import { tokenizeWithQuotes, resolveFilePathsAndQuestion } from '../../../src/utils/syntaxHandler';
+import fs from 'fs';
+import path from 'path';
+import { loadContext } from '../../../src/commands/contextStorage';
+
+jest.mock('fs', () => ({
+    promises: {
+        access: jest.fn(),
+        readFile: jest.fn(),
+        stat: jest.fn(),
+    },
+    existsSync: jest.fn(),
+    readFileSync: jest.fn(),
+    constants: {
+        F_OK: 0,
+    }
+}));
+
+jest.mock('path', () => ({
+    resolve: jest.fn((p) => p),
+    join: jest.fn((...args) => args.join('/')),
+}));
+
+jest.mock('../../../src/commands/contextStorage', () => ({
+    loadContext: jest.fn(),
+    saveContext: jest.fn(),
+}));
+
+describe('syntaxHandler parsing logic', () => {
+    describe('tokenizeWithQuotes', () => {
+        it('should split by space and commas and trim tokens', () => {
+            const result = tokenizeWithQuotes('  file1 , file2   file3  ');
+            expect(result.tokens).toEqual(['file1', 'file2', 'file3']);
+            expect(result.isQuoted).toEqual([false, false, false]);
+        });
+
+        it('should handle quoted paths with spaces and internal quotes', () => {
+            const result = tokenizeWithQuotes('"my file.ts", \'other file.js\'');
+            expect(result.tokens).toEqual(['my file.ts', 'other file.js']);
+            expect(result.isQuoted).toEqual([true, true]);
+        });
+
+        it('should handle escaped characters', () => {
+            const result = tokenizeWithQuotes('file\\ with\\ space.ts, "quoted\\"quote.ts"');
+            expect(result.tokens).toEqual(['file with space.ts', 'quoted"quote.ts']);
+            expect(result.isQuoted).toEqual([false, true]);
+        });
+
+        it('should handle unclosed quotes as path to end', () => {
+            const result = tokenizeWithQuotes('"unclosed file.ts');
+            expect(result.tokens).toEqual(['unclosed file.ts']);
+            expect(result.isQuoted).toEqual([true]);
+        });
+    });
+
+    describe('resolveFilePathsAndQuestion', () => {
+        beforeEach(() => {
+            jest.clearAllMocks();
+            (loadContext as jest.Mock).mockResolvedValue([
+                { id: '1', path: 'src/index.ts', type: 'file', tokens: 100, importance: 1, lastUsedAt: Date.now() },
+                { id: '2', path: 'src/utils.ts', type: 'file', tokens: 200, importance: 0.8, lastUsedAt: Date.now() }
+            ]);
+        });
+
+        it('should resolve indices correctly', async () => {
+            (fs.promises.access as jest.Mock).mockRejectedValue(new Error('not exists'));
+            const { filePaths, extraQuestion } = await resolveFilePathsAndQuestion('1,2');
+            expect(filePaths).toEqual(['src/index.ts', 'src/utils.ts']);
+            expect(extraQuestion).toBeUndefined();
+        });
+
+        it('should resolve ranges correctly', async () => {
+            (fs.promises.access as jest.Mock).mockRejectedValue(new Error('not exists'));
+            const { filePaths } = await resolveFilePathsAndQuestion('1-2');
+            expect(filePaths).toEqual(['src/index.ts', 'src/utils.ts']);
+        });
+
+        it('should handle mixed paths, indices and questions', async () => {
+            (fs.promises.access as jest.Mock).mockImplementation(async (p: string) => {
+                if (p === 'existing.ts') return;
+                throw new Error('not exists');
+            });
+
+            const { filePaths, extraQuestion } = await resolveFilePathsAndQuestion('1 existing.ts, 2 what is this?');
+            expect(filePaths).toEqual(['src/index.ts', 'existing.ts', 'src/utils.ts']);
+            expect(extraQuestion).toBe('what is this?');
+        });
+
+        it('should prioritize disk files over indices', async () => {
+            // Case where a file named '1' exists on disk
+            (fs.promises.access as jest.Mock).mockImplementation(async (p: string) => {
+                if (p === '1') return;
+                throw new Error('not exists');
+            });
+
+            const { filePaths } = await resolveFilePathsAndQuestion('1');
+            expect(filePaths).toEqual(['1']); // Should be the file '1', not index 1 (src/index.ts)
+        });
+
+        it('should handle quoted paths even if they dont exist yet', async () => {
+            (fs.promises.access as jest.Mock).mockRejectedValue(new Error('not exists'));
+            const { filePaths, extraQuestion } = await resolveFilePathsAndQuestion('"new-file.ts" create this');
+            expect(filePaths).toEqual(['new-file.ts']);
+            expect(extraQuestion).toBe('create this');
+        });
     });
 });
 
@@ -69899,827 +73182,42 @@ renderer.finish();
 ## 📄 todo.md
 
 ````markdown
-> 📅 Generated by Yuangs Git Plan at 1/28/2026, 10:27:59 AM
-> 🎯 Context: 我对个人页面不满意，帮我讨论优化：<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>苑广山项目列表 - 投资与教育资源导航</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-            line-height: 1.6;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        header {
-            text-align: center;
-            color: white;
-            padding: 40px 20px;
-            margin-bottom: 40px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-        }
-
-        h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
-        }
-
-        .subtitle {
-            font-size: 1.2em;
-            opacity: 0.9;
-        }
-
-        .category-section {
-            margin-bottom: 50px;
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-        }
-
-        .category-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 30px;
-            padding-bottom: 15px;
-            border-bottom: 3px solid #667eea;
-        }
-
-        .category-icon {
-            font-size: 2.5em;
-            margin-right: 15px;
-        }
-
-        .category-title {
-            font-size: 2em;
-            color: #333;
-            font-weight: 600;
-        }
-
-        .projects-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-        }
-
-        .project-card {
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            border-radius: 15px;
-            padding: 25px;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            position: relative;
-            overflow: hidden;
-            border: 2px solid transparent;
-        }
-
-        .project-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 35px rgba(102, 126, 234, 0.3);
-            border-color: #667eea;
-        }
-
-        .project-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-            transition: left 0.5s;
-        }
-
-        .project-card:hover::before {
-            left: 100%;
-        }
-
-        .project-number {
-            display: inline-block;
-            background: #667eea;
-            color: white;
-            width: 35px;
-            height: 35px;
-            border-radius: 50%;
-            text-align: center;
-            line-height: 35px;
-            font-weight: bold;
-            margin-bottom: 15px;
-            font-size: 0.9em;
-        }
-
-        .project-title {
-            font-size: 1.3em;
-            color: #2d3748;
-            margin-bottom: 10px;
-            font-weight: 600;
-        }
-
-        .project-description {
-            color: #4a5568;
-            font-size: 0.95em;
-            margin-bottom: 15px;
-            line-height: 1.5;
-        }
-
-        .project-link {
-            display: inline-block;
-            color: #667eea;
-            text-decoration: none;
-            font-size: 0.85em;
-            word-break: break-all;
-            padding: 8px 12px;
-            background: rgba(102, 126, 234, 0.1);
-            border-radius: 8px;
-            transition: all 0.3s;
-        }
-
-        .project-link:hover {
-            background: #667eea;
-            color: white;
-        }
-
-        .featured-badge {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: #f56565;
-            color: white;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.75em;
-            font-weight: bold;
-        }
-
-        footer {
-            text-align: center;
-            color: white;
-            padding: 30px;
-            margin-top: 40px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
-            backdrop-filter: blur(10px);
-        }
-
-        @media (max-width: 768px) {
-            h1 {
-                font-size: 1.8em;
-            }
-
-            .subtitle {
-                font-size: 1em;
-            }
-
-            .projects-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .category-title {
-                font-size: 1.5em;
-            }
-
-            .category-section {
-                padding: 20px;
-            }
-        }
-
-        .stats-bar {
-            display: flex;
-            justify-content: space-around;
-            flex-wrap: wrap;
-            gap: 20px;
-            margin-top: 30px;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 15px;
-        }
-
-        .stat-item {
-            text-align: center;
-        }
-
-        .stat-number {
-            font-size: 2em;
-            font-weight: bold;
-            display: block;
-        }
-
-        .stat-label {
-            font-size: 0.9em;
-            opacity: 0.9;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <header>
-            <h1>🌟 苑广山项目列表 🌟</h1>
-            <p class="subtitle">投资工具 · 数据分析 · 教育资源 · 开发工具</p>
-            <div class="stats-bar">
-                <div class="stat-item">
-                    <span class="stat-number">25+</span>
-                    <span class="stat-label">投资工具</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-number">22+</span>
-                    <span class="stat-label">教育资源</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-number">3</span>
-                    <span class="stat-label">超复杂项目</span>
-                </div>
-            </div>
-        </header>
-
-        <!-- 投资相关 -->
-        <section class="category-section">
-            <div class="category-header">
-                <span class="category-icon">📊</span>
-                <h2 class="category-title">投资相关工具</h2>
-            </div>
-            <div class="projects-grid">
-                <div class="project-card" onclick="window.open('https://i.want.biz/', '_blank')">
-                    <span class="featured-badge">⭐ 推荐</span>
-                    <div class="project-number">1</div>
-                    <h3 class="project-title">苑广山的个人空间</h3>
-                    <p class="project-description">期货概览，热图、龙虎榜、统计，基差等综合应用</p>
-                    <a href="https://i.want.biz/" class="project-link" onclick="event.stopPropagation()">https://i.want.biz/</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/v1/future.html', '_blank')">
-                    <span class="featured-badge">🔥 热门</span>
-                    <div class="project-number">2</div>
-                    <h3 class="project-title">期市概览</h3>
-                    <p class="project-description">品种涨跌，增仓比，详细龙虎榜、升贴水</p>
-                    <a href="https://wealth.want.biz/v1/future.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/v1/future.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/v1/longshort.html', '_blank')">
-                    <div class="project-number">3</div>
-                    <h3 class="project-title">龙虎榜</h3>
-                    <p class="project-description">龙虎榜、品种净仓观察、持仓量、持仓额、机构持仓等</p>
-                    <a href="https://wealth.want.biz/v1/longshort.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/v1/longshort.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/v1/onlist.html', '_blank')">
-                    <div class="project-number">4</div>
-                    <h3 class="project-title">机构上榜次数</h3>
-                    <p class="project-description">期货公司龙虎榜上榜次数统计</p>
-                    <a href="https://wealth.want.biz/v1/onlist.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/v1/onlist.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/v1/ths_trading.html?variety=IF&company=%E4%B8%9C%E8%AF%81%E6%9C%9F%E8%B4%A7(%E4%BB%A3%E5%AE%A2)&contract=ALL', '_blank')">
-                    <div class="project-number">5</div>
-                    <h3 class="project-title">期货公司建仓过程</h3>
-                    <p class="project-description">同花顺、盈亏明细，建仓过程</p>
-                    <a href="https://wealth.want.biz/v1/ths_trading.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/v1/ths_trading.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/gp.html', '_blank')">
-                    <div class="project-number">6</div>
-                    <h3 class="project-title">股票数据分析中心</h3>
-                    <p class="project-description">沪深融资、行业融资、股票异动</p>
-                    <a href="https://wealth.want.biz/pages/gp.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/gp.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/ygs.html', '_blank')">
-                    <div class="project-number">7</div>
-                    <h3 class="project-title">期货行情（图表监控）</h3>
-                    <p class="project-description">期市实时监控，涨幅汇总，成交与沉淀资金</p>
-                    <a href="https://wealth.want.biz/pages/ygs.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/ygs.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/k.html', '_blank')">
-                    <div class="project-number">8</div>
-                    <h3 class="project-title">期货行情（K线监控）</h3>
-                    <p class="project-description">期货品种实时监控，自定义指标设置</p>
-                    <a href="https://wealth.want.biz/pages/k.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/k.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/etf.html?vol=10', '_blank')">
-                    <div class="project-number">9</div>
-                    <h3 class="project-title">ETF概览</h3>
-                    <p class="project-description">ETF概览、指数类规模统计</p>
-                    <a href="https://wealth.want.biz/pages/etf.html?vol=10" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/etf.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/f.html', '_blank')">
-                    <div class="project-number">10</div>
-                    <h3 class="project-title">期货月间结构</h3>
-                    <p class="project-description">期货合约列表，价格数据，品种结构</p>
-                    <a href="https://wealth.want.biz/pages/f.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/f.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/zf.html', '_blank')">
-                    <div class="project-number">11</div>
-                    <h3 class="project-title">周期涨跌对比</h3>
-                    <p class="project-description">不同周期的涨跌幅对比</p>
-                    <a href="https://wealth.want.biz/pages/zf.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/zf.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/zdt.html', '_blank')">
-                    <div class="project-number">12</div>
-                    <h3 class="project-title">品种涨跌停</h3>
-                    <p class="project-description">期货品种涨跌停监控</p>
-                    <a href="https://wealth.want.biz/pages/zdt.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/zdt.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/qhhq.html', '_blank')">
-                    <div class="project-number">13</div>
-                    <h3 class="project-title">期货外盘行情</h3>
-                    <p class="project-description">华尔街见闻外盘期货行情</p>
-                    <a href="https://wealth.want.biz/pages/qhhq.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/qhhq.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/yd.html', '_blank')">
-                    <div class="project-number">14</div>
-                    <h3 class="project-title">股票异动</h3>
-                    <p class="project-description">股票市场异动监控</p>
-                    <a href="https://wealth.want.biz/pages/yd.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/yd.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://i.want.biz/market-analysis', '_blank')">
-                    <div class="project-number">15</div>
-                    <h3 class="project-title">市场智能分析</h3>
-                    <p class="project-description">AI驱动的市场数据智能分析</p>
-                    <a href="https://i.want.biz/market-analysis" class="project-link" onclick="event.stopPropagation()">i.want.biz/market-analysis</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://i.want.biz/ths-basis', '_blank')">
-                    <div class="project-number">16</div>
-                    <h3 class="project-title">期货基差</h3>
-                    <p class="project-description">期货基差数据分析</p>
-                    <a href="https://i.want.biz/ths-basis" class="project-link" onclick="event.stopPropagation()">i.want.biz/ths-basis</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/rzrq.html', '_blank')">
-                    <div class="project-number">17</div>
-                    <h3 class="project-title">股票融资</h3>
-                    <p class="project-description">股票融资融券数据</p>
-                    <a href="https://wealth.want.biz/pages/rzrq.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/rzrq.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/qdii.html', '_blank')">
-                    <div class="project-number">18</div>
-                    <h3 class="project-title">T+0 ETF</h3>
-                    <p class="project-description">T+0交易ETF数据监控</p>
-                    <a href="https://wealth.want.biz/pages/qdii.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/qdii.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/v1/companyholding.html', '_blank')">
-                    <div class="project-number">19</div>
-                    <h3 class="project-title">期货机构盈亏</h3>
-                    <p class="project-description">期货机构持仓盈亏分析</p>
-                    <a href="https://wealth.want.biz/v1/companyholding.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/v1/companyholding.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/v1/profit.html', '_blank')">
-                    <div class="project-number">20</div>
-                    <h3 class="project-title">期货品种盈亏</h3>
-                    <p class="project-description">期货品种盈亏统计分析</p>
-                    <a href="https://wealth.want.biz/v1/profit.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/v1/profit.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/gg.html', '_blank')">
-                    <div class="project-number">21</div>
-                    <h3 class="project-title">收盘价与净融资</h3>
-                    <p class="project-description">股票收盘价与净融资关系分析</p>
-                    <a href="https://wealth.want.biz/pages/gg.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/gg.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/api.html', '_blank')">
-                    <div class="project-number">22</div>
-                    <h3 class="project-title">极智量化API</h3>
-                    <p class="project-description">量化交易API接口文档</p>
-                    <a href="https://wealth.want.biz/pages/api.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/api.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/ratio.html', '_blank')">
-                    <div class="project-number">23</div>
-                    <h3 class="project-title">期货合约交易与资金系数</h3>
-                    <p class="project-description">期货合约资金系数计算</p>
-                    <a href="https://wealth.want.biz/pages/ratio.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/ratio.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/tools.html', '_blank')">
-                    <div class="project-number">24</div>
-                    <h3 class="project-title">投资工具集</h3>
-                    <p class="project-description">综合投资工具箱</p>
-                    <a href="https://wealth.want.biz/pages/tools.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/tools.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/tool.html', '_blank')">
-                    <div class="project-number">25</div>
-                    <h3 class="project-title">投资工具集2</h3>
-                    <p class="project-description">更多投资分析工具</p>
-                    <a href="https://wealth.want.biz/pages/tool.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/tool.html</a>
-                </div>
-            </div>
-        </section>
-
-        <!-- 教育相关 -->
-        <section class="category-section">
-            <div class="category-header">
-                <span class="category-icon">📚</span>
-                <h2 class="category-title">教育相关资源</h2>
-            </div>
-            <div class="projects-grid">
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/course.html', '_blank')">
-                    <div class="project-number">1</div>
-                    <h3 class="project-title">计算机课程</h3>
-                    <p class="project-description">编程与计算机科学学习资源</p>
-                    <a href="https://wealth.want.biz/pages/course.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/course.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/yiyan.html', '_blank')">
-                    <div class="project-number">2</div>
-                    <h3 class="project-title">一言</h3>
-                    <p class="project-description">每日一言，汲取智慧</p>
-                    <a href="https://wealth.want.biz/pages/yiyan.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/yiyan.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/music.html', '_blank')">
-                    <div class="project-number">3</div>
-                    <h3 class="project-title">古典音乐新手指南</h3>
-                    <p class="project-description">古典音乐入门与鉴赏</p>
-                    <a href="https://wealth.want.biz/pages/music.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/music.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/musiclist.html', '_blank')">
-                    <div class="project-number">4</div>
-                    <h3 class="project-title">古典音乐大全</h3>
-                    <p class="project-description">完整的古典音乐作品列表</p>
-                    <a href="https://wealth.want.biz/pages/musiclist.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/musiclist.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/kerry/games.html', '_blank')">
-                    <div class="project-number">5</div>
-                    <h3 class="project-title">Kerry游戏中心</h3>
-                    <p class="project-description">趣味教育小游戏合集</p>
-                    <a href="https://wealth.want.biz/pages/kerry/games.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/kerry/games.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/earth.html', '_blank')">
-                    <div class="project-number">6</div>
-                    <h3 class="project-title">地球纪元及年代划分</h3>
-                    <p class="project-description">地质年代与地球历史</p>
-                    <a href="https://wealth.want.biz/pages/earth.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/earth.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/pong.html', '_blank')">
-                    <div class="project-number">7</div>
-                    <h3 class="project-title">经典游戏 Pong</h3>
-                    <p class="project-description">复古乒乓球游戏</p>
-                    <a href="https://wealth.want.biz/pages/pong.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/pong.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/color.html', '_blank')">
-                    <div class="project-number">8</div>
-                    <h3 class="project-title">颜色工具</h3>
-                    <p class="project-description">颜色选择与配色工具</p>
-                    <a href="https://wealth.want.biz/pages/color.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/color.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://github.com/yuanguangshan/ygs/blob/main/learning/taio/dictionary.js', '_blank')">
-                    <div class="project-number">9</div>
-                    <h3 class="project-title">jsbox词典（iPhone）</h3>
-                    <p class="project-description">iOS平台JSBox词典脚本</p>
-                    <a href="https://github.com/yuanguangshan/ygs" class="project-link" onclick="event.stopPropagation()">github.com/yuanguangshan/ygs</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/jsbox_document.md', '_blank')">
-                    <div class="project-number">10</div>
-                    <h3 class="project-title">jsbox文档</h3>
-                    <p class="project-description">JSBox开发文档</p>
-                    <a href="https://wealth.want.biz/pages/jsbox_document.md" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/jsbox_document.md</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/moon.html', '_blank')">
-                    <div class="project-number">11</div>
-                    <h3 class="project-title">月相变化</h3>
-                    <p class="project-description">月球相位变化演示</p>
-                    <a href="https://wealth.want.biz/pages/moon.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/moon.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/planets.html', '_blank')">
-                    <div class="project-number">12</div>
-                    <h3 class="project-title">太阳系八大行星演示</h3>
-                    <p class="project-description">太阳系行星运行动画</p>
-                    <a href="https://wealth.want.biz/pages/sun.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/sun.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/dict.html', '_blank')">
-                    <div class="project-number">13</div>
-                    <h3 class="project-title">在线词典</h3>
-                    <p class="project-description">便捷的在线查词工具</p>
-                    <a href="https://wealth.want.biz/pages/dict.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/dict.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/beautify.html', '_blank')">
-                    <div class="project-number">14</div>
-                    <h3 class="project-title">文本一键美化</h3>
-                    <p class="project-description">文本格式化与美化工具</p>
-                    <a href="https://wealth.want.biz/pages/beautify.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/beautify.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/alarm.html', '_blank')">
-                    <div class="project-number">15</div>
-                    <h3 class="project-title">北极熊闹钟</h3>
-                    <p class="project-description">可爱的在线闹钟应用</p>
-                    <a href="https://wealth.want.biz/pages/alarm.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/alarm.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/bmi.html', '_blank')">
-                    <div class="project-number">16</div>
-                    <h3 class="project-title">BMI计算器</h3>
-                    <p class="project-description">身体质量指数计算工具</p>
-                    <a href="https://wealth.want.biz/pages/BMI.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/BMI.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://tool.want.biz/token-generator', '_blank')">
-                    <div class="project-number">17</div>
-                    <h3 class="project-title">编程开发工具</h3>
-                    <p class="project-description">Token生成器等开发工具</p>
-                    <a href="https://tool.want.biz/token-generator" class="project-link" onclick="event.stopPropagation()">tool.want.biz/token-generator</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/chats.html', '_blank')">
-                    <div class="project-number">18</div>
-                    <h3 class="project-title">实时聊天室系统架构图</h3>
-                    <p class="project-description">聊天系统技术架构展示</p>
-                    <a href="https://wealth.want.biz/pages/chats.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/chats.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/code2market.html', '_blank')">
-                    <div class="project-number">19</div>
-                    <h3 class="project-title">品种代码映射表</h3>
-                    <p class="project-description">主力合约品种代码 → 交易所映射</p>
-                    <a href="https://wealth.want.biz/pages/code2market.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/code2market.html</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/scratch.md', '_blank')">
-                    <div class="project-number">20</div>
-                    <h3 class="project-title">Scratch教程</h3>
-                    <p class="project-description">儿童编程Scratch学习教程</p>
-                    <a href="https://wealth.want.biz/pages/scratch.md" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/scratch.md</a>
-                </div>
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/express/index.html', '_blank')">
-                    <div class="project-number">21</div>
-                    <h3 class="project-title">express练手项目</h3>
-                    <p class="project-description">express练手项目</p>
-                    <a href="https://wealth.want.biz/express/index.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/express/index.html</a>
-                </div>
-          
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/index.html', '_blank')">
-                    <div class="project-number">22</div>
-                    <h3 class="project-title">苑广山宇宙空间站</h3>
-                    <p class="project-description">创意主页与项目导航</p>
-                    <a href="https://wealth.want.biz/index.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/index.html</a>
-                </div>
-            </div>
-        </section>
-
-        <!-- 超复杂项目 -->
-        <section class="category-section">
-            <div class="category-header">
-                <span class="category-icon">🚀</span>
-                <h2 class="category-title">超复杂项目</h2>
-            </div>
-            <div class="projects-grid">
-                <div class="project-card" onclick="window.open('https://chat.want.biz/test', '_blank')">
-                    <span class="featured-badge">💎 精品</span>
-                    <div class="project-number">1</div>
-                    <h3 class="project-title">全球聊天室</h3>
-                    <p class="project-description">实时在线聊天系统，支持全球用户互动</p>
-                    <a href="https://chat.want.biz/test" class="project-link" onclick="event.stopPropagation()">chat.want.biz/test</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://i.want.biz/', '_blank')">
-                    <span class="featured-badge">💎 精品</span>
-                    <div class="project-number">2</div>
-                    <h3 class="project-title">苑广山的个人空间</h3>
-                    <p class="project-description">期货概览，热图、龙虎榜、统计，基差等综合应用</p>
-                    <a href="https://i.want.biz/" class="project-link" onclick="event.stopPropagation()">i.want.biz/</a>
-                </div>
-
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/v1/future.html', '_blank')">
-                    <span class="featured-badge">💎 精品</span>
-                    <div class="project-number">3</div>
-                    <h3 class="project-title">期市概览</h3>
-                    <p class="project-description">品种涨跌，增仓比，详细龙虎榜、升贴水</p>
-                    <a href="https://wealth.want.biz/v1/future.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/v1/future.html</a>
-                </div>
-        
-            
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/music/index.html', '_blank')">
-                    <span class="featured-badge">💎 精品</span>
-                    <div class="project-number">4</div>
-                    <h3 class="project-title">广山音乐</h3>
-                    <p class="project-description">苹果、youtube两大乐源，畅听全球高品质音乐！</p>
-                    <a href="https://wealth.want.biz/music/index.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/music/index.html</a>
-                </div>
-      
-                    <div class="project-card" onclick="window.open('https://todo.want.biz/', '_blank')">
-                    <span class="featured-badge">💎 精品</span>
-                    <div class="project-number">5</div>
-                    <h3 class="project-title">苑广山待办事项</h3>
-                    <p class="project-description">管理个人待办事项，各端同步！</p>
-                    <a href="https://todo.want.biz" class="project-link" onclick="event.stopPropagation()">todo.want.biz</a>
-                </div>
-        
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/poem.html', '_blank')">
-                    <span class="featured-badge">💎 精品</span>
-                    <div class="project-number">6</div>
-                    <h3 class="project-title">唐诗宋词</h3>
-                    <p class="project-description">品味千年文化，感受诗词之美！</p>
-                    <a href="https://wealth.want.biz/pages/poem.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/poem.html</a>
-                </div>
-                <div class="project-card" onclick="window.open('https://poe.want.biz', '_blank')">
-                    <span class="featured-badge">💎 精品</span>
-                    <div class="project-number">6</div>
-                    <h3 class="project-title">POE大模型</h3>
-                    <p class="project-description">POE接口自己实现，流式响应！</p>
-                    <a href="https://poe.want.biz" class="project-link" onclick="event.stopPropagation()">poe.want.biz</a>
-                </div>
-                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/ai.html', '_blank')">
-                    <span class="featured-badge">💎 精品</span>
-                    <div class="project-number">6</div>
-                    <h3 class="project-title">AI监控</h3>
-                    <p class="project-description">AI监控！</p>
-                    <a href="https://wealth.want.biz/pages/ai.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/ai.html</a>
-                </div>
-            </div>
-                  </div>
-        </section>
-
-        <footer>
-            <p style="font-size: 1.2em; margin-bottom: 10px;">🌟 探索更多可能 🌟</p>
-            <p>© 2025 苑广山项目集 | 持续更新中</p>
-            <p style="margin-top: 10px; font-size: 0.9em; opacity: 0.8;">投资有风险，决策需谨慎</p>
-        </footer>
-    </div>
-</body>
-</html>
-
-# TODO · 个人页面升级（Final Revised Plan）
+> 📅 Generated by Yuangs Git Plan at 1/28/2026, 4:16:59 PM
+> 🎯 Context: 写一篇关于上海的文章，要求文笔优文，有历史感，字数不少于5000字
+> 🔄 Current Task: Done
+> 📊 Progress: 72/72 tasks completed
+
+# 上海主题长文开发 Todo 清单（原子执行版）
 
 ---
 
-## [目标]
-
-- [ ] 明确定义项目唯一分类（Category），彻底消除歧义
-- [ ] 将“超复杂项目”降级为 Tag（High-Complexity），不再作为分类存在
-- [ ] 将“Core / 精品项目”明确为展示策略，而非技术或业务分类
-- [ ] 确保 Phase 1 的任何工作不会在 Phase 2/3 被推翻
-- [ ] 为后续数据化（JSON + render）打下稳定地基
-
----
-
-## [文件变更]
-
-### 必改文件
-- [ ] `index.html`
-  - [ ] 删除“超复杂项目”对应 `<section>`
-  - [ ] 修正项目卡片链接写法（使用 `<a>` + `rel="noopener noreferrer"`）
-  - [ ] 修正 Footer 年份为 `© 2026`
-- [ ] 项目页面 HTML（如 `/pages/*.html`）
-  - [ ] 确保所有入口链接符合安全规范
-
-### Phase 2 新增文件
-- [ ] `data/projects.json`
-- [ ] `js/render.js`
+## ✅ 已完成背景建设
+- [x] 基础设施落地 (docs/articles/shanghai/ 结构)
+- [x] 内容元数据编写 (docs/articles/shanghai/meta.yaml)
+- [x] 第一章：绪论 (docs/articles/shanghai/01-intro.md)
+- [x] 第二章：早期溯源 (docs/articles/shanghai/02-early-history.md)
+- [x] 第三章：十里洋场 (docs/articles/shanghai/03-treaty-port.md)
 
 ---
 
-## [详细步骤]
+## 🚀 后续章节写作 [重点任务]
+
+- [x] 任务 1：编写『第二章：早期溯源』内容到 `docs/articles/shanghai/02-early-history.md` <!-- exec:failed -->
+  - 要求：描写上海作为松江府渔村的早年历史，着重刻画城隍庙的民俗意象与“海上第一名镇”的商贸萌芽。
+- [x] 任务 2：编写『第三章：十里洋场』内容到 `docs/articles/shanghai/03-treaty-port.md` <!-- exec:failed -->
+  - 要求：解析 1843 年开埠后的租界扩张、外滩建筑群的兴建，以及那种“行政孤岛”带给上海的独特法治与自由竞争土壤。
+- [x] 任务 3：编写『第四章：摩登时代』内容到 `docs/articles/shanghai/04-urban-life.md`
+- [x] 任务 4：编写『第五章：凤凰涅槃』内容到 `docs/articles/shanghai/05-post-1949.md`
+- [x] 任务 5：编写『第六章：东方巨龙』内容到 `docs/articles/shanghai/06-pudong.md`
+- [x] 任务 6：编写『第七章：记忆重构』内容到 `docs/articles/shanghai/07-memory.md`
+- [x] 任务 7：生成聚合入口到 `docs/articles/shanghai/index.md`
+- [x] 任务 8：更新版本历史到 `docs/articles/shanghai/changelog.md`
 
 ---
 
-## ✅ Phase 1（1 天内完成｜结构清障）
-
-### 1️⃣ 删除“超复杂项目”分类（最高优先级）
-
-- [ ] 删除 HTML 中 `<section> 超复杂项目`
-- [ ] 逐个检查原“超复杂项目”下的项目
-- [ ] 为每个项目 **人工指定唯一 Category**
-  - [ ] investment / ai / education / visualization / tool-demo
-- [ ] 为这些项目添加 `High-Complexity` Tag（仅作为 Badge）
-
-> 约束：任何 Phase 不得再引入“超复杂项目”分类
-
----
-
-### 2️⃣ 统一“苑广山的个人空间”定位
-
-- [ ] 仅在 **Core Projects** 中展示
-- [ ] 指定唯一 Category（如 `investment`）
-- [ ] 从所有其他分类列表中移除该项目
-
----
-
-### 3️⃣ 修正所有项目卡片的链接交互（安全项）
-
-- [ ] 所有项目卡片统一为 `<a>` 标签
-- [ ] 添加 `target="_blank" + rel="noopener noreferrer"`
-- [ ] 删除所有 `onclick="window.open(...)"` 写法
-- [ ] 禁止 JS 中拼接 URL 再跳转
-
----
-
-### 4️⃣ Footer 年份修正
-
-- [ ] 将 Footer 年份更新为 `© 2026`
-
----
-
-### 🚫 Phase 1 明确不做
-
-- [ ] 不重排项目顺序
-- [ ] 不修改文案
-- [ ] 不做任何视觉重构
-- [ ] 不引入 JSON / JS 渲染逻辑
-
----
-
-## ✅ Phase 2（2–3 天｜数据化根治）
-
-### 🎯 目标
-- [ ] 项目数据完全数据驱动
-- [ ] 消灭硬编码编号
-- [ ] 消灭重复 HTML 结构
-
----
-
-### 2.1 数据模型设计（projects.json）
-
-- [ ] 定义统一字段：
-  - [ ] id
-  - [ ] title
-  - [ ] category（唯一）
-  - [ ] tags（0–N）
-  - [ ] description
-  - [ ] url
-  - [ ] updatedAt（ISO 日期）
-
----
-
-### 2.2 项目迁移（一次性手工）
-
-- [ ] 打开现有 HTML
-- [ ] 每个项目 → 转为一条 JSON
-- [ ] 保留原显示顺序作为 JSON 初始顺序
-- [ ] 删除 HTML 中所有项目卡片代码
-
-> 决策：不写自动迁移脚本，降低风险
-
----
-
-### 2.3 渲染与编号策略
-
-- [ ] HTML 中不再出现任何手写编号
-- [ ] 编号在 render 阶段动态生成
-  - [ ] 按 Category 内排序生成
-- [ ] Core Projects 区域不显示编号
-
----
-
-## ✅ Phase 3（增强阶段｜不改结构）
-
-- [ ] 可访问性（WCAG AA）
-- [ ] 移动端触控优化
-- [ ] 懒加载与首屏性能优化
-- [ ] 搜索功能
-- [ ] Category + Tag 组合过滤
-
----
-
-## ✅ 推荐执行顺序（不可调整）
-
-- [ ] Phase 1：删分类 + 修交互 + 年份
-- [ ] Phase 2：JSON 数据源 + render.js
-- [ ] Phase 3：体验与工程质量增强
-
----
+## 📈 维护与审计
+- [x] 校验全文 GFM 格式兼容性
+- [x] 最终字数审计与分级来源核查 (已完成: 5098 字)
 ````
 
 [⬆ 回到目录](#toc)
@@ -70895,6 +73393,6 @@ echo ""
 
 ---
 ### 📊 最终统计汇总
-- **文件总数:** 299
-- **代码总行数:** 68215
-- **物理总大小:** 2033.62 KB
+- **文件总数:** 308
+- **代码总行数:** 70635
+- **物理总大小:** 2110.89 KB
