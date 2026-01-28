@@ -112,3 +112,143 @@ default:
 
 [↑ 返回顶部](#)
 
+
+---
+
+## 📋 Code Review - 2026/1/28 19:58:20
+
+**📊 评分:** 👍 87/100  
+**🔧 级别:** STANDARD  
+**🌿 分支:** `main`  
+**💾 提交:** `8d668e5`  
+**📂 范围:** 暂存区 (11 个文件)  
+
+### 📝 总体评价
+
+整体代码质量较高，本次变更体现了对 LLM 输出稳定性、能力建模以及 commit 审查场景的良好扩展设计。但在复杂度控制、错误处理一致性、类型安全和可测试性方面仍有改进空间。
+
+### ⚠️ 发现的问题 (7)
+
+#### 1. [WARNING] dist/commands/git/plan.js:174
+
+estimatedTotalLines 的估算策略包含硬编码魔数（50/100），缺乏集中管理与解释
+
+**💡 建议:** 将估算参数提取为常量或配置项，并在注释中明确估算依据
+
+<details>
+<summary>代码片段</summary>
+
+```
+estimatedTotalLines = allFiles.length * 50;
+```
+
+</details>
+
+#### 2. [WARNING] dist/commands/git/plan.js:168
+
+diff.files.staged 与 diff.files.unstaged 直接合并，可能导致重复文件计数
+
+**💡 建议:** 对文件列表进行去重处理，避免能力评估被放大
+
+<details>
+<summary>代码片段</summary>
+
+```
+const allFiles = [...diff.files.staged, ...diff.files.unstaged];
+```
+
+</details>
+
+#### 3. [INFO] dist/commands/git/plan.js:213
+
+cleanedContent 使用 IIFE 包裹逻辑，增加了阅读复杂度
+
+**💡 建议:** 考虑提取为独立的工具函数以提升可读性和复用性
+
+<details>
+<summary>代码片段</summary>
+
+```
+const cleanedContent = (() => { ... })();
+```
+
+</details>
+
+#### 4. [WARNING] dist/commands/git/review.js:46
+
+commit 审查路径与非 commit 路径逻辑分支较长，函数复杂度显著增加
+
+**💡 建议:** 将 commit 审查流程提取为独立函数以降低 registerReviewCommand 的认知负担
+
+<details>
+<summary>代码片段</summary>
+
+```
+if (options.commit) { ... return; }
+```
+
+</details>
+
+#### 5. [WARNING] dist/commands/git/review.js:9
+
+引入了 p-limit 但在当前 diff 中未看到实际使用
+
+**💡 建议:** 如果暂未使用，应移除该依赖；或在安全扫描/审查中明确使用以限制并发
+
+<details>
+<summary>代码片段</summary>
+
+```
+const p_limit_1 = __importDefault(require("p-limit"));
+```
+
+</details>
+
+#### 6. [INFO] dist/commands/git/review.js:88
+
+commit 审查模式下直接跳过安全扫描，存在策略假设
+
+**💡 建议:** 在注释或文档中明确该设计决策，或提供可选开关以增强灵活性
+
+<details>
+<summary>代码片段</summary>
+
+```
+// 跳过安全扫描（commit 已提交，不需要）
+```
+
+</details>
+
+#### 7. [WARNING] dist/commands/git/review.js:130
+
+catch 中通过 error.message.includes 判断错误类型较为脆弱
+
+**💡 建议:** 建议使用自定义错误类型或错误码进行判断
+
+<details>
+<summary>代码片段</summary>
+
+```
+if (error.message.includes('No changes found'))
+```
+
+</details>
+
+### 👍 优点
+
+- ✅ 对 LLM 输出清理逻辑进行了更安全、保守的改进，避免误删有效内容
+- ✅ 能力等级（Capability Level）与复杂度评估的引入增强了功能的可解释性
+- ✅ commit 审查模式的新增显著提升了工具的实用性和覆盖场景
+- ✅ 控制台输出结构清晰，用户体验友好，信息分层合理
+- ✅ 在 Markdown 元数据中补充能力与成本信息，设计前瞻性强
+
+### 💡 建议
+
+- 为 CostProfile 计算逻辑和 diff 行数估算增加单元测试，覆盖 0 变更、numstat 失败等边界情况
+- 将 LLM 输出清理、能力评估、commit 审查流程分别抽象为独立模块，降低命令函数复杂度
+- 统一错误处理策略，避免依赖字符串匹配判断错误类型
+- 补充对重复文件、空 diff、极大 diff 场景的防御性处理
+- 考虑为 commit 审查与普通审查增加集成测试，验证 CLI 行为和输出格式的稳定性
+
+[↑ 返回顶部](#)
+

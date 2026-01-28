@@ -9,6 +9,7 @@ const ora_1 = __importDefault(require("ora"));
 const fs_1 = __importDefault(require("fs"));
 const promises_1 = __importDefault(require("fs/promises"));
 const path_1 = __importDefault(require("path"));
+const p_limit_1 = __importDefault(require("p-limit"));
 const GitService_1 = require("../../core/git/GitService");
 const CodeReviewer_1 = require("../../core/git/CodeReviewer");
 const modelRouter_1 = require("../../core/modelRouter");
@@ -21,6 +22,7 @@ function registerReviewCommand(gitCmd) {
         .option('-l, --level <level>', '审查级别 (quick/standard/deep)', 'standard')
         .option('-f, --file <file>', '审查特定文件')
         .option('--unstaged', '审查未暂存的变更')
+        .option('-c, --commit <commit>', '审查指定的 commit (hash 或引用，如 HEAD~1)')
         .option('--no-ai', '禁用 AI (将显示变更摘要)')
         .option('--no-save', '不保存审查结果到 git_reviews.md')
         .option('--force', '忽略安全警告继续执行')
@@ -42,74 +44,99 @@ function registerReviewCommand(gitCmd) {
                 spinner.fail('当前目录不是 Git 仓库');
                 return;
             }
+            // 处理 commit 审查模式
+            if (options.commit) {
+                spinner.text = '获取 commit 信息...';
+                const commitInfo = await gitService.getCommitInfo(options.commit);
+                if (!commitInfo) {
+                    spinner.fail(`未找到 commit: ${options.commit}`);
+                    console.log(chalk_1.default.yellow('\n💡 提示：'));
+                    console.log('  • 使用完整的 commit hash');
+                    console.log('  • 或使用引用，如 HEAD~1, HEAD~2, etc.');
+                    return;
+                }
+                console.log(chalk_1.default.cyan(`\n📦 审查 Commit:`));
+                console.log(chalk_1.default.white(`  Hash: ${commitInfo.hash.substring(0, 7)}`));
+                console.log(chalk_1.default.white(`  Author: ${commitInfo.author}`));
+                console.log(chalk_1.default.white(`  Date: ${commitInfo.date}`));
+                console.log(chalk_1.default.white(`  Message: ${commitInfo.message}\n`));
+                // 跳过安全扫描（commit 已提交，不需要）
+                spinner.text = '执行代码审查...';
+                const router = (0, modelRouter_1.getRouter)();
+                const reviewer = new CodeReviewer_1.CodeReviewer(gitService, router);
+                const level = options.level;
+                try {
+                    const result = await reviewer.reviewCommit(options.commit, level);
+                    spinner.succeed('代码审查完成');
+                    console.log(chalk_1.default.bold.cyan('\n🔍 代码审查报告\n'));
+                    const scoreColor = getScoreColor(result.score);
+                    console.log(chalk_1.default.bold('评分: ') + scoreColor(result.score.toString()) + chalk_1.default.bold('/100'));
+                    console.log(chalk_1.default.gray(`审查文件: ${result.filesReviewed} 个`));
+                    console.log(chalk_1.default.gray(`置信度: ${(result.confidence * 100).toFixed(1)}%`));
+                    if (result.degradation?.applied) {
+                        console.log(chalk_1.default.yellow(`降级: ${result.degradation.originalLevel} → ${result.degradation.targetLevel}`));
+                        console.log(chalk_1.default.gray(`原因: ${result.degradation.reason}`));
+                    }
+                    console.log();
+                    console.log(chalk_1.default.bold('📋 总体评价:'));
+                    console.log(chalk_1.default.white(`  ${result.summary}\n`));
+                    if (result.issues.length > 0) {
+                        console.log(chalk_1.default.bold.red(`⚠️  发现 ${result.issues.length} 个问题:\n`));
+                        for (const issue of result.issues) {
+                            const icon = getSeverityIcon(issue.severity);
+                            const color = getSeverityColor(issue.severity);
+                            console.log(color(`  ${icon} [${issue.severity.toUpperCase()}] ${issue.file}${issue.line ? `:${issue.line}` : ''}`));
+                            console.log(color(`     ${issue.message}`));
+                            if (issue.suggestion) {
+                                console.log(chalk_1.default.gray(`     💡 ${issue.suggestion}`));
+                            }
+                            console.log();
+                        }
+                    }
+                    else {
+                        console.log(chalk_1.default.green('✅ 未发现明显问题\n'));
+                    }
+                    if (result.strengths.length > 0) {
+                        console.log(chalk_1.default.bold.green('👍 优点:\n'));
+                        for (const strength of result.strengths) {
+                            console.log(chalk_1.default.green(`  ✓ ${strength}`));
+                        }
+                        console.log();
+                    }
+                    if (result.recommendations.length > 0) {
+                        console.log(chalk_1.default.bold.yellow('💡 建议:\n'));
+                        for (const rec of result.recommendations) {
+                            console.log(chalk_1.default.yellow(`  • ${rec}`));
+                        }
+                        console.log();
+                    }
+                    // 保存审查结果
+                    if (options.save !== false) {
+                        await saveCommitReviewToFile(result, level, options, gitService, commitInfo);
+                    }
+                }
+                catch (error) {
+                    if (error.message.includes('No changes found')) {
+                        spinner.fail('该 commit 没有代码变更');
+                    }
+                    else {
+                        throw error;
+                    }
+                }
+                return;
+            }
             const securityScanner = new SecurityScanner_1.SecurityScanner();
             const diff = await gitService.getDiff();
             const files = options.unstaged ? diff.files.unstaged : diff.files.staged;
             // 安全扫描（如果未禁用）
             if (options.security !== false) {
                 spinner.text = '执行安全扫描...';
-                const repoRoot = await gitService.getRepoRoot();
-                const filesToScan = new Map();
-                // 限制扫描文件数量，避免性能问题
-                const MAX_SCAN_FILES = 50;
-                const filesToProcess = files.slice(0, MAX_SCAN_FILES);
-                if (files.length > MAX_SCAN_FILES) {
-                    console.log(chalk_1.default.yellow(`\nℹ️  文件数量过多，仅扫描前 ${MAX_SCAN_FILES} 个文件\n`));
+                const scanResult = await performSecurityScan(gitService, securityScanner, files, options);
+                if (scanResult.hasIssues && !scanResult.shouldContinue) {
+                    spinner.stop();
+                    return;
                 }
-                // 异步扫描文件
-                const scanPromises = filesToProcess.map(async (file) => {
-                    const filePath = path_1.default.join(repoRoot, file);
-                    try {
-                        const stats = await promises_1.default.stat(filePath);
-                        if (!stats.isFile())
-                            return null;
-                        // 限制文件大小，避免扫描大文件
-                        const MAX_FILE_SIZE = 1024 * 1024; // 1MB
-                        if (stats.size > MAX_FILE_SIZE) {
-                            console.log(chalk_1.default.yellow(`⚠️  跳过大文件: ${file} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`));
-                            return null;
-                        }
-                        const content = await promises_1.default.readFile(filePath, 'utf8');
-                        const scanResult = securityScanner.scanAndRedact(content, file);
-                        if (scanResult.issues.length > 0) {
-                            return { file, issues: scanResult.issues };
-                        }
-                        return null;
-                    }
-                    catch (error) {
-                        console.warn(chalk_1.default.yellow(`Warning: 无法读取文件 ${file}: ${error.message}`));
-                        return null;
-                    }
-                });
-                const results = await Promise.all(scanPromises);
-                for (const result of results) {
-                    if (result && result.issues.length > 0) {
-                        filesToScan.set(result.file, '');
-                        spinner.warn(`发现 ${result.issues.length} 个安全问题在 ${result.file}`);
-                        for (const issue of result.issues) {
-                            console.log(chalk_1.default.red(`  ${issue.type}: ${issue.description} (line ${issue.line})`));
-                        }
-                    }
-                }
-                if (filesToScan.size > 0) {
-                    spinner.warn('安全扫描发现敏感信息');
-                    console.log(chalk_1.default.yellow('\n⚠️  警告：检测到可能的敏感信息！'));
-                    console.log(chalk_1.default.yellow('建议：'));
-                    console.log(chalk_1.default.yellow('  • 移除硬编码的密钥、密码、令牌等敏感信息'));
-                    console.log(chalk_1.default.yellow('  • 使用环境变量或配置文件管理敏感数据'));
-                    console.log(chalk_1.default.yellow('  • 考虑添加到 .gitignore 中\n'));
-                    // 检查是否强制继续
-                    const shouldContinue = options.force || process.env.YUANGS_AUTO_CONTINUE === 'true';
-                    if (!shouldContinue) {
-                        console.log(chalk_1.default.cyan('💡 使用 --force 选项可跳过此警告继续执行'));
-                        console.log(chalk_1.default.cyan('💡 或设置环境变量 YUANGS_AUTO_CONTINUE=true\n'));
-                        spinner.stop();
-                        return;
-                    }
-                    else {
-                        console.log(chalk_1.default.yellow('⚠️  已强制继续，请注意安全风险\n'));
-                    }
-                }
+                spinner.succeed('安全扫描完成');
             }
             spinner.text = '加载 AI 模型配置...';
             const router = (0, modelRouter_1.getRouter)();
@@ -281,9 +308,18 @@ function formatReviewAsMarkdown(review) {
     // 元数据
     md += `**📊 评分:** ${scoreEmoji} ${review.score}/100  \n`;
     md += `**🔧 级别:** ${review.level.toUpperCase()}  \n`;
-    md += `**🌿 分支:** \`${review.branch}\`  \n`;
-    md += `**💾 提交:** \`${review.commit}\`  \n`;
-    md += `**📂 范围:** ${review.staged ? '暂存区' : '未暂存'} (${review.files})  \n\n`;
+    if (review.branch) {
+        md += `**🌿 分支:** \`${review.branch}\`  \n`;
+    }
+    if (review.commit) {
+        md += `**💾 提交:** \`${review.commit}\`  \n`;
+    }
+    if (review.staged !== undefined) {
+        md += `**📂 范围:** ${review.staged ? '暂存区' : '未暂存'} (${review.files})  \n\n`;
+    }
+    else {
+        md += `**📂 范围:** ${review.files}  \n\n`;
+    }
     // 总体评价
     md += `### 📝 总体评价\n\n${review.summary}\n\n`;
     // 问题列表
@@ -329,5 +365,113 @@ function formatReviewAsMarkdown(review) {
     // 添加一个跳转链接
     md += `[↑ 返回顶部](#)\n\n`;
     return md;
+}
+/**
+ * 执行安全扫描
+ */
+async function performSecurityScan(gitService, securityScanner, files, options) {
+    const repoRoot = await gitService.getRepoRoot();
+    const filesToScan = new Map();
+    // 限制扫描文件数量和并发数，避免性能问题
+    const MAX_SCAN_FILES = 50;
+    const MAX_CONCURRENT = 5; // 限制并发数
+    const limit = (0, p_limit_1.default)(MAX_CONCURRENT);
+    const filesToProcess = files.slice(0, MAX_SCAN_FILES);
+    if (files.length > MAX_SCAN_FILES) {
+        console.log(chalk_1.default.yellow(`\nℹ️  文件数量过多，仅扫描前 ${MAX_SCAN_FILES} 个文件\n`));
+    }
+    // 使用并发限制异步扫描文件
+    const scanPromises = filesToProcess.map(file => limit(async () => {
+        const filePath = path_1.default.join(repoRoot, file);
+        try {
+            const stats = await promises_1.default.stat(filePath);
+            if (!stats.isFile())
+                return null;
+            // 限制文件大小，避免扫描大文件
+            const MAX_FILE_SIZE = 1024 * 1024; // 1MB
+            if (stats.size > MAX_FILE_SIZE) {
+                console.log(chalk_1.default.yellow(`⚠️  跳过大文件: ${file} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`));
+                return null;
+            }
+            const content = await promises_1.default.readFile(filePath, 'utf8');
+            const scanResult = securityScanner.scanAndRedact(content, file);
+            if (scanResult.issues.length > 0) {
+                return { file, issues: scanResult.issues };
+            }
+            return null;
+        }
+        catch (error) {
+            console.warn(chalk_1.default.yellow(`Warning: 无法读取文件 ${file}: ${error.message}`));
+            return null;
+        }
+    }));
+    const results = await Promise.all(scanPromises);
+    for (const result of results) {
+        if (result && result.issues.length > 0) {
+            filesToScan.set(result.file, '');
+            console.log(chalk_1.default.yellow(`⚠️  发现 ${result.issues.length} 个安全问题在 ${result.file}`));
+            for (const issue of result.issues) {
+                console.log(chalk_1.default.red(`  ${issue.type}: ${issue.description} (line ${issue.line})`));
+            }
+        }
+    }
+    if (filesToScan.size > 0) {
+        console.log(chalk_1.default.yellow('\n⚠️  警告：检测到可能的敏感信息！'));
+        console.log(chalk_1.default.yellow('建议：'));
+        console.log(chalk_1.default.yellow('  • 移除硬编码的密钥、密码、令牌等敏感信息'));
+        console.log(chalk_1.default.yellow('  • 使用环境变量或配置文件管理敏感数据'));
+        console.log(chalk_1.default.yellow('  • 考虑添加到 .gitignore 中\n'));
+        // 检查是否强制继续
+        const shouldContinue = options.force || process.env.YUANGS_AUTO_CONTINUE === 'true';
+        if (!shouldContinue) {
+            console.log(chalk_1.default.cyan('💡 使用 --force 选项可跳过此警告继续执行'));
+            console.log(chalk_1.default.cyan('💡 或设置环境变量 YUANGS_AUTO_CONTINUE=true\n'));
+            return { hasIssues: true, shouldContinue: false };
+        }
+        else {
+            console.log(chalk_1.default.yellow('⚠️  已强制继续，请注意安全风险\n'));
+            return { hasIssues: true, shouldContinue: true };
+        }
+    }
+    return { hasIssues: false, shouldContinue: true };
+}
+/**
+ * 保存 commit 审查结果到 git_reviews.md
+ */
+async function saveCommitReviewToFile(result, level, options, gitService, commitInfo) {
+    const filePath = path_1.default.join(process.cwd(), 'git_reviews.md');
+    const timestamp = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+    try {
+        // 构建 Markdown 内容
+        const markdownContent = formatReviewAsMarkdown({
+            timestamp,
+            level,
+            commit: commitInfo.hash.substring(0, 7),
+            files: `${result.filesReviewed} 个文件`,
+            score: result.score,
+            summary: result.summary,
+            issues: result.issues,
+            strengths: result.strengths,
+            recommendations: result.recommendations
+        });
+        // 读取现有文件内容（如果存在）
+        let existingContent = '';
+        try {
+            existingContent = fs_1.default.readFileSync(filePath, 'utf-8');
+        }
+        catch (e) {
+            // 文件不存在，创建新文件
+            existingContent = `> 📝 Git Code Review History\n> Generated by Yuangs CLI\n\n`;
+        }
+        // 添加新的审查记录
+        const separator = '\n---\n\n';
+        const newContent = existingContent + separator + markdownContent;
+        // 写入文件
+        fs_1.default.writeFileSync(filePath, newContent);
+        console.log(chalk_1.default.gray(`\n💾 审查结果已保存到: ${path_1.default.relative(process.cwd(), filePath)}`));
+    }
+    catch (error) {
+        console.warn(chalk_1.default.yellow(`\n⚠️  保存审查结果失败: ${error.message}`));
+    }
 }
 //# sourceMappingURL=review.js.map

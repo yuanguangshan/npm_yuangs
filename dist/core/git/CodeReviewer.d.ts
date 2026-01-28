@@ -93,4 +93,11 @@ export declare class CodeReviewer {
      * 审查特定文件
      */
     reviewFile(filePath: string, level?: ReviewLevel): Promise<ReviewResult>;
+    /**
+     * 审查指定 commit
+     * @param commitHash commit hash 或引用（如 HEAD~1, abc123）
+     * @param level 审查级别
+     * @returns 审查结果
+     */
+    reviewCommit(commitHash: string, level?: ReviewLevel): Promise<ReviewResult>;
 }

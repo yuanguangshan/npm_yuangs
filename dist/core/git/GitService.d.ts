@@ -72,6 +72,31 @@ export declare class GitService {
      */
     getFileDiff(filePath: string, staged?: boolean): Promise<string | null>;
     /**
+     * 获取指定 commit 的 diff
+     * @param commitHash commit hash 或引用（如 HEAD~1）
+     * @returns diff 内容
+     */
+    getCommitDiff(commitHash: string): Promise<{
+        diff: string | null;
+        files: string[];
+    }>;
+    /**
+     * 获取两个 commit 之间的 diff
+     * @param from 起始 commit
+     * @param to 结束 commit（默认为 HEAD）
+     * @returns diff 内容
+     */
+    getCommitRangeDiff(from: string, to?: string): Promise<{
+        diff: string | null;
+        files: string[];
+    }>;
+    /**
+     * 获取 commit 的详细信息
+     * @param commitHash commit hash
+     * @returns commit 信息
+     */
+    getCommitInfo(commitHash: string): Promise<GitCommitInfo | null>;
+    /**
      * 获取最近的提交历史
      */
     getRecentCommits(count?: number): Promise<GitCommitInfo[]>;

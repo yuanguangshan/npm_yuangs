@@ -305,6 +305,73 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
             } : undefined,
         };
     }
+    /**
+     * 审查指定 commit
+     * @param commitHash commit hash 或引用（如 HEAD~1, abc123）
+     * @param level 审查级别
+     * @returns 审查结果
+     */
+    async reviewCommit(commitHash, level = ReviewLevel.STANDARD) {
+        const { diff, files } = await this.gitService.getCommitDiff(commitHash);
+        if (!diff) {
+            throw new Error(`No changes found in commit: ${commitHash}`);
+        }
+        if (!this.router) {
+            throw new Error('AI code review requires model configuration. Please configure AI models using: yuangs config');
+        }
+        const minCapability = {
+            minCapability: CapabilityLevel_1.CapabilityLevel.SEMANTIC,
+            fallbackChain: [CapabilityLevel_1.CapabilityLevel.STRUCTURAL, CapabilityLevel_1.CapabilityLevel.LINE, CapabilityLevel_1.CapabilityLevel.TEXT, CapabilityLevel_1.CapabilityLevel.NONE],
+        };
+        let currentCapability = minCapability.minCapability;
+        let confidence = 1.0;
+        let degradationApplied = false;
+        let degradationReason = '';
+        const startTime = Date.now();
+        const taskConfig = {
+            type: types_1.TaskType.CODE_REVIEW,
+            description: `Review commit: ${commitHash}`,
+        };
+        const routingConfig = {
+            strategy: 'auto',
+        };
+        const routingResult = await this.router.route(taskConfig, routingConfig);
+        console.log(chalk_1.default.cyan(`🤖 使用模型: ${routingResult.adapter.name}`));
+        console.log(chalk_1.default.gray(`📋 理由: ${routingResult.reason}\n`));
+        const prompt = this.buildReviewPrompt(diff, level, currentCapability);
+        const execution = await this.router.executeTask(routingResult.adapter, prompt, taskConfig);
+        if (!execution.success || !execution.content) {
+            throw new Error('Failed to perform code review');
+        }
+        const timeElapsed = Date.now() - startTime;
+        const parsed = this.parseReviewResult(execution.content);
+        confidence = parsed.confidence ?? 0.8;
+        const decisionInput = {
+            timeElapsed,
+            confidence,
+        };
+        const degradationDecision = this.degradationPolicy.decide(decisionInput, minCapability);
+        if (degradationDecision.shouldDegrade && currentCapability !== degradationDecision.targetLevel) {
+            degradationApplied = true;
+            degradationReason = degradationDecision.reason;
+            console.log(chalk_1.default.yellow(`⚠️  降级触发: ${degradationReason}`));
+        }
+        return {
+            score: parsed.score || 70,
+            summary: parsed.summary || '审查完成',
+            issues: parsed.issues || [],
+            strengths: parsed.strengths || [],
+            recommendations: parsed.recommendations || [],
+            filesReviewed: files.length,
+            confidence,
+            degradation: degradationApplied ? {
+                applied: true,
+                originalLevel: minCapability.minCapability,
+                targetLevel: degradationDecision.targetLevel,
+                reason: degradationReason,
+            } : undefined,
+        };
+    }
 }
 exports.CodeReviewer = CodeReviewer;
 //# sourceMappingURL=CodeReviewer.js.map

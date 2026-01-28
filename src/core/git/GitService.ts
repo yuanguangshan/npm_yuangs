@@ -197,6 +197,61 @@ export class GitService {
     }
 
     /**
+     * 获取指定 commit 的 diff
+     * @param commitHash commit hash 或引用（如 HEAD~1）
+     * @returns diff 内容
+     */
+    async getCommitDiff(commitHash: string): Promise<{ diff: string | null; files: string[] }> {
+        const diff = await this.execSafe(`show ${commitHash} --format=`); // 使用空格式避免输出 commit 信息
+        const files = await this.execSafe(`diff-tree --name-only -r ${commitHash}`);
+        
+        return {
+            diff,
+            files: files ? files.split('\n').filter(Boolean) : [],
+        };
+    }
+
+    /**
+     * 获取两个 commit 之间的 diff
+     * @param from 起始 commit
+     * @param to 结束 commit（默认为 HEAD）
+     * @returns diff 内容
+     */
+    async getCommitRangeDiff(from: string, to: string = 'HEAD'): Promise<{ diff: string | null; files: string[] }> {
+        const diff = await this.execSafe(`diff ${from}...${to}`);
+        const files = await this.execSafe(`diff --name-only ${from}...${to}`);
+        
+        return {
+            diff,
+            files: files ? files.split('\n').filter(Boolean) : [],
+        };
+    }
+
+    /**
+     * 获取 commit 的详细信息
+     * @param commitHash commit hash
+     * @returns commit 信息
+     */
+    async getCommitInfo(commitHash: string): Promise<GitCommitInfo | null> {
+        const format = '%H%n%an%n%ai%n%s';
+        const output = await this.execSafe(`log -1 --format="${format}" ${commitHash}`);
+        
+        if (!output) return null;
+        
+        const lines = output.trim().split('\n');
+        if (lines.length >= 4) {
+            return {
+                hash: lines[0],
+                author: lines[1],
+                date: lines[2],
+                message: lines[3],
+            };
+        }
+        
+        return null;
+    }
+
+    /**
      * 获取最近的提交历史
      */
     async getRecentCommits(count: number = 10): Promise<GitCommitInfo[]> {
