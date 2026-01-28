@@ -37,6 +37,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleAIChat = handleAIChat;
+exports.runPipeline = runPipeline;
+exports.processPipelineSegment = processPipelineSegment;
 const chalk_1 = __importDefault(require("chalk"));
 const ora_1 = __importDefault(require("ora"));
 const readline_1 = __importDefault(require("readline"));
@@ -630,6 +632,9 @@ async function runPipeline(input, rl, runtime, model, contextStore, processInter
     }
     catch (err) {
         console.error(chalk_1.default.red(`\n[Pipeline Error]: ${err.message}`));
+        if (err.stack) {
+            console.error(chalk_1.default.gray(err.stack));
+        }
     }
 }
 /**
