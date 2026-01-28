@@ -17,3 +17,4 @@ node_modules/
 .ai/context.json
 .DS_Store
 gcloud init
+.yuangs
