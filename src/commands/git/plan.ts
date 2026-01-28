@@ -62,6 +62,8 @@ export function registerPlanCommand(gitCmd: Command) {
         .command('plan [prompt...]')
         .description('自动读取最近 10 次提交，由两个 AI (架构师 & 审查员) 协作生成 todo.md')
         .option('-r, --rounds <number>', '对话轮数', '2')
+        .option('-m, --model <model>', '架构师模型', 'Assistant')
+        .option('--reviewer-model <model>', '审查员模型', 'gemini-2.5-flash-lite')
         .action(async (promptParts, options) => {
             const cliPrompt = promptParts.join(' ').trim();
             const maxRounds = parseInt(options.rounds) || 2;
@@ -90,8 +92,8 @@ export function registerPlanCommand(gitCmd: Command) {
                 spinner.succeed('已获取 Git 上下文');
 
                 // 定义两个角色的配置
-                const ARCHITECT_MODEL = 'Assistant'; // 负责写方案
-                const REVIEWER_MODEL = 'gemini-2.5-flash-lite'; // 负责挑刺 (速度快/便宜)
+                const ARCHITECT_MODEL = options.model || 'Assistant'; // 负责写方案
+                const REVIEWER_MODEL = options.reviewerModel || 'gemini-2.5-flash-lite'; // 负责挑刺
 
                 // 共享的项目上下文
                 const projectContext = `

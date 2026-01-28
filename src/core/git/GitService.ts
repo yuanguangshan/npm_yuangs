@@ -1,6 +1,6 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import * as path from 'path';
+import { GitError } from '../errors';
 
 const execAsync = promisify(exec);
 
@@ -67,7 +67,11 @@ export class GitService {
             });
             return stdout.trim();
         } catch (error: any) {
-            throw new Error(`Git command failed: ${error.message}`);
+            throw new GitError(`Git command failed: git ${command}\n${error.message}`, [
+                'Ensure you are in a valid Git repository.',
+                'Check if there are any pending merge conflicts.',
+                'Verify your Git permissions for this directory.'
+            ]);
         }
     }
 
@@ -204,7 +208,7 @@ export class GitService {
     async getCommitDiff(commitHash: string): Promise<{ diff: string | null; files: string[] }> {
         const diff = await this.execSafe(`show ${commitHash} --format=`); // 使用空格式避免输出 commit 信息
         const files = await this.execSafe(`diff-tree --name-only -r ${commitHash}`);
-        
+
         return {
             diff,
             files: files ? files.split('\n').filter(Boolean) : [],
@@ -220,7 +224,7 @@ export class GitService {
     async getCommitRangeDiff(from: string, to: string = 'HEAD'): Promise<{ diff: string | null; files: string[] }> {
         const diff = await this.execSafe(`diff ${from}...${to}`);
         const files = await this.execSafe(`diff --name-only ${from}...${to}`);
-        
+
         return {
             diff,
             files: files ? files.split('\n').filter(Boolean) : [],
@@ -235,9 +239,9 @@ export class GitService {
     async getCommitInfo(commitHash: string): Promise<GitCommitInfo | null> {
         const format = '%H%n%an%n%ai%n%s';
         const output = await this.execSafe(`log -1 --format="${format}" ${commitHash}`);
-        
+
         if (!output) return null;
-        
+
         const lines = output.trim().split('\n');
         if (lines.length >= 4) {
             return {
@@ -247,7 +251,7 @@ export class GitService {
                 message: lines[3],
             };
         }
-        
+
         return null;
     }
 
@@ -496,12 +500,12 @@ export class GitService {
         if (stashResult) {
             return 'stashed';
         }
-        
+
         const status = await this.getStatusSummary();
         if (status.modified === 0 && status.added === 0 && status.deleted === 0 && status.untracked === 0) {
             return 'clean';
         }
-        
+
         throw new Error('Unable to save snapshot');
     }
 
@@ -511,7 +515,7 @@ export class GitService {
     async restoreSnapshot(): Promise<void> {
         await this.execArgs(['reset', '--hard', 'HEAD']);
         await this.execArgs(['clean', '-fd']);
-        
+
         const stashes = await this.execSafe('stash list');
         if (stashes) {
             const stashRef = stashes.split('\n')[0]?.split(':')[0];

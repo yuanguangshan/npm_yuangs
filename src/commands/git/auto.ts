@@ -126,7 +126,7 @@ ${previousFeedback ? `\n[上次实现的问题]\n${previousFeedback}\n\n请根�
 /**
  * 执行代码审查
  */
-async function reviewCode(staged: boolean = true): Promise<{ score: number; issues: string[]; error?: string }> {
+async function reviewCode(level: ReviewLevel = ReviewLevel.STANDARD, staged: boolean = true): Promise<{ score: number; issues: string[]; error?: string }> {
     try {
         const { CodeReviewer } = await import('../../core/git/CodeReviewer');
         const { getRouter } = await import('../../core/modelRouter');
@@ -136,7 +136,7 @@ async function reviewCode(staged: boolean = true): Promise<{ score: number; issu
         const reviewer = new CodeReviewer(gitService, router);
 
         const result = await withRetry(
-            () => reviewer.review(ReviewLevel.STANDARD, staged),
+            () => reviewer.review(level, staged),
             {
                 maxAttempts: 2,
                 delay: 500,
@@ -176,6 +176,7 @@ export function registerAutoCommand(gitCmd: Command) {
         .option('-m, --model <model>', '指定 AI 模型', 'Assistant')
         .option('-s, --min-score <score>', '最低审查分数', '85')
         .option('-r, --skip-review', '跳过代码审查')
+        .option('-l, --review-level <level>', '代码审查级别 (quick/standard/deep)', 'standard')
         .option('-o, --save-only', '只保存代码，不写入文件系统')
         .option('-c, --commit', '所有任务完成后自动提交')
         .option('--commit-message <msg>', '自定义提交信息（使用 --commit 时生效）')
@@ -334,8 +335,16 @@ export function registerAutoCommand(gitCmd: Command) {
                         if (!options.skipReview) {
                             spinner.start('正在进行代码审查...');
 
+                            // 转换审查层级
+                            const levelMap: Record<string, ReviewLevel> = {
+                                'quick': ReviewLevel.QUICK,
+                                'standard': ReviewLevel.STANDARD,
+                                'deep': ReviewLevel.DEEP
+                            };
+                            const reviewLevel = levelMap[options.reviewLevel] || ReviewLevel.STANDARD;
+
                             // 审查刚刚写入但尚未暂存的文件 (staged: false)
-                            const review = await reviewCode(false);
+                            const review = await reviewCode(reviewLevel, false);
 
                             spinner.succeed(`审查完成 (评分: ${review.score}/100)`);
 
