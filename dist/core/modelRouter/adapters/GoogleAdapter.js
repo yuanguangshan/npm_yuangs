@@ -85,11 +85,10 @@ class GoogleAdapter extends BaseAdapter_1.BaseAdapter {
             const { result, executionTime } = await this.measureExecutionTime(async () => {
                 // 根据任务类型选择合适的模型
                 const model = this.selectModel(config.type);
-                // 构建参数数组
+                // 构建参数数组 (适配 gemini-cli 0.1.7)
                 const args = [
-                    prompt, // 提示词作为第一个位置参数
-                    '--model', model,
-                    '--output-format', 'json' // 使用 JSON 格式输出
+                    '-p', prompt,
+                    '-m', model,
                 ];
                 const { stdout, stderr } = await this.runSpawnCommand('gemini', args, config.expectedResponseTime || 60000, onChunk, apiKey ? { GEMINI_API_KEY: apiKey } : undefined);
                 // 检查是否有 API key 错误
@@ -118,7 +117,7 @@ class GoogleAdapter extends BaseAdapter_1.BaseAdapter {
         switch (taskType) {
             case types_1.TaskType.CODE_GENERATION:
             case types_1.TaskType.CODE_REVIEW:
-                return 'gemini-2.5-pro';
+                return 'gemini-2.5-flash';
             case types_1.TaskType.CONVERSATION:
             case types_1.TaskType.GENERAL:
                 return 'gemini-2.5-flash';

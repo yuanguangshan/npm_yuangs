@@ -119,8 +119,8 @@ export async function executeTask(
     ...routingConfig,
   };
 
-  // 检查是否有任务类型映射
-  if (config.taskTypeMapping && config.taskTypeMapping[taskConfig.type]) {
+  // 检查是否有任务类型映射 (仅当调用方未手动指定策略时应用)
+  if (!routingConfig?.strategy && config.taskTypeMapping && config.taskTypeMapping[taskConfig.type]) {
     finalRoutingConfig.strategy = RoutingStrategy.MANUAL;
     finalRoutingConfig.manualModelName = config.taskTypeMapping[taskConfig.type];
   }
