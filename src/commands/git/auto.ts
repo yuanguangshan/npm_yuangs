@@ -48,49 +48,37 @@ async function executeTask(
     context: string,
     model: string,
     previousFeedback?: string
-): Promise<{ code: string; success: boolean }> {
+): Promise<{ code: string; success: boolean; error?: string }> {
     const prompt: AIRequestMessage[] = [
         {
             role: 'system',
-            content: `你是一个资深软件工程师。请根据任务描述生成完整的代码实现。
+            content: `你是一个全方位的交付专家。
+1. 如果当前任务涉及代码（如 .ts, .js, .py 等文件），请扮演**资深软件工程师**，确保代码健壮、注释详尽、遵循最佳实践，并追求极致的模块化与性能。
+2. 如果当前任务涉及文档（如 .md, .yaml, .html 等文件），请扮演**资深内容专家或历史学者**，确保叙事优美、逻辑严密、事实准确。
 
 **重要输出格式要求：**
-对于每个需要创建或修改的文件，请使用以下格式之一：
+对于每个需要创建或修改的文件，请使用以下格式之一标明：
 
-### 文件: src/path/to/file.ts
-\`\`\`typescript
-// 完整的文件代码
+### 文件: path/to/file.ext
+\`\`\`language
+// 完整的具体内容
 \`\`\`
+
+或
 
 \`\`\`filepath
 文件路径
 \`\`\`
 \`\`\`code
-代码内容
-\`\`\`
-
-**src/path/to/file.ts**
-\`\`\`typescript
-// 代码内容
-\`\`\`
-
-## 📄 文件：\`filename.ext\`
-\`\`\`code
-代码内容
-\`\`\`
-
-### 📄 文件：\`filename.ext\`
-\`\`\`html
-代码内容
+文件具体内容
 \`\`\`
 
 要求：
-1. 明确指出每个文件的完整路径
-2. 提供完整的、可直接使用的代码
-3. 包含必要的注释
-4. 遵循最佳实践
-5. 确保文件路径格式正确
-6. 使用代码块标识符（如 \`\`\`typescript, \`\`\`code, \`\`\`html 等）`
+1. 明确指出每个文件的完整路径。
+2. 提供完整的、可直接使用的内容，禁止使用占位符（如 "// rest of code..."）。
+3. 遵循所属领域（代码或文学）的全球最高标准最佳实践。
+4. 确保文件路径格式与 todo.md 中的定义 100% 匹配。
+5. 必须使用合适的代码块语法标明对应格式，便于解析引擎识别。`
         },
         {
             role: 'user',
@@ -128,8 +116,10 @@ ${previousFeedback ? `\n[上次实现的问题]\n${previousFeedback}\n\n请根�
         );
 
         return { code: response.rawText, success: true };
-    } catch (e) {
-        return { code: '', success: false };
+    } catch (e: any) {
+        const errorMsg = e.message || '未知错误';
+        console.error(chalk.red(`\n❌ AI 执行阶段发生异常: ${errorMsg}`));
+        return { code: '', success: false, error: errorMsg };
     }
 }
 

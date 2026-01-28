@@ -50,6 +50,7 @@ const CodeGenerator_1 = require("../../core/git/CodeGenerator");
 const CommitMessageGenerator_1 = require("../../core/git/CommitMessageGenerator");
 const ErrorHandler_1 = require("../../core/git/ErrorHandler");
 const ProgressManager_1 = require("../../core/git/ProgressManager");
+const ContextGatherer_1 = require("../../core/git/ContextGatherer");
 /**
  * 执行单个任务
  */
@@ -57,45 +58,33 @@ async function executeTask(task, context, model, previousFeedback) {
     const prompt = [
         {
             role: 'system',
-            content: `你是一个资深软件工程师。请根据任务描述生成完整的代码实现。
+            content: `你是一个全方位的交付专家。
+1. 如果当前任务涉及代码（如 .ts, .js, .py 等文件），请扮演**资深软件工程师**，确保代码健壮、注释详尽、遵循最佳实践，并追求极致的模块化与性能。
+2. 如果当前任务涉及文档（如 .md, .yaml, .html 等文件），请扮演**资深内容专家或历史学者**，确保叙事优美、逻辑严密、事实准确。
 
 **重要输出格式要求：**
-对于每个需要创建或修改的文件，请使用以下格式之一：
+对于每个需要创建或修改的文件，请使用以下格式之一标明：
 
-### 文件: src/path/to/file.ts
-\`\`\`typescript
-// 完整的文件代码
+### 文件: path/to/file.ext
+\`\`\`language
+// 完整的具体内容
 \`\`\`
+
+或
 
 \`\`\`filepath
 文件路径
 \`\`\`
 \`\`\`code
-代码内容
-\`\`\`
-
-**src/path/to/file.ts**
-\`\`\`typescript
-// 代码内容
-\`\`\`
-
-## 📄 文件：\`filename.ext\`
-\`\`\`code
-代码内容
-\`\`\`
-
-### 📄 文件：\`filename.ext\`
-\`\`\`html
-代码内容
+文件具体内容
 \`\`\`
 
 要求：
-1. 明确指出每个文件的完整路径
-2. 提供完整的、可直接使用的代码
-3. 包含必要的注释
-4. 遵循最佳实践
-5. 确保文件路径格式正确
-6. 使用代码块标识符（如 \`\`\`typescript, \`\`\`code, \`\`\`html 等）`
+1. 明确指出每个文件的完整路径。
+2. 提供完整的、可直接使用的内容，禁止使用占位符（如 "// rest of code..."）。
+3. 遵循所属领域（代码或文学）的全球最高标准最佳实践。
+4. 确保文件路径格式与 todo.md 中的定义 100% 匹配。
+5. 必须使用合适的代码块语法标明对应格式，便于解析引擎识别。`
         },
         {
             role: 'user',
@@ -130,20 +119,22 @@ ${previousFeedback ? `\n[上次实现的问题]\n${previousFeedback}\n\n请根�
         return { code: response.rawText, success: true };
     }
     catch (e) {
-        return { code: '', success: false };
+        const errorMsg = e.message || '未知错误';
+        console.error(chalk_1.default.red(`\n❌ AI 执行阶段发生异常: ${errorMsg}`));
+        return { code: '', success: false, error: errorMsg };
     }
 }
 /**
  * 执行代码审查
  */
-async function reviewCode() {
+async function reviewCode(staged = true) {
     try {
         const { CodeReviewer } = await Promise.resolve().then(() => __importStar(require('../../core/git/CodeReviewer')));
         const { getRouter } = await Promise.resolve().then(() => __importStar(require('../../core/modelRouter')));
         const gitService = new GitService_1.GitService();
         const router = getRouter();
         const reviewer = new CodeReviewer(gitService, router);
-        const result = await (0, ErrorHandler_1.withRetry)(() => reviewer.review(CodeReviewer_1.ReviewLevel.STANDARD, true), {
+        const result = await (0, ErrorHandler_1.withRetry)(() => reviewer.review(CodeReviewer_1.ReviewLevel.STANDARD, staged), {
             maxAttempts: 2,
             delay: 500,
             backoff: true,
@@ -236,7 +227,13 @@ function registerAutoCommand(gitCmd) {
                     const previousFeedback = attempts > 1 && nextTask.reviewIssues
                         ? nextTask.reviewIssues.join('\n')
                         : undefined;
-                    const { code, success } = await executeTask(nextTask, rawContent, options.model, previousFeedback);
+                    // 采集真实上下文
+                    spinner.text = `[尝试 ${attempts}] 正在采集项目上下文...`;
+                    const gitService = new GitService_1.GitService();
+                    const gatherer = new ContextGatherer_1.ContextGatherer(gitService);
+                    const gathered = await gatherer.gather(nextTask.description);
+                    spinner.text = `[尝试 ${attempts}/${constants_1.MAX_RETRY_ATTEMPTS + 1}] 正在生成实现方案...`;
+                    const { code, success } = await executeTask(nextTask, gathered.summary, options.model, previousFeedback);
                     if (!success) {
                         spinner.fail('代码生成失败');
                         await (0, TodoManager_1.updateTaskStatus)(todoPath, nextTask.index, {
@@ -297,7 +294,8 @@ function registerAutoCommand(gitCmd) {
                     // 3b. 代码审查（如果未跳过）
                     if (!options.skipReview) {
                         spinner.start('正在进行代码审查...');
-                        const review = await reviewCode();
+                        // 审查刚刚写入但尚未暂存的文件 (staged: false)
+                        const review = await reviewCode(false);
                         spinner.succeed(`审查完成 (评分: ${review.score}/100)`);
                         await (0, TodoManager_1.updateTaskStatus)(todoPath, nextTask.index, {
                             reviewScore: review.score,

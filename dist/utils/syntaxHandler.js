@@ -69,8 +69,13 @@ async function handleSpecialSyntax(input, stdinData) {
     return { processed: false };
 }
 /**
- * 带引号支持的 Tokenizer (导用于测试)
- * 支持转义字符 \ 和引号包裹
+ * 引号感知的令牌解析器 (Tokenizer)
+ * 用于解析包含空格、引号及转义字符的复杂路径列表。
+ *
+ * 行为特性：
+ * 1. 支持使用 ' 或 " 包裹路径，支持内部嵌套转义。
+ * 2. 自动修剪非引号部分的空格。
+ * 3. 容错处理：若引号未闭合，自动将剩余全量内容视为一个带引号的 Token。
  */
 function tokenizeWithQuotes(input) {
     const tokens = [];
