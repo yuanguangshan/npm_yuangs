@@ -349,6 +349,79 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
 
             if (!trimmed) continue;
 
+            if (trimmed.includes('|')) {
+                const segments = trimmed.split('|').map(s => s.trim());
+                let currentData: string | undefined = undefined;
+                let lastResult: any = null;
+
+                try {
+                    for (let i = 0; i < segments.length; i++) {
+                        const segment = segments[i];
+                        if (!segment) continue;
+                        const isLast = i === segments.length - 1;
+
+                        // 1. 尝试处理特殊语法
+                        const specialResult = await handleSpecialSyntax(segment, currentData);
+                        if (specialResult.processed) {
+                            lastResult = specialResult;
+                            if (isLast) {
+                                if (specialResult.result) {
+                                    if (specialResult.type === 'management') {
+                                        console.log(specialResult.result);
+                                    } else if (specialResult.isPureReference) {
+                                        console.log(chalk.green(`✓ ${specialResult.result || '已加入上下文'}`));
+                                    } else {
+                                        await processInteraction(specialResult.result);
+                                    }
+                                }
+                            } else {
+                                currentData = specialResult.result;
+                            }
+                            continue;
+                        }
+
+                        // 2. 尝试处理 Shell 命令
+                        const mode = detectMode(segment);
+                        if (mode === 'command' || segment.startsWith(':exec ')) {
+                            const cmd = segment.startsWith(':exec ') ? segment.slice(6).trim() : segment;
+                            rl.pause();
+                            try {
+                                if (isLast) {
+                                    // 最后一段：直接 inherit 输出
+                                    await shellExecuteCommand(cmd, undefined, currentData, false);
+                                } else {
+                                    // 中间段：捕获输出
+                                    currentData = await shellExecuteCommand(cmd, undefined, currentData, true);
+                                }
+                            } finally {
+                                rl.resume();
+                            }
+                            continue;
+                        }
+
+                        // 3. 兜底：AI 交互
+                        if (isLast) {
+                            let finalPrompt = segment;
+                            if (currentData) {
+                                finalPrompt = `以下是来自上游指令的输入内容：\n\n${currentData}\n\n问题：${segment}`;
+                            }
+                            await processInteraction(finalPrompt);
+                        } else {
+                            // 非最后一段的纯文本，作为下一段的输入
+                            currentData = segment;
+                        }
+                    }
+                    
+                    // 管道执行完后，同步一下上下文状态
+                    const updatedPersisted = await loadContext();
+                    contextStore.import(updatedPersisted);
+                    
+                } catch (err: any) {
+                    console.error(chalk.red(`\n[Pipeline Error]: ${err.message}`));
+                }
+                continue;
+            }
+
             const specialResult = await handleSpecialSyntax(trimmed);
             if (specialResult.processed) {
                 if (specialResult.result) {

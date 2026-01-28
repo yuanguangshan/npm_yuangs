@@ -312,27 +312,41 @@ function createCompleter() {
 /* ========================================
    COMMAND EXECUTION
    ======================================== */
-async function executeCommand(cmdLine, onExit) {
+async function executeCommand(cmdLine, onExit, stdinData, captureStdout = false) {
     const trimmed = cmdLine.trim();
     const command = trimmed.replace(/^[$!]\s*/, '');
-    const child = (0, child_process_1.spawn)(command, {
-        stdio: 'inherit',
-        shell: true,
-        cwd: process.cwd()
-    });
-    child.on('exit', (code) => {
-        if (onExit) {
-            onExit(code);
-        }
-    });
-    child.on('error', (err) => {
-        console.error(`\n[Command Error]: ${err.message}`);
-        if (onExit) {
-            onExit(1);
-        }
-    });
     return new Promise((resolve) => {
-        child.on('close', () => resolve());
+        const child = (0, child_process_1.spawn)(command, {
+            stdio: [
+                stdinData ? 'pipe' : 'inherit',
+                captureStdout ? 'pipe' : 'inherit',
+                'inherit'
+            ],
+            shell: true,
+            cwd: process.cwd()
+        });
+        let stdout = '';
+        if (captureStdout && child.stdout) {
+            child.stdout.on('data', (data) => {
+                stdout += data.toString();
+            });
+        }
+        if (stdinData && child.stdin) {
+            child.stdin.write(stdinData);
+            child.stdin.end();
+        }
+        child.on('exit', (code) => {
+            if (onExit) {
+                onExit(code);
+            }
+        });
+        child.on('error', (err) => {
+            console.error(`\n[Command Error]: ${err.message}`);
+            if (onExit) {
+                onExit(1);
+            }
+        });
+        child.on('close', () => resolve(stdout.trim()));
     });
 }
 /* ========================================

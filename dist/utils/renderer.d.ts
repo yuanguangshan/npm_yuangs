@@ -1,4 +1,8 @@
 import { Ora } from 'ora';
+/**
+ * 将 Markdown 字符串渲染为带有终端 ANSI 样态的字符串
+ */
+export declare function renderMarkdown(markdown: string): string;
 interface RendererOptions {
     prefix?: string;
     autoFinish?: boolean;
@@ -36,11 +40,11 @@ export declare class StreamMarkdownRenderer {
      *
      * 这是核心函数：Token -> ANSI 直接映射
      */
-    private render;
+    render(markdown: string): string;
     /**
      * 遍历 Tokens 并转换为 ANSI
      */
-    private traverse;
+    traverse(tokens: any[]): string;
     /**
      * 提取 inline token 的文本内容
      */

@@ -6,6 +6,7 @@ import { promisify } from 'util';
 import { buildPromptWithFileContent, readFilesContent } from '../core/fileReader';
 import { ContextBuffer } from '../commands/contextBuffer';
 import { loadContext, saveContext } from '../commands/contextStorage';
+import { renderMarkdown } from './renderer';
 
 const execAsync = promisify(exec);
 
@@ -60,11 +61,20 @@ export async function handleSpecialSyntax(input: string, stdinData?: string): Pr
         return { ...res, type: 'command' };
     }
 
-    // 处理 :cat [index] 命令
+    // 处理 :cat [index] 命令 (支持 :cat index:start-end)
     if (trimmed === ':cat' || trimmed.startsWith(':cat ')) {
-        const parts = trimmed.split(' ');
-        const index = parts.length > 1 ? parseInt(parts[1]) : null;
-        const res = await handleCatContext(index);
+        const spec = trimmed.slice(4).trim();
+        if (!spec) {
+            const res = await handleCatContext(null);
+            return { ...res, type: 'management' };
+        }
+
+        const parsed = parseCatSpec(spec);
+        if (parsed.error) {
+            return { processed: true, result: parsed.error, error: true, type: 'management' };
+        }
+
+        const res = await handleCatContext(parsed.index, parsed.startLine, parsed.endLine);
         return { ...res, type: 'management' };
     }
 
@@ -76,6 +86,31 @@ export async function handleSpecialSyntax(input: string, stdinData?: string): Pr
 
     // 如果不是特殊语法，返回未处理
     return { processed: false };
+}
+
+/**
+ * 解析 :cat 命名的参数定义 (如 "1:10-20")
+ */
+function parseCatSpec(spec: string): { index: number | null, startLine: number | null, endLine: number | null, error?: string } {
+    // 兼容只有数字的情况
+    if (/^\d+$/.test(spec)) {
+        return { index: parseInt(spec), startLine: null, endLine: null };
+    }
+
+    const match = spec.match(/^(\d+)(?::(\d+)(?:-(\d+))?)?$/);
+    if (!match) {
+        return { index: null, startLine: null, endLine: null, error: `错误: 无效的索引格式 "${spec}"。请使用 :cat index 或 :cat index:start-end (例如 :cat 1:10-20)` };
+    }
+
+    const index = parseInt(match[1]);
+    const startLine = match[2] ? parseInt(match[2]) : null;
+    const endLine = match[3] ? parseInt(match[3]) : null;
+
+    if (isNaN(index)) {
+        return { index: null, startLine: null, endLine: null, error: `错误: 索引 "${match[1]}" 不是有效的数字` };
+    }
+
+    return { index, startLine, endLine };
 }
 
 /**
@@ -754,7 +789,11 @@ async function handleListContext(): Promise<{ processed: boolean; result: string
     }
 }
 
-async function handleCatContext(index: number | null): Promise<{ processed: boolean; result: string }> {
+async function handleCatContext(
+    index: number | null,
+    startLine: number | null = null,
+    endLine: number | null = null
+): Promise<{ processed: boolean; result: string }> {
     try {
         const persisted = await loadContext();
         const contextBuffer = new ContextBuffer();
@@ -772,17 +811,61 @@ async function handleCatContext(index: number | null): Promise<{ processed: bool
                 return { processed: true, result: `错误: 索引 ${index} 超出范围 (共有 ${items.length} 个项目)` };
             }
             const item = items[index - 1];
+            let content = item.content || '(无内容)';
+
+            // 获取语言提示 (使用增强的识别逻辑)
+            const lang = getLanguageByPath(item.path);
+
+            // 行号切片
+            if (startLine !== null) {
+                const lines = content.split('\n');
+                
+                // 边界校验：起始行号归一化 (不允许小于 1)
+                const clampedStart = Math.max(1, startLine);
+                const startIdx = clampedStart - 1;
+                
+                // 边界校验：结束行号处理
+                let endIdx = lines.length;
+                if (endLine !== null) {
+                    if (endLine < clampedStart) {
+                        return { processed: true, result: `错误: 结束行号 ${endLine} 不能小于起始行号 ${clampedStart}` };
+                    }
+                    endIdx = Math.min(endLine, lines.length);
+                }
+                
+                if (startIdx >= lines.length) {
+                    return { processed: true, result: `错误: 起始行号 ${startLine} 超出范围 (该文件共有 ${lines.length} 行)` };
+                }
+                
+                content = lines.slice(startIdx, endIdx).join('\n');
+                const rangeLabel = endLine ? `${clampedStart}-${endIdx}` : `${clampedStart}-末尾`;
+                
+                // 渲染高亮内容
+                const highlighted = renderMarkdown(`\`\`\`${lang}\n${content}\n\`\`\``);
+                
+                return { 
+                    processed: true, 
+                    result: `${chalk.blue.bold(`--- [${index}] ${item.type}: ${item.path} (第 ${rangeLabel} 行) ---`)}\n${highlighted}\n${chalk.blue.bold('--- End ---')}` 
+                };
+            }
+
+            // 渲染完整内容的高亮
+            const highlighted = renderMarkdown(`\`\`\`${lang}\n${content}\n\`\`\``);
+
             return { 
                 processed: true, 
-                result: `--- [${index}] ${item.type}: ${item.path} ---\n${item.content}\n--- End ---` 
+                result: `${chalk.blue.bold(`--- [${index}] ${item.type}: ${item.path} ---`)}\n${highlighted}\n${chalk.blue.bold('--- End ---')}` 
             };
         } else {
-            // 查看全部
-            let result = '=== 当前完整上下文内容 ===\n\n';
+            // 查看全部 (也要高亮每一个)
+            let result = chalk.cyan.bold('=== 当前完整上下文内容 ===\n\n');
             items.forEach((item, i) => {
-                result += `--- [${i + 1}] ${item.type}: ${item.path} ---\n${item.content}\n\n`;
+                const lang = getLanguageByPath(item.path);
+                const highlighted = renderMarkdown(`\`\`\`${lang}\n${item.content || '(空)'}\n\`\`\``);
+                
+                result += `${chalk.blue.bold(`--- [${i + 1}] ${item.type}: ${item.path} ---`)}\n${highlighted}\n\n`;
             });
-            result += '==========================';
+            result += chalk.cyan.bold('==========================');
             return { processed: true, result };
         }
     } catch (error) {
@@ -847,4 +930,43 @@ async function handleFileAndCommand(filePath: string, command: string): Promise<
             type: 'command'
         };
     }
+}
+
+/**
+ * 根据文件路径智能识别编程语言
+ */
+function getLanguageByPath(filePath: string): string {
+    const ext = path.extname(filePath).toLowerCase().slice(1);
+    if (!ext) return 'text';
+
+    const langMap: Record<string, string> = {
+        'ts': 'typescript',
+        'js': 'javascript',
+        'tsx': 'typescript',
+        'jsx': 'javascript',
+        'py': 'python',
+        'rb': 'ruby',
+        'sh': 'bash',
+        'zsh': 'bash',
+        'yml': 'yaml',
+        'yaml': 'yaml',
+        'md': 'markdown',
+        'json': 'json',
+        'rs': 'rust',
+        'go': 'go',
+        'c': 'c',
+        'cpp': 'cpp',
+        'h': 'cpp',
+        'java': 'java',
+        'kt': 'kotlin',
+        'css': 'css',
+        'scss': 'scss',
+        'html': 'html',
+        'sql': 'sql',
+        'vue': 'html',
+        'makefile': 'makefile',
+        'dockerfile': 'dockerfile'
+    };
+
+    return langMap[ext] || ext;
 }

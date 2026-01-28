@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.StreamMarkdownRenderer = void 0;
+exports.renderMarkdown = renderMarkdown;
 const chalk_1 = __importDefault(require("chalk"));
 const markdown_it_1 = __importDefault(require("markdown-it"));
 const cli_table3_1 = __importDefault(require("cli-table3"));
@@ -14,9 +15,34 @@ const cli_table3_1 = __importDefault(require("cli-table3"));
  * - 直接使用 markdown-it 的 md.parse() 解析为 Tokens
  * - 遍历 Tokens 并直接映射为 ANSI 样式
  * - 无需 HTML 中转，性能最优
- *
- * 这是 ChatGPT CLI / Warp / Claude CLI 的做法
  */
+// 导出单例用于简单快速渲染
+let defaultMdInstance = null;
+function getMd() {
+    if (!defaultMdInstance) {
+        defaultMdInstance = new markdown_it_1.default({
+            html: false,
+            xhtmlOut: false,
+            breaks: true,
+            langPrefix: 'language-',
+            linkify: true,
+            typographer: true,
+            quotes: '""\'\''
+        });
+    }
+    return defaultMdInstance;
+}
+/**
+ * 将 Markdown 字符串渲染为带有终端 ANSI 样态的字符串
+ */
+function renderMarkdown(markdown) {
+    const md = getMd();
+    const tokens = md.parse(markdown, {});
+    // 创建一个临时的“静态”渲染器来复用逻辑
+    const tempRenderer = new StreamMarkdownRenderer('', undefined, { quietMode: true });
+    // 使用已公开的实例方法进行渲染
+    return tempRenderer.render(markdown);
+}
 // 定义终端样式配置
 const STYLES = {
     h1: (t) => chalk_1.default.bold.hex('#FF6B6B')(`# ${t}`),

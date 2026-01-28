@@ -22,7 +22,7 @@ export declare function completePath(raw: string, type: 'file' | 'dir'): string[
 export declare function completeFileWithLine(token: string): string[];
 export declare function completeGitArgs(args: string[]): string[];
 export declare function createCompleter(): readline.Completer;
-export declare function executeCommand(cmdLine: string, onExit?: (code: number | null) => void): Promise<void>;
+export declare function executeCommand(cmdLine: string, onExit?: (code: number | null) => void, stdinData?: string, captureStdout?: boolean): Promise<string>;
 export declare function predictGhostText(line: string): string;
 export declare function renderGhost(rl: readline.Interface): void;
 export declare function clearGhost(rl: readline.Interface): void;

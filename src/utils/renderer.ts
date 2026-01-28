@@ -10,9 +10,37 @@ import Table from 'cli-table3';
  * - 直接使用 markdown-it 的 md.parse() 解析为 Tokens
  * - 遍历 Tokens 并直接映射为 ANSI 样式
  * - 无需 HTML 中转，性能最优
- * 
- * 这是 ChatGPT CLI / Warp / Claude CLI 的做法
  */
+
+// 导出单例用于简单快速渲染
+let defaultMdInstance: MarkdownIt | null = null;
+function getMd(): MarkdownIt {
+  if (!defaultMdInstance) {
+    defaultMdInstance = new MarkdownIt({
+      html: false,
+      xhtmlOut: false,
+      breaks: true,
+      langPrefix: 'language-',
+      linkify: true,
+      typographer: true,
+      quotes: '""\'\''
+    });
+  }
+  return defaultMdInstance;
+}
+
+/**
+ * 将 Markdown 字符串渲染为带有终端 ANSI 样态的字符串
+ */
+export function renderMarkdown(markdown: string): string {
+  const md = getMd();
+  const tokens = md.parse(markdown, {});
+  
+  // 创建一个临时的“静态”渲染器来复用逻辑
+  const tempRenderer = new StreamMarkdownRenderer('', undefined, { quietMode: true });
+  // 使用已公开的实例方法进行渲染
+  return tempRenderer.render(markdown);
+}
 
 // 定义终端样式配置
 const STYLES = {
@@ -163,7 +191,7 @@ export class StreamMarkdownRenderer {
    * 
    * 这是核心函数：Token -> ANSI 直接映射
    */
-  private render(markdown: string): string {
+  public render(markdown: string): string {
     const tokens = this.md.parse(markdown, {});
     return this.traverse(tokens);
   }
@@ -171,7 +199,7 @@ export class StreamMarkdownRenderer {
   /**
    * 遍历 Tokens 并转换为 ANSI
    */
-  private traverse(tokens: any[]): string {
+  public traverse(tokens: any[]): string {
     let output = '';
     let i = 0;
     let orderedListIndex = 1;
