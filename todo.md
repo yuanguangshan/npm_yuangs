@@ -1,5 +1,7 @@
 > 📅 Updated by Yuangs Git Analysis at 2026/1/28 18:41
 > 🎯 基于当前实现情况重新规划，简化为可执行的阶段性计划
+> 🔄 Current Task: 2
+> 📊 Progress: 2/129 tasks completed
 
 ---
 
@@ -30,8 +32,8 @@
 **目标：** 建立智能行为的基础框架，为所有后续功能提供能力等级和降级支持
 
 #### 1. 能力分级模型
-- [ ] `src/core/capability/CapabilityLevel.ts`
-  - [ ] 定义 CapabilityLevel 枚举（SEMANTIC / STRUCTURAL / LINE / TEXT / NONE）
+- [x] `src/core/capability/CapabilityLevel.ts` <!-- exec:done -->
+- [x] 定义 CapabilityLevel 枚举（SEMANTIC / STRUCTURAL / LINE / TEXT / NONE） <!-- exec:done -->
   - [ ] 实现能力单调性校验（确保 INTENT → NONE 递减）
   - [ ] 定义 MinCapability 接口
 

@@ -3,6 +3,7 @@ import chalk from 'chalk';
 import ora from 'ora';
 import fs from 'fs';
 import path from 'path';
+import { ProgressBar } from '../../utils/ProgressBar';
 import { GitService } from '../../core/git/GitService';
 import { runLLM, AIError } from '../../agent/llm';
 import { AIRequestMessage } from '../../core/validation';
@@ -210,7 +211,14 @@ export function registerAutoCommand(gitCmd: Command) {
                 spinner.succeed(`发现 ${tasks.length} 个任务`);
 
                 const progress = calculateProgress(tasks);
-                console.log(chalk.cyan(`📊 当前进度: ${progress.completed}/${progress.total}\n`));
+                const progressBar = new ProgressBar({
+                    total: progress.total,
+                    template: `${chalk.cyan('总体进度:')} {bar} {percentage}% | {value}/{total} 已完成`
+                });
+
+                console.log('');
+                progressBar.update(progress.completed);
+                console.log('');
 
                 // 初始化进度管理器
                 await progressManager.initialize({
@@ -232,8 +240,19 @@ export function registerAutoCommand(gitCmd: Command) {
                         break;
                     }
 
-                    console.log(chalk.bold.cyan(`\n━━━ 任务 #${nextTask.index + 1} ━━━`));
-                    console.log(chalk.white(`📝 ${nextTask.description}\n`));
+                    // 绘制任务面板
+                    console.log(chalk.white('╭' + '─'.repeat(58) + '╮'));
+                    console.log(chalk.white('│') + chalk.bold.cyan(' 🚀 执行任务:'.padEnd(14)) + chalk.white(`#${nextTask.index + 1}`.padEnd(44)) + chalk.white('│'));
+                    console.log(chalk.white('│') + ' '.repeat(58) + '│');
+
+                    const desc = nextTask.description.length > 54
+                        ? nextTask.description.substring(0, 51) + '...'
+                        : nextTask.description;
+                    console.log(chalk.white('│') + chalk.white(` 📝 内容: ${desc}`.padEnd(58)) + chalk.white('│'));
+
+                    const priorityIcon = nextTask.priority === 'high' ? '🔴' : nextTask.priority === 'medium' ? '🟡' : '🟢';
+                    console.log(chalk.white('│') + chalk.white(` ⚡ 优先级: ${priorityIcon} ${nextTask.priority || 'normal'}`.padEnd(61)) + chalk.white('│'));
+                    console.log(chalk.white('╰' + '─'.repeat(58) + '╯\n'));
 
                     let attempts = nextTask.attempts || 0;
                     let taskCompleted = false;
@@ -418,6 +437,9 @@ export function registerAutoCommand(gitCmd: Command) {
 
                     // 更新总体进度
                     const newProgress = calculateProgress(tasks);
+                    progressBar.update(newProgress.completed);
+                    console.log('\n');
+
                     await updateMetadata(todoPath, {
                         progress: newProgress,
                         currentTask: nextTask.index + 1
@@ -426,15 +448,16 @@ export function registerAutoCommand(gitCmd: Command) {
 
                 // 4. 总结
                 const finalProgress = calculateProgress(tasks);
-                console.log(chalk.bold.cyan('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━'));
-                console.log(chalk.bold.cyan('📊 工作流执行完成'));
-                console.log(chalk.bold.cyan('━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'));
-                console.log(chalk.white(`✅ 已完成: ${finalProgress.completed}/${finalProgress.total}`));
-                console.log(chalk.white(`🔄 本次执行: ${tasksExecuted} 个任务\n`));
+                console.log(chalk.white('╭' + '─'.repeat(58) + '╮'));
+                console.log(chalk.white('│') + chalk.bold.green(' ✨ 工作流执行完成!'.padEnd(58)) + chalk.white('│'));
+                console.log(chalk.white('├' + '─'.repeat(58) + '┤'));
+                console.log(chalk.white('│') + chalk.white(` ✅ 总体进度: ${finalProgress.completed}/${finalProgress.total} 任务`.padEnd(58)) + chalk.white('│'));
+                console.log(chalk.white('│') + chalk.white(` 🔄 本次执行: ${tasksExecuted} 轮任务`.padEnd(58)) + chalk.white('│'));
 
                 if (finalProgress.completed < finalProgress.total) {
-                    console.log(chalk.yellow('💡 提示：还有未完成的任务，可以再次运行 yuangs git auto 继续'));
+                    console.log(chalk.white('│') + chalk.yellow(` 💡 提示: 还有未完成任务, 可再次运行 auto 继续`.padEnd(61)) + chalk.white('│'));
                 }
+                console.log(chalk.white('╰' + '─'.repeat(58) + '╯\n'));
 
                 // 导出进度报告
                 const reportMetadata = {

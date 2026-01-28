@@ -15,9 +15,9 @@ This roadmap outlines the planned improvements for the `yuangs` CLI, focusing on
 *Goal: Make the daily usage as smooth as possible.*
 
 - [x] **Configuration System**: Implement `.yuangsrc` or `yuangs.config.json` support.
-- [ ] **Enhanced Error Feedback**: Provide friendly error messages with actionable suggestions (using the new Error Hierarchy).
-- [ ] **Short Command Aliases**: Support short flags for frequent commands (e.g., `git auto -l` instead of `--level`).
-- [ ] **Progress Visualization**: Implement better progress indicators and colorful terminal output.
+- [x] **Enhanced Error Feedback**: Provide friendly error messages with actionable suggestions (using the new Error Hierarchy).
+- [x] **Short Command Aliases**: Support short flags for frequent commands (e.g., `git auto -l` instead of `--level`).
+- [x] **Progress Visualization**: Implement better progress indicators and colorful terminal output.
 
 ## Phase 3: Advanced Intelligent Git (Next Milestone) 🧠
 *Goal: Deeper AI integration for complex workflows.*
@@ -35,8 +35,10 @@ This roadmap outlines the planned improvements for the `yuangs` CLI, focusing on
 ## 📜 Changelog
 ### [2026-01-29]
 - ✅ Completed Phase 1 Infrastructure.
+- ✅ Completed Phase 2 UX/DX Enhancements.
 - ✅ Integrated `GlobalErrorHandler` and standard `ConfigManager`.
-- ✅ Standardized CLI flags and added short aliases.
+- ✅ Standardized CLI flags and added short aliases (`-l`, `-m`).
+- ✅ Implemented Premium Progress Visualization (ProgressBar & Task Panels).
 - ✅ Improved repository hygiene (.gitignore updates).
 
 ---
