@@ -15,7 +15,7 @@ const METADATA_PREFIX = '>';
 async function parseTodoFile(filePath: string): Promise<{ tasks: string[]; context: string }> {
     const content = await fs.promises.readFile(filePath, 'utf8');
     const lines = content.split('\n');
-    
+
     // 跳过元数据
     let startIndex = 0;
     while (startIndex < lines.length && lines[startIndex].trim().startsWith(METADATA_PREFIX)) {
@@ -24,18 +24,18 @@ async function parseTodoFile(filePath: string): Promise<{ tasks: string[]; conte
     while (startIndex < lines.length && lines[startIndex].trim() === '') {
         startIndex++;
     }
-    
+
     const mainContent = lines.slice(startIndex).join('\n');
-    
+
     // 提取所有未完成的任务（- [ ] 格式）
     const tasks: string[] = [];
     const taskRegex = /^[\s]*-\s*\[\s*\]\s*(.+)$/gm;
     let match;
-    
+
     while ((match = taskRegex.exec(mainContent)) !== null) {
         tasks.push(match[1].trim());
     }
-    
+
     return { tasks, context: mainContent };
 }
 
@@ -46,28 +46,28 @@ export function registerExecCommand(gitCmd: Command) {
     gitCmd
         .command('exec')
         .description('根据 todo.md 自动生成代码并执行任务')
-        .option('--fromfile <file>', '指定 todo 文件路径', 'todo.md')
-        .option('--task <number>', '执行指定编号的任务（从 1 开始）')
-        .option('--model <model>', '指定 AI 模型', 'Assistant')
+        .option('-f, --fromfile <file>', '指定 todo 文件路径', 'todo.md')
+        .option('-t, --task <number>', '执行指定编号的任务（从 1 开始）')
+        .option('-m, --model <model>', '指定 AI 模型', 'Assistant')
         .action(async (options) => {
             const todoPath = path.join(process.cwd(), options.fromfile);
             const spinner = ora('正在读取任务文件...').start();
-            
+
             try {
                 // 1. 检查文件是否存在
                 await fs.promises.access(todoPath, fs.constants.F_OK);
-                
+
                 // 2. 解析任务
                 const { tasks, context } = await parseTodoFile(todoPath);
-                
+
                 if (tasks.length === 0) {
                     spinner.fail('未找到待执行的任务（- [ ] 格式）');
                     console.log(chalk.yellow('💡 提示：请确保 todo.md 中包含未完成的任务，格式如：- [ ] 任务描述'));
                     return;
                 }
-                
+
                 spinner.succeed(`发现 ${tasks.length} 个待执行任务`);
-                
+
                 // 3. 确定要执行的任务
                 let taskIndex = 0;
                 if (options.task) {
@@ -80,13 +80,13 @@ export function registerExecCommand(gitCmd: Command) {
                     // 默认执行第一个任务
                     taskIndex = 0;
                 }
-                
+
                 const currentTask = tasks[taskIndex];
                 console.log(chalk.cyan(`\n📋 准备执行任务 #${taskIndex + 1}: ${chalk.bold(currentTask)}\n`));
-                
+
                 // 4. 构建 AI 提示
                 spinner.start('正在生成实现方案...');
-                
+
                 const prompt: AIRequestMessage[] = [
                     {
                         role: 'system',
@@ -118,61 +118,61 @@ ${currentTask}
 `
                     }
                 ];
-                
+
                 const response = await runLLM({
                     prompt: { messages: prompt },
                     model: options.model,
                     stream: false,
                     bypassRouter: true
                 });
-                
+
                 spinner.succeed('实现方案已生成');
-                
+
                 // 5. 显示生成的代码
                 console.log(chalk.gray('━'.repeat(60)));
                 console.log(response.rawText);
                 console.log(chalk.gray('━'.repeat(60)));
-                
+
                 // 6. 询问是否应用
                 const readline = require('readline').createInterface({
                     input: process.stdin,
                     output: process.stdout
                 });
-                
+
                 const answer = await new Promise<string>((resolve) => {
                     readline.question(chalk.yellow('\n是否应用以上代码？(y/N): '), resolve);
                 });
                 readline.close();
-                
+
                 if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
                     // 7. 解析并应用代码
                     spinner.start('正在解析生成的代码...');
-                    
+
                     const generated = parseGeneratedCode(response.rawText);
-                    
+
                     if (generated.files.length > 0) {
                         spinner.succeed(`检测到 ${generated.files.length} 个文件`);
-                        
+
                         // 保存原始输出
                         const savedPath = await saveRawOutput(response.rawText, taskIndex);
                         console.log(chalk.gray(`📄 原始输出已保存: ${path.relative(process.cwd(), savedPath)}\n`));
-                        
+
                         // 写入文件
                         console.log(chalk.cyan('开始写入文件...\n'));
                         const { written, skipped } = await writeGeneratedCode(generated);
-                        
+
                         if (written.length > 0) {
                             console.log(chalk.green(`\n✅ 成功写入 ${written.length} 个文件`));
                         }
                         if (skipped.length > 0) {
                             console.log(chalk.yellow(`⚠️  跳过 ${skipped.length} 个文件`));
                         }
-                        
+
                         // 更新 todo.md 任务状态
                         const todoLineRegex = /^(\s*)-\s*\[\s*\]\s*(.+)$/;
                         const todoContent = await fs.promises.readFile(todoPath, 'utf8');
                         const lines = todoContent.split('\n');
-                        
+
                         let taskFound = false;
                         for (let i = 0; i < lines.length; i++) {
                             const match = lines[i].match(todoLineRegex);
@@ -186,7 +186,7 @@ ${currentTask}
                                 break;
                             }
                         }
-                        
+
                         if (taskFound) {
                             await fs.promises.writeFile(todoPath, lines.join('\n'), 'utf8');
                             console.log(chalk.green('\n✅ 任务已标记为完成'));
@@ -198,7 +198,7 @@ ${currentTask}
                 } else {
                     console.log(chalk.gray('\n已取消应用'));
                 }
-                
+
             } catch (e: unknown) {
                 if (e instanceof Error && (e as NodeJS.ErrnoException).code === 'ENOENT') {
                     spinner.fail(`文件不存在: ${todoPath}`);
