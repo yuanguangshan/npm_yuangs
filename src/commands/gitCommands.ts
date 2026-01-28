@@ -3,6 +3,7 @@ import { registerCommitCommand } from './git/commit';
 import { registerReviewCommand } from './git/review';
 import { registerStatusCommand } from './git/status';
 import { registerBranchCommand } from './git/branch';
+import { registerPlanCommand } from './git/plan';
 
 /**
  * 注册 Git 相关命令
@@ -21,4 +22,5 @@ export function registerGitCommands(program: Command) {
     registerReviewCommand(gitCmd);
     registerStatusCommand(gitCmd);
     registerBranchCommand(gitCmd);
+    registerPlanCommand(gitCmd);
 }

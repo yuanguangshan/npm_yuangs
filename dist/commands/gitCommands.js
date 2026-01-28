@@ -5,6 +5,7 @@ const commit_1 = require("./git/commit");
 const review_1 = require("./git/review");
 const status_1 = require("./git/status");
 const branch_1 = require("./git/branch");
+const plan_1 = require("./git/plan");
 /**
  * 注册 Git 相关命令
  */
@@ -21,5 +22,6 @@ function registerGitCommands(program) {
     (0, review_1.registerReviewCommand)(gitCmd);
     (0, status_1.registerStatusCommand)(gitCmd);
     (0, branch_1.registerBranchCommand)(gitCmd);
+    (0, plan_1.registerPlanCommand)(gitCmd);
 }
 //# sourceMappingURL=gitCommands.js.map

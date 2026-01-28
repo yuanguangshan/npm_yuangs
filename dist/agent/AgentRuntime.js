@@ -45,6 +45,7 @@ const marked_terminal_1 = __importDefault(require("marked-terminal"));
 const terminalRenderer = new marked_terminal_1.default();
 marked.setOptions({ renderer: terminalRenderer });
 const llmAdapter_1 = require("./llmAdapter");
+const llm_1 = require("./llm");
 const governance_1 = require("./governance");
 const executor_1 = require("./executor");
 const smartContextManager_1 = require("./smartContextManager");
@@ -114,153 +115,201 @@ class AgentRuntime {
                 agentRenderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 Agent ') + ' ', undefined, { autoFinish: false });
                 agentOnChunk = agentRenderer.startChunking();
             }
-            const thought = await llmAdapter_1.LLMAdapter.think(messages, mode, agentOnChunk, model, enhancedPrompt, this.context);
-            const action = {
-                id: (0, crypto_1.randomUUID)(),
-                type: thought.type || "answer",
-                payload: thought.payload || { text: thought.raw },
-                riskLevel: "low",
-                reasoning: thought.reasoning || "",
-            };
-            if (action.reasoning && !onChunk) {
-                console.log(chalk_1.default.gray(`\n🤔 Reasoning: ${action.reasoning}`));
+            let thought;
+            try {
+                thought = await llmAdapter_1.LLMAdapter.think(messages, mode, agentOnChunk, model, enhancedPrompt, this.context);
+                if (!thought.raw || thought.raw.trim() === '') {
+                    console.log(chalk_1.default.red('\n⚠️ AI 返回了空响应，请检查网络连接或模型配置。'));
+                    break;
+                }
             }
-            if (thought.usedRouter) {
-                console.log(chalk_1.default.gray(`[Router] 🤖 Model: ${thought.modelName}`));
-            }
-            // 如果 LLM 认为已经完成或者当前的动作就是回答
-            if (thought.isDone || action.type === "answer") {
-                const result = await executor_1.ToolExecutor.execute(action);
-                // 如果没有 renderer，使用内部创建的
-                if (!renderer && agentRenderer) {
-                    // Stream final answer through internal renderer
-                    for (let i = 0; i < result.output.length; i += 10) {
-                        const chunk = result.output.slice(i, i + 10);
-                        agentRenderer.onChunk(chunk);
-                    }
-                    agentRenderer.finish();
+            catch (error) {
+                let errorMessage = '未知内部错误';
+                let statusCode = 0;
+                if (error instanceof llm_1.AIError) {
+                    errorMessage = error.message;
+                    statusCode = error.statusCode;
                 }
-                else if (!renderer) {
-                    // Fallback to marked if no renderer
-                    const rendered = marked.parse(result.output);
-                    console.log(chalk_1.default.green(`\n🤖 AI：\n`) + rendered);
+                else if (error instanceof Error) {
+                    errorMessage = error.message;
+                    statusCode = error.statusCode || 0;
                 }
-                // 如果外部传入了 renderer，由外部调用 finish()
-                this.context.addMessage("assistant", result.output);
-                // Learn from successful chat
-                try {
-                    const { createExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionRecord')));
-                    const { inferCapabilityRequirement } = await Promise.resolve().then(() => __importStar(require('../core/capabilityInference')));
-                    const { saveExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionStore')));
-                    const record = createExecutionRecord('agent-chat', { required: [], preferred: [] }, {
-                        aiProxyUrl: { value: '', source: 'built-in' },
-                        defaultModel: { value: '', source: 'built-in' },
-                        accountType: { value: 'free', source: 'built-in' }
-                    }, { selected: null, candidates: [], fallbackOccurred: false }, { success: true }, undefined, userInput, 'chat');
-                    record.llmResult = { plan: thought.parsedPlan };
-                    record.input = { rawInput: userInput };
-                    const savedRecordId = saveExecutionRecord(record);
-                    const { loadExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionStore')));
-                    const savedRecord = loadExecutionRecord(savedRecordId);
-                    if (savedRecord) {
-                        const { learnSkillFromRecord } = await Promise.resolve().then(() => __importStar(require('./skills')));
-                        learnSkillFromRecord(savedRecord, true);
-                    }
+                else if (typeof error === 'string') {
+                    errorMessage = error;
                 }
-                catch (error) {
-                    console.warn(chalk_1.default.yellow(`[Skill Learning] Failed: ${error}`));
+                const statusInfo = statusCode ? ` (状态码: ${statusCode})` : '';
+                console.log(chalk_1.default.red(`\n❌ AI 思考过程发生错误: ${errorMessage}${statusInfo}`));
+                this.context.addMessage("system", `思考过程中发生错误${statusInfo}: ${errorMessage}`);
+                if (statusCode === 401 || statusCode === 403 || errorMessage.includes('401') || errorMessage.includes('403')) {
+                    console.log(chalk_1.default.yellow('💡 检测到权限或授权错误，请检查 API 配置。'));
+                    break;
+                }
+                if (statusCode === 429) {
+                    console.log(chalk_1.default.yellow('💡 API 调用频率过高，请稍后再试。'));
                 }
                 break;
             }
-            // === 强制 ACK 校验（Causal Lock） ===
-            const lastObs = this.context.getLastAckableObservation();
-            const ackText = thought.parsedPlan?.acknowledged_observation;
-            if (lastObs && ackText && ackText !== 'NONE') {
-                const actualContent = lastObs.content.trim();
-                const ackedContent = ackText.trim();
-                if (actualContent !== ackedContent) {
-                    console.log(chalk_1.default.red(`[CAUSAL BREAK] ❌ ACK mismatch!`));
-                    console.log(chalk_1.default.red(`  Expected: ${actualContent.substring(0, 100)}...`));
-                    console.log(chalk_1.default.red(`  Received: ${ackedContent.substring(0, 100)}...`));
-                    this.context.addMessage("system", `CAUSAL BREAK: ACK does not match physical Observation. Cannot proceed without acknowledging reality.`);
+            try {
+                const action = {
+                    id: (0, crypto_1.randomUUID)(),
+                    type: thought.type || "answer",
+                    payload: thought.payload || { text: thought.raw },
+                    riskLevel: "low",
+                    reasoning: thought.reasoning || "",
+                };
+                if (action.reasoning && !onChunk) {
+                    console.log(chalk_1.default.gray(`\n🤔 Reasoning: ${action.reasoning}`));
+                }
+                if (thought.usedRouter) {
+                    console.log(chalk_1.default.gray(`[Router] 🤖 Model: ${thought.modelName}`));
+                }
+                // 如果 LLM 认为已经完成或者当前的动作就是回答
+                if (thought.isDone || action.type === "answer") {
+                    const result = await executor_1.ToolExecutor.execute(action);
+                    // ... rest of the logic
+                    // 如果没有 renderer，使用内部创建的
+                    if (!renderer && agentRenderer) {
+                        // Stream final answer through internal renderer
+                        for (let i = 0; i < result.output.length; i += 10) {
+                            const chunk = result.output.slice(i, i + 10);
+                            agentRenderer.onChunk(chunk);
+                        }
+                        agentRenderer.finish();
+                    }
+                    else if (!renderer) {
+                        // Fallback to marked if no renderer
+                        const rendered = marked.parse(result.output);
+                        console.log(chalk_1.default.green(`\n🤖 AI：\n`) + rendered);
+                    }
+                    // 如果外部传入了 renderer，由外部调用 finish()
+                    this.context.addMessage("assistant", result.output);
+                    // Learn from successful chat
+                    try {
+                        const { createExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionRecord')));
+                        const { inferCapabilityRequirement } = await Promise.resolve().then(() => __importStar(require('../core/capabilityInference')));
+                        const { saveExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionStore')));
+                        const record = createExecutionRecord('agent-chat', { required: [], preferred: [] }, {
+                            aiProxyUrl: { value: '', source: 'built-in' },
+                            defaultModel: { value: '', source: 'built-in' },
+                            accountType: { value: 'free', source: 'built-in' }
+                        }, { selected: null, candidates: [], fallbackOccurred: false }, { success: true }, undefined, userInput, 'chat');
+                        record.llmResult = { plan: thought.parsedPlan };
+                        record.input = { rawInput: userInput };
+                        const savedRecordId = saveExecutionRecord(record);
+                        const { loadExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionStore')));
+                        const savedRecord = loadExecutionRecord(savedRecordId);
+                        if (savedRecord) {
+                            const { learnSkillFromRecord } = await Promise.resolve().then(() => __importStar(require('./skills')));
+                            learnSkillFromRecord(savedRecord, true);
+                        }
+                    }
+                    catch (error) {
+                        console.warn(chalk_1.default.yellow(`[Skill Learning] Failed: ${error}`));
+                    }
+                    break;
+                }
+                // === 强制 ACK 校验（Causal Lock） ===
+                const lastObs = this.context.getLastAckableObservation();
+                const ackText = thought.parsedPlan?.acknowledged_observation;
+                if (lastObs && ackText && ackText !== 'NONE') {
+                    const actualContent = lastObs.content.trim();
+                    const ackedContent = ackText.trim();
+                    if (actualContent !== ackedContent) {
+                        console.log(chalk_1.default.red(`[CAUSAL BREAK] ❌ ACK mismatch!`));
+                        console.log(chalk_1.default.red(`  Expected: ${actualContent.substring(0, 100)}...`));
+                        console.log(chalk_1.default.red(`  Received: ${ackedContent.substring(0, 100)}...`));
+                        this.context.addMessage("system", `CAUSAL BREAK: ACK does not match physical Observation. Cannot proceed without acknowledging reality.`);
+                        continue;
+                    }
+                    console.log(chalk_1.default.green(`[CAUSAL LOCK] ✅ ACK verified`));
+                }
+                // === 预检 (Pre-flight) ===
+                const preCheck = (0, core_1.evaluateProposal)(action, governance_1.GovernanceService.getRules(), governance_1.GovernanceService.getLedgerSnapshot());
+                if (preCheck.effect === "deny") {
+                    console.log(chalk_1.default.red(`[PRE-FLIGHT] 🛡️ Policy Blocked: ${preCheck.reason}`));
+                    this.context.addMessage("system", `POLICY DENIED: ${preCheck.reason}. Find a different way.`);
                     continue;
                 }
-                console.log(chalk_1.default.green(`[CAUSAL LOCK] ✅ ACK verified`));
-            }
-            // === 预检 (Pre-flight) ===
-            const preCheck = (0, core_1.evaluateProposal)(action, governance_1.GovernanceService.getRules(), governance_1.GovernanceService.getLedgerSnapshot());
-            if (preCheck.effect === "deny") {
-                console.log(chalk_1.default.red(`[PRE-FLIGHT] 🛡️ Policy Blocked: ${preCheck.reason}`));
-                this.context.addMessage("system", `POLICY DENIED: ${preCheck.reason}. Find a different way.`);
-                continue;
-            }
-            // === 正式治理 (WASM + 人工/自动) ===
-            const decision = await governance_1.GovernanceService.adjudicate(action);
-            if (decision.status === "rejected") {
-                console.log(chalk_1.default.red(`[GOVERNANCE] ❌ Rejected: ${decision.reason}`));
-                this.context.addMessage("system", `Rejected by Governance: ${decision.reason}`);
-                continue;
-            }
-            // === 记录因果边到 KG ===
-            if (lastObs && lastObs.metadata?.obsId && ackText && ackText !== 'NONE') {
-                try {
-                    const { recordEdge } = await Promise.resolve().then(() => __importStar(require('../engine/agent/knowledgeGraph')));
-                    recordEdge({
-                        from: lastObs.metadata.obsId,
-                        to: action.id,
-                        type: 'ACKNOWLEDGED_BY',
-                        metadata: {
-                            verified: true,
-                            timestamp: Date.now()
-                        }
-                    });
-                    console.log(chalk_1.default.gray(`[KG] ⚓ Causal edge recorded`));
+                // === 正式治理 (WASM + 人工/自动) ===
+                const decision = await governance_1.GovernanceService.adjudicate(action);
+                if (decision.status === "rejected") {
+                    console.log(chalk_1.default.red(`[GOVERNANCE] ❌ Rejected: ${decision.reason}`));
+                    this.context.addMessage("system", `Rejected by Governance: ${decision.reason}`);
+                    continue;
                 }
-                catch (error) {
-                    console.warn(chalk_1.default.yellow(`[KG] Warning: Failed to record causal edge: ${error.message}`));
-                }
-            }
-            // === 执行 ===
-            console.log(chalk_1.default.yellow(`[EXECUTING] ⚙️ ${action.type}...`));
-            const result = await executor_1.ToolExecutor.execute(action);
-            if (result.success) {
-                // 成功时清除错误状态
-                lastError = undefined;
-                this.context.addToolResult(action.type, result.output);
-                const preview = result.output.length > 300
-                    ? result.output.substring(0, 300) + '...'
-                    : result.output;
-                console.log(chalk_1.default.green(`[SUCCESS] Result:\n${preview}`));
-                // Learn from this successful execution
-                try {
-                    const { createExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionRecord')));
-                    const { inferCapabilityRequirement } = await Promise.resolve().then(() => __importStar(require('../core/capabilityInference')));
-                    const { saveExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionStore')));
-                    const record = createExecutionRecord(`agent-${mode}`, { required: [], preferred: [] }, {
-                        aiProxyUrl: { value: '', source: 'built-in' },
-                        defaultModel: { value: '', source: 'built-in' },
-                        accountType: { value: 'free', source: 'built-in' }
-                    }, { selected: null, candidates: [], fallbackOccurred: false }, { success: true }, undefined, userInput, mode);
-                    // Attach thought/plan data for skill learning
-                    record.llmResult = { plan: thought.parsedPlan };
-                    record.input = { rawInput: userInput };
-                    const savedRecordId = saveExecutionRecord(record);
-                    const { loadExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionStore')));
-                    const savedRecord = loadExecutionRecord(savedRecordId);
-                    if (savedRecord) {
-                        const { learnSkillFromRecord } = await Promise.resolve().then(() => __importStar(require('./skills')));
-                        learnSkillFromRecord(savedRecord, true);
+                // === 记录因果边到 KG ===
+                if (lastObs && lastObs.metadata?.obsId && ackText && ackText !== 'NONE') {
+                    try {
+                        const { recordEdge } = await Promise.resolve().then(() => __importStar(require('../engine/agent/knowledgeGraph')));
+                        recordEdge({
+                            from: lastObs.metadata.obsId,
+                            to: action.id,
+                            type: 'ACKNOWLEDGED_BY',
+                            metadata: {
+                                verified: true,
+                                timestamp: Date.now()
+                            }
+                        });
+                        console.log(chalk_1.default.gray(`[KG] ⚓ Causal edge recorded`));
+                    }
+                    catch (error) {
+                        console.warn(chalk_1.default.yellow(`[KG] Warning: Failed to record causal edge: ${error.message}`));
                     }
                 }
-                catch (error) {
-                    console.warn(chalk_1.default.yellow(`[Skill Learning] Failed: ${error}`));
+                // === 执行 ===
+                console.log(chalk_1.default.yellow(`[EXECUTING] ⚙️ ${action.type}...`));
+                const result = await executor_1.ToolExecutor.execute(action);
+                if (result.success) {
+                    // 成功时清除错误状态
+                    lastError = undefined;
+                    this.context.addToolResult(action.type, result.output);
+                    const preview = result.output.length > 300
+                        ? result.output.substring(0, 300) + '...'
+                        : result.output;
+                    console.log(chalk_1.default.green(`[SUCCESS] Result:\n${preview}`));
+                    // Learn from this successful execution
+                    try {
+                        const { createExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionRecord')));
+                        const { inferCapabilityRequirement } = await Promise.resolve().then(() => __importStar(require('../core/capabilityInference')));
+                        const { saveExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionStore')));
+                        const record = createExecutionRecord(`agent-${mode}`, { required: [], preferred: [] }, {
+                            aiProxyUrl: { value: '', source: 'built-in' },
+                            defaultModel: { value: '', source: 'built-in' },
+                            accountType: { value: 'free', source: 'built-in' }
+                        }, { selected: null, candidates: [], fallbackOccurred: false }, { success: true }, undefined, userInput, mode);
+                        // Attach thought/plan data for skill learning
+                        record.llmResult = { plan: thought.parsedPlan };
+                        record.input = { rawInput: userInput };
+                        const savedRecordId = saveExecutionRecord(record);
+                        const { loadExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionStore')));
+                        const savedRecord = loadExecutionRecord(savedRecordId);
+                        if (savedRecord) {
+                            const { learnSkillFromRecord } = await Promise.resolve().then(() => __importStar(require('./skills')));
+                            learnSkillFromRecord(savedRecord, true);
+                        }
+                    }
+                    catch (error) {
+                        console.warn(chalk_1.default.yellow(`[Skill Learning] Failed: ${error}`));
+                    }
+                }
+                else {
+                    // 失败时记录错误，下次循环会注入错误恢复指导
+                    lastError = result.error;
+                    this.context.addToolResult(action.type, `Error: ${result.error}`);
+                    console.log(chalk_1.default.red(`[ERROR] ${result.error}`));
                 }
             }
-            else {
-                // 失败时记录错误，下次循环会注入错误恢复指导
-                lastError = result.error;
-                this.context.addToolResult(action.type, `Error: ${result.error}`);
-                console.log(chalk_1.default.red(`[ERROR] ${result.error}`));
+            catch (error) {
+                let errorMessage = '未知执行错误';
+                if (error instanceof Error) {
+                    errorMessage = error.message;
+                }
+                else if (typeof error === 'string') {
+                    errorMessage = error;
+                }
+                console.log(chalk_1.default.red(`\n❌ 任务执行失败 [Action: ${thought?.type}]: ${errorMessage}`));
+                this.context.addMessage("system", `执行引擎错误 [Action: ${thought?.type}]: ${errorMessage}`);
+                break;
             }
         }
         if (turnCount >= maxTurns) {

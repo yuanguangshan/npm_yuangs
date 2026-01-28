@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AgentActionSchema = void 0;
+exports.AgentActionSchema = exports.AIError = void 0;
 exports.supportsStructuredOutput = supportsStructuredOutput;
 exports.runLLM = runLLM;
 const chalk_1 = __importDefault(require("chalk"));
@@ -15,7 +15,22 @@ const path_1 = __importDefault(require("path"));
 const os_1 = __importDefault(require("os"));
 const validation_2 = require("../core/validation");
 const zod_1 = require("zod");
+const errorHandling_1 = require("./errorHandling");
 const modelRouterIntegration_1 = require("./modelRouterIntegration");
+/**
+ * 结构化 AI 错误类
+ */
+class AIError extends Error {
+    statusCode;
+    rawError;
+    constructor(message, statusCode = 0, rawError) {
+        super(message);
+        this.statusCode = statusCode;
+        this.rawError = rawError;
+        this.name = 'AIError';
+    }
+}
+exports.AIError = AIError;
 const CONFIG_FILE = path_1.default.join(os_1.default.homedir(), '.yuangs.json');
 exports.AgentActionSchema = zod_1.z.object({
     action_type: zod_1.z.enum(['tool_call', 'shell_cmd', 'answer', 'code_diff']),
@@ -169,7 +184,7 @@ async function runLLM({ prompt, model, stream, onChunk, bypassRouter }) {
             }
         };
     }
-    try {
+    const executeCall = async () => {
         const response = await axios_1.default.post(url, responseData, { headers });
         // Safely extract content from response
         let rawText = '';
@@ -199,13 +214,41 @@ async function runLLM({ prompt, model, stream, onChunk, bypassRouter }) {
             modelName: modelUsed,
             usedRouter: false
         };
+    };
+    try {
+        const retryResult = await (0, errorHandling_1.withRetry)(executeCall, {
+            maxAttempts: 3,
+            retryableErrors: ['network', 'timeout', '503', '502', '429', 'ECONNRESET']
+        });
+        if (retryResult.success && retryResult.data) {
+            return retryResult.data;
+        }
+        const retryError = retryResult.error;
+        if (retryError instanceof AIError) {
+            throw retryError;
+        }
+        throw new AIError(retryError?.message || 'AI 请求重试失败', retryError?.statusCode || 0, retryError);
     }
     catch (error) {
+        if (error instanceof AIError) {
+            throw error;
+        }
         // Safely extract error message without accessing circular references
         let errorMsg = '未知错误';
+        let statusCode = 0;
         // Only access the basic message property to avoid circular reference issues
         try {
-            if (error && typeof error.message === 'string') {
+            if (error.response) {
+                statusCode = error.response.status;
+                const responseData = error.response.data;
+                if (typeof responseData.error?.message === 'string') {
+                    errorMsg = responseData.error.message;
+                }
+                else if (typeof responseData.message === 'string') {
+                    errorMsg = responseData.message;
+                }
+            }
+            else if (error && typeof error.message === 'string') {
                 errorMsg = error.message;
             }
             else if (typeof error === 'string') {
@@ -218,7 +261,8 @@ async function runLLM({ prompt, model, stream, onChunk, bypassRouter }) {
         catch (e) {
             errorMsg = '未知错误（无法解析错误信息）';
         }
-        throw new Error(`AI 请求失败: ${errorMsg}`);
+        const finalError = new AIError(`AI 请求失败 (Status: ${statusCode}): ${errorMsg}`, statusCode, error);
+        throw finalError;
     }
 }
 //# sourceMappingURL=llm.js.map

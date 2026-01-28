@@ -1,5 +1,13 @@
 import { AgentPrompt, LLMResult } from './types';
 import { z } from 'zod';
+/**
+ * 结构化 AI 错误类
+ */
+export declare class AIError extends Error {
+    statusCode: number;
+    rawError?: any | undefined;
+    constructor(message: string, statusCode?: number, rawError?: any | undefined);
+}
 export { supportsStructuredOutput };
 export declare const AgentActionSchema: z.ZodObject<{
     action_type: z.ZodEnum<{
