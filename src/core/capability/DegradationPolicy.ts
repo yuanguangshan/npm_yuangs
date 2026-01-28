@@ -1,4 +1,4 @@
-import { CapabilityLevel, validateFallbackChain, MinCapability } from './CapabilityLevel';
+import { CapabilityLevel, validateStrictDecreasing, MinCapability } from './CapabilityLevel';
 
 export interface DecisionInput {
     timeElapsed: number;
@@ -19,7 +19,7 @@ export interface DegradationPolicy {
 export class ThresholdDegradationPolicy implements DegradationPolicy {
     private timeLimit: number;
     private confidenceThreshold: number;
-    
+
     constructor(options: {
         timeLimit?: number;
         confidenceThreshold?: number;
@@ -27,18 +27,18 @@ export class ThresholdDegradationPolicy implements DegradationPolicy {
         this.timeLimit = options.timeLimit ?? 30000;
         this.confidenceThreshold = options.confidenceThreshold ?? 0.7;
     }
-    
+
     decide(input: DecisionInput, minCapability: MinCapability): DegradationDecision {
         const reasons: string[] = [];
-        
+
         if (input.timeElapsed > this.timeLimit) {
             reasons.push(`Time elapsed (${input.timeElapsed}ms) exceeds limit (${this.timeLimit}ms)`);
         }
-        
+
         if (input.confidence < this.confidenceThreshold) {
             reasons.push(`Confidence (${input.confidence.toFixed(2)}) below threshold (${this.confidenceThreshold})`);
         }
-        
+
         if (reasons.length === 0) {
             return {
                 shouldDegrade: false,
@@ -46,9 +46,9 @@ export class ThresholdDegradationPolicy implements DegradationPolicy {
                 reason: 'All conditions met, no degradation needed',
             };
         }
-        
+
         const fallbackChain = [minCapability.minCapability, ...minCapability.fallbackChain];
-        
+
         for (let i = 0; i < fallbackChain.length; i++) {
             const targetLevel = fallbackChain[i];
             if (i === fallbackChain.length - 1) {
@@ -58,10 +58,10 @@ export class ThresholdDegradationPolicy implements DegradationPolicy {
                     reason: reasons.join('; ') + `, falling back to final level: ${targetLevel}`,
                 };
             }
-            
+
             const nextLevel = fallbackChain[i + 1];
             const levelDrop = targetLevel - nextLevel;
-            
+
             if (levelDrop >= 2 || reasons.length >= 2) {
                 return {
                     shouldDegrade: true,
@@ -70,7 +70,7 @@ export class ThresholdDegradationPolicy implements DegradationPolicy {
                 };
             }
         }
-        
+
         return {
             shouldDegrade: true,
             targetLevel: CapabilityLevel.NONE,

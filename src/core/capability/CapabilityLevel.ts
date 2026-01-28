@@ -35,13 +35,14 @@ export enum CapabilityLevel {
 }
 
 /**
- * 校验 Capability 降级链是否严格递减
+ * 校验 Capability 降级链是否严格单调递减，且最终降级到 NONE
  */
-export function validateFallbackChain(chain: CapabilityLevel[]): boolean {
+export function validateStrictDecreasing(chain: CapabilityLevel[]): boolean {
+  if (chain.length === 0) return true;
   for (let i = 0; i < chain.length - 1; i++) {
     if (chain[i] <= chain[i + 1]) return false;
   }
-  return true;
+  return chain[chain.length - 1] === CapabilityLevel.NONE;
 }
 
 /**
@@ -64,14 +65,28 @@ export interface MinCapability {
 }
 
 /**
- * 解析能力等级字符串
+ * 从字符串解析 CapabilityLevel (支持标签或数值字符串)
  */
-export function parseCapabilityLevel(value?: string, fallback = CapabilityLevel.NONE): CapabilityLevel {
-  if (!value) return fallback;
-  const normalized = value.toLowerCase();
+export function parseCapabilityLevel(value?: string | number, fallback = CapabilityLevel.NONE): CapabilityLevel {
+  if (value === undefined || value === null) return fallback;
+
+  if (typeof value === 'number') {
+    return CapabilityLevel[value] !== undefined ? value : fallback;
+  }
+
+  const normalized = value.toString().toLowerCase();
+
+  // 1. 尝试按标签匹配
   for (const [level, label] of Object.entries(CapabilityLevelLabel)) {
     if (label === normalized) return Number(level) as CapabilityLevel;
   }
+
+  // 2. 尝试解析数值字符串
+  const numeric = parseInt(normalized);
+  if (!isNaN(numeric)) {
+    return CapabilityLevel[numeric] !== undefined ? numeric : fallback;
+  }
+
   return fallback;
 }
 

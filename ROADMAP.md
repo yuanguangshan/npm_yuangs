@@ -39,7 +39,12 @@ This roadmap outlines the planned improvements for the `yuangs` CLI, focusing on
 - ✅ Integrated `GlobalErrorHandler` and standard `ConfigManager`.
 - ✅ Standardized CLI flags and added short aliases (`-l`, `-m`).
 - ✅ Implemented Premium Progress Visualization (ProgressBar & Task Panels).
+- ✅ Refactored CLI UI with `CLIComponent` (Terminal-width aware).
+- ✅ Fixed ProgressBar edge cases (Division by zero, TTY detection).
+- ✅ Improved CapabilityLevel hierarchy and robust parsing.
 - ✅ Improved repository hygiene (.gitignore updates).
+
+> *Note: Roadmap status and Changelog are currently manually synced. Future enhancement: Implement CI check for consistency.*
 
 ---
 *Last Updated: 2026-01-29 (Antigravity AI)*

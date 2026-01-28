@@ -46,30 +46,44 @@ export class ProgressBar {
     }
 
     private render(extraData: Record<string, string | number>) {
+        if (this.total === 0) {
+            if (process.stdout.isTTY) {
+                process.stdout.write(`\r${chalk.cyan('总体进度:')} ${chalk.green('完成!')} | 0/0 tasks\n`);
+            }
+            return;
+        }
+
         const percentage = Math.min(100, Math.floor((this.current / this.total) * 100));
         const completeLength = Math.round((this.current / this.total) * this.width);
         const incompleteLength = this.width - completeLength;
 
+        const useColor = process.stdout.isTTY;
+
         const bar =
-            chalk.cyan(this.completeChar.repeat(Math.max(0, completeLength))) +
-            chalk.gray(this.incompleteChar.repeat(Math.max(0, incompleteLength)));
+            (useColor ? chalk.cyan(this.completeChar.repeat(Math.max(0, completeLength))) : this.completeChar.repeat(Math.max(0, completeLength))) +
+            (useColor ? chalk.gray(this.incompleteChar.repeat(Math.max(0, incompleteLength))) : this.incompleteChar.repeat(Math.max(0, incompleteLength)));
 
         let output = this.template
             .replace('{bar}', bar)
-            .replace('{percentage}', chalk.bold(percentage.toString()))
-            .replace('{value}', chalk.yellow(this.current.toString()))
-            .replace('{total}', chalk.white(this.total.toString()));
+            .replace('{percentage}', useColor ? chalk.bold(percentage.toString()) : percentage.toString())
+            .replace('{value}', useColor ? chalk.yellow(this.current.toString()) : this.current.toString())
+            .replace('{total}', useColor ? chalk.white(this.total.toString()) : this.total.toString());
 
         // Replace other placeholders from extraData
         for (const [key, value] of Object.entries(extraData)) {
             output = output.replace(`{${key}}`, value.toString());
         }
 
-        // Clear line and write
-        process.stdout.write(`\r${output}`);
-
-        if (this.current >= this.total) {
-            process.stdout.write('\n');
+        if (process.stdout.isTTY) {
+            process.stdout.write(`\r\x1b[K${output}`);
+            if (this.current >= this.total) {
+                process.stdout.write('\n');
+            }
+        } else {
+            // Non-TTY environment (e.g. CI), log only on significant changes
+            if (this.current === 0 || this.current === this.total || this.current % 5 === 0) {
+                console.log(`[Progress] ${percentage}% (${this.current}/${this.total})`);
+            }
         }
     }
 
