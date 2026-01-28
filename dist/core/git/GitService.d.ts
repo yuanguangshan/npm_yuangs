@@ -121,4 +121,8 @@ export declare class GitService {
      * 创建新分支 (Safe)
      */
     createBranch(name: string, startPoint?: string): Promise<void>;
+    /**
+     * 验证分支名称是否符合 Git 规范
+     */
+    isValidBranchName(name: string): Promise<boolean>;
 }

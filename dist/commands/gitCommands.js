@@ -11,7 +11,12 @@ const branch_1 = require("./git/branch");
 function registerGitCommands(program) {
     const gitCmd = program
         .command('git')
-        .description('Git 集成工具 - 智能提交、代码审查、分支管理');
+        .description('Git 集成工具 - 智能提交、代码审查、分支管理')
+        .action((options, cmd) => {
+        if (cmd.args.length === 0) {
+            cmd.help();
+        }
+    });
     (0, commit_1.registerCommitCommand)(gitCmd);
     (0, review_1.registerReviewCommand)(gitCmd);
     (0, status_1.registerStatusCommand)(gitCmd);
