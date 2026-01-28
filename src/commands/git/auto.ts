@@ -54,18 +54,42 @@ async function executeTask(
             content: `你是一个资深软件工程师。请根据任务描述生成完整的代码实现。
 
 **重要输出格式要求：**
-对于每个需要创建或修改的文件，请使用以下格式：
+对于每个需要创建或修改的文件，请使用以下格式之一：
 
 ### 文件: src/path/to/file.ts
 \`\`\`typescript
 // 完整的文件代码
 \`\`\`
 
+\`\`\`filepath
+文件路径
+\`\`\`
+\`\`\`code
+代码内容
+\`\`\`
+
+**src/path/to/file.ts**
+\`\`\`typescript
+// 代码内容
+\`\`\`
+
+## 📄 文件：\`filename.ext\`
+\`\`\`code
+代码内容
+\`\`\`
+
+### 📄 文件：\`filename.ext\`
+\`\`\`html
+代码内容
+\`\`\`
+
 要求：
 1. 明确指出每个文件的完整路径
 2. 提供完整的、可直接使用的代码
 3. 包含必要的注释
-4. 遵循最佳实践`
+4. 遵循最佳实践
+5. 确保文件路径格式正确
+6. 使用代码块标识符（如 \`\`\`typescript, \`\`\`code, \`\`\`html 等）`
         },
         {
             role: 'user',
@@ -298,7 +322,13 @@ export function registerAutoCommand(gitCmd: Command) {
                             }
                         } else {
                             console.log(chalk.yellow('\n⚠️  未检测到可解析的文件路径和代码'));
-                            console.log(chalk.gray('💡 提示：请检查 AI 输出格式，或查看原始输出文件'));
+                            console.log(chalk.yellow('\n💡 可能的原因：'));
+                            console.log(chalk.gray('  1. AI 输出格式不符合要求'));
+                            console.log(chalk.gray('  2. 文件路径标识不正确'));
+                            console.log(chalk.gray('  3. 代码块格式错误'));
+                            console.log(chalk.cyan(`\n📄 原始输出文件: ${path.relative(process.cwd(), savedPath)}`));
+                            console.log(chalk.gray('\n💡 提示：请检查原始输出文件，确认格式是否正确'));
+                            console.log(chalk.gray('\n支持的格式: ### 文件: path, **path**, ```filepath/path```, ## 📄 文件：`path``'));
                         }
                         
                         // 3b. 代码审查（如果未跳过）

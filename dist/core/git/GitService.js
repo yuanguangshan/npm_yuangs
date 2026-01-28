@@ -287,6 +287,41 @@ class GitService {
             return false;
         }
     }
+    /**
+     * 保存当前工作目录快照（用于回滚）
+     */
+    async saveSnapshot(snapshotName) {
+        const stashResult = await this.execSafe(`save --include-untracked -m "${snapshotName}"`);
+        if (stashResult) {
+            return 'stashed';
+        }
+        const status = await this.getStatusSummary();
+        if (status.modified === 0 && status.added === 0 && status.deleted === 0 && status.untracked === 0) {
+            return 'clean';
+        }
+        throw new Error('Unable to save snapshot');
+    }
+    /**
+     * 恢复到之前的快照
+     */
+    async restoreSnapshot() {
+        await this.execArgs(['reset', '--hard', 'HEAD']);
+        await this.execArgs(['clean', '-fd']);
+        const stashes = await this.execSafe('stash list');
+        if (stashes) {
+            const stashRef = stashes.split('\n')[0]?.split(':')[0];
+            if (stashRef) {
+                await this.execArgs(['stash', 'drop', stashRef]);
+            }
+        }
+    }
+    /**
+     * 放弃未提交的变更
+     */
+    async discardChanges() {
+        await this.execArgs(['reset', '--hard', 'HEAD']);
+        await this.execArgs(['clean', '-fd']);
+    }
 }
 exports.GitService = GitService;
 //# sourceMappingURL=GitService.js.map

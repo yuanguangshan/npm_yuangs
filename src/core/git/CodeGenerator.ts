@@ -59,8 +59,8 @@ export function parseGeneratedCode(llmOutput: string): GeneratedCode {
     }
     
     // 格式 3: **path/to/file.ts**\n```typescript\n代码\n```
-    const pattern3 = /\*\*([^*]+\.(?:ts|js|tsx|jsx|json|md))\*\*\s*\n```(?:typescript|javascript|ts|js|json|markdown|code)?\s*\n([\s\S]*?)\n```/gi;
-    
+    const pattern3 = /\*\*([^*]+\.(?:ts|js|tsx|jsx|json|md|html))\*\*\s*\n```(?:typescript|javascript|ts|js|json|markdown|code|html)?\s*\n([\s\S]*?)\n```/gi;
+
     while ((match = pattern3.exec(llmOutput)) !== null) {
         const filePath = match[1].trim();
         if (!files.some(f => f.path === filePath)) {
@@ -71,7 +71,55 @@ export function parseGeneratedCode(llmOutput: string): GeneratedCode {
             });
         }
     }
-    
+
+    // 格式 4: ## 📄 文件：`filename.ext`\n```code\n代码\n```
+    const pattern4 = /##\s*[^\n]*文件[：:]\s*`([^`]+)`\s*\n```(?:code|html|typescript|javascript)?\s*\n([\s\S]*?)\n```/gi;
+
+    while ((match = pattern4.exec(llmOutput)) !== null) {
+        const filePath = match[1].trim();
+        if (!files.some(f => f.path === filePath)) {
+            files.push({
+                path: filePath,
+                content: match[2].trim(),
+                action: 'create'
+            });
+        }
+    }
+
+    // 格式 5: ### 📄 文件：`filename.ext`\n```html\n代码\n```
+    const pattern5 = /###.*文件.*\`([^`]+)\`.*\n\`\`\`.*\n\`\`\`/gis;
+
+    while ((match = pattern5.exec(llmOutput)) !== null) {
+        const filePath = match[1].trim();
+        if (!files.some(f => f.path === filePath)) {
+            // 提取代码内容：从第一个 ``` 到第二个 ```
+            const parts = match[0].split('\`\`\`\n');
+            if (parts.length >= 3) {
+                const contentParts = parts[2].split('\n\`\`\`');
+                const content = contentParts[0].trim();
+                files.push({
+                    path: filePath,
+                    content: content,
+                    action: 'create'
+                });
+            }
+        }
+    }
+
+    // 格式 6: ## 📄 文件：`filename.ext`\n说明\n```html\n代码\n```（支持多行说明）
+    const pattern6 = /##\s*[^\n]*文件[：:]\s*\`([^`]+)\`[\s\S]*?\n\`\`\`(?:html|code|typescript|javascript|css|json)?\s*\n([\s\S]+?)\n\`\`\`/gis;
+
+    while ((match = pattern6.exec(llmOutput)) !== null) {
+        const filePath = match[1].trim();
+        if (!files.some(f => f.path === filePath)) {
+            files.push({
+                path: filePath,
+                content: match[2].trim(),
+                action: 'create'
+            });
+        }
+    }
+
     return {
         files,
         rawOutput: llmOutput

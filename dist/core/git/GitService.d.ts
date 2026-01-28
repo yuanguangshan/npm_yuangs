@@ -125,4 +125,16 @@ export declare class GitService {
      * 验证分支名称是否符合 Git 规范
      */
     isValidBranchName(name: string): Promise<boolean>;
+    /**
+     * 保存当前工作目录快照（用于回滚）
+     */
+    saveSnapshot(snapshotName: string): Promise<string>;
+    /**
+     * 恢复到之前的快照
+     */
+    restoreSnapshot(): Promise<void>;
+    /**
+     * 放弃未提交的变更
+     */
+    discardChanges(): Promise<void>;
 }

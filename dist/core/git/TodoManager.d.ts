@@ -6,6 +6,9 @@ export interface TaskStatus {
     reviewScore?: number;
     reviewIssues?: string[];
     attempts?: number;
+    backupId?: string;
+    dependsOn?: number[];
+    priority?: 'high' | 'medium' | 'low';
 }
 export interface TodoMetadata {
     generatedAt?: string;
@@ -33,9 +36,20 @@ export declare function updateTaskStatus(filePath: string, taskIndex: number, up
  */
 export declare function updateMetadata(filePath: string, updates: Partial<TodoMetadata>): Promise<void>;
 /**
- * 获取下一个待执行的任务
+ * 获取下一个待执行的任务（考虑依赖关系）
  */
 export declare function getNextTask(tasks: TaskStatus[]): TaskStatus | null;
+/**
+ * 验证任务的依赖关系
+ */
+export declare function validateDependencies(tasks: TaskStatus[]): {
+    valid: boolean;
+    errors: string[];
+};
+/**
+ * 获取任务的执行顺序
+ */
+export declare function getExecutionOrder(tasks: TaskStatus[]): number[];
 /**
  * 计算进度
  */
