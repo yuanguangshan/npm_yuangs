@@ -1,6 +1,31 @@
+import MarkdownIt from 'markdown-it';
 import { Ora } from 'ora';
 /**
- * 将 Markdown 字符串渲染为带有终端 ANSI 样态的字符串
+ * 核心渲染引擎：Markdown -> ANSI 映射
+ * 将该逻辑剥离以便在流式和静态场景下复用
+ */
+export declare class MarkdownRenderer {
+    protected md: MarkdownIt;
+    constructor();
+    /**
+     * 将 Markdown 字符串直接转换为带有 ANSI 样式的文本
+     */
+    render(markdown: string): string;
+    /**
+     * 遍历 Tokens 并映射为 ANSI 样式 (从 renderer.ts 原 traverse 迁移)
+     */
+    traverse(tokens: any[]): string;
+    /**
+     * 渲染内联样式
+     */
+    private renderInline;
+    /**
+     * 渲染表格 (cli-table3)
+     */
+    private renderTable;
+}
+/**
+ * 将 Markdown 字符串渲染为带有终端 ANSI 样态的字符串 (静态专用)
  */
 export declare function renderMarkdown(markdown: string): string;
 interface RendererOptions {
@@ -9,8 +34,11 @@ interface RendererOptions {
     onChunkCallback?: (chunk: string) => void;
     quietMode?: boolean;
 }
-export declare class StreamMarkdownRenderer {
-    private md;
+/**
+ * 流式 Markdown 渲染器
+ * 继承逻辑引擎，增加流状态管理
+ */
+export declare class StreamMarkdownRenderer extends MarkdownRenderer {
     private prefix;
     private buffer;
     private isFirstOutput;
@@ -36,26 +64,6 @@ export declare class StreamMarkdownRenderer {
      */
     finish(): string;
     /**
-     * 使用 markdown-it 的 Token 渲染 Markdown
-     *
-     * 这是核心函数：Token -> ANSI 直接映射
-     */
-    render(markdown: string): string;
-    /**
-     * 遍历 Tokens 并转换为 ANSI
-     */
-    traverse(tokens: any[]): string;
-    /**
-     * 提取 inline token 的文本内容
-     */
-    private extractInlineText;
-    /**
-     * 渲染内联样式
-     *
-     * 这是最关键的部分：加粗、斜体、内联代码、链接
-     */
-    private renderInline;
-    /**
      * 计算文本在终端的可视行数
      */
     private getVisualLineCount;
@@ -63,10 +71,6 @@ export declare class StreamMarkdownRenderer {
      * Start chunking mode for Agent Runtime
      */
     startChunking(): (chunk: string) => void;
-    /**
-     * 渲染表格（使用 cli-table3）
-     */
-    private renderTable;
     /**
      * Check if response appears complete
      */

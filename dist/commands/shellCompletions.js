@@ -346,7 +346,14 @@ async function executeCommand(cmdLine, onExit, stdinData, captureStdout = false)
                 onExit(1);
             }
         });
-        child.on('close', () => resolve(stdout.trim()));
+        child.on('close', () => {
+            if (captureStdout) {
+                resolve(stdout.trim());
+            }
+            else {
+                resolve(undefined);
+            }
+        });
     });
 }
 /* ========================================

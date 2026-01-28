@@ -373,7 +373,7 @@ export async function executeCommand(
     onExit?: (code: number | null) => void,
     stdinData?: string,
     captureStdout: boolean = false
-): Promise<string> {
+): Promise<string | undefined> {
     const trimmed = cmdLine.trim();
     const command = trimmed.replace(/^[$!]\s*/, '');
 
@@ -413,7 +413,13 @@ export async function executeCommand(
             }
         });
 
-        child.on('close', () => resolve(stdout.trim()));
+        child.on('close', () => {
+            if (captureStdout) {
+                resolve(stdout.trim());
+            } else {
+                resolve(undefined as any);
+            }
+        });
     });
 }
 
