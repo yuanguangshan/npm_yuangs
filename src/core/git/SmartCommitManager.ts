@@ -33,10 +33,15 @@ export class SmartCommitManager {
 
         const changedFiles = status.split('\n')
             .filter(line => line.length > 3)
-            .map(line => ({
-                path: line.substring(3).trim(),
-                status: line.substring(0, 2).trim()
-            }));
+            .map(line => {
+                const status = line.substring(0, 2);
+                let path = line.substring(3).trim();
+                // 处理 rename 格式: "R  old -> new"
+                if (status.startsWith('R') && path.includes(' -> ')) {
+                    path = path.split(' -> ').pop()?.trim() || path;
+                }
+                return { path, status: status.trim() };
+            });
 
         if (changedFiles.length === 0) {
             return { groups: [], remainingFiles: [] };
@@ -79,8 +84,8 @@ export class SmartCommitManager {
 }
 
 规则：
-- **不要**漏掉任何文件（除非文件完全无关，则不放入组中）。
-- 确保路径与输入完全一致。
+- **绝对必须**包含所有文件。
+- 确保路径与输入完全一致，不能拼错。
 - 逻辑相关的变更必须在一起。`,
             messages: [
                 {
@@ -92,24 +97,37 @@ export class SmartCommitManager {
 
         try {
             const response = await runLLM({ prompt, model, stream: false });
-            // 尝试解析 JSON (可能需要清理 markdown)
-            const cleanText = response.rawText.replace(/```json|```/g, '').trim();
-            const plan = JSON.parse(cleanText);
+            const jsonMatch = response.rawText.match(/\{[\s\S]*\}/);
+            const cleanText = jsonMatch ? jsonMatch[0] : response.rawText;
+            const rawPlan = JSON.parse(cleanText);
 
-            // 找出漏掉的文件
-            const plannedFiles = new Set(plan.groups.flatMap((g: any) => g.files));
+            const actualPaths = new Set(changedFiles.map(f => f.path));
+
+            // 过滤并尝试纠正 AI 可能造假或拼错的路径
+            const groups: CommitGroup[] = rawPlan.groups.map((g: any, index: number) => {
+                const checkedFiles = g.files.map((f: string) => {
+                    if (actualPaths.has(f)) return f;
+                    // 启发式纠错
+                    if (f.startsWith('rc/') && actualPaths.has('s' + f)) return 's' + f;
+                    return f;
+                });
+
+                const validFiles = checkedFiles.filter((f: string) => actualPaths.has(f));
+
+                return {
+                    id: (index + 1).toString(),
+                    title: g.title,
+                    files: Array.from(new Set(validFiles)),
+                    description: g.title,
+                    suggestedMessage: g.suggestedMessage
+                };
+            }).filter((g: any) => g.files.length > 0);
+
+            const plannedFiles = new Set(groups.flatMap(g => g.files));
             const remainingFiles = changedFiles.map(f => f.path).filter(p => !plannedFiles.has(p));
 
-            return {
-                groups: plan.groups.map((g: any, index: number) => ({
-                    ...g,
-                    id: (index + 1).toString(),
-                    description: g.title
-                })),
-                remainingFiles
-            };
+            return { groups, remainingFiles };
         } catch (e) {
-            // 回退策略：所有文件放一组
             return {
                 groups: [{
                     id: '1',
@@ -127,10 +145,10 @@ export class SmartCommitManager {
      * 执行特定的提交组
      */
     async executeCommitGroup(group: CommitGroup): Promise<string> {
-        // 1. 强制 stage 组内文件
+        if (group.files.length === 0) {
+            throw new Error('组内没有待提交的文件');
+        }
         await this.gitService.stageFiles(group.files);
-
-        // 2. 执行提交
         const result = await this.gitService.commit(group.suggestedMessage);
         return result;
     }
