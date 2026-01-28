@@ -1,9 +1,9 @@
 # Project Documentation
 
-- **Generated at:** 2026-01-28 05:09:05
+- **Generated at:** 2026-01-28 10:34:44
 - **Root Dir:** `.`
-- **File Count:** 289
-- **Total Size:** 1929.98 KB
+- **File Count:** 299
+- **Total Size:** 2033.62 KB
 
 <a name="toc"></a>
 ## 📂 扫描目录
@@ -24,6 +24,7 @@
 - [docs/CODE_SUMMARY_FEATURE.md](#📄-docscode_summary_featuremd) (398 lines, 7.94 KB)
 - [docs/CONFIG_COMMANDS.md](#📄-docsconfig_commandsmd) (414 lines, 7.91 KB)
 - [docs/DEMO.md](#📄-docsdemomd) (535 lines, 13.17 KB)
+- [docs/GIT_AUTO_GUIDE.md](#📄-docsgit_auto_guidemd) (245 lines, 5.50 KB)
 - [docs/GIT_INTEGRATION.md](#📄-docsgit_integrationmd) (328 lines, 6.91 KB)
 - [docs/GOVERNANCE_IMPLEMENTATION.md](#📄-docsgovernance_implementationmd) (363 lines, 12.94 KB)
 - [docs/GOVERNED_LOOP.md](#📄-docsgoverned_loopmd) (252 lines, 7.27 KB)
@@ -60,10 +61,10 @@
 - [public/manifest.json](#📄-publicmanifestjson) (21 lines, 0.51 KB)
 - [public/sw.js](#📄-publicswjs) (25 lines, 0.68 KB)
 - [scripts/clean-codebuddy.sh](#📄-scriptsclean-codebuddysh) (62 lines, 2.00 KB)
-- [scripts/yuangs-install.sh](#📄-scriptsyuangs-installsh) (163 lines, 3.25 KB)
+- [scripts/yuangs-install.sh](#📄-scriptsyuangs-installsh) (242 lines, 5.88 KB)
 - [scripts/yuangs.zsh](#📄-scriptsyuangszsh) (38 lines, 0.98 KB)
 - [src/__tests__/core/kernel/XResolver.test.ts](#📄-src__tests__corekernelxresolvertestts) (216 lines, 7.31 KB)
-- [src/agent/AgentRuntime.ts](#📄-srcagentagentruntimets) (330 lines, 11.13 KB)
+- [src/agent/AgentRuntime.ts](#📄-srcagentagentruntimets) (382 lines, 13.09 KB)
 - [src/agent/DualAgentRuntime.ts](#📄-srcagentdualagentruntimets) (346 lines, 10.83 KB)
 - [src/agent/ReflectionAgent.ts](#📄-srcagentreflectionagentts) (49 lines, 1.37 KB)
 - [src/agent/actions.ts](#📄-srcagentactionsts) (53 lines, 1.58 KB)
@@ -81,7 +82,7 @@
 - [src/agent/governance/ledger.ts](#📄-srcagentgovernanceledgerts) (22 lines, 0.48 KB)
 - [src/agent/governance/sandbox/core.as.ts](#📄-srcagentgovernancesandboxcoreasts) (33 lines, 1.35 KB)
 - [src/agent/index.ts](#📄-srcagentindexts) (11 lines, 0.45 KB)
-- [src/agent/llm.ts](#📄-srcagentllmts) (252 lines, 8.46 KB)
+- [src/agent/llm.ts](#📄-srcagentllmts) (300 lines, 9.94 KB)
 - [src/agent/llmAdapter.ts](#📄-srcagentllmadapterts) (121 lines, 4.10 KB)
 - [src/agent/modelRouterIntegration.ts](#📄-srcagentmodelrouterintegrationts) (474 lines, 12.37 KB)
 - [src/agent/policy/engine.ts](#📄-srcagentpolicyenginets) (91 lines, 2.26 KB)
@@ -121,10 +122,13 @@
 - [src/commands/contextBuffer.ts](#📄-srccommandscontextbufferts) (222 lines, 5.92 KB)
 - [src/commands/contextStorage.ts](#📄-srccommandscontextstoragets) (24 lines, 0.68 KB)
 - [src/commands/explainCommands.ts](#📄-srccommandsexplaincommandsts) (32 lines, 1.01 KB)
+- [src/commands/git/auto.ts](#📄-srccommandsgitautots) (334 lines, 14.27 KB)
 - [src/commands/git/branch.ts](#📄-srccommandsgitbranchts) (171 lines, 6.24 KB)
+- [src/commands/git/exec.ts](#📄-srccommandsgitexects) (168 lines, 6.36 KB)
+- [src/commands/git/plan.ts](#📄-srccommandsgitplants) (247 lines, 9.88 KB)
 - [src/commands/git/review.ts](#📄-srccommandsgitreviewts) (136 lines, 5.82 KB)
 - [src/commands/git/status.ts](#📄-srccommandsgitstatusts) (74 lines, 3.14 KB)
-- [src/commands/gitCommands.ts](#📄-srccommandsgitcommandsts) (24 lines, 0.75 KB)
+- [src/commands/gitCommands.ts](#📄-srccommandsgitcommandsts) (30 lines, 1.01 KB)
 - [src/commands/gitContext.ts](#📄-srccommandsgitcontextts) (32 lines, 0.77 KB)
 - [src/commands/handleAIChat.ts](#📄-srccommandshandleaichatts) (668 lines, 25.89 KB)
 - [src/commands/handleAICommand.ts](#📄-srccommandshandleaicommandts) (298 lines, 10.59 KB)
@@ -157,9 +161,12 @@
 - [src/core/explain.ts](#📄-srccoreexplaints) (106 lines, 2.99 KB)
 - [src/core/fileReader.ts](#📄-srccorefilereaderts) (72 lines, 2.03 KB)
 - [src/core/git/BranchAdvisor.ts](#📄-srccoregitbranchadvisorts) (232 lines, 7.61 KB)
+- [src/core/git/CodeGenerator.ts](#📄-srccoregitcodegeneratorts) (124 lines, 3.75 KB)
 - [src/core/git/CodeReviewer.ts](#📄-srccoregitcodereviewerts) (316 lines, 9.09 KB)
 - [src/core/git/CommitMessageGenerator.ts](#📄-srccoregitcommitmessagegeneratorts) (274 lines, 7.88 KB)
 - [src/core/git/GitService.ts](#📄-srccoregitgitservicets) (373 lines, 10.42 KB)
+- [src/core/git/TodoManager.ts](#📄-srccoregittodomanagerts) (205 lines, 6.38 KB)
+- [src/core/git/constants.ts](#📄-srccoregitconstantsts) (24 lines, 0.56 KB)
 - [src/core/kernel/ASTParser.ts](#📄-srccorekernelastparserts) (221 lines, 5.87 KB)
 - [src/core/kernel/AtomicTransactionManager.ts](#📄-srccorekernelatomictransactionmanagerts) (298 lines, 7.56 KB)
 - [src/core/kernel/FastScanner.ts](#📄-srccorekernelfastscannerts) (318 lines, 9.00 KB)
@@ -168,18 +175,18 @@
 - [src/core/macros.ts](#📄-srccoremacrosts) (83 lines, 2.36 KB)
 - [src/core/metrics/MetricsCollector.ts](#📄-srccoremetricsmetricscollectorts) (131 lines, 4.16 KB)
 - [src/core/modelMatcher.ts](#📄-srccoremodelmatcherts) (102 lines, 2.65 KB)
-- [src/core/modelRouter/BaseAdapter.ts](#📄-srccoremodelrouterbaseadapterts) (266 lines, 6.68 KB)
-- [src/core/modelRouter/ModelRouter.ts](#📄-srccoremodelroutermodelrouterts) (393 lines, 13.98 KB)
-- [src/core/modelRouter/adapters/CodebuddyAdapter.ts](#📄-srccoremodelrouteradapterscodebuddyadapterts) (141 lines, 3.55 KB)
-- [src/core/modelRouter/adapters/GoogleAdapter.ts](#📄-srccoremodelrouteradaptersgoogleadapterts) (184 lines, 4.85 KB)
-- [src/core/modelRouter/adapters/QwenAdapter.ts](#📄-srccoremodelrouteradaptersqwenadapterts) (167 lines, 4.36 KB)
-- [src/core/modelRouter/adapters/YuangsAdapter.ts](#📄-srccoremodelrouteradaptersyuangsadapterts) (66 lines, 1.76 KB)
+- [src/core/modelRouter/BaseAdapter.ts](#📄-srccoremodelrouterbaseadapterts) (267 lines, 6.70 KB)
+- [src/core/modelRouter/ModelRouter.ts](#📄-srccoremodelroutermodelrouterts) (394 lines, 14.05 KB)
+- [src/core/modelRouter/adapters/CodebuddyAdapter.ts](#📄-srccoremodelrouteradapterscodebuddyadapterts) (147 lines, 3.84 KB)
+- [src/core/modelRouter/adapters/GoogleAdapter.ts](#📄-srccoremodelrouteradaptersgoogleadapterts) (212 lines, 5.66 KB)
+- [src/core/modelRouter/adapters/QwenAdapter.ts](#📄-srccoremodelrouteradaptersqwenadapterts) (173 lines, 4.67 KB)
+- [src/core/modelRouter/adapters/YuangsAdapter.ts](#📄-srccoremodelrouteradaptersyuangsadapterts) (76 lines, 2.22 KB)
 - [src/core/modelRouter/config.ts](#📄-srccoremodelrouterconfigts) (153 lines, 3.51 KB)
-- [src/core/modelRouter/index.ts](#📄-srccoremodelrouterindexts) (148 lines, 3.99 KB)
+- [src/core/modelRouter/index.ts](#📄-srccoremodelrouterindexts) (149 lines, 4.14 KB)
 - [src/core/modelRouter/policies/BasePolicy.ts](#📄-srccoremodelrouterpoliciesbasepolicyts) (104 lines, 3.32 KB)
 - [src/core/modelRouter/policies/DslPolicy.ts](#📄-srccoremodelrouterpoliciesdslpolicyts) (133 lines, 4.86 KB)
 - [src/core/modelRouter/policies/types.ts](#📄-srccoremodelrouterpoliciestypests) (25 lines, 0.65 KB)
-- [src/core/modelRouter/types.ts](#📄-srccoremodelroutertypests) (345 lines, 7.35 KB)
+- [src/core/modelRouter/types.ts](#📄-srccoremodelroutertypests) (347 lines, 7.47 KB)
 - [src/core/observability/SupervisorActionLog.ts](#📄-srccoreobservabilitysupervisoractionlogts) (64 lines, 1.46 KB)
 - [src/core/os.ts](#📄-srccoreosts) (39 lines, 1.00 KB)
 - [src/core/replayDiff.ts](#📄-srccorereplaydiffts) (284 lines, 8.07 KB)
@@ -233,6 +240,7 @@
 - [sshclient/SUMMARY.md](#📄-sshclientsummarymd) (265 lines, 5.92 KB)
 - [sshclient/TEST_REPORT.md](#📄-sshclienttest_reportmd) (239 lines, 5.61 KB)
 - [test-context-persistence.js](#📄-test-context-persistencejs) (189 lines, 7.13 KB)
+- [test-router-full.ts](#📄-test-router-fullts) (111 lines, 4.21 KB)
 - [test-router-optimizations.js](#📄-test-router-optimizationsjs) (173 lines, 5.41 KB)
 - [test/Testing Context Persistence.md](#📄-testtesting-context-persistencemd) (6267 lines, 212.42 KB)
 - [test/__mocks__/marked-terminal.js](#📄-test__mocks__marked-terminaljs) (1 lines, 0.04 KB)
@@ -275,6 +283,7 @@
 - [test/test_dual_agent.js](#📄-testtest_dual_agentjs) (49 lines, 1.42 KB)
 - [test/test_dynamic_prompt.js](#📄-testtest_dynamic_promptjs) (171 lines, 6.91 KB)
 - [test/test_escape_sequences.js](#📄-testtest_escape_sequencesjs) (46 lines, 1.42 KB)
+- [test/test_installer.sh](#📄-testtest_installersh) (155 lines, 4.46 KB)
 - [test/test_integration.js](#📄-testtest_integrationjs) (48 lines, 1.58 KB)
 - [test/test_interactive_completion.js](#📄-testtest_interactive_completionjs) (129 lines, 4.47 KB)
 - [test/test_logic.js](#📄-testtest_logicjs) (25 lines, 0.92 KB)
@@ -293,6 +302,7 @@
 - [test/test_tab_completion_debug.js](#📄-testtest_tab_completion_debugjs) (122 lines, 3.58 KB)
 - [test/test_table_now.js](#📄-testtest_table_nowjs) (17 lines, 0.47 KB)
 - [test/test_table_quiet.js](#📄-testtest_table_quietjs) (17 lines, 0.51 KB)
+- [todo.md](#📄-todomd) (821 lines, 39.69 KB)
 - [tsconfig.json](#📄-tsconfigjson) (23 lines, 0.50 KB)
 - [verify.sh](#📄-verifysh) (114 lines, 2.79 KB)
 - [yuangs.config.json](#📄-yuangsconfigjson) (11 lines, 0.39 KB)
@@ -7555,6 +7565,259 @@ This demo guide provides:
 ✅ **State machine invariants** proven in practice
 
 The governance system is **production-ready** and enforces all principles from CodeChangeGovernance.md.
+
+````
+
+[⬆ 回到目录](#toc)
+
+## 📄 docs/GIT_AUTO_GUIDE.md
+
+````markdown
+# 🤖 Yuangs Git Auto - AI 驱动的全自动开发工作流
+
+## 概述
+
+`yuangs git auto` 是一个革命性的功能，它将 `plan`、`exec`、`review` 三个命令串联成一个完整的 AI 开发闭环，实现从需求到代码的全流程自动化。
+
+## 工作流程
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    AI 开发闭环                            │
+└─────────────────────────────────────────────────────────┘
+
+  1️⃣ PLAN (规划)
+     ↓
+  📝 todo.md (任务清单)
+     ↓
+  2️⃣ EXEC (执行) ──→ 生成代码
+     ↓
+  3️⃣ REVIEW (审查) ──→ 评分 + 反馈
+     ↓
+  ✅ 通过 (≥85分) → 标记完成 → 下一个任务
+  ❌ 不通过 (<85分) → 根据反馈重新生成 (最多重试2次)
+```
+
+## 快速开始
+
+### 1. 生成任务清单
+
+```bash
+yuangs git plan "实现用户登录功能，支持邮箱和手机号登录"
+```
+
+这将生成一个 `todo.md` 文件，包含详细的任务分解。
+
+### 2. 启动自动化工作流
+
+```bash
+yuangs git auto
+```
+
+系统将自动：
+- 读取 `todo.md` 中的任务
+- 逐个执行未完成的任务
+- 对每个任务生成的代码进行审查
+- 根据审查结果决定是否通过或重试
+- 更新任务状态和进度
+
+## 命令选项
+
+```bash
+yuangs git auto [options]
+
+Options:
+  --max-tasks <number>    最大执行任务数 (默认: 5)
+  --model <model>         指定 AI 模型 (默认: Assistant)
+  --min-score <score>     最低审查分数 (默认: 85)
+  --skip-review           跳过代码审查
+```
+
+### 示例
+
+```bash
+# 执行最多 3 个任务，使用 Gemini 模型
+yuangs git auto --max-tasks 3 --model gemini-2.5-flash-lite
+
+# 降低审查标准到 80 分
+yuangs git auto --min-score 80
+
+# 跳过审查，快速生成代码
+yuangs git auto --skip-review
+```
+
+## todo.md 格式
+
+### 基本格式
+
+```markdown
+> 📅 Generated by Yuangs Git Plan at 2026-01-28 10:00:00
+> 🎯 Context: 实现用户登录功能
+> 📊 Progress: 2/5 tasks completed
+> 🔄 Current Task: 3
+
+## [目标]
+- [x] 创建 User 模型 <!-- exec:done, review:92, attempts:1 -->
+- [x] 实现登录 API <!-- exec:done, review:88, attempts:2 -->
+- [ ] 添加单元测试 <!-- exec:in_progress, attempts:1 -->
+- [ ] 编写 API 文档
+- [ ] 部署到测试环境
+```
+
+### 状态说明
+
+**任务状态：**
+- `[ ]` - 未完成
+- `[x]` - 已完成
+
+**执行状态（exec）：**
+- `pending` - 待执行
+- `in_progress` - 执行中
+- `done` - 已完成
+- `failed` - 失败
+
+**其他元数据：**
+- `review:92` - 审查评分
+- `attempts:2` - 尝试次数
+
+## 工作流控制
+
+### 暂停和继续
+
+工作流会在以下情况自动暂停：
+- 达到 `--max-tasks` 限制
+- 任务重试次数超过 2 次
+- 遇到严重错误
+
+要继续执行，只需再次运行：
+```bash
+yuangs git auto
+```
+
+系统会自动从上次中断的地方继续。
+
+### 手动干预
+
+如果某个任务一直无法通过审查，你可以：
+
+1. **手动修改代码**
+2. **更新 todo.md**，将任务标记为完成：
+   ```markdown
+   - [x] 任务描述 <!-- exec:done, review:manual -->
+   ```
+3. **继续自动化流程**：
+   ```bash
+   yuangs git auto
+   ```
+
+## 最佳实践
+
+### 1. 合理设置任务粒度
+
+在 `plan` 阶段，确保任务足够具体：
+
+✅ 好的任务：
+- 创建 `UserService.ts` 并实现 `login()` 方法
+- 在 `LoginForm.tsx` 中添加表单验证逻辑
+
+❌ 过于宽泛的任务：
+- 实现用户模块
+- 完成前端页面
+
+### 2. 渐进式执行
+
+首次使用时，建议：
+```bash
+yuangs git auto --max-tasks 1
+```
+
+观察生成的代码质量后，再逐步增加任务数。
+
+### 3. 定期 Review
+
+虽然有自动审查，但建议定期手动检查：
+```bash
+git diff
+yuangs git review --level deep
+```
+
+### 4. 版本控制
+
+在启动 `auto` 之前，建议创建一个新分支：
+```bash
+git checkout -b feature/auto-implementation
+yuangs git auto
+```
+
+## 故障排除
+
+### 问题：任务一直无法通过审查
+
+**解决方案：**
+1. 查看审查反馈：`cat todo.md`
+2. 降低审查标准：`yuangs git auto --min-score 75`
+3. 手动修复后继续
+
+### 问题：生成的代码不符合预期
+
+**解决方案：**
+1. 在 `todo.md` 中添加更详细的上下文
+2. 使用更强大的模型：`yuangs git auto --model Assistant`
+
+### 问题：执行中断
+
+**解决方案：**
+直接再次运行 `yuangs git auto`，系统会自动恢复。
+
+## 进阶用法
+
+### 与其他命令结合
+
+```bash
+# 完整的开发流程
+yuangs git plan "新功能需求"
+yuangs git auto --max-tasks 10
+yuangs git review --level deep
+yuangs git commit
+git push
+```
+
+### 自定义工作流
+
+如果需要更精细的控制，可以分步执行：
+
+```bash
+# 1. 规划
+yuangs git plan "需求描述"
+
+# 2. 手动执行特定任务
+yuangs git exec --task 1
+
+# 3. 审查
+yuangs git review
+
+# 4. 继续自动化
+yuangs git auto --max-tasks 5
+```
+
+## 限制和注意事项
+
+1. **代码质量**：AI 生成的代码需要人工审查
+2. **复杂逻辑**：对于复杂的业务逻辑，建议人工实现
+3. **安全性**：涉及安全的代码必须人工审查
+4. **测试**：自动生成的测试可能不够全面
+
+## 未来规划
+
+- [ ] 支持自动 git commit
+- [ ] 集成 CI/CD 流程
+- [ ] 支持多人协作模式
+- [ ] 添加代码质量趋势分析
+- [ ] 支持自定义审查规则
+
+## 反馈
+
+如有问题或建议，欢迎提 Issue！
 
 ````
 
@@ -17458,13 +17721,13 @@ module.exports = {
 ````json
 {
   "name": "yuangs",
-  "version": "5.32.0",
+  "version": "5.35.0",
   "lockfileVersion": 3,
   "requires": true,
   "packages": {
     "": {
       "name": "yuangs",
-      "version": "5.32.0",
+      "version": "5.35.0",
       "license": "ISC",
       "dependencies": {
         "axios": "^1.13.2",
@@ -25530,7 +25793,7 @@ module.exports = {
 ````json
 {
   "name": "yuangs",
-  "version": "5.32.0",
+  "version": "5.35.0",
   "description": "苑广山的个人应用集合 CLI（彩色版）",
   "author": "苑广山",
   "license": "ISC",
@@ -27321,7 +27584,7 @@ fi
 
 ````bash
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
 YU_DIR="$HOME/.yuangs"
 YU_FILE="$YU_DIR/yuangs-ai.sh"
@@ -27329,136 +27592,202 @@ MARKER="yuangs-ai.sh"
 
 info() { echo "✅ $*"; }
 warn() { echo "⚠️  $*"; }
-err()  { echo "❌ $*" >&2; }
+err()  { echo "❌ $*" >&2; exit 1; }
 
 # --------------------------------------------------
-# Uninstall
+# Argument Parsing
 # --------------------------------------------------
-if [[ "${1:-}" == "--uninstall" ]]; then
+UNINSTALL=false
+DRY_RUN=false
+
+while getopts "u-:" opt; do
+  case $opt in
+    u) UNINSTALL=true ;;
+    -)
+      case "${OPTARG}" in
+        uninstall) UNINSTALL=true ;;
+        dry-run) DRY_RUN=true ;;
+        *) err "Unknown option --${OPTARG}" ;;
+      esac
+      ;;
+    *) err "Usage: $0 [-u|--uninstall] [--dry-run]" ;;
+  esac
+done
+
+# --------------------------------------------------
+# Uninstall Logic
+# --------------------------------------------------
+if [ "$UNINSTALL" = true ]; then
   echo "▶ Uninstalling yuangs zero-mode shell AI..."
+  if [ "$DRY_RUN" = true ]; then
+    info "[Dry-Run] Would remove configuration from ~/.bashrc and ~/.zshrc"
+    info "[Dry-Run] Would remove $YU_DIR"
+    exit 0
+  fi
 
   for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
     if [[ -f "$rc" ]]; then
+      # More robust removal using the marker
       sed -i.bak "/$MARKER/d" "$rc" 2>/dev/null || true
+      rm -f "$rc.bak"
       info "Cleaned $rc"
     fi
   done
-
-  rm -rf "$YU_DIR"
-  info "Removed $YU_DIR"
-
+  
+  if [ -d "$YU_DIR" ]; then
+    rm -rf "$YU_DIR"
+    info "Removed $YU_DIR"
+  fi
+  
   info "Uninstall complete"
   exit 0
 fi
 
+# --------------------------------------------------
+# Installation Logic
+# --------------------------------------------------
 echo "▶ Installing yuangs zero-mode shell AI..."
+
+if [ "$DRY_RUN" = true ]; then
+  info "[Dry-Run] Would create $YU_DIR"
+  info "[Dry-Run] Would write $YU_FILE"
+  info "[Dry-Run] Would inject into ~/.bashrc and ~/.zshrc"
+  exit 0
+fi
 
 mkdir -p "$YU_DIR"
 
 # --------------------------------------------------
-# Write runtime script（你的原逻辑，未破坏）
+# Write runtime script
 # --------------------------------------------------
 cat > "$YU_FILE" <<'EOF'
 # ==================================================
 # yuangs zero-mode AI trigger
-# bash / zsh compatible
 # ==================================================
 
+# Only run in interactive Bash or Zsh
+[[ -n "$BASH_VERSION" || -n "$ZSH_VERSION" ]] || return
 [[ $- != *i* ]] && return
 [[ -t 0 ]] || return
 
+# Prevent multiple loads
+[[ -n "$__YU_LOADED" ]] && return
+__YU_LOADED=1
+
 __YU_LAST_CMD=""
-__YU_LAST_STATUS=0
 __YU_AI_PENDING=0
 AI_OFF=0
 
-yu_ai() {
-  echo "[ai]"
+# Core AI calling function
+yu_call() {
   if command -v yuangs >/dev/null 2>&1; then
     yuangs ai "$@"
   else
-    echo "yuangs command not found"
+    echo "❌ yuangs command not found"
   fi
 }
 
-ai_off() { AI_OFF=1; echo "AI OFF"; }
-ai_on()  { AI_OFF=0; echo "AI ON";  }
+ai_off() { AI_OFF=1; echo "🤖 AI OFF"; }
+ai_on()  { AI_OFF=0; echo "🤖 AI ON";  }
 
-# ---------------- bash ----------------
+# --------------------------------------------------
+# Bash Implementation
+# --------------------------------------------------
 if [[ -n "$BASH_VERSION" ]]; then
+  # Bash doesn't have ZLE, so we use PROMPT_COMMAND + Ctrl+G
+  __yu_bash_prompt() {
+    local exit_code=$?
+    local last_hist
+    # Synchronize history to catch the very last command
+    history -a
+    last_hist=$(history 1 | sed 's/^[ ]*[0-9]*[ ]*//')
+    
+    if [[ $exit_code -ne 0 && "$AI_OFF" -eq 0 && -n "${last_hist// /}" ]]; then
+      if [[ ! "$last_hist" =~ ^yuangs && ! "$last_hist" =~ ^ai_ ]]; then
+        __YU_LAST_CMD="$last_hist"
+        echo "💡 Command failed. Press Ctrl+G to ask AI why."
+      fi
+    fi
+  }
+  
+  PROMPT_COMMAND="__yu_bash_prompt; $PROMPT_COMMAND"
 
-  __yu_postexec() {
-    __YU_LAST_STATUS=$?
-    if [[ $__YU_LAST_STATUS -ne 0 ]]; then
-      __YU_AI_PENDING=1
-      echo "↳ Need help? Press Enter"
+  __yu_bash_explain() {
+    if [[ -n "$__YU_LAST_CMD" ]]; then
+      echo 
+      yu_call "解释为什么命令失败了：$__YU_LAST_CMD"
+      # Clear line after AI response
+      READLINE_LINE=""
+      READLINE_POINT=0
+    else
+      echo "No failed command to explain."
     fi
   }
 
-  PROMPT_COMMAND="__yu_postexec"
-
-  __yu_readline() {
-    local line
-    read -r line
-
-    [[ "$AI_OFF" == "1" ]] && return 0
-
-    if [[ "$line" == "?? "* ]]; then
-      yu_ai "${line#?? }"
-      return 1
-    fi
-
-    if [[ -z "$line" && $__YU_AI_PENDING -eq 1 ]]; then
-      yu_ai "$__YU_LAST_CMD"
-      __YU_AI_PENDING=0
-      return 1
-    fi
-
-    __YU_LAST_CMD="$line"
-    return 0
-  }
+  bind -x '"\C-g": __yu_bash_explain'
+  alias ??="yuangs ai"
 fi
 
-# ---------------- zsh ----------------
+# --------------------------------------------------
+# Zsh Implementation
+# --------------------------------------------------
 if [[ -n "$ZSH_VERSION" ]]; then
-
-  preexec() { __YU_LAST_CMD="$1"; }
-
-  precmd() {
-    __YU_LAST_STATUS=$?
-    if [[ $__YU_LAST_STATUS -ne 0 ]]; then
-      __YU_AI_PENDING=1
-      echo "↳ Need help? Press Enter"
+  # 1. Capture command before execution
+  preexec() {
+    local cmd="$1"
+    if [[ ! "$cmd" =~ ^yuangs.* && ! "$cmd" =~ ^ai_.* ]]; then
+      __YU_LAST_CMD="$cmd"
     fi
   }
 
-yu_accept_line() {
-  # ✅ 关键：局部关闭 glob
-  emulate -L zsh
-  setopt localoptions noglob
-
-  [[ "$AI_OFF" == "1" ]] && zle .accept-line && return
-
-  local line="$BUFFER"
-
-  # ✅ 支持 ??（不要求空格）
-  if [[ "$line" == "??"* ]]; then
-    BUFFER=""
-    yu_ai "${line#??}"
-    zle reset-prompt
-    return
-  fi
-
-  if [[ -z "$line" && $__YU_AI_PENDING -eq 1 ]]; then
-    BUFFER=""
-    yu_ai "$__YU_LAST_CMD"
+  # 2. Check exit status after execution
+  precmd() {
+    local exit_code=$?
+    
+    if [[ $exit_code -ne 0 && "$AI_OFF" -eq 0 && -n "$__YU_LAST_CMD" ]]; then
+       # 确保最后执行的不是 yuangs
+       if [[ ! "$__YU_LAST_CMD" =~ ^yuangs && ! "$__YU_LAST_CMD" =~ ^ai_ ]]; then
+         __YU_AI_PENDING=1
+         echo -e "\033[2m↳ Command failed. Press Enter to ask AI.\033[0m"
+         return
+       fi
+    fi
     __YU_AI_PENDING=0
-    zle reset-prompt
-    return
-  fi
+  }
 
-  zle .accept-line
-}
+  # 3. Handle Enter key
+  yu_accept_line() {
+    emulate -L zsh
+    setopt localoptions noglob
+
+    if [[ "$AI_OFF" == "1" ]]; then
+      zle .accept-line
+      return
+    fi
+
+    local buffer_content="$BUFFER"
+
+    # ?? syntax handler
+    if [[ "$buffer_content" == "??"* ]]; then
+      echo 
+      yu_call "${buffer_content#??}"
+      BUFFER=""
+      zle reset-prompt
+      return
+    fi
+
+    # Empty line Enter -> Explain error
+    if [[ -z "$buffer_content" && $__YU_AI_PENDING -eq 1 ]]; then
+      echo 
+      yu_call "解释为什么命令失败了：$__YU_LAST_CMD"
+      __YU_AI_PENDING=0
+      BUFFER=""
+      zle reset-prompt
+      return
+    fi
+
+    zle .accept-line
+  }
 
   zle -N yu_accept_line
   bindkey '^M' yu_accept_line
@@ -27466,14 +27795,27 @@ fi
 EOF
 
 # --------------------------------------------------
-# Inject into rc files
+# Inject logic
 # --------------------------------------------------
 inject() {
   local rc="$1"
-  if [[ -f "$rc" ]] && ! grep -q "$MARKER" "$rc"; then
-    echo "" >> "$rc"
+  [[ -f "$rc" ]] || return 0
+  
+  if ! grep -q "$MARKER" "$rc"; then
+    echo >> "$rc"
+    echo "# $MARKER" >> "$rc"
     echo "source \"$YU_FILE\"" >> "$rc"
     info "Updated $rc"
+  else
+    # Verify if source line is still valid
+    if ! grep -q "source \"$YU_FILE\"" "$rc"; then
+       warn "Found marker in $rc but source path is outdated. Updating..."
+       sed -i.bak "/$MARKER/d" "$rc"
+       rm -f "$rc.bak"
+       inject "$rc"
+    else
+       warn "Already installed in $rc"
+    fi
   fi
 }
 
@@ -27481,8 +27823,8 @@ inject "$HOME/.bashrc"
 inject "$HOME/.zshrc"
 
 echo
-info "yuangs zero-mode installed"
-info "Open a new terminal or run: source ~/.bashrc / ~/.zshrc"
+info "Installation complete!"
+echo "👉 Run 'source ~/.zshrc' or 'source ~/.bashrc' to activate."
 
 ````
 
@@ -27771,6 +28113,7 @@ const terminalRenderer = new TerminalRenderer();
 marked.setOptions({ renderer: terminalRenderer });
 
 import { LLMAdapter } from "./llmAdapter";
+import { AIError } from "./llm";
 import { GovernanceService } from "./governance";
 import { ToolExecutor } from "./executor";
 import { ContextManager } from "./contextManager";
@@ -27873,34 +28216,73 @@ export class AgentRuntime {
         agentOnChunk = agentRenderer.startChunking();
       }
 
-      const thought = await LLMAdapter.think(
-        messages,
-        mode as any,
-        agentOnChunk,
-        model,
-        enhancedPrompt,
-        this.context,
-      );
+      let thought;
+      try {
+        thought = await LLMAdapter.think(
+          messages,
+          mode as any,
+          agentOnChunk,
+          model,
+          enhancedPrompt,
+          this.context,
+        );
 
-      const action: ProposedAction = {
-        id: randomUUID(),
-        type: (thought.type as any) || "answer",
-        payload: thought.payload || { text: thought.raw },
-        riskLevel: "low",
-        reasoning: thought.reasoning || "",
-      };
+        if (!thought.raw || thought.raw.trim() === '') {
+          console.log(chalk.red('\n⚠️ AI 返回了空响应，请检查网络连接或模型配置。'));
+          break;
+        }
+      } catch (error: unknown) {
+        let errorMessage = '未知内部错误';
+        let statusCode = 0;
 
-      if (action.reasoning && !onChunk) {
-        console.log(chalk.gray(`\n🤔 Reasoning: ${action.reasoning}`));
+        if (error instanceof AIError) {
+          errorMessage = error.message;
+          statusCode = error.statusCode;
+        } else if (error instanceof Error) {
+          errorMessage = error.message;
+          statusCode = (error as any).statusCode || 0;
+        } else if (typeof error === 'string') {
+          errorMessage = error;
+        }
+
+        const statusInfo = statusCode ? ` (状态码: ${statusCode})` : '';
+        console.log(chalk.red(`\n❌ AI 思考过程发生错误: ${errorMessage}${statusInfo}`));
+        
+        this.context.addMessage("system", `思考过程中发生错误${statusInfo}: ${errorMessage}`);
+        
+        if (statusCode === 401 || statusCode === 403 || errorMessage.includes('401') || errorMessage.includes('403')) {
+          console.log(chalk.yellow('💡 检测到权限或授权错误，请检查 API 配置。'));
+          break;
+        }
+        
+        if (statusCode === 429) {
+          console.log(chalk.yellow('💡 API 调用频率过高，请稍后再试。'));
+        }
+
+        break;
       }
 
-      if (thought.usedRouter) {
-        console.log(chalk.gray(`[Router] 🤖 Model: ${thought.modelName}`));
-      }
+      try {
+        const action: ProposedAction = {
+          id: randomUUID(),
+          type: (thought.type as any) || "answer",
+          payload: thought.payload || { text: thought.raw },
+          riskLevel: "low",
+          reasoning: thought.reasoning || "",
+        };
 
-      // 如果 LLM 认为已经完成或者当前的动作就是回答
-      if (thought.isDone || action.type === "answer") {
-        const result = await ToolExecutor.execute(action as any);
+        if (action.reasoning && !onChunk) {
+          console.log(chalk.gray(`\n🤔 Reasoning: ${action.reasoning}`));
+        }
+
+        if (thought.usedRouter) {
+          console.log(chalk.gray(`[Router] 🤖 Model: ${thought.modelName}`));
+        }
+
+        // 如果 LLM 认为已经完成或者当前的动作就是回答
+        if (thought.isDone || action.type === "answer") {
+          const result = await ToolExecutor.execute(action as any);
+          // ... rest of the logic
 
         // 如果没有 renderer，使用内部创建的
         if (!renderer && agentRenderer) {
@@ -28083,6 +28465,18 @@ export class AgentRuntime {
         lastError = result.error;
         this.context.addToolResult(action.type, `Error: ${result.error}`);
         console.log(chalk.red(`[ERROR] ${result.error}`));
+      }
+      } catch (error: unknown) {
+        let errorMessage = '未知执行错误';
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        } else if (typeof error === 'string') {
+          errorMessage = error;
+        }
+
+        console.log(chalk.red(`\n❌ 任务执行失败 [Action: ${thought?.type}]: ${errorMessage}`));
+        this.context.addMessage("system", `执行引擎错误 [Action: ${thought?.type}]: ${errorMessage}`);
+        break;
       }
     }
 
@@ -30391,6 +30785,20 @@ import { z } from 'zod';
 import { withRetry, RetryConfig } from './errorHandling';
 import { callLLMWithRouter, shouldUseRouter } from './modelRouterIntegration';
 
+/**
+ * 结构化 AI 错误类
+ */
+export class AIError extends Error {
+    constructor(
+        message: string,
+        public statusCode: number = 0,
+        public rawError?: any
+    ) {
+        super(message);
+        this.name = 'AIError';
+    }
+}
+
 const CONFIG_FILE = path.join(os.homedir(), '.yuangs.json');
 
 // Agent Action Schema for Native Structured Output
@@ -30579,7 +30987,7 @@ export async function runLLM({
         };
     }
 
-    try {
+    const executeCall = async () => {
         const response = await axios.post(url, responseData, { headers }) as any;
 
         // Safely extract content from response
@@ -30610,13 +31018,46 @@ export async function runLLM({
             modelName: modelUsed,
             usedRouter: false
         };
+    };
+
+    try {
+        const retryResult = await withRetry(executeCall, {
+            maxAttempts: 3,
+            retryableErrors: ['network', 'timeout', '503', '502', '429', 'ECONNRESET']
+        });
+
+        if (retryResult.success && retryResult.data) {
+            return retryResult.data;
+        }
+        
+        const retryError = retryResult.error;
+        if (retryError instanceof AIError) {
+            throw retryError;
+        }
+        throw new AIError(
+            retryError?.message || 'AI 请求重试失败',
+            (retryError as any)?.statusCode || 0,
+            retryError
+        );
     } catch (error: any) {
+        if (error instanceof AIError) {
+            throw error;
+        }
         // Safely extract error message without accessing circular references
         let errorMsg = '未知错误';
+        let statusCode = 0;
         
         // Only access the basic message property to avoid circular reference issues
         try {
-            if (error && typeof error.message === 'string') {
+            if (error.response) {
+                statusCode = error.response.status;
+                const responseData = error.response.data;
+                if (typeof responseData.error?.message === 'string') {
+                    errorMsg = responseData.error.message;
+                } else if (typeof responseData.message === 'string') {
+                    errorMsg = responseData.message;
+                }
+            } else if (error && typeof error.message === 'string') {
                 errorMsg = error.message;
             } else if (typeof error === 'string') {
                 errorMsg = error;
@@ -30627,7 +31068,8 @@ export async function runLLM({
             errorMsg = '未知错误（无法解析错误信息）';
         }
         
-        throw new Error(`AI 请求失败: ${errorMsg}`);
+        const finalError = new AIError(`AI 请求失败 (Status: ${statusCode}): ${errorMsg}`, statusCode, error);
+        throw finalError;
     }
 }
 
@@ -35873,6 +36315,348 @@ export function registerExplainCommands(program: Command): void {
 
 [⬆ 回到目录](#toc)
 
+## 📄 src/commands/git/auto.ts
+
+````typescript
+import { Command } from 'commander';
+import chalk from 'chalk';
+import ora from 'ora';
+import fs from 'fs';
+import path from 'path';
+import { GitService } from '../../core/git/GitService';
+import { runLLM, AIError } from '../../agent/llm';
+import { AIRequestMessage } from '../../core/validation';
+import {
+    parseTodoFile,
+    updateTaskStatus,
+    updateMetadata,
+    getNextTask,
+    calculateProgress,
+    TaskStatus
+} from '../../core/git/TodoManager';
+import { ReviewLevel } from '../../core/git/CodeReviewer';
+import {
+    MAX_RETRY_ATTEMPTS,
+    MIN_REVIEW_SCORE,
+    REVIEW_FAILURE_SCORE,
+    DEFAULT_AI_MODEL
+} from '../../core/git/constants';
+import {
+    parseGeneratedCode,
+    writeGeneratedCode,
+    saveRawOutput
+} from '../../core/git/CodeGenerator';
+
+/**
+ * 执行单个任务
+ */
+async function executeTask(
+    task: TaskStatus,
+    context: string,
+    model: string,
+    previousFeedback?: string
+): Promise<{ code: string; success: boolean }> {
+    const prompt: AIRequestMessage[] = [
+        {
+            role: 'system',
+            content: `你是一个资深软件工程师。请根据任务描述生成完整的代码实现。
+
+**重要输出格式要求：**
+对于每个需要创建或修改的文件，请使用以下格式：
+
+### 文件: src/path/to/file.ts
+\`\`\`typescript
+// 完整的文件代码
+\`\`\`
+
+要求：
+1. 明确指出每个文件的完整路径
+2. 提供完整的、可直接使用的代码
+3. 包含必要的注释
+4. 遵循最佳实践`
+        },
+        {
+            role: 'user',
+            content: `
+[项目上下文]
+${context}
+
+[当前任务]
+${task.description}
+
+${previousFeedback ? `\n[上次实现的问题]\n${previousFeedback}\n\n请根据以上反馈重新实现。` : ''}
+
+请生成完整的实现代码，并明确标注每个文件的路径。
+`
+        }
+    ];
+
+    try {
+        const response = await runLLM({
+            prompt: { messages: prompt },
+            model,
+            stream: false,
+            bypassRouter: true
+        });
+
+        return { code: response.rawText, success: true };
+    } catch (e) {
+        return { code: '', success: false };
+    }
+}
+
+/**
+ * 执行代码审查
+ */
+async function reviewCode(): Promise<{ score: number; issues: string[]; error?: string }> {
+    try {
+        const { CodeReviewer } = await import('../../core/git/CodeReviewer');
+        const { getRouter } = await import('../../core/modelRouter');
+        const gitService = new GitService();
+        
+        const router = getRouter();
+        const reviewer = new CodeReviewer(gitService, router);
+        
+        const result = await reviewer.review(ReviewLevel.STANDARD, true);
+        
+        return {
+            score: result.score,
+            issues: result.issues.map(i => `${i.severity}: ${i.message}`)
+        };
+    } catch (e: unknown) {
+        const errorMsg = e instanceof Error ? e.message : '未知错误';
+        console.warn(chalk.yellow(`⚠️  代码审查失败: ${errorMsg}`));
+        
+        // 审查失败时返回低分，避免掩盖问题
+        return {
+            score: REVIEW_FAILURE_SCORE,
+            issues: [`审查系统错误: ${errorMsg}`],
+            error: errorMsg
+        };
+    }
+}
+
+/**
+ * 注册 git auto 命令
+ */
+export function registerAutoCommand(gitCmd: Command) {
+    gitCmd
+        .command('auto')
+        .description('全自动工作流：plan → exec → review 循环')
+        .option('--max-tasks <number>', '最大执行任务数', '5')
+        .option('--model <model>', '指定 AI 模型', 'Assistant')
+        .option('--min-score <score>', '最低审查分数', '85')
+        .option('--skip-review', '跳过代码审查')
+        .option('--save-only', '只保存代码，不写入文件系统')
+        .action(async (options) => {
+            const todoPath = path.join(process.cwd(), 'todo.md');
+            const maxTasks = parseInt(options.maxTasks) || 5;
+            const minScore = parseInt(options.minScore) || MIN_REVIEW_SCORE;
+            
+            console.log(chalk.bold.cyan('\n🤖 启动全自动 AI 开发工作流...\n'));
+            console.log(chalk.gray(`📋 最大任务数: ${maxTasks}`));
+            console.log(chalk.gray(`🎯 最低审查分数: ${minScore}`));
+            console.log(chalk.gray(`🤖 AI 模型: ${options.model}\n`));
+            
+            const spinner = ora('正在初始化...').start();
+            
+            try {
+                // 1. 检查 todo.md 是否存在
+                await fs.promises.access(todoPath, fs.constants.F_OK);
+                
+                // 2. 解析任务
+                const { metadata, tasks, rawContent } = await parseTodoFile(todoPath);
+                
+                if (tasks.length === 0) {
+                    spinner.fail('未找到任何任务');
+                    console.log(chalk.yellow('💡 提示：请先运行 yuangs git plan 生成任务'));
+                    return;
+                }
+                
+                spinner.succeed(`发现 ${tasks.length} 个任务`);
+                
+                const progress = calculateProgress(tasks);
+                console.log(chalk.cyan(`📊 当前进度: ${progress.completed}/${progress.total}\n`));
+                
+                let tasksExecuted = 0;
+                
+                // 3. 循环执行任务
+                while (tasksExecuted < maxTasks) {
+                    const nextTask = getNextTask(tasks);
+                    
+                    if (!nextTask) {
+                        console.log(chalk.green('\n🎉 所有任务已完成！'));
+                        break;
+                    }
+                    
+                    console.log(chalk.bold.cyan(`\n━━━ 任务 #${nextTask.index + 1} ━━━`));
+                    console.log(chalk.white(`📝 ${nextTask.description}\n`));
+                    
+                    let attempts = nextTask.attempts || 0;
+                    let taskCompleted = false;
+                    
+                    while (attempts <= MAX_RETRY_ATTEMPTS && !taskCompleted) {
+                        attempts++;
+                        
+                        // 3a. 执行任务
+                        spinner.start(`[尝试 ${attempts}/${MAX_RETRY_ATTEMPTS + 1}] 正在生成代码...`);
+                        
+                        await updateTaskStatus(todoPath, nextTask.index, {
+                            execStatus: 'in_progress',
+                            attempts
+                        });
+                        
+                        const previousFeedback = attempts > 1 && nextTask.reviewIssues 
+                            ? nextTask.reviewIssues.join('\n') 
+                            : undefined;
+                        
+                        const { code, success } = await executeTask(
+                            nextTask,
+                            rawContent,
+                            options.model,
+                            previousFeedback
+                        );
+                        
+                        if (!success) {
+                            spinner.fail('代码生成失败');
+                            await updateTaskStatus(todoPath, nextTask.index, {
+                                execStatus: 'failed'
+                            });
+                            break;
+                        }
+                        
+                        spinner.succeed('代码已生成');
+                        
+                        // 3b. 保存原始输出
+                        const savedPath = await saveRawOutput(code, nextTask.index);
+                        console.log(chalk.gray(`📄 原始输出已保存: ${path.relative(process.cwd(), savedPath)}`));
+                        
+                        // 3c. 解析并写入代码
+                        const generated = parseGeneratedCode(code);
+                        
+                        if (generated.files.length > 0) {
+                            console.log(chalk.cyan(`\n📦 检测到 ${generated.files.length} 个文件:\n`));
+                            
+                            if (!options.saveOnly) {
+                                const { written, skipped } = await writeGeneratedCode(generated);
+                                
+                                if (written.length > 0) {
+                                    console.log(chalk.green(`\n✅ 成功写入 ${written.length} 个文件`));
+                                }
+                                if (skipped.length > 0) {
+                                    console.log(chalk.yellow(`⚠️  跳过 ${skipped.length} 个文件`));
+                                }
+                            } else {
+                                console.log(chalk.gray('  (--save-only 模式，未写入文件系统)'));
+                                generated.files.forEach(f => {
+                                    console.log(chalk.gray(`  - ${f.path}`));
+                                });
+                            }
+                        } else {
+                            console.log(chalk.yellow('\n⚠️  未检测到可解析的文件路径和代码'));
+                            console.log(chalk.gray('💡 提示：请检查 AI 输出格式，或查看原始输出文件'));
+                        }
+                        
+                        // 3b. 代码审查（如果未跳过）
+                        if (!options.skipReview) {
+                            spinner.start('正在进行代码审查...');
+                            
+                            const review = await reviewCode();
+                            
+                            spinner.succeed(`审查完成 (评分: ${review.score}/100)`);
+                            
+                            await updateTaskStatus(todoPath, nextTask.index, {
+                                reviewScore: review.score,
+                                reviewIssues: review.issues
+                            });
+                            
+                            // 3c. 判断是否通过
+                            if (review.score >= minScore) {
+                                console.log(chalk.green(`✅ 审查通过！(${review.score} >= ${minScore})\n`));
+                                taskCompleted = true;
+                                
+                                await updateTaskStatus(todoPath, nextTask.index, {
+                                    completed: true,
+                                    execStatus: 'done'
+                                });
+                                
+                                nextTask.completed = true;
+                            } else {
+                                console.log(chalk.yellow(`⚠️  审查未通过 (${review.score} < ${minScore})`));
+                                
+                                if (review.issues.length > 0) {
+                                    console.log(chalk.yellow('问题列表:'));
+                                    review.issues.forEach(issue => {
+                                        console.log(chalk.yellow(`  • ${issue}`));
+                                    });
+                                }
+                                
+                                if (attempts <= MAX_RETRY_ATTEMPTS) {
+                                    console.log(chalk.cyan(`\n🔄 将根据反馈重新生成...\n`));
+                                } else {
+                                    console.log(chalk.red(`\n❌ 已达最大重试次数，跳过此任务\n`));
+                                    await updateTaskStatus(todoPath, nextTask.index, {
+                                        execStatus: 'failed'
+                                    });
+                                }
+                            }
+                        } else {
+                            // 跳过审查，直接标记完成
+                            console.log(chalk.gray('⏭️  已跳过代码审查\n'));
+                            taskCompleted = true;
+                            
+                            await updateTaskStatus(todoPath, nextTask.index, {
+                                completed: true,
+                                execStatus: 'done'
+                            });
+                            
+                            nextTask.completed = true;
+                        }
+                    }
+                    
+                    tasksExecuted++;
+                    
+                    // 更新总体进度
+                    const newProgress = calculateProgress(tasks);
+                    await updateMetadata(todoPath, {
+                        progress: newProgress,
+                        currentTask: nextTask.index + 1
+                    });
+                }
+                
+                // 4. 总结
+                const finalProgress = calculateProgress(tasks);
+                console.log(chalk.bold.cyan('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━'));
+                console.log(chalk.bold.cyan('📊 工作流执行完成'));
+                console.log(chalk.bold.cyan('━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'));
+                console.log(chalk.white(`✅ 已完成: ${finalProgress.completed}/${finalProgress.total}`));
+                console.log(chalk.white(`🔄 本次执行: ${tasksExecuted} 个任务\n`));
+                
+                if (finalProgress.completed < finalProgress.total) {
+                    console.log(chalk.yellow('💡 提示：还有未完成的任务，可以再次运行 yuangs git auto 继续'));
+                }
+                
+            } catch (e: unknown) {
+                if (e instanceof Error && (e as NodeJS.ErrnoException).code === 'ENOENT') {
+                    spinner.fail('未找到 todo.md 文件');
+                    console.log(chalk.yellow('\n💡 建议流程:'));
+                    console.log(chalk.gray('  1. yuangs git plan "你的需求"  # 生成任务清单'));
+                    console.log(chalk.gray('  2. yuangs git auto            # 启动自动化工作流\n'));
+                } else if (e instanceof AIError) {
+                    spinner.fail(`AI 调用失败: ${e.message}`);
+                } else if (e instanceof Error) {
+                    spinner.fail(`执行失败: ${e.message}`);
+                } else {
+                    spinner.fail('未知错误');
+                }
+            }
+        });
+}
+
+````
+
+[⬆ 回到目录](#toc)
+
 ## 📄 src/commands/git/branch.ts
 
 ````typescript
@@ -36044,6 +36828,437 @@ export function registerBranchCommand(gitCmd: Command) {
 
             } catch (error: any) {
                 spinner.fail(`分析失败: ${error.message}`);
+            }
+        });
+}
+
+````
+
+[⬆ 回到目录](#toc)
+
+## 📄 src/commands/git/exec.ts
+
+````typescript
+import { Command } from 'commander';
+import chalk from 'chalk';
+import ora from 'ora';
+import fs from 'fs';
+import path from 'path';
+import { runLLM, AIError } from '../../agent/llm';
+import { AIRequestMessage } from '../../core/validation';
+
+const METADATA_PREFIX = '>';
+
+/**
+ * 从 todo.md 中提取任务列表
+ */
+async function parseTodoFile(filePath: string): Promise<{ tasks: string[]; context: string }> {
+    const content = await fs.promises.readFile(filePath, 'utf8');
+    const lines = content.split('\n');
+    
+    // 跳过元数据
+    let startIndex = 0;
+    while (startIndex < lines.length && lines[startIndex].trim().startsWith(METADATA_PREFIX)) {
+        startIndex++;
+    }
+    while (startIndex < lines.length && lines[startIndex].trim() === '') {
+        startIndex++;
+    }
+    
+    const mainContent = lines.slice(startIndex).join('\n');
+    
+    // 提取所有未完成的任务（- [ ] 格式）
+    const tasks: string[] = [];
+    const taskRegex = /^[\s]*-\s*\[\s*\]\s*(.+)$/gm;
+    let match;
+    
+    while ((match = taskRegex.exec(mainContent)) !== null) {
+        tasks.push(match[1].trim());
+    }
+    
+    return { tasks, context: mainContent };
+}
+
+/**
+ * 注册 git exec 命令
+ */
+export function registerExecCommand(gitCmd: Command) {
+    gitCmd
+        .command('exec')
+        .description('根据 todo.md 自动生成代码并执行任务')
+        .option('--fromfile <file>', '指定 todo 文件路径', 'todo.md')
+        .option('--task <number>', '执行指定编号的任务（从 1 开始）')
+        .option('--model <model>', '指定 AI 模型', 'Assistant')
+        .action(async (options) => {
+            const todoPath = path.join(process.cwd(), options.fromfile);
+            const spinner = ora('正在读取任务文件...').start();
+            
+            try {
+                // 1. 检查文件是否存在
+                await fs.promises.access(todoPath, fs.constants.F_OK);
+                
+                // 2. 解析任务
+                const { tasks, context } = await parseTodoFile(todoPath);
+                
+                if (tasks.length === 0) {
+                    spinner.fail('未找到待执行的任务（- [ ] 格式）');
+                    console.log(chalk.yellow('💡 提示：请确保 todo.md 中包含未完成的任务，格式如：- [ ] 任务描述'));
+                    return;
+                }
+                
+                spinner.succeed(`发现 ${tasks.length} 个待执行任务`);
+                
+                // 3. 确定要执行的任务
+                let taskIndex = 0;
+                if (options.task) {
+                    taskIndex = parseInt(options.task) - 1;
+                    if (taskIndex < 0 || taskIndex >= tasks.length) {
+                        console.error(chalk.red(`❌ 任务编号 ${options.task} 超出范围（1-${tasks.length}）`));
+                        return;
+                    }
+                } else {
+                    // 默认执行第一个任务
+                    taskIndex = 0;
+                }
+                
+                const currentTask = tasks[taskIndex];
+                console.log(chalk.cyan(`\n📋 准备执行任务 #${taskIndex + 1}: ${chalk.bold(currentTask)}\n`));
+                
+                // 4. 构建 AI 提示
+                spinner.start('正在生成实现方案...');
+                
+                const prompt: AIRequestMessage[] = [
+                    {
+                        role: 'system',
+                        content: `你是一个资深软件工程师。请根据任务描述和上下文，生成完整的代码实现。
+要求：
+1. 输出可直接使用的代码
+2. 包含必要的注释
+3. 遵循最佳实践
+4. 如果需要创建新文件，明确指出文件路径`
+                    },
+                    {
+                        role: 'user',
+                        content: `
+[项目上下文 - 来自 todo.md]
+${context}
+
+[当前任务]
+${currentTask}
+
+请生成完整的实现代码。如果需要创建或修改文件，请按以下格式输出：
+
+\`\`\`filepath
+文件路径
+\`\`\`
+
+\`\`\`code
+代码内容
+\`\`\`
+`
+                    }
+                ];
+                
+                const response = await runLLM({
+                    prompt: { messages: prompt },
+                    model: options.model,
+                    stream: false,
+                    bypassRouter: true
+                });
+                
+                spinner.succeed('实现方案已生成');
+                
+                // 5. 显示生成的代码
+                console.log(chalk.gray('━'.repeat(60)));
+                console.log(response.rawText);
+                console.log(chalk.gray('━'.repeat(60)));
+                
+                // 6. 询问是否应用
+                const readline = require('readline').createInterface({
+                    input: process.stdin,
+                    output: process.stdout
+                });
+                
+                const answer = await new Promise<string>((resolve) => {
+                    readline.question(chalk.yellow('\n是否应用以上代码？(y/N): '), resolve);
+                });
+                readline.close();
+                
+                if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
+                    // 7. 解析并应用代码（这里需要实现文件写入逻辑）
+                    console.log(chalk.green('\n✅ 代码已应用（文件写入功能待实现）'));
+                    console.log(chalk.gray('💡 提示：请手动复制代码到对应文件，或等待自动写入功能完善'));
+                } else {
+                    console.log(chalk.gray('\n已取消应用'));
+                }
+                
+            } catch (e: unknown) {
+                if (e instanceof Error && (e as NodeJS.ErrnoException).code === 'ENOENT') {
+                    spinner.fail(`文件不存在: ${todoPath}`);
+                    console.log(chalk.yellow('💡 提示：请先运行 yuangs git plan 生成任务文件'));
+                } else if (e instanceof AIError) {
+                    spinner.fail(`AI 调用失败: ${e.message}`);
+                    console.error(chalk.red(`Status: ${e.statusCode}`));
+                } else if (e instanceof Error) {
+                    spinner.fail(`执行失败: ${e.message}`);
+                } else {
+                    spinner.fail('未知错误');
+                }
+            }
+        });
+}
+
+````
+
+[⬆ 回到目录](#toc)
+
+## 📄 src/commands/git/plan.ts
+
+````typescript
+import { Command } from 'commander';
+import chalk from 'chalk';
+import ora from 'ora';
+import fs from 'fs';
+import path from 'path';
+import { GitService } from '../../core/git/GitService';
+import { runLLM, AIError } from '../../agent/llm';
+import { AIRequestMessage } from '../../core/validation';
+
+const DEFAULT_PLAN_PROMPT = '分析项目现状并规划下一步开发任务';
+const METADATA_PREFIX = '>';
+
+/**
+ * 解析用户指令（优先级：命令行 > todo.md > 默认值）
+ */
+async function resolveUserPrompt(cliPrompt: string, todoPath: string): Promise<{ prompt: string; fromFile: boolean }> {
+    if (cliPrompt) {
+        return { prompt: cliPrompt, fromFile: false };
+    }
+
+    try {
+        await fs.promises.access(todoPath, fs.constants.F_OK);
+        const content = await fs.promises.readFile(todoPath, 'utf8');
+        
+        // 过滤掉文件开头由 yuangs 生成的元数据行（连续的 > 开头的行）
+        const lines = content.split('\n');
+        let startIndex = 0;
+        
+        // 跳过开头连续的元数据行
+        while (startIndex < lines.length && lines[startIndex].trim().startsWith(METADATA_PREFIX)) {
+            startIndex++;
+        }
+        
+        // 跳过元数据后的空行
+        while (startIndex < lines.length && lines[startIndex].trim() === '') {
+            startIndex++;
+        }
+        
+        const filePrompt = lines.slice(startIndex).join('\n').trim();
+        
+        if (filePrompt) {
+            return { prompt: filePrompt, fromFile: true };
+        }
+    } catch (e: unknown) {
+        if (e instanceof Error && (e as NodeJS.ErrnoException).code !== 'ENOENT') {
+            console.warn(chalk.yellow(`⚠️  读取 todo.md 失败: ${e.message}`));
+        }
+    }
+
+    return { prompt: DEFAULT_PLAN_PROMPT, fromFile: false };
+}
+
+/**
+ * 注册 git plan 命令
+ */
+export function registerPlanCommand(gitCmd: Command) {
+    gitCmd
+        .command('plan [prompt...]')
+        .description('自动读取最近 10 次提交，由两个 AI (架构师 & 审查员) 协作生成 todo.md')
+        .option('-r, --rounds <number>', '对话轮数', '2')
+        .action(async (promptParts, options) => {
+            const cliPrompt = promptParts.join(' ').trim();
+            const maxRounds = parseInt(options.rounds) || 2;
+            const todoPath = path.join(process.cwd(), 'todo.md');
+            
+            const { prompt: userPrompt, fromFile } = await resolveUserPrompt(cliPrompt, todoPath);
+            
+            // 使用主 spinner 管理整体状态
+            const spinner = ora(fromFile ? '正在从 todo.md 读取并初始化分析规划...' : '正在初始化分析规划...').start();
+            
+            try {
+                const gitService = new GitService();
+                
+                if (!(await gitService.isGitRepository())) {
+                    spinner.fail('当前目录不是 Git 仓库');
+                    return;
+                }
+
+                // 1. 获取最近 10 次提交
+                spinner.text = '正在读取 Git 历史记录...';
+                const commits = await gitService.getRecentCommits(10);
+                const commitContext = commits.length > 0 
+                  ? commits.map(c => `- ${c.date} [${c.hash.substring(0, 7)}] ${c.message}`).join('\n')
+                  : '暂无提交记录';
+
+                spinner.succeed('已获取 Git 上下文');
+
+                // 定义两个角色的配置
+                const ARCHITECT_MODEL = 'Assistant'; // 负责写方案
+                const REVIEWER_MODEL = 'gemini-2.5-flash-lite'; // 负责挑刺 (速度快/便宜)
+
+                // 共享的项目上下文
+                const projectContext = `
+[项目背景 - 最近 Git 提交]
+${commitContext}
+
+[用户需求]
+${userPrompt}
+`;
+
+                let currentPlan = ""; // 用于存储当前的方案草稿
+                let reviewComments = ""; // 用于存储审查意见
+
+                console.log(chalk.bold.cyan('\n🚀 启动双智能体协作引擎...\n'));
+
+                // --- 阶段 1: 架构师起草初稿 ---
+                spinner.start(`[架构师] ${ARCHITECT_MODEL} 正在起草初步方案...`);
+                
+                const draftPrompt: AIRequestMessage[] = [
+                    {
+                        role: 'system',
+                        content: `你是一个资深软件架构师。请根据 Git 历史确保新功能与现有代码风格一致。
+请基于用户需求输出一份初步的开发计划 (Draft Plan)。
+包含：核心目标、修改文件列表、关键步骤。`
+                    },
+                    { role: 'user', content: projectContext }
+                ];
+
+                const draftRes = await runLLM({
+                    prompt: { messages: draftPrompt },
+                    model: ARCHITECT_MODEL,
+                    stream: false,
+                    bypassRouter: true
+                });
+                
+                currentPlan = draftRes.rawText;
+                spinner.succeed(chalk.blue(`[架构师] 初稿已完成`));
+                // console.log(chalk.gray(currentPlan.substring(0, 100) + '...'));
+
+                // --- 阶段 2: 循环打磨 ---
+                for (let i = 1; i <= maxRounds; i++) {
+                    console.log(chalk.gray(`\n--- Round ${i}/${maxRounds} ---`));
+
+                    // Step A: 审查员 (Gemini) 评审
+                    spinner.start(`[审查员] ${REVIEWER_MODEL} 正在评审方案...`);
+                    
+                    const reviewPrompt: AIRequestMessage[] = [
+                        {
+                            role: 'system',
+                            content: `你是一个严格的代码审查员和产品经理。
+你的任务是找出架构师方案中的漏洞、遗漏、安全风险或逻辑错误。
+请简明扼要地列出修改建议。不要重写计划，只给建议。`
+                        },
+                        { 
+                            role: 'user', 
+                            content: `
+${projectContext}
+
+[待评审的方案]
+${currentPlan}
+` 
+                        }
+                    ];
+
+                    const reviewRes = await runLLM({
+                        prompt: { messages: reviewPrompt },
+                        model: REVIEWER_MODEL,
+                        stream: false,
+                        bypassRouter: true
+                    });
+
+                    reviewComments = reviewRes.rawText;
+                    spinner.succeed(chalk.magenta(`[审查员] 已提出修改意见`));
+                    console.log(chalk.gray(`   💬 "${reviewComments.replace(/\n/g, ' ').substring(0, 80)}..."`));
+
+                    // Step B: 架构师 (Assistant) 修正
+                    spinner.start(`[架构师] ${ARCHITECT_MODEL} 正在根据意见修订方案...`);
+                    
+                    const refinePrompt: AIRequestMessage[] = [
+                        {
+                            role: 'system',
+                            content: `你是一个资深软件架构师。请根据审查员的意见优化你的开发计划。`
+                        },
+                        {
+                            role: 'user',
+                            content: `
+这是你之前的方案：
+${currentPlan}
+
+审查员给出的意见：
+${reviewComments}
+
+请输出修正后的完整方案。`
+                        }
+                    ];
+
+                    const refineRes = await runLLM({
+                        prompt: { messages: refinePrompt },
+                        model: ARCHITECT_MODEL,
+                        stream: false,
+                        bypassRouter: true
+                    });
+
+                    currentPlan = refineRes.rawText;
+                    spinner.succeed(chalk.blue(`[架构师] 方案已修订`));
+                }
+
+                // 4. 生成最终 todo.md
+                spinner.start('正在生成最终 todo.md 文件...');
+                
+                const finalPrompt: AIRequestMessage[] = [
+                    {
+                        role: 'system',
+                        content: `你是一个技术文档专家。请将以下开发方案整理为一份标准的 todo.md 文档。
+要求：
+1. 格式清晰，使用 Markdown Checkbox (- [ ] )。
+2. 包含 [目标]、[文件变更]、[详细步骤]。
+3. 仅输出 Markdown 内容，不要包含 "好的" 等废话。`
+                    },
+                    {
+                        role: 'user',
+                        content: currentPlan
+                    }
+                ];
+
+                const finalResponse = await runLLM({
+                    prompt: { messages: finalPrompt },
+                    model: 'Assistant', // 用最好的模型做最后整理
+                    stream: false,
+                    bypassRouter: true
+                });
+
+                const todoContent = finalResponse.rawText;
+                const filePath = path.join(process.cwd(), 'todo.md');
+                
+                // 增强的 Markdown 清理正则
+                const cleanedContent = todoContent
+                    .replace(/^```(markdown|md)?\s*\n/i, '') // 去头
+                    .replace(/\n\s*```$/, '')                 // 去尾
+                    .trim();
+                
+                // 加上一些元数据头
+                const fileOutput = `> 📅 Generated by Yuangs Git Plan at ${new Date().toLocaleString()}\n> 🎯 Context: ${userPrompt}\n\n${cleanedContent}`;
+
+                fs.writeFileSync(filePath, fileOutput);
+                
+                spinner.succeed(chalk.green(`\n✅ 规划完成！文件已生成: ${chalk.bold('todo.md')}`));
+                console.log(chalk.gray(`👉 你可以使用 'code todo.md' 打开查看`));
+
+            } catch (error: any) {
+                spinner.fail(chalk.red(`规划过程中出错: ${error.message}`));
+                if (error instanceof AIError) {
+                    console.error(chalk.red(`Status: ${error.statusCode}`));
+                }
             }
         });
 }
@@ -36286,6 +37501,9 @@ import { registerCommitCommand } from './git/commit';
 import { registerReviewCommand } from './git/review';
 import { registerStatusCommand } from './git/status';
 import { registerBranchCommand } from './git/branch';
+import { registerPlanCommand } from './git/plan';
+import { registerExecCommand } from './git/exec';
+import { registerAutoCommand } from './git/auto';
 
 /**
  * 注册 Git 相关命令
@@ -36293,7 +37511,7 @@ import { registerBranchCommand } from './git/branch';
 export function registerGitCommands(program: Command) {
     const gitCmd = program
         .command('git')
-        .description('Git 集成工具 - 智能提交、代码审查、分支管理')
+        .description('Git 集成工具 - 智能提交、代码审查、分支管理、自动化工作流')
         .action((options: any, cmd: any) => {
             if (cmd.args.length === 0) {
                 cmd.help();
@@ -36304,6 +37522,9 @@ export function registerGitCommands(program: Command) {
     registerReviewCommand(gitCmd);
     registerStatusCommand(gitCmd);
     registerBranchCommand(gitCmd);
+    registerPlanCommand(gitCmd);
+    registerExecCommand(gitCmd);
+    registerAutoCommand(gitCmd);
 }
 
 ````
@@ -41283,6 +42504,138 @@ ${ctx.branchList.join(', ')}
 
 [⬆ 回到目录](#toc)
 
+## 📄 src/core/git/CodeGenerator.ts
+
+````typescript
+import fs from 'fs';
+import path from 'path';
+import chalk from 'chalk';
+
+/**
+ * 代码生成结果
+ */
+export interface GeneratedCode {
+    files: Array<{
+        path: string;
+        content: string;
+        action: 'create' | 'modify';
+    }>;
+    rawOutput: string;
+}
+
+/**
+ * 从 LLM 输出中解析文件路径和代码
+ */
+export function parseGeneratedCode(llmOutput: string): GeneratedCode {
+    const files: GeneratedCode['files'] = [];
+    
+    // 尝试多种格式解析
+    
+    // 格式 1: ```filepath\n路径\n```\n```code\n代码\n```
+    const pattern1 = /```filepath\s*\n(.*?)\n```\s*\n```(?:typescript|javascript|ts|js|code)?\s*\n([\s\S]*?)\n```/gi;
+    let match;
+    
+    while ((match = pattern1.exec(llmOutput)) !== null) {
+        files.push({
+            path: match[1].trim(),
+            content: match[2].trim(),
+            action: 'create'
+        });
+    }
+    
+    // 格式 2: ### 文件: path/to/file.ts\n```typescript\n代码\n```
+    const pattern2 = /###?\s*(?:文件|File)[：:]\s*([^\n]+)\s*\n```(?:typescript|javascript|ts|js|code)?\s*\n([\s\S]*?)\n```/gi;
+    
+    while ((match = pattern2.exec(llmOutput)) !== null) {
+        const filePath = match[1].trim().replace(/`/g, '');
+        if (!files.some(f => f.path === filePath)) {
+            files.push({
+                path: filePath,
+                content: match[2].trim(),
+                action: 'create'
+            });
+        }
+    }
+    
+    // 格式 3: **path/to/file.ts**\n```typescript\n代码\n```
+    const pattern3 = /\*\*([^*]+\.(?:ts|js|tsx|jsx|json|md))\*\*\s*\n```(?:typescript|javascript|ts|js|json|markdown|code)?\s*\n([\s\S]*?)\n```/gi;
+    
+    while ((match = pattern3.exec(llmOutput)) !== null) {
+        const filePath = match[1].trim();
+        if (!files.some(f => f.path === filePath)) {
+            files.push({
+                path: filePath,
+                content: match[2].trim(),
+                action: 'create'
+            });
+        }
+    }
+    
+    return {
+        files,
+        rawOutput: llmOutput
+    };
+}
+
+/**
+ * 将生成的代码写入文件系统
+ */
+export async function writeGeneratedCode(
+    generated: GeneratedCode,
+    baseDir: string = process.cwd()
+): Promise<{ written: string[]; skipped: string[] }> {
+    const written: string[] = [];
+    const skipped: string[] = [];
+    
+    for (const file of generated.files) {
+        try {
+            const fullPath = path.isAbsolute(file.path) 
+                ? file.path 
+                : path.join(baseDir, file.path);
+            
+            // 确保目录存在
+            const dir = path.dirname(fullPath);
+            await fs.promises.mkdir(dir, { recursive: true });
+            
+            // 写入文件
+            await fs.promises.writeFile(fullPath, file.content, 'utf8');
+            written.push(file.path);
+            
+            console.log(chalk.green(`  ✓ ${file.action === 'create' ? '创建' : '修改'}: ${file.path}`));
+        } catch (e: unknown) {
+            const errorMsg = e instanceof Error ? e.message : '未知错误';
+            console.warn(chalk.yellow(`  ⚠ 跳过 ${file.path}: ${errorMsg}`));
+            skipped.push(file.path);
+        }
+    }
+    
+    return { written, skipped };
+}
+
+/**
+ * 保存原始输出到临时文件
+ */
+export async function saveRawOutput(
+    content: string,
+    taskIndex: number,
+    baseDir: string = process.cwd()
+): Promise<string> {
+    const outputDir = path.join(baseDir, '.yuangs', 'generated');
+    await fs.promises.mkdir(outputDir, { recursive: true });
+    
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = `task-${taskIndex + 1}-${timestamp}.md`;
+    const filepath = path.join(outputDir, filename);
+    
+    await fs.promises.writeFile(filepath, content, 'utf8');
+    
+    return filepath;
+}
+
+````
+
+[⬆ 回到目录](#toc)
+
 ## 📄 src/core/git/CodeReviewer.ts
 
 ````typescript
@@ -42265,6 +43618,251 @@ export class GitService {
         }
     }
 }
+
+````
+
+[⬆ 回到目录](#toc)
+
+## 📄 src/core/git/TodoManager.ts
+
+````typescript
+import fs from 'fs';
+import path from 'path';
+
+export interface TaskStatus {
+    index: number;
+    description: string;
+    completed: boolean;
+    execStatus?: 'pending' | 'in_progress' | 'done' | 'failed';
+    reviewScore?: number;
+    reviewIssues?: string[];
+    attempts?: number;
+}
+
+export interface TodoMetadata {
+    generatedAt?: string;
+    context?: string;
+    progress?: { completed: number; total: number };
+    currentTask?: number;
+}
+
+const METADATA_PREFIX = '>';
+const TASK_REGEX = /^[\s]*-\s*\[([x\s])\]\s*(.+?)(?:\s*<!--\s*(.+?)\s*-->)?$/;
+
+/**
+ * 解析 todo.md 文件
+ */
+export async function parseTodoFile(filePath: string): Promise<{
+    metadata: TodoMetadata;
+    tasks: TaskStatus[];
+    rawContent: string;
+}> {
+    const content = await fs.promises.readFile(filePath, 'utf8');
+    const lines = content.split('\n');
+    
+    // 解析元数据
+    const metadata: TodoMetadata = {};
+    let contentStartIndex = 0;
+    
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line.startsWith(METADATA_PREFIX)) {
+            contentStartIndex = i;
+            break;
+        }
+        
+        // 解析特定元数据
+        if (line.includes('Generated by Yuangs Git Plan at')) {
+            metadata.generatedAt = line.split('at')[1]?.trim();
+        } else if (line.includes('Context:')) {
+            metadata.context = line.split('Context:')[1]?.trim();
+        } else if (line.includes('Progress:')) {
+            const match = line.match(/(\d+)\/(\d+)/);
+            if (match) {
+                metadata.progress = {
+                    completed: parseInt(match[1]),
+                    total: parseInt(match[2])
+                };
+            }
+        } else if (line.includes('Current Task:')) {
+            metadata.currentTask = parseInt(line.split('Current Task:')[1]?.trim() || '0');
+        }
+    }
+    
+    // 解析任务
+    const tasks: TaskStatus[] = [];
+    const mainContent = lines.slice(contentStartIndex).join('\n');
+    
+    let taskIndex = 0;
+    for (const line of lines.slice(contentStartIndex)) {
+        const match = line.match(TASK_REGEX);
+        if (match) {
+            const [, checkbox, description, comment] = match;
+            const task: TaskStatus = {
+                index: taskIndex++,
+                description: description.trim(),
+                completed: checkbox.toLowerCase() === 'x',
+                attempts: 0
+            };
+            
+            // 解析注释中的状态
+            if (comment) {
+                const execMatch = comment.match(/exec:(\w+)/);
+                const reviewMatch = comment.match(/review:(\d+)/);
+                const attemptsMatch = comment.match(/attempts:(\d+)/);
+                
+                if (execMatch) task.execStatus = execMatch[1] as any;
+                if (reviewMatch) task.reviewScore = parseInt(reviewMatch[1]);
+                if (attemptsMatch) task.attempts = parseInt(attemptsMatch[1]);
+            }
+            
+            tasks.push(task);
+        }
+    }
+    
+    return { metadata, tasks, rawContent: content };
+}
+
+/**
+ * 更新任务状态
+ */
+export async function updateTaskStatus(
+    filePath: string,
+    taskIndex: number,
+    updates: Partial<TaskStatus>
+): Promise<void> {
+    const content = await fs.promises.readFile(filePath, 'utf8');
+    const lines = content.split('\n');
+    
+    let currentTaskIndex = 0;
+    for (let i = 0; i < lines.length; i++) {
+        const match = lines[i].match(TASK_REGEX);
+        if (match && currentTaskIndex === taskIndex) {
+            const [, checkbox, description] = match;
+            
+            // 构建新的注释
+            const comments: string[] = [];
+            if (updates.execStatus) comments.push(`exec:${updates.execStatus}`);
+            if (updates.reviewScore !== undefined) comments.push(`review:${updates.reviewScore}`);
+            if (updates.attempts !== undefined) comments.push(`attempts:${updates.attempts}`);
+            
+            const newCheckbox = updates.completed ? 'x' : ' ';
+            const commentStr = comments.length > 0 ? ` <!-- ${comments.join(', ')} -->` : '';
+            
+            lines[i] = `- [${newCheckbox}] ${description}${commentStr}`;
+            break;
+        }
+        if (match) currentTaskIndex++;
+    }
+    
+    await fs.promises.writeFile(filePath, lines.join('\n'), 'utf8');
+}
+
+/**
+ * 更新元数据
+ */
+export async function updateMetadata(
+    filePath: string,
+    updates: Partial<TodoMetadata>
+): Promise<void> {
+    const content = await fs.promises.readFile(filePath, 'utf8');
+    const lines = content.split('\n');
+    
+    // 找到元数据结束位置
+    let metadataEndIndex = 0;
+    for (let i = 0; i < lines.length; i++) {
+        if (!lines[i].trim().startsWith(METADATA_PREFIX)) {
+            metadataEndIndex = i;
+            break;
+        }
+    }
+    
+    // 更新或添加进度信息
+    if (updates.progress) {
+        let progressLineIndex = -1;
+        for (let i = 0; i < metadataEndIndex; i++) {
+            if (lines[i].includes('Progress:')) {
+                progressLineIndex = i;
+                break;
+            }
+        }
+        
+        const progressLine = `> 📊 Progress: ${updates.progress.completed}/${updates.progress.total} tasks completed`;
+        if (progressLineIndex >= 0) {
+            lines[progressLineIndex] = progressLine;
+        } else {
+            lines.splice(metadataEndIndex, 0, progressLine);
+        }
+    }
+    
+    if (updates.currentTask !== undefined) {
+        let currentTaskLineIndex = -1;
+        for (let i = 0; i < metadataEndIndex; i++) {
+            if (lines[i].includes('Current Task:')) {
+                currentTaskLineIndex = i;
+                break;
+            }
+        }
+        
+        const currentTaskLine = `> 🔄 Current Task: ${updates.currentTask}`;
+        if (currentTaskLineIndex >= 0) {
+            lines[currentTaskLineIndex] = currentTaskLine;
+        } else {
+            lines.splice(metadataEndIndex, 0, currentTaskLine);
+        }
+    }
+    
+    await fs.promises.writeFile(filePath, lines.join('\n'), 'utf8');
+}
+
+/**
+ * 获取下一个待执行的任务
+ */
+export function getNextTask(tasks: TaskStatus[]): TaskStatus | null {
+    return tasks.find(t => !t.completed) || null;
+}
+
+/**
+ * 计算进度
+ */
+export function calculateProgress(tasks: TaskStatus[]): { completed: number; total: number } {
+    return {
+        completed: tasks.filter(t => t.completed).length,
+        total: tasks.length
+    };
+}
+
+````
+
+[⬆ 回到目录](#toc)
+
+## 📄 src/core/git/constants.ts
+
+````typescript
+/**
+ * Git 模块公共常量
+ */
+
+/** todo.md 元数据行前缀 */
+export const METADATA_PREFIX = '>';
+
+/** 默认 todo 文件名 */
+export const TODO_FILENAME = 'todo.md';
+
+/** 默认规划提示词 */
+export const DEFAULT_PLAN_PROMPT = '分析项目现状并规划下一步开发任务';
+
+/** 默认 AI 模型 */
+export const DEFAULT_AI_MODEL = 'Assistant';
+
+/** 最大重试次数 */
+export const MAX_RETRY_ATTEMPTS = 2;
+
+/** 最低审查分数 */
+export const MIN_REVIEW_SCORE = 85;
+
+/** 代码审查失败时的默认分数 */
+export const REVIEW_FAILURE_SCORE = 60;
 
 ````
 
@@ -44058,15 +45656,13 @@ export abstract class BaseAdapter implements ModelAdapter {
    * 检查 CLI 命令是否可用
    */
   protected async checkCommand(command: string): Promise<boolean> {
-    return new Promise((resolve) => {
-      const child = spawn('command', ['-v', command]);
-      child.on('close', (code) => {
-        resolve(code === 0);
-      });
-      child.on('error', () => {
-        resolve(false);
-      });
-    });
+    try {
+      const { execSync } = require('child_process');
+      execSync(`which ${command}`, { stdio: 'ignore' });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -44080,10 +45676,13 @@ export abstract class BaseAdapter implements ModelAdapter {
     command: string,
     args: string[],
     timeout: number = 30000,
-    onChunk?: (chunk: string) => void
+    onChunk?: (chunk: string) => void,
+    env?: Record<string, string>
   ): Promise<{ stdout: string; stderr: string }> {
     return new Promise((resolve, reject) => {
-      const child = spawn(command, args);
+      const child = spawn(command, args, {
+        env: { ...process.env, ...env }
+      });
       
       let stdout = '';
       let stderr = '';
@@ -44257,6 +45856,7 @@ export abstract class BaseAdapter implements ModelAdapter {
 
 ````typescript
 import * as crypto from 'crypto';
+import { AIRequestMessage } from '../../core/validation';
 import {
   ModelAdapter,
   TaskConfig,
@@ -44523,7 +46123,7 @@ export class ModelRouter {
 
   async executeTask(
     adapter: ModelAdapter,
-    prompt: string,
+    prompt: string | AIRequestMessage[],
     config: TaskConfig,
     onChunk?: (chunk: string) => void
   ): Promise<ModelExecutionResult> {
@@ -44659,6 +46259,7 @@ export class ModelRouter {
 ````typescript
 import { BaseAdapter } from '../BaseAdapter';
 import { ModelCapabilities, TaskConfig, ModelExecutionResult, TaskType } from '../types';
+import { AIRequestMessage } from '../../../core/validation';
 
 /**
  * Codebuddy CLI 适配器
@@ -44699,14 +46300,19 @@ export class CodebuddyAdapter extends BaseAdapter {
    * 执行任务
    */
   async execute(
-    prompt: string,
+    prompt: string | AIRequestMessage[],
     config: TaskConfig,
     onChunk?: (chunk: string) => void
   ): Promise<ModelExecutionResult> {
     try {
       const { result, executionTime } = await this.measureExecutionTime(async () => {
+        // 处理 prompt: 如果是数组，则合并为字符串
+        const singlePrompt = typeof prompt === 'string' 
+            ? prompt 
+            : prompt.map(m => `${m.role}: ${m.content}`).join('\n\n');
+
         // 构建参数数组
-        const args = ['-p', prompt];
+        const args = ['-p', singlePrompt];
         
         // 根据任务类型添加 flags
         this.addTaskSpecificArgs(args, config.type);
@@ -44808,6 +46414,7 @@ export class CodebuddyAdapter extends BaseAdapter {
 ````typescript
 import { BaseAdapter } from '../BaseAdapter';
 import { ModelCapabilities, TaskConfig, ModelExecutionResult, TaskType } from '../types';
+import { AIRequestMessage } from '../../../core/validation';
 
 /**
  * Gemini CLI 适配器
@@ -44838,14 +46445,32 @@ export class GoogleAdapter extends BaseAdapter {
     specialCapabilities: ['long-context', 'multimodal'],
   };
 
+  private getApiKey(): string | undefined {
+    // 优先从环境变量获取
+    if (process.env.GEMINI_API_KEY) {
+      return process.env.GEMINI_API_KEY;
+    }
+
+    // 尝试从 yuangs 配置读取
+    try {
+      const { getUserConfig } = require('../../../ai/client');
+      const config = getUserConfig();
+      return config.geminiApiKey;
+    } catch (e) {
+      return undefined;
+    }
+  }
+
   /**
    * 健康检查：检查 Gemini CLI 是否安装并已配置
    */
   async healthCheck(): Promise<boolean> {
     try {
-      const available = await this.checkCommand('gemini');
-      if (!available) {
-        console.warn('⚠️  Gemini CLI 未安装');
+      const { execSync } = require('child_process');
+      try {
+        execSync('which gemini', { stdio: 'ignore' });
+      } catch (e) {
+        console.warn('⚠️  Gemini CLI 未安装 (which gemini 失败)');
         return false;
       }
 
@@ -44853,21 +46478,23 @@ export class GoogleAdapter extends BaseAdapter {
       const { stdout } = await this.runSpawnCommand(
         'gemini',
         ['--version'],
-        30000 // 增加超时时间，gemini cli 启动较慢
+        30000 
       );
 
-      if (!stdout.trim()) return false;
-
-      // 检查是否配置了 API key 环境变量
-      if (!process.env.GEMINI_API_KEY) {
-        console.warn('⚠️  未配置 GEMINI_API_KEY 环境变量');
+      if (!stdout.trim()) {
+        console.warn('⚠️  Gemini CLI 返回版本信息为空');
         return false;
       }
 
-      // 基本检查通过，认为可用
-      // 实际的 API 调用会在 execute 中进行
+      const apiKey = this.getApiKey();
+      if (!apiKey) {
+        console.warn('⚠️  未配置 GEMINI_API_KEY (环境变量 或 .yuangs.json 中的 geminiApiKey)');
+        return false;
+      }
+
       return true;
-    } catch {
+    } catch (error: any) {
+      console.warn(`⚠️  Gemini 检查异常: ${error.message}`);
       return false;
     }
   }
@@ -44876,27 +46503,34 @@ export class GoogleAdapter extends BaseAdapter {
    * 执行任务
    */
   async execute(
-    prompt: string,
+    prompt: string | AIRequestMessage[],
     config: TaskConfig,
     onChunk?: (chunk: string) => void
   ): Promise<ModelExecutionResult> {
     try {
+      const apiKey = this.getApiKey();
+      
       const { result, executionTime } = await this.measureExecutionTime(async () => {
         // 根据任务类型选择合适的模型
         const model = this.selectModel(config.type);
 
-        // 构建参数数组
+        // 处理 prompt: 如果是数组，则合并为字符串
+        const singlePrompt = typeof prompt === 'string' 
+            ? prompt 
+            : prompt.map(m => `${m.role}: ${m.content}`).join('\n\n');
+
+        // 构建参数数组 (适配 gemini-cli 0.1.7)
         const args = [
-          prompt,                 // 提示词作为第一个位置参数
-          '--model', model,
-          '--output-format', 'json'  // 使用 JSON 格式输出
+          '-p', singlePrompt,
+          '-m', model,
         ];
 
         const { stdout, stderr } = await this.runSpawnCommand(
           'gemini',
           args,
           config.expectedResponseTime || 60000,
-          onChunk
+          onChunk,
+          apiKey ? { GEMINI_API_KEY: apiKey } : undefined
         );
 
         // 检查是否有 API key 错误
@@ -44931,7 +46565,7 @@ export class GoogleAdapter extends BaseAdapter {
     switch (taskType) {
       case TaskType.CODE_GENERATION:
       case TaskType.CODE_REVIEW:
-        return 'gemini-2.5-pro';
+        return 'gemini-2.5-flash';
       case TaskType.CONVERSATION:
       case TaskType.GENERAL:
         return 'gemini-2.5-flash';
@@ -45000,6 +46634,7 @@ export class GoogleAdapter extends BaseAdapter {
 ````typescript
 import { BaseAdapter } from '../BaseAdapter';
 import { ModelCapabilities, TaskConfig, ModelExecutionResult, TaskType } from '../types';
+import { AIRequestMessage } from '../../../core/validation';
 
 /**
  * Qwen CLI 适配器
@@ -45045,7 +46680,7 @@ export class QwenAdapter extends BaseAdapter {
    * 执行任务
    */
   async execute(
-    prompt: string,
+    prompt: string | AIRequestMessage[],
     config: TaskConfig,
     onChunk?: (chunk: string) => void
   ): Promise<ModelExecutionResult> {
@@ -45054,9 +46689,14 @@ export class QwenAdapter extends BaseAdapter {
         // 根据任务类型选择模型
         const model = this.selectModel(config.type);
         
+        // 处理 prompt: 如果是数组，则合并为字符串
+        const singlePrompt = typeof prompt === 'string' 
+            ? prompt 
+            : prompt.map(m => `${m.role}: ${m.content}`).join('\n\n');
+
         // 构建带上下文的完整prompt（如果配置中启用了上下文）
         const useContext = config.metadata?.useContext !== false;
-        const fullPrompt = useContext ? this.buildPromptWithContext(prompt) : prompt;
+        const fullPrompt = useContext ? this.buildPromptWithContext(singlePrompt) : singlePrompt;
         
         // 构建参数数组，prompt 作为位置参数
         const args = [fullPrompt];
@@ -45070,7 +46710,7 @@ export class QwenAdapter extends BaseAdapter {
         const { stdout, stderr } = await this.runSpawnCommand(
           'qwen',
           args,
-          config.expectedResponseTime || 30000,
+          config.expectedResponseTime || 60000,
           onChunk
         );
 
@@ -45083,7 +46723,7 @@ export class QwenAdapter extends BaseAdapter {
         
         // 保存到上下文
         if (useContext) {
-          this.saveToContext(prompt, response);
+          this.saveToContext(singlePrompt, response);
         }
         
         return response;
@@ -45176,6 +46816,7 @@ export class QwenAdapter extends BaseAdapter {
 import { BaseAdapter } from '../BaseAdapter';
 import { ModelCapabilities, TaskConfig, ModelExecutionResult, TaskType } from '../types';
 import { callAI_Stream, askAI } from '../../../ai/client';
+import { AIRequestMessage } from '../../../core/validation';
 
 /**
  * Yuangs 内部适配器
@@ -45213,16 +46854,20 @@ export class YuangsAdapter extends BaseAdapter {
   }
 
   async execute(
-    prompt: string,
+    prompt: string | AIRequestMessage[],
     config: TaskConfig,
     onChunk?: (chunk: string) => void
   ): Promise<ModelExecutionResult> {
     const startTime = Date.now();
     try {
+      const messages: AIRequestMessage[] = typeof prompt === 'string' 
+        ? [{ role: 'user', content: prompt }] 
+        : prompt;
+
       if (onChunk) {
         let fullContent = '';
         await callAI_Stream(
-          [{ role: 'user', content: prompt }],
+          messages,
           undefined, // 使用默认模型 (Assistant)
           (chunk) => {
             fullContent += chunk;
@@ -45231,7 +46876,12 @@ export class YuangsAdapter extends BaseAdapter {
         );
         return this.createSuccessResult(fullContent, Date.now() - startTime);
       } else {
-        const response = await askAI(prompt);
+        // askAI 目前只支持 string prompt，我们需要转换回来或者让它支持 messages
+        const singlePrompt = typeof prompt === 'string' 
+            ? prompt 
+            : prompt.map(m => `${m.role}: ${m.content}`).join('\n\n');
+            
+        const response = await askAI(singlePrompt);
         return this.createSuccessResult(response, Date.now() - startTime);
       }
     } catch (error: any) {
@@ -45449,6 +47099,7 @@ export { QwenAdapter } from './adapters/QwenAdapter';
 export { CodebuddyAdapter } from './adapters/CodebuddyAdapter';
 export { YuangsAdapter } from './adapters/YuangsAdapter';
 
+import { AIRequestMessage } from '../../core/validation';
 import chalk from 'chalk';
 import { ModelRouter } from './ModelRouter';
 import { GoogleAdapter } from './adapters/GoogleAdapter';
@@ -45512,7 +47163,7 @@ export function resetRouter(): void {
  * 快捷函数：执行任务
  */
 export async function executeTask(
-  prompt: string,
+  prompt: string | AIRequestMessage[],
   taskConfig: TaskConfig,
   routingConfig?: Partial<RoutingConfig>,
   onChunk?: (chunk: string) => void
@@ -45529,8 +47180,8 @@ export async function executeTask(
     ...routingConfig,
   };
 
-  // 检查是否有任务类型映射
-  if (config.taskTypeMapping && config.taskTypeMapping[taskConfig.type]) {
+  // 检查是否有任务类型映射 (仅当调用方未手动指定策略时应用)
+  if (!routingConfig?.strategy && config.taskTypeMapping && config.taskTypeMapping[taskConfig.type]) {
     finalRoutingConfig.strategy = RoutingStrategy.MANUAL;
     finalRoutingConfig.manualModelName = config.taskTypeMapping[taskConfig.type];
   }
@@ -45850,6 +47501,8 @@ export interface RoutingPolicy {
 ## 📄 src/core/modelRouter/types.ts
 
 ````typescript
+import { AIRequestMessage } from '../../core/validation';
+
 /**
  * 模型路由系统类型定义
  * 
@@ -45963,7 +47616,7 @@ export interface ModelAdapter {
 
   /** 执行任务 */
   execute(
-    prompt: string,
+    prompt: string | AIRequestMessage[], // 支持字符串或结构化消息列表
     config: TaskConfig,
     onChunk?: (chunk: string) => void
   ): Promise<ModelExecutionResult>;
@@ -54634,6 +56287,125 @@ console.log('   - 手动清空所有上下文: rm ' + storagePath);
 console.log('   - 检查文件大小: ls -lh ' + storagePath);
 
 console.log('');
+
+````
+
+[⬆ 回到目录](#toc)
+
+## 📄 test-router-full.ts
+
+````typescript
+import { 
+    executeTask, 
+    getRouter, 
+    TaskType, 
+    RoutingStrategy 
+} from './src/core/modelRouter';
+import chalk from 'chalk';
+
+async function runTest() {
+    console.log(chalk.bold.cyan('\n🚀 开始 ModelRouter 综合响应测试...\n'));
+    
+    const router = getRouter();
+    const adapters = router.getAdapters();
+    
+    console.log(chalk.white('已注册适配器: ') + adapters.map(a => a.name).join(', '));
+    console.log('--------------------------------------------------');
+
+    const tests = [
+        {
+            name: '基础对话 (Auto)',
+            prompt: '你好，请用一句话介绍你自己',
+            config: { type: TaskType.CONVERSATION, description: 'Basic chat test' },
+            routing: { strategy: RoutingStrategy.AUTO }
+        },
+        {
+            name: '代码审查 (Mapping 验证)',
+            prompt: 'diff --git a/index.js b/index.js\n+console.log("hello world");',
+            config: { type: TaskType.CODE_REVIEW, description: 'Code review test' },
+            routing: undefined // 不要指定策略，让它命中全局 mapping
+        },
+        {
+            name: 'Gemini 专项测试',
+            prompt: 'Translate to English: 今天天气不错',
+            config: { type: TaskType.TRANSLATION, description: 'Gemini specific test' },
+            routing: { strategy: RoutingStrategy.MANUAL, manualModelName: 'google-gemini' }
+        },
+        {
+            name: '通义千问专项测试',
+            prompt: '写一个快速排序算法',
+            config: { type: TaskType.CODE_GENERATION, description: 'Qwen specific test' },
+            routing: { strategy: RoutingStrategy.MANUAL, manualModelName: 'qwen' }
+        }
+    ];
+
+    const results = [];
+
+    for (const test of tests) {
+        console.log(chalk.yellow(`\n正在执行: ${test.name}...`));
+        try {
+            // 检查适配器是否可用
+            if (test.routing?.strategy === RoutingStrategy.MANUAL) {
+                const adapter = adapters.find(a => a.name === test.routing?.manualModelName);
+                if (!adapter || !(await adapter.isAvailable())) {
+                    console.log(chalk.gray(`⏭️  跳过测试: 适配器 ${test.routing?.manualModelName} 不可用`));
+                    results.push({
+                        test: test.name,
+                        model: test.routing?.manualModelName || 'Unknown',
+                        status: chalk.yellow('SKIPPED'),
+                        latency: '-',
+                        realTime: '-',
+                        error: 'Adapter unavailable'
+                    });
+                    continue;
+                }
+            }
+
+            const start = Date.now();
+            const result = await executeTask(test.prompt, test.config as any, test.routing);
+            const duration = Date.now() - start;
+
+            results.push({
+                test: test.name,
+                model: result.modelName,
+                status: result.success ? chalk.green('PASS') : chalk.red('FAIL'),
+                latency: `${result.executionTime}ms`,
+                realTime: `${duration}ms`,
+                error: result.error || '-'
+            });
+
+            if (result.success) {
+                console.log(chalk.green(`✓ 响应成功 (模型: ${result.modelName}, 耗时: ${result.executionTime}ms)`));
+            } else {
+                console.log(chalk.red(`✗ 响应失败: ${result.error}`));
+            }
+        } catch (e: any) {
+            results.push({
+                test: test.name,
+                model: 'Unknown',
+                status: chalk.bgRed('CRASH'),
+                latency: '-',
+                realTime: '-',
+                error: e.message
+            });
+            console.log(chalk.red(`💥 程序崩溃: ${e.message}`));
+        }
+    }
+
+    console.log(chalk.bold.cyan('\n📊 测试总结报告\n'));
+    console.table(results.map(r => ({
+        '测试项': r.test,
+        '实际使用模型': r.model,
+        '状态': r.status,
+        '逻辑耗时': r.latency,
+        '总耗时': r.realTime
+    })));
+
+    const successCount = results.filter(r => r.status.includes('PASS')).length;
+    console.log(`\n🎉 测试完成: ${successCount}/${tests.length} 成功\n`);
+}
+
+runTest().catch(console.error);
 
 ````
 
@@ -66294,6 +68066,169 @@ child.on('error', (err) => {
 
 [⬆ 回到目录](#toc)
 
+## 📄 test/test_installer.sh
+
+````bash
+#!/usr/bin/env bash
+
+# test/test_installer.sh
+# 自动化测试 yuangs-install.sh 脚本的安装、卸载及各类环境兼容性
+
+set -euo pipefail
+
+# 1. 环境准备
+REPO_ROOT="$(pwd)"
+INSTALLER="$REPO_ROOT/scripts/yuangs-install.sh"
+TEST_DIR="$(mktemp -d)"
+MOCK_HOME="$TEST_DIR/mock_home"
+mkdir -p "$MOCK_HOME"
+
+# 设置环境变量，重定向 HOME
+export HOME="$MOCK_HOME"
+
+info() { echo "🧪 [TEST] $*"; }
+error() { echo "❌ [FAIL] $*" >&2; exit 1; }
+
+# 初始化 mock 的 rc 文件
+setup_rc_files() {
+    echo "# Existing bash config" > "$MOCK_HOME/.bashrc"
+    echo "# Existing zsh config" > "$MOCK_HOME/.zshrc"
+}
+
+# 2. 测试用例：Dry-Run 安装
+test_dry_run_install() {
+    info "Running Dry-Run Install Test..."
+    setup_rc_files
+    
+    "$INSTALLER" --dry-run > "$TEST_DIR/dry_run_output.log"
+    
+    if [ -d "$MOCK_HOME/.yuangs" ]; then
+        error "Dry-run should NOT create .yuangs directory"
+    fi
+    
+    if grep -q "yuangs-ai.sh" "$MOCK_HOME/.bashrc"; then
+        error "Dry-run should NOT modify .bashrc"
+    fi
+    info "✅ Dry-Run Install Test Passed"
+}
+
+# 3. 测试用例：标准安装
+test_standard_install() {
+    info "Running Standard Install Test..."
+    setup_rc_files
+    
+    "$INSTALLER" > /dev/null
+    
+    # 检查目录和运行脚本
+    if [ ! -f "$MOCK_HOME/.yuangs/yuangs-ai.sh" ]; then
+        error "Installation failed: yuangs-ai.sh not created"
+    fi
+    
+    # 检查注入
+    if ! grep -q "source \".*/.yuangs/yuangs-ai.sh\"" "$MOCK_HOME/.bashrc"; then
+        error "Injection failed: .bashrc not updated correctly"
+    fi
+    
+    if ! grep -q "source \".*/.yuangs/yuangs-ai.sh\"" "$MOCK_HOME/.zshrc"; then
+        error "Injection failed: .zshrc not updated correctly"
+    fi
+    
+    # 检查脚本内容关键点
+    local runtime_script="$MOCK_HOME/.yuangs/yuangs-ai.sh"
+    if ! grep -q "alias ??=" "$runtime_script"; then
+        error "Runtime script missing ?? alias"
+    fi
+    if ! grep -q "bind -x '\"\\\\C-g\": __yu_bash_explain'" "$runtime_script"; then
+        error "Runtime script missing Ctrl+G binding"
+    fi
+    if ! grep -q "yu_accept_line()" "$runtime_script"; then
+        error "Runtime script missing Zsh yu_accept_line"
+    fi
+    
+    info "✅ Standard Install Test Passed"
+}
+
+# 4. 测试用例：重复安装（幂等性）
+test_idempotent_install() {
+    info "Running Idempotency Test..."
+    # 已经运行过一次安装，再次运行
+    "$INSTALLER" > "$TEST_DIR/second_install.log"
+    
+    local count=$(grep -c "yuangs-ai.sh" "$MOCK_HOME/.bashrc")
+    if [ "$count" -ne 2 ]; then # 1 for comment, 1 for source
+        # 我们的注入逻辑是：
+        # # yuangs-ai.sh
+        # source "..."
+        # 所以应该是 2 条包含 marker 的行（其中一行是注释中的代码路径名可能也匹配）
+        # 检查是否重复 source
+        local source_count=$(grep -c "source \".*/yuangs-ai.sh\"" "$MOCK_HOME/.bashrc")
+        if [ "$source_count" -gt 1 ]; then
+            error "Idempotency failed: duplicate source lines in .bashrc"
+        fi
+    fi
+    info "✅ Idempotency Test Passed"
+}
+
+# 5. 测试用例：卸载
+test_uninstall() {
+    info "Running Uninstall Test..."
+    
+    "$INSTALLER" --uninstall > /dev/null
+    
+    if [ -d "$MOCK_HOME/.yuangs" ]; then
+        error "Uninstallation failed: .yuangs directory still exists"
+    fi
+    
+    if grep -q "yuangs-ai.sh" "$MOCK_HOME/.bashrc"; then
+        error "Uninstallation failed: .bashrc still contains references"
+    fi
+    
+    info "✅ Uninstall Test Passed"
+}
+
+# 6. 测试用例：带路径修复的重新安装
+test_path_fix_install() {
+    info "Running Path-Fix Re-installation Test..."
+    setup_rc_files
+    
+    # 手动注入一个错误的路径但保留 Marker
+    echo "# yuangs-ai.sh" >> "$MOCK_HOME/.bashrc"
+    echo "source \"/wrong/path/yuangs-ai.sh\"" >> "$MOCK_HOME/.bashrc"
+    
+    # 运行安装
+    "$INSTALLER" > /dev/null
+    
+    # 检查是否修复了路径
+    if grep -q "/wrong/path/" "$MOCK_HOME/.bashrc"; then
+        error "Re-installation failed to fix incorrect path"
+    fi
+    if ! grep -q "source \".*/.yuangs/yuangs-ai.sh\"" "$MOCK_HOME/.bashrc"; then
+        error "Re-installation failed to inject correct path"
+    fi
+    
+    info "✅ Path-Fix Re-installation Test Passed"
+}
+
+# 执行所有测试
+main() {
+    test_dry_run_install
+    test_standard_install
+    test_idempotent_install
+    test_path_fix_install
+    test_uninstall
+    
+    echo ""
+    echo "🎉 ALL INSTALLER TESTS PASSED!"
+    # 清理
+    rm -rf "$TEST_DIR"
+}
+
+main
+
+````
+
+[⬆ 回到目录](#toc)
+
 ## 📄 test/test_integration.js
 
 ````javascript
@@ -67961,6 +69896,834 @@ renderer.finish();
 
 [⬆ 回到目录](#toc)
 
+## 📄 todo.md
+
+````markdown
+> 📅 Generated by Yuangs Git Plan at 1/28/2026, 10:27:59 AM
+> 🎯 Context: 我对个人页面不满意，帮我讨论优化：<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>苑广山项目列表 - 投资与教育资源导航</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            padding: 40px 20px;
+            margin-bottom: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .category-section {
+            margin-bottom: 50px;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .category-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .category-icon {
+            font-size: 2.5em;
+            margin-right: 15px;
+        }
+
+        .category-title {
+            font-size: 2em;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .project-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 15px;
+            padding: 25px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            border: 2px solid transparent;
+        }
+
+        .project-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(102, 126, 234, 0.3);
+            border-color: #667eea;
+        }
+
+        .project-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .project-card:hover::before {
+            left: 100%;
+        }
+
+        .project-number {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 35px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+        }
+
+        .project-title {
+            font-size: 1.3em;
+            color: #2d3748;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .project-description {
+            color: #4a5568;
+            font-size: 0.95em;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+
+        .project-link {
+            display: inline-block;
+            color: #667eea;
+            text-decoration: none;
+            font-size: 0.85em;
+            word-break: break-all;
+            padding: 8px 12px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .project-link:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .featured-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #f56565;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.75em;
+            font-weight: bold;
+        }
+
+        footer {
+            text-align: center;
+            color: white;
+            padding: 30px;
+            margin-top: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .subtitle {
+                font-size: 1em;
+            }
+
+            .projects-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .category-title {
+                font-size: 1.5em;
+            }
+
+            .category-section {
+                padding: 20px;
+            }
+        }
+
+        .stats-bar {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌟 苑广山项目列表 🌟</h1>
+            <p class="subtitle">投资工具 · 数据分析 · 教育资源 · 开发工具</p>
+            <div class="stats-bar">
+                <div class="stat-item">
+                    <span class="stat-number">25+</span>
+                    <span class="stat-label">投资工具</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">22+</span>
+                    <span class="stat-label">教育资源</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">3</span>
+                    <span class="stat-label">超复杂项目</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- 投资相关 -->
+        <section class="category-section">
+            <div class="category-header">
+                <span class="category-icon">📊</span>
+                <h2 class="category-title">投资相关工具</h2>
+            </div>
+            <div class="projects-grid">
+                <div class="project-card" onclick="window.open('https://i.want.biz/', '_blank')">
+                    <span class="featured-badge">⭐ 推荐</span>
+                    <div class="project-number">1</div>
+                    <h3 class="project-title">苑广山的个人空间</h3>
+                    <p class="project-description">期货概览，热图、龙虎榜、统计，基差等综合应用</p>
+                    <a href="https://i.want.biz/" class="project-link" onclick="event.stopPropagation()">https://i.want.biz/</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/v1/future.html', '_blank')">
+                    <span class="featured-badge">🔥 热门</span>
+                    <div class="project-number">2</div>
+                    <h3 class="project-title">期市概览</h3>
+                    <p class="project-description">品种涨跌，增仓比，详细龙虎榜、升贴水</p>
+                    <a href="https://wealth.want.biz/v1/future.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/v1/future.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/v1/longshort.html', '_blank')">
+                    <div class="project-number">3</div>
+                    <h3 class="project-title">龙虎榜</h3>
+                    <p class="project-description">龙虎榜、品种净仓观察、持仓量、持仓额、机构持仓等</p>
+                    <a href="https://wealth.want.biz/v1/longshort.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/v1/longshort.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/v1/onlist.html', '_blank')">
+                    <div class="project-number">4</div>
+                    <h3 class="project-title">机构上榜次数</h3>
+                    <p class="project-description">期货公司龙虎榜上榜次数统计</p>
+                    <a href="https://wealth.want.biz/v1/onlist.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/v1/onlist.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/v1/ths_trading.html?variety=IF&company=%E4%B8%9C%E8%AF%81%E6%9C%9F%E8%B4%A7(%E4%BB%A3%E5%AE%A2)&contract=ALL', '_blank')">
+                    <div class="project-number">5</div>
+                    <h3 class="project-title">期货公司建仓过程</h3>
+                    <p class="project-description">同花顺、盈亏明细，建仓过程</p>
+                    <a href="https://wealth.want.biz/v1/ths_trading.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/v1/ths_trading.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/gp.html', '_blank')">
+                    <div class="project-number">6</div>
+                    <h3 class="project-title">股票数据分析中心</h3>
+                    <p class="project-description">沪深融资、行业融资、股票异动</p>
+                    <a href="https://wealth.want.biz/pages/gp.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/gp.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/ygs.html', '_blank')">
+                    <div class="project-number">7</div>
+                    <h3 class="project-title">期货行情（图表监控）</h3>
+                    <p class="project-description">期市实时监控，涨幅汇总，成交与沉淀资金</p>
+                    <a href="https://wealth.want.biz/pages/ygs.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/ygs.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/k.html', '_blank')">
+                    <div class="project-number">8</div>
+                    <h3 class="project-title">期货行情（K线监控）</h3>
+                    <p class="project-description">期货品种实时监控，自定义指标设置</p>
+                    <a href="https://wealth.want.biz/pages/k.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/k.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/etf.html?vol=10', '_blank')">
+                    <div class="project-number">9</div>
+                    <h3 class="project-title">ETF概览</h3>
+                    <p class="project-description">ETF概览、指数类规模统计</p>
+                    <a href="https://wealth.want.biz/pages/etf.html?vol=10" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/etf.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/f.html', '_blank')">
+                    <div class="project-number">10</div>
+                    <h3 class="project-title">期货月间结构</h3>
+                    <p class="project-description">期货合约列表，价格数据，品种结构</p>
+                    <a href="https://wealth.want.biz/pages/f.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/f.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/zf.html', '_blank')">
+                    <div class="project-number">11</div>
+                    <h3 class="project-title">周期涨跌对比</h3>
+                    <p class="project-description">不同周期的涨跌幅对比</p>
+                    <a href="https://wealth.want.biz/pages/zf.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/zf.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/zdt.html', '_blank')">
+                    <div class="project-number">12</div>
+                    <h3 class="project-title">品种涨跌停</h3>
+                    <p class="project-description">期货品种涨跌停监控</p>
+                    <a href="https://wealth.want.biz/pages/zdt.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/zdt.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/qhhq.html', '_blank')">
+                    <div class="project-number">13</div>
+                    <h3 class="project-title">期货外盘行情</h3>
+                    <p class="project-description">华尔街见闻外盘期货行情</p>
+                    <a href="https://wealth.want.biz/pages/qhhq.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/qhhq.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/yd.html', '_blank')">
+                    <div class="project-number">14</div>
+                    <h3 class="project-title">股票异动</h3>
+                    <p class="project-description">股票市场异动监控</p>
+                    <a href="https://wealth.want.biz/pages/yd.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/yd.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://i.want.biz/market-analysis', '_blank')">
+                    <div class="project-number">15</div>
+                    <h3 class="project-title">市场智能分析</h3>
+                    <p class="project-description">AI驱动的市场数据智能分析</p>
+                    <a href="https://i.want.biz/market-analysis" class="project-link" onclick="event.stopPropagation()">i.want.biz/market-analysis</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://i.want.biz/ths-basis', '_blank')">
+                    <div class="project-number">16</div>
+                    <h3 class="project-title">期货基差</h3>
+                    <p class="project-description">期货基差数据分析</p>
+                    <a href="https://i.want.biz/ths-basis" class="project-link" onclick="event.stopPropagation()">i.want.biz/ths-basis</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/rzrq.html', '_blank')">
+                    <div class="project-number">17</div>
+                    <h3 class="project-title">股票融资</h3>
+                    <p class="project-description">股票融资融券数据</p>
+                    <a href="https://wealth.want.biz/pages/rzrq.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/rzrq.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/qdii.html', '_blank')">
+                    <div class="project-number">18</div>
+                    <h3 class="project-title">T+0 ETF</h3>
+                    <p class="project-description">T+0交易ETF数据监控</p>
+                    <a href="https://wealth.want.biz/pages/qdii.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/qdii.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/v1/companyholding.html', '_blank')">
+                    <div class="project-number">19</div>
+                    <h3 class="project-title">期货机构盈亏</h3>
+                    <p class="project-description">期货机构持仓盈亏分析</p>
+                    <a href="https://wealth.want.biz/v1/companyholding.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/v1/companyholding.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/v1/profit.html', '_blank')">
+                    <div class="project-number">20</div>
+                    <h3 class="project-title">期货品种盈亏</h3>
+                    <p class="project-description">期货品种盈亏统计分析</p>
+                    <a href="https://wealth.want.biz/v1/profit.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/v1/profit.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/gg.html', '_blank')">
+                    <div class="project-number">21</div>
+                    <h3 class="project-title">收盘价与净融资</h3>
+                    <p class="project-description">股票收盘价与净融资关系分析</p>
+                    <a href="https://wealth.want.biz/pages/gg.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/gg.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/api.html', '_blank')">
+                    <div class="project-number">22</div>
+                    <h3 class="project-title">极智量化API</h3>
+                    <p class="project-description">量化交易API接口文档</p>
+                    <a href="https://wealth.want.biz/pages/api.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/api.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/ratio.html', '_blank')">
+                    <div class="project-number">23</div>
+                    <h3 class="project-title">期货合约交易与资金系数</h3>
+                    <p class="project-description">期货合约资金系数计算</p>
+                    <a href="https://wealth.want.biz/pages/ratio.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/ratio.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/tools.html', '_blank')">
+                    <div class="project-number">24</div>
+                    <h3 class="project-title">投资工具集</h3>
+                    <p class="project-description">综合投资工具箱</p>
+                    <a href="https://wealth.want.biz/pages/tools.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/tools.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/tool.html', '_blank')">
+                    <div class="project-number">25</div>
+                    <h3 class="project-title">投资工具集2</h3>
+                    <p class="project-description">更多投资分析工具</p>
+                    <a href="https://wealth.want.biz/pages/tool.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/tool.html</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- 教育相关 -->
+        <section class="category-section">
+            <div class="category-header">
+                <span class="category-icon">📚</span>
+                <h2 class="category-title">教育相关资源</h2>
+            </div>
+            <div class="projects-grid">
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/course.html', '_blank')">
+                    <div class="project-number">1</div>
+                    <h3 class="project-title">计算机课程</h3>
+                    <p class="project-description">编程与计算机科学学习资源</p>
+                    <a href="https://wealth.want.biz/pages/course.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/course.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/yiyan.html', '_blank')">
+                    <div class="project-number">2</div>
+                    <h3 class="project-title">一言</h3>
+                    <p class="project-description">每日一言，汲取智慧</p>
+                    <a href="https://wealth.want.biz/pages/yiyan.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/yiyan.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/music.html', '_blank')">
+                    <div class="project-number">3</div>
+                    <h3 class="project-title">古典音乐新手指南</h3>
+                    <p class="project-description">古典音乐入门与鉴赏</p>
+                    <a href="https://wealth.want.biz/pages/music.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/music.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/musiclist.html', '_blank')">
+                    <div class="project-number">4</div>
+                    <h3 class="project-title">古典音乐大全</h3>
+                    <p class="project-description">完整的古典音乐作品列表</p>
+                    <a href="https://wealth.want.biz/pages/musiclist.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/musiclist.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/kerry/games.html', '_blank')">
+                    <div class="project-number">5</div>
+                    <h3 class="project-title">Kerry游戏中心</h3>
+                    <p class="project-description">趣味教育小游戏合集</p>
+                    <a href="https://wealth.want.biz/pages/kerry/games.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/kerry/games.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/earth.html', '_blank')">
+                    <div class="project-number">6</div>
+                    <h3 class="project-title">地球纪元及年代划分</h3>
+                    <p class="project-description">地质年代与地球历史</p>
+                    <a href="https://wealth.want.biz/pages/earth.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/earth.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/pong.html', '_blank')">
+                    <div class="project-number">7</div>
+                    <h3 class="project-title">经典游戏 Pong</h3>
+                    <p class="project-description">复古乒乓球游戏</p>
+                    <a href="https://wealth.want.biz/pages/pong.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/pong.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/color.html', '_blank')">
+                    <div class="project-number">8</div>
+                    <h3 class="project-title">颜色工具</h3>
+                    <p class="project-description">颜色选择与配色工具</p>
+                    <a href="https://wealth.want.biz/pages/color.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/color.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://github.com/yuanguangshan/ygs/blob/main/learning/taio/dictionary.js', '_blank')">
+                    <div class="project-number">9</div>
+                    <h3 class="project-title">jsbox词典（iPhone）</h3>
+                    <p class="project-description">iOS平台JSBox词典脚本</p>
+                    <a href="https://github.com/yuanguangshan/ygs" class="project-link" onclick="event.stopPropagation()">github.com/yuanguangshan/ygs</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/jsbox_document.md', '_blank')">
+                    <div class="project-number">10</div>
+                    <h3 class="project-title">jsbox文档</h3>
+                    <p class="project-description">JSBox开发文档</p>
+                    <a href="https://wealth.want.biz/pages/jsbox_document.md" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/jsbox_document.md</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/moon.html', '_blank')">
+                    <div class="project-number">11</div>
+                    <h3 class="project-title">月相变化</h3>
+                    <p class="project-description">月球相位变化演示</p>
+                    <a href="https://wealth.want.biz/pages/moon.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/moon.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/planets.html', '_blank')">
+                    <div class="project-number">12</div>
+                    <h3 class="project-title">太阳系八大行星演示</h3>
+                    <p class="project-description">太阳系行星运行动画</p>
+                    <a href="https://wealth.want.biz/pages/sun.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/sun.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/dict.html', '_blank')">
+                    <div class="project-number">13</div>
+                    <h3 class="project-title">在线词典</h3>
+                    <p class="project-description">便捷的在线查词工具</p>
+                    <a href="https://wealth.want.biz/pages/dict.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/dict.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/beautify.html', '_blank')">
+                    <div class="project-number">14</div>
+                    <h3 class="project-title">文本一键美化</h3>
+                    <p class="project-description">文本格式化与美化工具</p>
+                    <a href="https://wealth.want.biz/pages/beautify.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/beautify.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/alarm.html', '_blank')">
+                    <div class="project-number">15</div>
+                    <h3 class="project-title">北极熊闹钟</h3>
+                    <p class="project-description">可爱的在线闹钟应用</p>
+                    <a href="https://wealth.want.biz/pages/alarm.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/alarm.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/bmi.html', '_blank')">
+                    <div class="project-number">16</div>
+                    <h3 class="project-title">BMI计算器</h3>
+                    <p class="project-description">身体质量指数计算工具</p>
+                    <a href="https://wealth.want.biz/pages/BMI.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/BMI.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://tool.want.biz/token-generator', '_blank')">
+                    <div class="project-number">17</div>
+                    <h3 class="project-title">编程开发工具</h3>
+                    <p class="project-description">Token生成器等开发工具</p>
+                    <a href="https://tool.want.biz/token-generator" class="project-link" onclick="event.stopPropagation()">tool.want.biz/token-generator</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/chats.html', '_blank')">
+                    <div class="project-number">18</div>
+                    <h3 class="project-title">实时聊天室系统架构图</h3>
+                    <p class="project-description">聊天系统技术架构展示</p>
+                    <a href="https://wealth.want.biz/pages/chats.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/chats.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/code2market.html', '_blank')">
+                    <div class="project-number">19</div>
+                    <h3 class="project-title">品种代码映射表</h3>
+                    <p class="project-description">主力合约品种代码 → 交易所映射</p>
+                    <a href="https://wealth.want.biz/pages/code2market.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/code2market.html</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/scratch.md', '_blank')">
+                    <div class="project-number">20</div>
+                    <h3 class="project-title">Scratch教程</h3>
+                    <p class="project-description">儿童编程Scratch学习教程</p>
+                    <a href="https://wealth.want.biz/pages/scratch.md" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/scratch.md</a>
+                </div>
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/express/index.html', '_blank')">
+                    <div class="project-number">21</div>
+                    <h3 class="project-title">express练手项目</h3>
+                    <p class="project-description">express练手项目</p>
+                    <a href="https://wealth.want.biz/express/index.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/express/index.html</a>
+                </div>
+          
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/index.html', '_blank')">
+                    <div class="project-number">22</div>
+                    <h3 class="project-title">苑广山宇宙空间站</h3>
+                    <p class="project-description">创意主页与项目导航</p>
+                    <a href="https://wealth.want.biz/index.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/index.html</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- 超复杂项目 -->
+        <section class="category-section">
+            <div class="category-header">
+                <span class="category-icon">🚀</span>
+                <h2 class="category-title">超复杂项目</h2>
+            </div>
+            <div class="projects-grid">
+                <div class="project-card" onclick="window.open('https://chat.want.biz/test', '_blank')">
+                    <span class="featured-badge">💎 精品</span>
+                    <div class="project-number">1</div>
+                    <h3 class="project-title">全球聊天室</h3>
+                    <p class="project-description">实时在线聊天系统，支持全球用户互动</p>
+                    <a href="https://chat.want.biz/test" class="project-link" onclick="event.stopPropagation()">chat.want.biz/test</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://i.want.biz/', '_blank')">
+                    <span class="featured-badge">💎 精品</span>
+                    <div class="project-number">2</div>
+                    <h3 class="project-title">苑广山的个人空间</h3>
+                    <p class="project-description">期货概览，热图、龙虎榜、统计，基差等综合应用</p>
+                    <a href="https://i.want.biz/" class="project-link" onclick="event.stopPropagation()">i.want.biz/</a>
+                </div>
+
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/v1/future.html', '_blank')">
+                    <span class="featured-badge">💎 精品</span>
+                    <div class="project-number">3</div>
+                    <h3 class="project-title">期市概览</h3>
+                    <p class="project-description">品种涨跌，增仓比，详细龙虎榜、升贴水</p>
+                    <a href="https://wealth.want.biz/v1/future.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/v1/future.html</a>
+                </div>
+        
+            
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/music/index.html', '_blank')">
+                    <span class="featured-badge">💎 精品</span>
+                    <div class="project-number">4</div>
+                    <h3 class="project-title">广山音乐</h3>
+                    <p class="project-description">苹果、youtube两大乐源，畅听全球高品质音乐！</p>
+                    <a href="https://wealth.want.biz/music/index.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/music/index.html</a>
+                </div>
+      
+                    <div class="project-card" onclick="window.open('https://todo.want.biz/', '_blank')">
+                    <span class="featured-badge">💎 精品</span>
+                    <div class="project-number">5</div>
+                    <h3 class="project-title">苑广山待办事项</h3>
+                    <p class="project-description">管理个人待办事项，各端同步！</p>
+                    <a href="https://todo.want.biz" class="project-link" onclick="event.stopPropagation()">todo.want.biz</a>
+                </div>
+        
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/poem.html', '_blank')">
+                    <span class="featured-badge">💎 精品</span>
+                    <div class="project-number">6</div>
+                    <h3 class="project-title">唐诗宋词</h3>
+                    <p class="project-description">品味千年文化，感受诗词之美！</p>
+                    <a href="https://wealth.want.biz/pages/poem.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/poem.html</a>
+                </div>
+                <div class="project-card" onclick="window.open('https://poe.want.biz', '_blank')">
+                    <span class="featured-badge">💎 精品</span>
+                    <div class="project-number">6</div>
+                    <h3 class="project-title">POE大模型</h3>
+                    <p class="project-description">POE接口自己实现，流式响应！</p>
+                    <a href="https://poe.want.biz" class="project-link" onclick="event.stopPropagation()">poe.want.biz</a>
+                </div>
+                <div class="project-card" onclick="window.open('https://wealth.want.biz/pages/ai.html', '_blank')">
+                    <span class="featured-badge">💎 精品</span>
+                    <div class="project-number">6</div>
+                    <h3 class="project-title">AI监控</h3>
+                    <p class="project-description">AI监控！</p>
+                    <a href="https://wealth.want.biz/pages/ai.html" class="project-link" onclick="event.stopPropagation()">wealth.want.biz/pages/ai.html</a>
+                </div>
+            </div>
+                  </div>
+        </section>
+
+        <footer>
+            <p style="font-size: 1.2em; margin-bottom: 10px;">🌟 探索更多可能 🌟</p>
+            <p>© 2025 苑广山项目集 | 持续更新中</p>
+            <p style="margin-top: 10px; font-size: 0.9em; opacity: 0.8;">投资有风险，决策需谨慎</p>
+        </footer>
+    </div>
+</body>
+</html>
+
+# TODO · 个人页面升级（Final Revised Plan）
+
+---
+
+## [目标]
+
+- [ ] 明确定义项目唯一分类（Category），彻底消除歧义
+- [ ] 将“超复杂项目”降级为 Tag（High-Complexity），不再作为分类存在
+- [ ] 将“Core / 精品项目”明确为展示策略，而非技术或业务分类
+- [ ] 确保 Phase 1 的任何工作不会在 Phase 2/3 被推翻
+- [ ] 为后续数据化（JSON + render）打下稳定地基
+
+---
+
+## [文件变更]
+
+### 必改文件
+- [ ] `index.html`
+  - [ ] 删除“超复杂项目”对应 `<section>`
+  - [ ] 修正项目卡片链接写法（使用 `<a>` + `rel="noopener noreferrer"`）
+  - [ ] 修正 Footer 年份为 `© 2026`
+- [ ] 项目页面 HTML（如 `/pages/*.html`）
+  - [ ] 确保所有入口链接符合安全规范
+
+### Phase 2 新增文件
+- [ ] `data/projects.json`
+- [ ] `js/render.js`
+
+---
+
+## [详细步骤]
+
+---
+
+## ✅ Phase 1（1 天内完成｜结构清障）
+
+### 1️⃣ 删除“超复杂项目”分类（最高优先级）
+
+- [ ] 删除 HTML 中 `<section> 超复杂项目`
+- [ ] 逐个检查原“超复杂项目”下的项目
+- [ ] 为每个项目 **人工指定唯一 Category**
+  - [ ] investment / ai / education / visualization / tool-demo
+- [ ] 为这些项目添加 `High-Complexity` Tag（仅作为 Badge）
+
+> 约束：任何 Phase 不得再引入“超复杂项目”分类
+
+---
+
+### 2️⃣ 统一“苑广山的个人空间”定位
+
+- [ ] 仅在 **Core Projects** 中展示
+- [ ] 指定唯一 Category（如 `investment`）
+- [ ] 从所有其他分类列表中移除该项目
+
+---
+
+### 3️⃣ 修正所有项目卡片的链接交互（安全项）
+
+- [ ] 所有项目卡片统一为 `<a>` 标签
+- [ ] 添加 `target="_blank" + rel="noopener noreferrer"`
+- [ ] 删除所有 `onclick="window.open(...)"` 写法
+- [ ] 禁止 JS 中拼接 URL 再跳转
+
+---
+
+### 4️⃣ Footer 年份修正
+
+- [ ] 将 Footer 年份更新为 `© 2026`
+
+---
+
+### 🚫 Phase 1 明确不做
+
+- [ ] 不重排项目顺序
+- [ ] 不修改文案
+- [ ] 不做任何视觉重构
+- [ ] 不引入 JSON / JS 渲染逻辑
+
+---
+
+## ✅ Phase 2（2–3 天｜数据化根治）
+
+### 🎯 目标
+- [ ] 项目数据完全数据驱动
+- [ ] 消灭硬编码编号
+- [ ] 消灭重复 HTML 结构
+
+---
+
+### 2.1 数据模型设计（projects.json）
+
+- [ ] 定义统一字段：
+  - [ ] id
+  - [ ] title
+  - [ ] category（唯一）
+  - [ ] tags（0–N）
+  - [ ] description
+  - [ ] url
+  - [ ] updatedAt（ISO 日期）
+
+---
+
+### 2.2 项目迁移（一次性手工）
+
+- [ ] 打开现有 HTML
+- [ ] 每个项目 → 转为一条 JSON
+- [ ] 保留原显示顺序作为 JSON 初始顺序
+- [ ] 删除 HTML 中所有项目卡片代码
+
+> 决策：不写自动迁移脚本，降低风险
+
+---
+
+### 2.3 渲染与编号策略
+
+- [ ] HTML 中不再出现任何手写编号
+- [ ] 编号在 render 阶段动态生成
+  - [ ] 按 Category 内排序生成
+- [ ] Core Projects 区域不显示编号
+
+---
+
+## ✅ Phase 3（增强阶段｜不改结构）
+
+- [ ] 可访问性（WCAG AA）
+- [ ] 移动端触控优化
+- [ ] 懒加载与首屏性能优化
+- [ ] 搜索功能
+- [ ] Category + Tag 组合过滤
+
+---
+
+## ✅ 推荐执行顺序（不可调整）
+
+- [ ] Phase 1：删分类 + 修交互 + 年份
+- [ ] Phase 2：JSON 数据源 + render.js
+- [ ] Phase 3：体验与工程质量增强
+
+---
+````
+
+[⬆ 回到目录](#toc)
+
 ## 📄 tsconfig.json
 
 ````json
@@ -68132,6 +70895,6 @@ echo ""
 
 ---
 ### 📊 最终统计汇总
-- **文件总数:** 289
-- **代码总行数:** 65541
-- **物理总大小:** 1929.98 KB
+- **文件总数:** 299
+- **代码总行数:** 68215
+- **物理总大小:** 2033.62 KB
