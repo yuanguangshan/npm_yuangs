@@ -3,7 +3,7 @@
  * Git 模块公共常量
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.REVIEW_FAILURE_SCORE = exports.MIN_REVIEW_SCORE = exports.MAX_RETRY_ATTEMPTS = exports.DEFAULT_AI_MODEL = exports.DEFAULT_PLAN_PROMPT = exports.TODO_FILENAME = exports.METADATA_PREFIX = void 0;
+exports.SUPPORTED_AI_MODELS = exports.GIT_CONFLICT_CODES = exports.REVIEW_FAILURE_SCORE = exports.MIN_REVIEW_SCORE = exports.MAX_RETRY_ATTEMPTS = exports.DEFAULT_AI_MODEL = exports.DEFAULT_PLAN_PROMPT = exports.TODO_FILENAME = exports.METADATA_PREFIX = void 0;
 /** todo.md 元数据行前缀 */
 exports.METADATA_PREFIX = '>';
 /** 默认 todo 文件名 */
@@ -18,4 +18,17 @@ exports.MAX_RETRY_ATTEMPTS = 2;
 exports.MIN_REVIEW_SCORE = 85;
 /** 代码审查失败时的默认分数 */
 exports.REVIEW_FAILURE_SCORE = 60;
+/** Git 冲突状态码 (参考 Git 官方文档 porcelain 格式) */
+exports.GIT_CONFLICT_CODES = ['UU', 'AA', 'DD', 'AU', 'UD', 'UA', 'DU'];
+/** 支持的 AI 模型列表 (用于验证) */
+exports.SUPPORTED_AI_MODELS = [
+    'gpt-4o',
+    'gpt-4o-mini',
+    'gpt-4-turbo',
+    'claude-3.5-sonnet',
+    'claude-3.5-haiku',
+    'gemini-2.0-flash',
+    'gemini-2.0-pro',
+    'Assistant'
+];
 //# sourceMappingURL=constants.js.map

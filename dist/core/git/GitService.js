@@ -3,6 +3,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.GitService = void 0;
 const child_process_1 = require("child_process");
 const util_1 = require("util");
+const errors_1 = require("../errors");
+const SemanticDiffEngine_1 = require("./semantic/SemanticDiffEngine");
+const constants_1 = require("./constants");
 const execAsync = (0, util_1.promisify)(child_process_1.exec);
 /**
  * Git 服务类
@@ -25,7 +28,11 @@ class GitService {
             return stdout.trim();
         }
         catch (error) {
-            throw new Error(`Git command failed: ${error.message}`);
+            throw new errors_1.GitError(`Git command failed: git ${command}\n${error.message}`, [
+                'Ensure you are in a valid Git repository.',
+                'Check if there are any pending merge conflicts.',
+                'Verify your Git permissions for this directory.'
+            ]);
         }
     }
     /**
@@ -169,6 +176,16 @@ class GitService {
         };
     }
     /**
+     * 获取语义级 Diff 分析结果
+     * @param staged 是否只分析已暂存的变更
+     */
+    async getSemanticDiff(staged = true) {
+        const diffContent = await this.execSafe(staged ? 'diff --staged' : 'diff');
+        if (!diffContent)
+            return null;
+        return SemanticDiffEngine_1.SemanticDiffEngine.analyze(diffContent);
+    }
+    /**
      * 获取 commit 的详细信息
      * @param commitHash commit hash
      * @returns commit 信息
@@ -284,6 +301,25 @@ class GitService {
                 untracked++;
         }
         return { modified, added, deleted, untracked };
+    }
+    /**
+     * 获取存在冲突的文件列表
+     */
+    async getConflictedFiles() {
+        const status = await this.execSafe('status --porcelain');
+        if (!status)
+            return [];
+        const conflictedFiles = [];
+        const lines = status.split('\n');
+        for (const line of lines) {
+            if (line.length < 3)
+                continue;
+            const statusCode = line.substring(0, 2);
+            if (constants_1.GIT_CONFLICT_CODES.includes(statusCode)) {
+                conflictedFiles.push(line.substring(3).trim());
+            }
+        }
+        return conflictedFiles;
     }
     /**
      * 获取仓库根目录

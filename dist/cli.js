@@ -37,6 +37,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const GlobalErrorHandler_1 = require("./core/GlobalErrorHandler");
 const chalk_1 = __importDefault(require("chalk"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
@@ -639,7 +640,7 @@ async function main() {
     program.parse();
 }
 main().catch(err => {
-    console.error('Fatal error:', err);
+    GlobalErrorHandler_1.GlobalErrorHandler.handleError(err);
     process.exit(1);
 });
 //# sourceMappingURL=cli.js.map

@@ -1,4 +1,7 @@
 import { CapabilityLevel, MinCapability, canExecute } from './CapabilityLevel';
+
+// Re-export CapabilityLevel for external use
+export { CapabilityLevel };
 import { CostProfile, CostProfileCalculator } from './CostProfile';
 import { DegradationPolicy, DecisionInput, DegradationDecision, NoOpDegradationPolicy } from './DegradationPolicy';
 import { Logger, ConsoleLogger } from './Logger';

@@ -55,7 +55,7 @@ export class PipelineFactory {
                         success: true,
                         data: { preprocessed: true },
                         confidence: 1.0,
-                        capability: CapabilityLevel.TEXT,
+                        finalCapability: CapabilityLevel.TEXT,
                     };
                 },
             },
@@ -72,7 +72,7 @@ export class PipelineFactory {
                         success: true,
                         data: { analyzed: true },
                         confidence: 0.9,
-                        capability: CapabilityLevel.STRUCTURAL,
+                        finalCapability: CapabilityLevel.STRUCTURAL,
                     };
                 },
             },
@@ -90,7 +90,7 @@ export class PipelineFactory {
                         success: true,
                         data: { reviewed: true },
                         confidence: 0.85,
-                        capability: CapabilityLevel.SEMANTIC,
+                        finalCapability: CapabilityLevel.SEMANTIC,
                     };
                 },
             },
@@ -100,6 +100,7 @@ export class PipelineFactory {
             stages,
             degradationPolicy: degradationPolicy ?? new ThresholdDegradationPolicy(),
             costCalculator: new CostProfileCalculator(options.costProfileOptions),
+            logger: new ConsoleLogger(),
             autoDegradation: options.autoDegradation ?? true,
             maxExecutionTime: options.maxExecutionTime ?? 30000,
             confidenceThreshold: options.confidenceThreshold ?? 0.7,
@@ -133,7 +134,7 @@ export class PipelineFactory {
                         success: true,
                         data: { context: 'gathered' },
                         confidence: 1.0,
-                        capability: CapabilityLevel.TEXT,
+                        finalCapability: CapabilityLevel.TEXT,
                     };
                 },
             },
@@ -150,7 +151,7 @@ export class PipelineFactory {
                         success: true,
                         data: { plan: 'created' },
                         confidence: 0.9,
-                        capability: CapabilityLevel.STRUCTURAL,
+                        finalCapability: CapabilityLevel.STRUCTURAL,
                     };
                 },
             },
@@ -167,7 +168,7 @@ export class PipelineFactory {
                         success: true,
                         data: { code: 'generated' },
                         confidence: 0.85,
-                        capability: CapabilityLevel.SEMANTIC,
+                        finalCapability: CapabilityLevel.SEMANTIC,
                     };
                 },
             },
@@ -184,7 +185,7 @@ export class PipelineFactory {
                         success: true,
                         data: { validated: true },
                         confidence: 0.9,
-                        capability: CapabilityLevel.STRUCTURAL,
+                        finalCapability: CapabilityLevel.STRUCTURAL,
                     };
                 },
             },
@@ -194,6 +195,7 @@ export class PipelineFactory {
             stages,
             degradationPolicy: degradationPolicy ?? new ThresholdDegradationPolicy(),
             costCalculator: new CostProfileCalculator(options.costProfileOptions),
+            logger: new ConsoleLogger(),
             autoDegradation: options.autoDegradation ?? true,
             maxExecutionTime: options.maxExecutionTime ?? 60000,
             confidenceThreshold: options.confidenceThreshold ?? 0.75,
@@ -227,7 +229,7 @@ export class PipelineFactory {
                         success: true,
                         data: { diff: 'analyzed' },
                         confidence: 1.0,
-                        capability: CapabilityLevel.TEXT,
+                        finalCapability: CapabilityLevel.TEXT,
                     };
                 },
             },
@@ -244,7 +246,7 @@ export class PipelineFactory {
                         success: true,
                         data: { message: 'generated' },
                         confidence: 0.9,
-                        capability: CapabilityLevel.SEMANTIC,
+                        finalCapability: CapabilityLevel.SEMANTIC,
                     };
                 },
             },
@@ -254,6 +256,7 @@ export class PipelineFactory {
             stages,
             degradationPolicy: degradationPolicy ?? new ThresholdDegradationPolicy(),
             costCalculator: new CostProfileCalculator(options.costProfileOptions),
+            logger: new ConsoleLogger(),
             autoDegradation: options.autoDegradation ?? true,
             maxExecutionTime: options.maxExecutionTime ?? 15000,
             confidenceThreshold: options.confidenceThreshold ?? 0.7,
@@ -280,6 +283,7 @@ export class PipelineFactory {
             stages,
             degradationPolicy: degradationPolicy ?? new ThresholdDegradationPolicy(),
             costCalculator: new CostProfileCalculator(options.costProfileOptions),
+            logger: new ConsoleLogger(),
             autoDegradation: options.autoDegradation ?? true,
             maxExecutionTime: options.maxExecutionTime ?? 30000,
             confidenceThreshold: options.confidenceThreshold ?? 0.7,

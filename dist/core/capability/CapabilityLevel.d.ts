@@ -1,125 +1,57 @@
 /**
- * Git 能力等级枚举
+ * CapabilityLevel
+ * ----------------
+ * 定义系统中「能力（Capability）」的智能等级。
  *
- * 定义了不同层级的代码理解和处理能力，用于：
- * - 评估任务的复杂度
- * - 决定降级策略
- * - 选择合适的 AI 模型和工具
+ * 该等级用于：
+ * - AI Capability 匹配
+ * - 模型路由规划
+ * - 执行阶段降级决策
+ * - todo.md 任务标注
  *
- * 等级说明：
- * - SEMANTIC (5): 语义理解，需要理解代码意图和设计模式
- * - STRUCTURAL (4): 结构分析，需要理解代码结构和依赖关系
- * - LINE (3): 行级分析，需要理解具体代码行逻辑
- * - TEXT (2): 文本分析，只需要处理文本内容
- * - NONE (1): 无需智能分析
+ * 级别说明：
+ * - SEMANTIC: 极致语义，理解业务意图和全局架构
+ * - STRUCTURAL: 结构分析，理解代码依赖和模块接口
+ * - LINE: 行级操作，关注具体逻辑实现
+ * - TEXT: 文本处理，简单的替换或格式化
+ * - NONE: 无智能要求
  */
 export declare enum CapabilityLevel {
-    SEMANTIC = 5,
-    STRUCTURAL = 4,
-    LINE = 3,
-    TEXT = 2,
-    NONE = 1
+    /** 极致语义：理解业务、架构和设计意图 */
+    SEMANTIC = 4,
+    /** 结构分析：理解模块依赖、接口和类结构 */
+    STRUCTURAL = 3,
+    /** 行级分析：理解具体的代码行逻辑 */
+    LINE = 2,
+    /** 文本分析：简单的字符串处理和文本替换 */
+    TEXT = 1,
+    /** 无需智能分析 */
+    NONE = 0
 }
 /**
- * 将 CapabilityLevel 枚举转换为字符串
- * @param level 能力等级
- * @returns 字符串表示
+ * 校验 Capability 降级链是否严格单调递减，且最终降级到 NONE
  */
-export declare function capabilityLevelToString(level: CapabilityLevel): string;
+export declare function validateStrictDecreasing(chain: CapabilityLevel[]): boolean;
 /**
- * 将字符串转换为 CapabilityLevel
- * 用于从配置或 LLM 输出解析能力等级
- *
- * @param str 能力等级字符串（不区分大小写）
- * @returns CapabilityLevel 枚举值，如果字符串无效则返回 undefined
- *
- * @example
- * ```typescript
- * const level = stringToCapabilityLevel('semantic');
- * console.log(level); // CapabilityLevel.SEMANTIC
- *
- * const invalid = stringToCapabilityLevel('INVALID');
- * console.log(invalid); // undefined
- * ```
+ * 能力等级的可读标签
  */
-export declare function stringToCapabilityLevel(str: string): CapabilityLevel | undefined;
+export declare const CapabilityLevelLabel: Record<CapabilityLevel, string>;
 /**
- * 比较两个能力等级
- * @param a 第一个能力等级
- * @param b 第二个能力等级
- * @returns 正数表示 a > b，负数表示 a < b，0 表示相等
- */
-export declare function compareCapabilities(a: CapabilityLevel, b: CapabilityLevel): number;
-/**
- * 判断能力等级 a 是否高于 b
- * @param a 第一个能力等级
- * @param b 第二个能力等级
- * @returns 如果 a > b 返回 true
- */
-export declare function isCapabilityHigher(a: CapabilityLevel, b: CapabilityLevel): boolean;
-/**
- * 判断能力等级 a 是否低于 b
- * @param a 第一个能力等级
- * @param b 第二个能力等级
- * @returns 如果 a < b 返回 true
- */
-export declare function isCapabilityLower(a: CapabilityLevel, b: CapabilityLevel): boolean;
-/**
- * 验证能力等级序列的单调性（严格递减）
- * 用于检查 fallbackChain 是否符合从高到低的要求
- *
- * @param levels 能力等级数组
- * @returns 如果序列严格递减返回 true
- *
- * @example
- * ```typescript
- * validateCapabilityMonotonicity([
- *   CapabilityLevel.SEMANTIC,
- *   CapabilityLevel.STRUCTURAL,
- *   CapabilityLevel.NONE
- * ]); // true
- *
- * validateCapabilityMonotonicity([
- *   CapabilityLevel.TEXT,
- *   CapabilityLevel.SEMANTIC
- * ]); // false
- * ```
- */
-export declare function validateCapabilityMonotonicity(levels: CapabilityLevel[]): boolean;
-/**
- * 最小能力和降级链接口
- * 定义模块的能力需求和降级路径
+ * 最小能力要求配置接口
  */
 export interface MinCapability {
     minCapability: CapabilityLevel;
     fallbackChain: CapabilityLevel[];
 }
 /**
- * 验证降级链的有效性
- *
- * 规则：
- * 1. 降级链必须严格递减（从高到低）
- * 2. 降级链必须以 NONE 结束
- *
- * @param minCapability 包含最小能力和降级链的对象
- * @returns 如果降级链有效返回 true
- *
- * @example
- * ```typescript
- * validateFallbackChain({
- *   minCapability: CapabilityLevel.SEMANTIC,
- *   fallbackChain: [CapabilityLevel.STRUCTURAL, CapabilityLevel.TEXT, CapabilityLevel.NONE]
- * }); // true
- *
- * validateFallbackChain({
- *   minCapability: CapabilityLevel.SEMANTIC,
- *   fallbackChain: [CapabilityLevel.NONE]
- * }); // true
- *
- * validateFallbackChain({
- *   minCapability: CapabilityLevel.SEMANTIC,
- *   fallbackChain: [CapabilityLevel.TEXT] // 未以 NONE 结束
- * }); // false
- * ```
+ * 从字符串解析 CapabilityLevel (支持标签或数值字符串)
  */
-export declare function validateFallbackChain(minCapability: MinCapability): boolean;
+export declare function parseCapabilityLevel(value?: string | number, fallback?: CapabilityLevel): CapabilityLevel;
+/**
+ * 判断能力是否满足要求
+ */
+export declare function canExecute(current: CapabilityLevel, required: CapabilityLevel): boolean;
+/**
+ * 获取能力等级的友好显示名称
+ */
+export declare function describeCapabilityLevel(level: CapabilityLevel): string;

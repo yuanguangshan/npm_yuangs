@@ -42,9 +42,9 @@ function registerExecCommand(gitCmd) {
     gitCmd
         .command('exec')
         .description('根据 todo.md 自动生成代码并执行任务')
-        .option('--fromfile <file>', '指定 todo 文件路径', 'todo.md')
-        .option('--task <number>', '执行指定编号的任务（从 1 开始）')
-        .option('--model <model>', '指定 AI 模型', 'Assistant')
+        .option('-f, --fromfile <file>', '指定 todo 文件路径', 'todo.md')
+        .option('-t, --task <number>', '执行指定编号的任务（从 1 开始）')
+        .option('-m, --model <model>', '指定 AI 模型', 'Assistant')
         .action(async (options) => {
         const todoPath = path_1.default.join(process.cwd(), options.fromfile);
         const spinner = (0, ora_1.default)('正在读取任务文件...').start();

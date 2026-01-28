@@ -8,6 +8,10 @@ const branch_1 = require("./git/branch");
 const plan_1 = require("./git/plan");
 const exec_1 = require("./git/exec");
 const auto_1 = require("./git/auto");
+const semanticDiff_1 = require("./git/semanticDiff");
+const resolve_1 = require("./git/resolve");
+const historySemantic_1 = require("./git/historySemantic");
+const smartCommit_1 = require("./git/smartCommit");
 /**
  * 注册 Git 相关命令
  */
@@ -27,5 +31,9 @@ function registerGitCommands(program) {
     (0, plan_1.registerPlanCommand)(gitCmd);
     (0, exec_1.registerExecCommand)(gitCmd);
     (0, auto_1.registerAutoCommand)(gitCmd);
+    (0, semanticDiff_1.registerSemanticDiffCommand)(gitCmd);
+    (0, resolve_1.registerResolveCommand)(gitCmd);
+    (0, historySemantic_1.registerSemanticHistoryCommand)(gitCmd);
+    (0, smartCommit_1.registerSmartCommitCommand)(gitCmd);
 }
 //# sourceMappingURL=gitCommands.js.map

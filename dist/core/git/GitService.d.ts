@@ -1,3 +1,4 @@
+import { SemanticDiffResult } from './semantic/types';
 /**
  * Git 变更信息
  */
@@ -49,7 +50,7 @@ export declare class GitService {
     /**
      * 安全执行 Git 命令(失败返回 null)
      */
-    private execSafe;
+    execSafe(command: string): Promise<string | null>;
     /**
      * 检查是否在 Git 仓库中
      */
@@ -91,6 +92,11 @@ export declare class GitService {
         files: string[];
     }>;
     /**
+     * 获取语义级 Diff 分析结果
+     * @param staged 是否只分析已暂存的变更
+     */
+    getSemanticDiff(staged?: boolean): Promise<SemanticDiffResult | null>;
+    /**
      * 获取 commit 的详细信息
      * @param commitHash commit hash
      * @returns commit 信息
@@ -121,6 +127,10 @@ export declare class GitService {
         deleted: number;
         untracked: number;
     }>;
+    /**
+     * 获取存在冲突的文件列表
+     */
+    getConflictedFiles(): Promise<string[]>;
     /**
      * 获取仓库根目录
      */

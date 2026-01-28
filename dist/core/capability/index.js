@@ -17,4 +17,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./CapabilityLevel"), exports);
 __exportStar(require("./DegradationPolicy"), exports);
 __exportStar(require("./CostProfile"), exports);
+__exportStar(require("./Pipeline"), exports);
+__exportStar(require("./PipelineFactory"), exports);
+__exportStar(require("./Logger"), exports);
 //# sourceMappingURL=index.js.map
