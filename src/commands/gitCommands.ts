@@ -9,6 +9,7 @@ import { registerAutoCommand } from './git/auto';
 import { registerSemanticDiffCommand } from './git/semanticDiff';
 import { registerResolveCommand } from './git/resolve';
 import { registerSemanticHistoryCommand } from './git/historySemantic';
+import { registerSmartCommitCommand } from './git/smartCommit';
 
 /**
  * 注册 Git 相关命令
@@ -33,4 +34,5 @@ export function registerGitCommands(program: Command) {
     registerSemanticDiffCommand(gitCmd);
     registerResolveCommand(gitCmd);
     registerSemanticHistoryCommand(gitCmd);
+    registerSmartCommitCommand(gitCmd);
 }
