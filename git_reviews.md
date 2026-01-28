@@ -532,3 +532,143 @@ describe('SemanticDiffEngine', () => {
 
 [↑ 返回顶部](#)
 
+
+---
+
+## 📋 Code Review - 2026/1/29 00:43:56
+
+**📊 评分:** 👍 82/100  
+**🔧 级别:** STANDARD  
+**🌿 分支:** `main`  
+**💾 提交:** `3d9e2fa`  
+**📂 范围:** 暂存区 (9 个文件)  
+
+### 📝 总体评价
+
+本次变更成功引入语义级 Diff 分析能力，整体设计清晰、模块边界合理，具备良好的可扩展性基础。但当前实现仍属于启发式 MVP，在 diff 结构假设、正则解析准确性、边界条件处理和测试覆盖方面存在明显改进空间。
+
+### ⚠️ 发现的问题 (7)
+
+#### 1. [WARNING] src/core/git/GitService.ts:235
+
+getSemanticDiff 中 staged 参数的语义在 getDiff/execSafe 层未形成清晰契约，可能导致维护者误解 diff 来源。
+
+**💡 建议:** 建议将 staged 逻辑下沉到统一的 getDiff 方法，或在方法注释中明确 diff 内容来源（staged / unstaged）的语义约定。
+
+<details>
+<summary>代码片段</summary>
+
+```
+const diffContent = await this.execSafe(staged ? 'diff --staged' : 'diff');
+```
+
+</details>
+
+#### 2. [WARNING] src/core/git/semantic/SemanticDiffEngine.ts:15
+
+SemanticDiffEngine 为无状态工具类，但以 class + static 方式存在，设计意图略显混乱。
+
+**💡 建议:** 明确其定位：要么作为纯 utility（仅 static 方法并加以说明），要么改为可实例化并承载配置/策略。
+
+<details>
+<summary>代码片段</summary>
+
+```
+export class SemanticDiffEngine {
+```
+
+</details>
+
+#### 3. [WARNING] src/core/git/semantic/SemanticDiffEngine.ts:42
+
+splitDiffIntoFiles 假设 diff 一定包含 'diff --git'，在空 diff 或特殊 Git 输出下可能返回异常结果。
+
+**💡 建议:** 建议在 analyze 入口增加 diff 基础格式校验，或在 splitDiffIntoFiles 中显式处理空 diff 和非标准 diff。
+
+<details>
+<summary>代码片段</summary>
+
+```
+if (line.startsWith('diff --git ')) {
+```
+
+</details>
+
+#### 4. [WARNING] src/core/git/semantic/SemanticDiffEngine.ts:68
+
+文件路径解析依赖正则 /b\/(.+)$/，在 rename、delete 或复杂 diff header 场景下可能不准确。
+
+**💡 建议:** 优先使用 '---' / '+++' 行解析路径，并为 rename/delete 场景预留专门处理逻辑。
+
+<details>
+<summary>代码片段</summary>
+
+```
+const pathMatch = header.match(/b\/(.+)$/);
+```
+
+</details>
+
+#### 5. [WARNING] src/core/git/semantic/SemanticDiffEngine.ts:95
+
+基于正则的函数/类/接口检测在复杂语法、字符串或注释中容易产生误判。
+
+**💡 建议:** 在文档和 CLI 输出中明确该能力为“启发式语义分析”，并为未来 AST（如 TypeScript Compiler API）解析预留接口。
+
+<details>
+<summary>代码片段</summary>
+
+```
+const funcRegex = /(?:export\s+)?(?:async\s+)?function\s+/
+```
+
+</details>
+
+#### 6. [INFO] src/core/git/semantic/types.ts:1
+
+ChangeType 枚举中包含当前实现未实际产生的类型（如 MODIFICATION、RENAME）。
+
+**💡 建议:** 补充对应语义检测逻辑，或暂时移除未使用枚举值以减少误导。
+
+<details>
+<summary>代码片段</summary>
+
+```
+export enum ChangeType {
+```
+
+</details>
+
+#### 7. [WARNING] test/__tests__/core/git/SemanticDiffEngine.test.ts:1
+
+测试覆盖面偏窄，仅覆盖基础正向路径。
+
+**💡 建议:** 建议补充空 diff、多文件 diff、非 TS/JS 文件、rename/delete、注释/字符串误判等边界测试。
+
+<details>
+<summary>代码片段</summary>
+
+```
+describe('SemanticDiffEngine', () => {
+```
+
+</details>
+
+### 👍 优点
+
+- ✅ 功能模块拆分合理，引入 SemanticDiffEngine，避免逻辑堆叠在 GitService 中
+- ✅ 类型定义清晰，SemanticDiffResult / FileSemanticDiff 语义明确
+- ✅ CLI 输出友好，结合颜色与终端宽度提升可读性
+- ✅ 整体代码风格统一，命名规范，意图清晰
+- ✅ 为未来 AST 级语义分析演进预留了结构和方向
+
+### 💡 建议
+
+- 在 README 或命令帮助中明确当前实现为启发式语义分析，避免用户对准确性产生过高预期
+- 考虑引入策略模式或插件机制，防止正则规则不断膨胀
+- 逐步引入 AST 解析（如 TypeScript Compiler API）以提升语义准确度
+- 增强测试覆盖率，重点关注误判和异常 diff 场景
+- 在 Breaking Change 判定上引入更细粒度规则（如函数签名变更 vs 删除）
+
+[↑ 返回顶部](#)
+
