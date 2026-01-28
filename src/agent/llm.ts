@@ -11,6 +11,20 @@ import { z } from 'zod';
 import { withRetry, RetryConfig } from './errorHandling';
 import { callLLMWithRouter, shouldUseRouter } from './modelRouterIntegration';
 
+/**
+ * 结构化 AI 错误类
+ */
+export class AIError extends Error {
+    constructor(
+        message: string,
+        public statusCode: number = 0,
+        public rawError?: any
+    ) {
+        super(message);
+        this.name = 'AIError';
+    }
+}
+
 const CONFIG_FILE = path.join(os.homedir(), '.yuangs.json');
 
 // Agent Action Schema for Native Structured Output
@@ -199,7 +213,7 @@ export async function runLLM({
         };
     }
 
-    try {
+    const executeCall = async () => {
         const response = await axios.post(url, responseData, { headers }) as any;
 
         // Safely extract content from response
@@ -230,13 +244,46 @@ export async function runLLM({
             modelName: modelUsed,
             usedRouter: false
         };
+    };
+
+    try {
+        const retryResult = await withRetry(executeCall, {
+            maxAttempts: 3,
+            retryableErrors: ['network', 'timeout', '503', '502', '429', 'ECONNRESET']
+        });
+
+        if (retryResult.success && retryResult.data) {
+            return retryResult.data;
+        }
+        
+        const retryError = retryResult.error;
+        if (retryError instanceof AIError) {
+            throw retryError;
+        }
+        throw new AIError(
+            retryError?.message || 'AI 请求重试失败',
+            (retryError as any)?.statusCode || 0,
+            retryError
+        );
     } catch (error: any) {
+        if (error instanceof AIError) {
+            throw error;
+        }
         // Safely extract error message without accessing circular references
         let errorMsg = '未知错误';
+        let statusCode = 0;
         
         // Only access the basic message property to avoid circular reference issues
         try {
-            if (error && typeof error.message === 'string') {
+            if (error.response) {
+                statusCode = error.response.status;
+                const responseData = error.response.data;
+                if (typeof responseData.error?.message === 'string') {
+                    errorMsg = responseData.error.message;
+                } else if (typeof responseData.message === 'string') {
+                    errorMsg = responseData.message;
+                }
+            } else if (error && typeof error.message === 'string') {
                 errorMsg = error.message;
             } else if (typeof error === 'string') {
                 errorMsg = error;
@@ -247,6 +294,7 @@ export async function runLLM({
             errorMsg = '未知错误（无法解析错误信息）';
         }
         
-        throw new Error(`AI 请求失败: ${errorMsg}`);
+        const finalError = new AIError(`AI 请求失败 (Status: ${statusCode}): ${errorMsg}`, statusCode, error);
+        throw finalError;
     }
 }

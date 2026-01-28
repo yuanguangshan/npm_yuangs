@@ -8,6 +8,7 @@ const terminalRenderer = new TerminalRenderer();
 marked.setOptions({ renderer: terminalRenderer });
 
 import { LLMAdapter } from "./llmAdapter";
+import { AIError } from "./llm";
 import { GovernanceService } from "./governance";
 import { ToolExecutor } from "./executor";
 import { ContextManager } from "./contextManager";
@@ -110,34 +111,73 @@ export class AgentRuntime {
         agentOnChunk = agentRenderer.startChunking();
       }
 
-      const thought = await LLMAdapter.think(
-        messages,
-        mode as any,
-        agentOnChunk,
-        model,
-        enhancedPrompt,
-        this.context,
-      );
+      let thought;
+      try {
+        thought = await LLMAdapter.think(
+          messages,
+          mode as any,
+          agentOnChunk,
+          model,
+          enhancedPrompt,
+          this.context,
+        );
 
-      const action: ProposedAction = {
-        id: randomUUID(),
-        type: (thought.type as any) || "answer",
-        payload: thought.payload || { text: thought.raw },
-        riskLevel: "low",
-        reasoning: thought.reasoning || "",
-      };
+        if (!thought.raw || thought.raw.trim() === '') {
+          console.log(chalk.red('\n⚠️ AI 返回了空响应，请检查网络连接或模型配置。'));
+          break;
+        }
+      } catch (error: unknown) {
+        let errorMessage = '未知内部错误';
+        let statusCode = 0;
 
-      if (action.reasoning && !onChunk) {
-        console.log(chalk.gray(`\n🤔 Reasoning: ${action.reasoning}`));
+        if (error instanceof AIError) {
+          errorMessage = error.message;
+          statusCode = error.statusCode;
+        } else if (error instanceof Error) {
+          errorMessage = error.message;
+          statusCode = (error as any).statusCode || 0;
+        } else if (typeof error === 'string') {
+          errorMessage = error;
+        }
+
+        const statusInfo = statusCode ? ` (状态码: ${statusCode})` : '';
+        console.log(chalk.red(`\n❌ AI 思考过程发生错误: ${errorMessage}${statusInfo}`));
+        
+        this.context.addMessage("system", `思考过程中发生错误${statusInfo}: ${errorMessage}`);
+        
+        if (statusCode === 401 || statusCode === 403 || errorMessage.includes('401') || errorMessage.includes('403')) {
+          console.log(chalk.yellow('💡 检测到权限或授权错误，请检查 API 配置。'));
+          break;
+        }
+        
+        if (statusCode === 429) {
+          console.log(chalk.yellow('💡 API 调用频率过高，请稍后再试。'));
+        }
+
+        break;
       }
 
-      if (thought.usedRouter) {
-        console.log(chalk.gray(`[Router] 🤖 Model: ${thought.modelName}`));
-      }
+      try {
+        const action: ProposedAction = {
+          id: randomUUID(),
+          type: (thought.type as any) || "answer",
+          payload: thought.payload || { text: thought.raw },
+          riskLevel: "low",
+          reasoning: thought.reasoning || "",
+        };
 
-      // 如果 LLM 认为已经完成或者当前的动作就是回答
-      if (thought.isDone || action.type === "answer") {
-        const result = await ToolExecutor.execute(action as any);
+        if (action.reasoning && !onChunk) {
+          console.log(chalk.gray(`\n🤔 Reasoning: ${action.reasoning}`));
+        }
+
+        if (thought.usedRouter) {
+          console.log(chalk.gray(`[Router] 🤖 Model: ${thought.modelName}`));
+        }
+
+        // 如果 LLM 认为已经完成或者当前的动作就是回答
+        if (thought.isDone || action.type === "answer") {
+          const result = await ToolExecutor.execute(action as any);
+          // ... rest of the logic
 
         // 如果没有 renderer，使用内部创建的
         if (!renderer && agentRenderer) {
@@ -320,6 +360,18 @@ export class AgentRuntime {
         lastError = result.error;
         this.context.addToolResult(action.type, `Error: ${result.error}`);
         console.log(chalk.red(`[ERROR] ${result.error}`));
+      }
+      } catch (error: unknown) {
+        let errorMessage = '未知执行错误';
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        } else if (typeof error === 'string') {
+          errorMessage = error;
+        }
+
+        console.log(chalk.red(`\n❌ 任务执行失败 [Action: ${thought?.type}]: ${errorMessage}`));
+        this.context.addMessage("system", `执行引擎错误 [Action: ${thought?.type}]: ${errorMessage}`);
+        break;
       }
     }
 
