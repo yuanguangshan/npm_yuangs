@@ -24,8 +24,20 @@ import {
 import {
     parseGeneratedCode,
     writeGeneratedCode,
-    saveRawOutput
+    saveRawOutput,
+    backupFiles,
+    restoreFromBackup,
+    cleanOldBackups,
+    BackupInfo
 } from '../../core/git/CodeGenerator';
+import { CommitMessageGenerator } from '../../core/git/CommitMessageGenerator';
+import {
+    withRetry,
+    isRetryableError,
+    formatError,
+    getSuggestion
+} from '../../core/git/ErrorHandler';
+import { ProgressManager } from '../../core/git/ProgressManager';
 
 /**
  * 执行单个任务
@@ -72,12 +84,23 @@ ${previousFeedback ? `\n[上次实现的问题]\n${previousFeedback}\n\n请根�
     ];
 
     try {
-        const response = await runLLM({
-            prompt: { messages: prompt },
-            model,
-            stream: false,
-            bypassRouter: true
-        });
+        const response = await withRetry(
+            () => runLLM({
+                prompt: { messages: prompt },
+                model,
+                stream: false,
+                bypassRouter: true
+            }),
+            {
+                maxAttempts: 3,
+                delay: 1000,
+                backoff: true,
+                shouldRetry: isRetryableError,
+                onRetry: (error, attempt) => {
+                    console.log(chalk.yellow(`⚠️  AI 调用失败，第 ${attempt} 次重试...`));
+                }
+            }
+        );
 
         return { code: response.rawText, success: true };
     } catch (e) {
@@ -97,7 +120,18 @@ async function reviewCode(): Promise<{ score: number; issues: string[]; error?: 
         const router = getRouter();
         const reviewer = new CodeReviewer(gitService, router);
         
-        const result = await reviewer.review(ReviewLevel.STANDARD, true);
+        const result = await withRetry(
+            () => reviewer.review(ReviewLevel.STANDARD, true),
+            {
+                maxAttempts: 2,
+                delay: 500,
+                backoff: true,
+                shouldRetry: isRetryableError,
+                onRetry: (error, attempt) => {
+                    console.log(chalk.yellow(`⚠️  代码审查失败，第 ${attempt} 次重试...`));
+                }
+            }
+        );
         
         return {
             score: result.score,
@@ -128,10 +162,14 @@ export function registerAutoCommand(gitCmd: Command) {
         .option('--min-score <score>', '最低审查分数', '85')
         .option('--skip-review', '跳过代码审查')
         .option('--save-only', '只保存代码，不写入文件系统')
+        .option('--commit', '所有任务完成后自动提交')
+        .option('--commit-message <msg>', '自定义提交信息（使用 --commit 时生效）')
         .action(async (options) => {
             const todoPath = path.join(process.cwd(), 'todo.md');
             const maxTasks = parseInt(options.maxTasks) || 5;
             const minScore = parseInt(options.minScore) || MIN_REVIEW_SCORE;
+            
+            const progressManager = new ProgressManager();
             
             console.log(chalk.bold.cyan('\n🤖 启动全自动 AI 开发工作流...\n'));
             console.log(chalk.gray(`📋 最大任务数: ${maxTasks}`));
@@ -157,6 +195,15 @@ export function registerAutoCommand(gitCmd: Command) {
                 
                 const progress = calculateProgress(tasks);
                 console.log(chalk.cyan(`📊 当前进度: ${progress.completed}/${progress.total}\n`));
+                
+                // 初始化进度管理器
+                await progressManager.initialize({
+                    minScore,
+                    skipReview: options.skipReview,
+                    saveOnly: options.saveOnly,
+                    commit: options.commit,
+                    commitMessage: options.commitMessage
+                });
                 
                 let tasksExecuted = 0;
                 
@@ -218,14 +265,31 @@ export function registerAutoCommand(gitCmd: Command) {
                             console.log(chalk.cyan(`\n📦 检测到 ${generated.files.length} 个文件:\n`));
                             
                             if (!options.saveOnly) {
-                                const { written, skipped } = await writeGeneratedCode(generated);
-                                
-                                if (written.length > 0) {
-                                    console.log(chalk.green(`\n✅ 成功写入 ${written.length} 个文件`));
-                                }
-                                if (skipped.length > 0) {
-                                    console.log(chalk.yellow(`⚠️  跳过 ${skipped.length} 个文件`));
-                                }
+                            // 写入前备份
+                            spinner.start('正在备份当前文件状态...');
+                            let backupId: string | undefined;
+                            try {
+                                const backup = await backupFiles(generated.files);
+                                backupId = backup.id;
+                                spinner.succeed('文件状态已备份');
+                            } catch (e: unknown) {
+                                spinner.warn('备份失败，继续执行');
+                            }
+                            
+                            const { written, skipped } = await writeGeneratedCode(generated);
+                            
+                            if (written.length > 0) {
+                                console.log(chalk.green(`\n✅ 成功写入 ${written.length} 个文件`));
+                            }
+                            if (skipped.length > 0) {
+                                console.log(chalk.yellow(`⚠️  跳过 ${skipped.length} 个文件`));
+                            }
+                            
+                            // 保存备份ID
+                            await updateTaskStatus(todoPath, nextTask.index, {
+                                backupId
+                            });
+                            nextTask.backupId = backupId;
                             } else {
                                 console.log(chalk.gray('  (--save-only 模式，未写入文件系统)'));
                                 generated.files.forEach(f => {
@@ -275,6 +339,19 @@ export function registerAutoCommand(gitCmd: Command) {
                                     console.log(chalk.cyan(`\n🔄 将根据反馈重新生成...\n`));
                                 } else {
                                     console.log(chalk.red(`\n❌ 已达最大重试次数，跳过此任务\n`));
+                                    
+                                    // 回滚代码
+                                    if (nextTask.backupId) {
+                                        spinner.start('正在回滚代码变更...');
+                                        try {
+                                            await restoreFromBackup(nextTask.backupId);
+                                            spinner.succeed('代码已回滚');
+                                        } catch (e: unknown) {
+                                            const errorMsg = e instanceof Error ? e.message : '未知错误';
+                                            spinner.warn(`回滚失败: ${errorMsg}`);
+                                        }
+                                    }
+                                    
                                     await updateTaskStatus(todoPath, nextTask.index, {
                                         execStatus: 'failed'
                                     });
@@ -296,6 +373,10 @@ export function registerAutoCommand(gitCmd: Command) {
                     
                     tasksExecuted++;
                     
+                    // 更新进度管理器
+                    await progressManager.incrementTaskExecuted();
+                    await progressManager.updateCurrentTask(nextTask.index + 1);
+                    
                     // 更新总体进度
                     const newProgress = calculateProgress(tasks);
                     await updateMetadata(todoPath, {
@@ -316,6 +397,68 @@ export function registerAutoCommand(gitCmd: Command) {
                     console.log(chalk.yellow('💡 提示：还有未完成的任务，可以再次运行 yuangs git auto 继续'));
                 }
                 
+                // 导出进度报告
+                const reportMetadata = {
+                    ...metadata,
+                    progress: finalProgress
+                };
+                const reportPath = await progressManager.exportReport(reportMetadata);
+                console.log(chalk.gray(`\n📊 进度报告已保存: ${path.relative(process.cwd(), reportPath)}`));
+                
+                // 清理状态
+                if (finalProgress.completed === finalProgress.total) {
+                    await progressManager.clear();
+                }
+                
+                if (options.commit && finalProgress.completed === finalProgress.total) {
+                    // 5. 自动提交
+                    const gitService = new GitService();
+                    const isClean = await gitService.isWorkingTreeClean();
+                    
+                    if (!isClean) {
+                        console.log(chalk.cyan('🚀 准备自动提交...\n'));
+                        
+                        // 暂存所有变更
+                        spinner.start('正在暂存所有变更...');
+                        await gitService.stageAll();
+                        spinner.succeed('已暂存所有变更');
+                        
+                        // 生成提交信息
+                        let commitMessage: string;
+                        if (options.commitMessage) {
+                            commitMessage = options.commitMessage;
+                            spinner.succeed('使用自定义提交信息');
+                        } else {
+                            spinner.start('正在生成提交信息...');
+                            const router = await (await import('../../core/modelRouter')).getRouter();
+                            const commitGen = new CommitMessageGenerator(gitService, router);
+                            const commit = await commitGen.generate({ detailed: false });
+                            commitMessage = commit.full;
+                            spinner.succeed('提交信息已生成');
+                        }
+                        
+                        console.log(chalk.gray(`\n📝 提交信息:\n  ${commitMessage}\n`));
+                        
+                        // 执行提交
+                        spinner.start('正在提交...');
+                        try {
+                            await gitService.commit(commitMessage);
+                            spinner.succeed('提交成功！');
+                            
+                            console.log(chalk.green('✅ 代码已自动提交到 Git 仓库'));
+                        } catch (error: any) {
+                            spinner.fail('提交失败');
+                            console.log(chalk.red(`错误: ${error.message}`));
+                            console.log(chalk.yellow('💡 请手动提交代码'));
+                        }
+                    } else {
+                        console.log(chalk.yellow('\n⚠️  没有需要提交的变更'));
+                    }
+                } else if (finalProgress.completed === finalProgress.total) {
+                    console.log(chalk.cyan('\n💡 提示：所有任务已完成'));
+                    console.log(chalk.gray('   使用 --commit 选项可以自动提交代码'));
+                }
+                
             } catch (e: unknown) {
                 if (e instanceof Error && (e as NodeJS.ErrnoException).code === 'ENOENT') {
                     spinner.fail('未找到 todo.md 文件');
@@ -323,9 +466,17 @@ export function registerAutoCommand(gitCmd: Command) {
                     console.log(chalk.gray('  1. yuangs git plan "你的需求"  # 生成任务清单'));
                     console.log(chalk.gray('  2. yuangs git auto            # 启动自动化工作流\n'));
                 } else if (e instanceof AIError) {
-                    spinner.fail(`AI 调用失败: ${e.message}`);
+                    spinner.fail(formatError(e, 'AI 调用失败'));
+                    const suggestion = getSuggestion(e);
+                    if (suggestion) {
+                        console.log(chalk.yellow(`💡 ${suggestion}`));
+                    }
                 } else if (e instanceof Error) {
-                    spinner.fail(`执行失败: ${e.message}`);
+                    spinner.fail(formatError(e, '执行失败'));
+                    const suggestion = getSuggestion(e);
+                    if (suggestion) {
+                        console.log(chalk.yellow(`💡 ${suggestion}`));
+                    }
                 } else {
                     spinner.fail('未知错误');
                 }

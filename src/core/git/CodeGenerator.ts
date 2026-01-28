@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
+import crypto from 'crypto';
 
 /**
  * 代码生成结果
@@ -12,6 +13,15 @@ export interface GeneratedCode {
         action: 'create' | 'modify';
     }>;
     rawOutput: string;
+}
+
+/**
+ * 备份信息
+ */
+export interface BackupInfo {
+    id: string;
+    timestamp: string;
+    files: string[];
 }
 
 /**
@@ -121,4 +131,108 @@ export async function saveRawOutput(
     await fs.promises.writeFile(filepath, content, 'utf8');
     
     return filepath;
+}
+
+/**
+ * 备份受影响的文件（在写入前）
+ */
+export async function backupFiles(
+    files: Array<{ path: string; content: string }>,
+    baseDir: string = process.cwd()
+): Promise<BackupInfo> {
+    const backupId = crypto.randomBytes(8).toString('hex');
+    const backupDir = path.join(baseDir, '.yuangs', 'backups', backupId);
+    const manifest: string[] = [];
+    
+    await fs.promises.mkdir(backupDir, { recursive: true });
+    
+    for (const file of files) {
+        const fullPath = path.isAbsolute(file.path) 
+            ? file.path 
+            : path.join(baseDir, file.path);
+        
+        if (fs.existsSync(fullPath)) {
+            const backupFile = path.join(backupDir, path.relative(baseDir, fullPath));
+            const backupDirPath = path.dirname(backupFile);
+            
+            await fs.promises.mkdir(backupDirPath, { recursive: true });
+            await fs.promises.copyFile(fullPath, backupFile);
+            manifest.push(file.path);
+        }
+    }
+    
+    const info: BackupInfo = {
+        id: backupId,
+        timestamp: new Date().toISOString(),
+        files: manifest
+    };
+    
+    const manifestPath = path.join(backupDir, 'manifest.json');
+    await fs.promises.writeFile(manifestPath, JSON.stringify(info, null, 2), 'utf8');
+    
+    return info;
+}
+
+/**
+ * 从备份恢复文件
+ */
+export async function restoreFromBackup(
+    backupId: string,
+    baseDir: string = process.cwd()
+): Promise<void> {
+    const backupDir = path.join(baseDir, '.yuangs', 'backups', backupId);
+    const manifestPath = path.join(backupDir, 'manifest.json');
+    
+    if (!fs.existsSync(manifestPath)) {
+        throw new Error(`Backup ${backupId} not found`);
+    }
+    
+    const manifest = JSON.parse(await fs.promises.readFile(manifestPath, 'utf8')) as BackupInfo;
+    
+    for (const filePath of manifest.files) {
+        const backupFile = path.join(backupDir, filePath);
+        const originalPath = path.isAbsolute(filePath) 
+            ? filePath 
+            : path.join(baseDir, filePath);
+        
+        if (fs.existsSync(backupFile)) {
+            await fs.promises.copyFile(backupFile, originalPath);
+        }
+    }
+}
+
+/**
+ * 清理旧备份
+ */
+export async function cleanOldBackups(
+    keepCount: number = 5,
+    baseDir: string = process.cwd()
+): Promise<void> {
+    const backupsDir = path.join(baseDir, '.yuangs', 'backups');
+    
+    if (!fs.existsSync(backupsDir)) {
+        return;
+    }
+    
+    const entries = await fs.promises.readdir(backupsDir, { withFileTypes: true });
+    const backups = entries
+        .filter(entry => entry.isDirectory())
+        .map(async entry => {
+            const manifestPath = path.join(backupsDir, entry.name, 'manifest.json');
+            const manifest = JSON.parse(
+                await fs.promises.readFile(manifestPath, 'utf8')
+            ) as BackupInfo;
+            return { id: entry.name, timestamp: manifest.timestamp };
+        });
+    
+    const backupInfos = await Promise.all(backups);
+    backupInfos.sort((a, b) => 
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+    
+    const toDelete = backupInfos.slice(0, -keepCount);
+    for (const backup of toDelete) {
+        const backupPath = path.join(backupsDir, backup.id);
+        await fs.promises.rm(backupPath, { recursive: true, force: true });
+    }
 }

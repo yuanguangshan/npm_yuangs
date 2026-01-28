@@ -5,6 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import { runLLM, AIError } from '../../agent/llm';
 import { AIRequestMessage } from '../../core/validation';
+import { parseGeneratedCode, writeGeneratedCode, saveRawOutput } from '../../core/git/CodeGenerator';
 
 const METADATA_PREFIX = '>';
 
@@ -144,9 +145,56 @@ ${currentTask}
                 readline.close();
                 
                 if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
-                    // 7. 解析并应用代码（这里需要实现文件写入逻辑）
-                    console.log(chalk.green('\n✅ 代码已应用（文件写入功能待实现）'));
-                    console.log(chalk.gray('💡 提示：请手动复制代码到对应文件，或等待自动写入功能完善'));
+                    // 7. 解析并应用代码
+                    spinner.start('正在解析生成的代码...');
+                    
+                    const generated = parseGeneratedCode(response.rawText);
+                    
+                    if (generated.files.length > 0) {
+                        spinner.succeed(`检测到 ${generated.files.length} 个文件`);
+                        
+                        // 保存原始输出
+                        const savedPath = await saveRawOutput(response.rawText, taskIndex);
+                        console.log(chalk.gray(`📄 原始输出已保存: ${path.relative(process.cwd(), savedPath)}\n`));
+                        
+                        // 写入文件
+                        console.log(chalk.cyan('开始写入文件...\n'));
+                        const { written, skipped } = await writeGeneratedCode(generated);
+                        
+                        if (written.length > 0) {
+                            console.log(chalk.green(`\n✅ 成功写入 ${written.length} 个文件`));
+                        }
+                        if (skipped.length > 0) {
+                            console.log(chalk.yellow(`⚠️  跳过 ${skipped.length} 个文件`));
+                        }
+                        
+                        // 更新 todo.md 任务状态
+                        const todoLineRegex = /^(\s*)-\s*\[\s*\]\s*(.+)$/;
+                        const todoContent = await fs.promises.readFile(todoPath, 'utf8');
+                        const lines = todoContent.split('\n');
+                        
+                        let taskFound = false;
+                        for (let i = 0; i < lines.length; i++) {
+                            const match = lines[i].match(todoLineRegex);
+                            if (match && taskIndex > 0) {
+                                taskIndex--;
+                                continue;
+                            }
+                            if (match && taskIndex === 0) {
+                                lines[i] = `${match[1]}- [x] ${match[2]}`;
+                                taskFound = true;
+                                break;
+                            }
+                        }
+                        
+                        if (taskFound) {
+                            await fs.promises.writeFile(todoPath, lines.join('\n'), 'utf8');
+                            console.log(chalk.green('\n✅ 任务已标记为完成'));
+                        }
+                    } else {
+                        spinner.fail('未检测到可解析的文件路径和代码');
+                        console.log(chalk.yellow('\n💡 请检查 AI 输出格式，或查看原始输出文件'));
+                    }
                 } else {
                     console.log(chalk.gray('\n已取消应用'));
                 }
