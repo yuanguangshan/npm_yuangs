@@ -1157,3 +1157,536 @@ await fs.promises.writeFile(fullPath, resolvedContent, 'utf8');
 
 [↑ 返回顶部](#)
 
+
+---
+
+## 📋 Code Review - 2026/1/29 01:46:41
+
+**📊 评分:** 👍 82/100  
+**🔧 级别:** STANDARD  
+**🌿 分支:** `main`  
+**💾 提交:** `abf8df6`  
+**📂 范围:** 暂存区 (4 个文件)  
+
+### 📝 总体评价
+
+整体设计成熟，Capability-Aware Pipeline 的抽象清晰，扩展性和可观测性较好。但在状态管理、日志、副作用控制、类型安全和可测试性方面仍有改进空间，部分实现存在潜在 Bug 和可维护性风险。
+
+### ⚠️ 发现的问题 (9)
+
+#### 1. [ERROR] src/core/capability/Pipeline.ts:133
+
+executionHistory 被重复累加，可能导致历史记录指数级增长。
+
+**💡 建议:** 不要在每个阶段将 executionHistory 整体重新 spread 进 context.executionHistory，应只追加当前 record，或统一在 pipeline 结束时赋值。
+
+<details>
+<summary>代码片段</summary>
+
+```
+context.executionHistory = [...context.executionHistory, ...executionHistory];
+```
+
+</details>
+
+#### 2. [ERROR] src/core/capability/Pipeline.ts:92
+
+假设 metadata.costProfile 一定存在，可能导致运行时错误。
+
+**💡 建议:** 对 costProfile 做显式校验或在 PipelineContext 类型中强制定义 costProfile。
+
+<details>
+<summary>代码片段</summary>
+
+```
+const costProfile = context.metadata?.costProfile as CostProfile;
+```
+
+</details>
+
+#### 3. [WARNING] src/core/capability/Pipeline.ts:167
+
+PipelineStage.minCapability 未在执行前进行校验，阶段可能在低于最低能力的情况下运行。
+
+**💡 建议:** 在 stage.execute 前检查 context.currentCapability 是否满足 minCapability，必要时直接降级或跳过。
+
+<details>
+<summary>代码片段</summary>
+
+```
+for (const stage of this.config.stages) {
+```
+
+</details>
+
+#### 4. [WARNING] src/core/capability/Pipeline.ts:31
+
+PipelineResult 与 ExecutionRecord 中均包含 capability，语义重复且可能不一致。
+
+**💡 建议:** 明确 capability 的单一来源，或区分 plannedCapability 与 actualCapability。
+
+<details>
+<summary>代码片段</summary>
+
+```
+export interface PipelineResult { capability: CapabilityLevel; }
+```
+
+</details>
+
+#### 5. [WARNING] src/core/capability/Pipeline.ts:55
+
+metadata 使用 Record<string, any>，类型不安全，容易引入隐性 Bug。
+
+**💡 建议:** 使用泛型 PipelineContext<TMetadata> 或定义明确的 Metadata 接口。
+
+<details>
+<summary>代码片段</summary>
+
+```
+metadata?: Record<string, any>;
+```
+
+</details>
+
+#### 6. [WARNING] src/core/capability/Pipeline.ts:101
+
+在核心库代码中直接使用 console.log，不利于测试和复用。
+
+**💡 建议:** 引入 Logger 接口，通过依赖注入或配置控制日志输出。
+
+<details>
+<summary>代码片段</summary>
+
+```
+console.log(`📊 Pipeline 启动`);
+```
+
+</details>
+
+#### 7. [WARNING] src/core/capability/Pipeline.ts:221
+
+calculateOverallConfidence 采用最小值策略过于保守，可能低估整体质量。
+
+**💡 建议:** 考虑加权平均、阶段权重或可配置的聚合策略。
+
+<details>
+<summary>代码片段</summary>
+
+```
+const minConfidence = Math.min(...history.map(h => h.confidence));
+```
+
+</details>
+
+#### 8. [WARNING] src/core/capability/PipelineFactory.ts:33
+
+当 degradationType 为 'noop' 时，degradationPolicy 传入 undefined，依赖 CapabilityPipeline 的默认行为，隐式且不直观。
+
+**💡 建议:** 显式传入 NoOpDegradationPolicy，避免隐藏逻辑。
+
+<details>
+<summary>代码片段</summary>
+
+```
+const degradationPolicy = options.degradationType === 'noop' ? undefined : new ThresholdDegradationPolicy(...)
+```
+
+</details>
+
+#### 9. [INFO] src/core/capability/Pipeline.ts:247
+
+totalTokens 始终为 0，统计信息不完整。
+
+**💡 建议:** 在 PipelineStage 或 Context 中引入 token 使用上报机制。
+
+<details>
+<summary>代码片段</summary>
+
+```
+totalTokens: 0 // TODO
+```
+
+</details>
+
+### 👍 优点
+
+- ✅ Capability-Aware Pipeline 的整体抽象清晰，职责划分合理
+- ✅ 接口和类型定义完整，具备良好的自文档性
+- ✅ 支持优雅降级（Graceful Degradation）的设计非常符合 AI 场景
+- ✅ PipelineFactory 提供了良好的模板化创建方式，易于扩展
+- ✅ ExecutionRecord 和 PipelineStats 提供了较强的可观测性基础
+
+### 💡 建议
+
+- 为 CapabilityPipeline 和 PipelineFactory 增加单元测试，重点覆盖降级决策、失败路径和边界条件
+- 引入 Logger、Clock（时间）等抽象，降低对全局副作用的依赖，提升可测试性
+- 明确 capability 状态流转规则（required / current / final），避免语义混淆
+- 将 metadata 强类型化，减少 any 的使用
+- 为 PipelineStage 增加 before/after hook 或中间件机制，降低阶段间耦合
+- 在 ROADMAP 或文档中补充 Pipeline 扩展示例，帮助使用者正确实现自定义阶段
+
+[↑ 返回顶部](#)
+
+
+---
+
+## 📋 Code Review - 2026/1/29 01:51:00
+
+**📊 评分:** 👍 86/100  
+**🔧 级别:** STANDARD  
+**🌿 分支:** `main`  
+**💾 提交:** `abf8df6`  
+**📂 范围:** 暂存区 (9 个文件)  
+
+### 📝 总体评价
+
+此次变更以文档和路线图为主，整体质量较高，结构清晰，信息详实，体现了对 Capability-Aware Pipeline 的系统性设计与反思。ROADMAP 更新准确反映了已完成事项，新增的修复总结与使用指南对维护者和使用者都非常友好。但仍存在少量一致性、可维护性和最佳实践方面的问题，主要集中在文档冗余、示例与当前实现的偏差、以及长期演进风险上。
+
+### ⚠️ 发现的问题 (6)
+
+#### 1. [WARNING] ROADMAP.md:25
+
+Phase 3 中已完成与未完成事项的顺序调整虽正确，但缺少完成时间或版本标识，长期维护时可能难以追溯。
+
+**💡 建议:** 建议在已完成项后标注完成版本或完成日期（例如 v0.3 / 2026-01）。
+
+<details>
+<summary>代码片段</summary>
+
+```
+- [x] **Capability-Aware Pipeline**: Implement capability levels and graceful degradation for AI agents.
+```
+
+</details>
+
+#### 2. [INFO] docs/CAPABILITY_PIPELINE_FIXES.md:1
+
+文档内容非常详尽，但与实际代码存在一定“代码即事实”偏离风险。
+
+**💡 建议:** 建议在文档开头注明对应的代码版本或 commit hash，防止未来实现变更导致文档失真。
+
+<details>
+<summary>代码片段</summary>
+
+```
+# Capability-Aware Pipeline 代码审查修复总结
+```
+
+</details>
+
+#### 3. [WARNING] docs/CAPABILITY_PIPELINE_FIXES.md:221
+
+置信度算法从最小值改为加权平均虽合理，但未讨论极端失败阶段对整体结果的影响。
+
+**💡 建议:** 建议补充说明或提供可配置策略（如 min / weighted / hybrid），避免隐藏严重失败。
+
+<details>
+<summary>代码片段</summary>
+
+```
+private calculateOverallConfidence(history: ExecutionRecord[]): number {
+```
+
+</details>
+
+#### 4. [WARNING] docs/CAPABILITY_PIPELINE_GUIDE.md:120
+
+使用指南中的示例仍直接使用 console.log，与修复总结中“禁止直接使用 console.log”的最佳实践存在不一致。
+
+**💡 建议:** 建议在示例中统一使用 Logger（如 ConsoleLogger），以保持文档与实现一致。
+
+<details>
+<summary>代码片段</summary>
+
+```
+console.log(`执行成功: ${result.success}`);
+```
+
+</details>
+
+#### 5. [INFO] docs/CAPABILITY_PIPELINE_GUIDE.md:210
+
+PipelineResult 接口示例中仍使用 any，与修复中强调的类型安全目标不一致。
+
+**💡 建议:** 建议将示例中的 any 更新为 unknown 或具体类型，并同步最新接口定义。
+
+<details>
+<summary>代码片段</summary>
+
+```
+data?: any;                // 返回的数据
+```
+
+</details>
+
+#### 6. [WARNING] docs/CAPABILITY_PIPELINE_GUIDE.md:150
+
+自定义 Pipeline 示例中直接 new CapabilityPipeline，但未展示 Logger、costCalculator 等可选依赖的推荐配置。
+
+**💡 建议:** 建议补充一个“完整配置示例”，避免用户忽略关键可观测性和成本控制能力。
+
+<details>
+<summary>代码片段</summary>
+
+```
+const pipeline = new CapabilityPipeline({
+```
+
+</details>
+
+### 👍 优点
+
+- ✅ 文档结构清晰，分层合理（修复总结 / 使用指南 / 路线图）
+- ✅ 对问题分类明确（ERROR / WARNING / INFO），审查视角专业
+- ✅ 修复说明包含问题描述、原因分析和前后对比，极具教学价值
+- ✅ Capability-Aware Pipeline 的设计目标和能力模型阐述清楚
+- ✅ 新增 Logger 抽象、类型安全改进等实践符合大型 TypeScript 项目最佳实践
+
+### 💡 建议
+
+- 为所有设计型文档（FIXES、GUIDE）绑定明确的版本或 commit，避免文档漂移
+- 保持示例代码与核心设计原则一致（如避免 console.log、避免 any）
+- 考虑将 CAPABILITY_PIPELINE_FIXES.md 中的部分内容提炼为 ADR（Architecture Decision Record）
+- 为指南中的关键示例补充失败场景和降级触发示例
+- 后续可增加一份“常见误用 / 反模式”文档，降低新用户踩坑概率
+
+[↑ 返回顶部](#)
+
+
+---
+
+## 📋 Code Review - 2026/1/29 01:54:36
+
+**📊 评分:** 👍 88/100  
+**🔧 级别:** STANDARD  
+**🌿 分支:** `main`  
+**💾 提交:** `abf8df6`  
+**📂 范围:** 暂存区 (10 个文件)  
+
+### 📝 总体评价
+
+本次变更以文档为主（ROADMAP 与 Capability Pipeline 相关说明），整体质量较高，结构清晰，审查与修复内容详尽，体现了成熟的工程化思维。主要改进空间集中在文档一致性、示例代码的最佳实践、以及对潜在误用场景的进一步约束说明。
+
+### ⚠️ 发现的问题 (6)
+
+#### 1. [WARNING] ROADMAP.md:25
+
+Phase 3 中 Capability-Aware Pipeline 的状态标记从未完成变为已完成，但未在同一节中明确版本范围或发布日期。
+
+**💡 建议:** 建议在条目中补充完成日期或对应版本号（如 v1.0 / 2026-01-29），以增强路线图的时间可追溯性。
+
+<details>
+<summary>代码片段</summary>
+
+```
+- [x] **Capability-Aware Pipeline** [v1.0]: Implement capability levels and graceful degradation for AI agents.
+```
+
+</details>
+
+#### 2. [WARNING] docs/CAPABILITY_PIPELINE_FIXES.md:6
+
+文档中包含明确的评分（82/100）与问题统计，但缺少评分标准定义。
+
+**💡 建议:** 建议在文档开头或附录中补充评分维度说明（如可维护性、类型安全、健壮性等权重），避免主观解读。
+
+<details>
+<summary>代码片段</summary>
+
+```
+**评分**: 82/100
+```
+
+</details>
+
+#### 3. [WARNING] docs/CAPABILITY_PIPELINE_FIXES.md:101
+
+示例中展示了 Logger 接口，但未明确线程安全或并发场景下的行为约定。
+
+**💡 建议:** 建议补充 Logger 的并发使用约束说明，或在接口注释中声明实现需自行保证线程安全。
+
+<details>
+<summary>代码片段</summary>
+
+```
+export interface Logger { debug(message: string, ...args: any[]): void; }
+```
+
+</details>
+
+#### 4. [INFO] docs/CAPABILITY_PIPELINE_GUIDE.md:120
+
+示例代码中仍直接使用 console.log，与前文强调的 Logger 注入最佳实践略有不一致。
+
+**💡 建议:** 建议在示例中统一使用 ConsoleLogger 或显式说明 console.log 仅为教学简化。
+
+<details>
+<summary>代码片段</summary>
+
+```
+console.log('提取数据...');
+```
+
+</details>
+
+#### 5. [WARNING] docs/CAPABILITY_PIPELINE_GUIDE.md:45
+
+CapabilityLevel 表格中未说明数值大小是否保证单调递增语义（高等级一定包含低等级能力）。
+
+**💡 建议:** 建议明确 CapabilityLevel 的偏序/全序语义，避免后续扩展时出现能力比较歧义。
+
+<details>
+<summary>代码片段</summary>
+
+```
+| **SEMANTIC** | 4 | 极致语义，理解业务意图和全局架构 |
+```
+
+</details>
+
+#### 6. [INFO] docs/CAPABILITY_PIPELINE_FIXES.md:190
+
+置信度计算策略改为加权平均，但缺少对异常值（NaN、Infinity）的防御性说明。
+
+**💡 建议:** 建议在文档中说明实现中是否包含对非法 confidence 值的校验或裁剪。
+
+<details>
+<summary>代码片段</summary>
+
+```
+return weightedSum / totalWeight;
+```
+
+</details>
+
+### 👍 优点
+
+- ✅ 文档结构清晰，章节划分合理，便于快速定位信息
+- ✅ 问题—修复—对比的审查格式专业，符合标准代码审查报告习惯
+- ✅ 对类型安全、可测试性和状态管理的关注度高，体现成熟工程实践
+- ✅ Capability-Aware Pipeline 的设计目标、能力等级和使用方式解释充分
+- ✅ 示例代码覆盖常见使用场景（代码审查、生成、提交信息）
+
+### 💡 建议
+
+- 在文档中引入统一的术语表（Glossary），明确 capability、stage、degradation 等核心概念
+- 为文档示例增加“反例”或常见误用说明，帮助使用者避免错误配置
+- 后续可将 CAPABILITY_PIPELINE_FIXES.md 的部分内容沉淀为正式的设计决策记录（ADR）
+- 建议补充与实际代码仓库中对应类/接口的链接或路径索引，提升可导航性
+- 配合文档新增示例测试代码（如伪单元测试），进一步强化可验证性
+
+[↑ 返回顶部](#)
+
+
+---
+
+## 📋 Code Review - 2026/1/29 01:58:20
+
+**📊 评分:** 👍 88/100  
+**🔧 级别:** STANDARD  
+**🌿 分支:** `main`  
+**💾 提交:** `abf8df6`  
+**📂 范围:** 暂存区 (11 个文件)  
+
+### 📝 总体评价
+
+此次变更整体质量较高，属于一次成熟、系统性的改进与文档补充。Capability-Aware Pipeline 的设计清晰，问题定位准确，修复措施专业，文档完整度和工程规范明显提升。主要可改进点集中在文档与代码的一致性、示例代码的最佳实践以及长期可维护性方面。
+
+### ⚠️ 发现的问题 (5)
+
+#### 1. [WARNING] docs/CAPABILITY_PIPELINE_GUIDE.md:120
+
+示例代码中仍直接使用 console.log，与核心代码中已引入 Logger 抽象的最佳实践不一致。
+
+**💡 建议:** 建议在示例中统一使用 Logger 接口（如 ConsoleLogger），以强化使用者的正确心智模型。
+
+<details>
+<summary>代码片段</summary>
+
+```
+console.log('提取数据...');
+```
+
+</details>
+
+#### 2. [WARNING] docs/CAPABILITY_PIPELINE_FIXES.md:8
+
+文档中硬编码了日期（2026-01-29），与当前提交未绑定具体 Commit Hash，存在随时间失真的风险。
+
+**💡 建议:** 建议通过模板变量或在合并时由 CI 自动填充日期与 Commit Hash，避免文档与实际代码状态不一致。
+
+<details>
+<summary>代码片段</summary>
+
+```
+> **代码版本**: v1.0 (2026-01-29)
+```
+
+</details>
+
+#### 3. [INFO] src/core/capability/Pipeline.ts:210
+
+calculateOverallConfidence 采用加权平均策略在多数情况下更合理，但在极端失败阶段可能掩盖关键风险。
+
+**💡 建议:** 建议将置信度计算策略作为可配置项（Strategy Pattern），而非固定实现，以适配不同业务场景。
+
+<details>
+<summary>代码片段</summary>
+
+```
+return weightedSum / totalWeight;
+```
+
+</details>
+
+#### 4. [WARNING] docs/CAPABILITY_PIPELINE_GUIDE.md:35
+
+能力等级枚举在文档中定义清晰，但未明确说明其数值大小与比较语义（是否严格递增）。
+
+**💡 建议:** 建议补充说明 CapabilityLevel 的比较规则及其在 canExecute / degradation 中的语义假设。
+
+<details>
+<summary>代码片段</summary>
+
+```
+| **SEMANTIC** | 4 | 极致语义...
+```
+
+</details>
+
+#### 5. [INFO] ROADMAP.md:23
+
+Capability-Aware Pipeline 已标记完成，但缺少与其直接关联的文档或示例链接。
+
+**💡 建议:** 建议在 ROADMAP 中添加指向 CAPABILITY_PIPELINE_GUIDE.md 的引用，增强可发现性。
+
+<details>
+<summary>代码片段</summary>
+
+```
+- [x] **Capability-Aware Pipeline** [v1.0]
+```
+
+</details>
+
+### 👍 优点
+
+- ✅ 问题定位精准，修复措施与问题描述一一对应，体现出高质量的代码审查能力
+- ✅ 类型安全显著提升，成功消除 any 的滥用并引入明确的领域接口
+- ✅ Capability、ExecutionRecord、PipelineResult 的语义拆分清晰，降低了状态混淆风险
+- ✅ 引入 Logger 抽象，显著提升可测试性与可复用性
+- ✅ 状态管理修复（executionHistory）避免了潜在的指数级内存问题
+- ✅ 文档质量高，FIXES 与 GUIDE 形成“为什么 + 如何用”的完整闭环
+- ✅ PipelineFactory 的显式策略选择减少了隐式行为，符合可读性与可维护性原则
+
+### 💡 建议
+
+- 为 CapabilityPipeline、DegradationPolicy 和 PipelineFactory 增加单元测试，特别是降级与边界条件路径
+- 将置信度计算、降级决策等算法进一步策略化，避免未来修改核心 Pipeline 类
+- 在示例与文档中统一遵循核心代码的最佳实践（如 Logger 注入）
+- 考虑为 ExecutionRecord 和 PipelineStats 提供序列化 / 可视化支持，提升可观测性
+- 在 CI 中加入文档与代码一致性检查，防止接口或字段变更后文档滞后
+
+[↑ 返回顶部](#)
+
