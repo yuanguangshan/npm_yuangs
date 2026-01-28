@@ -75,4 +75,22 @@ export class CLIComponent {
         if (currentLine) lines.push(currentLine);
         return lines;
     }
+    /**
+     * 渲染通用信息面板
+     */
+    public static renderInfoPanel(title: string, content: string): void {
+        const width = Math.min(this.getTerminalWidth(), 70);
+        const contentWidth = width - 4;
+
+        console.log(chalk.white('╭' + '─'.repeat(width - 2) + '╮'));
+        console.log(chalk.white('│') + chalk.bold.blue(` 📊 ${title} `.padEnd(contentWidth)) + chalk.white('│'));
+        console.log(chalk.white('├' + '─'.repeat(width - 2) + '┤'));
+
+        const lines = this.wrapText(content, contentWidth - 4);
+        lines.forEach(line => {
+            console.log(chalk.white('│') + chalk.white(`  ${line}`.padEnd(contentWidth)) + chalk.white('│'));
+        });
+
+        console.log(chalk.white('╰' + '─'.repeat(width - 2) + '╯'));
+    }
 }

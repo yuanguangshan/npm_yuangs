@@ -22,8 +22,7 @@ This roadmap outlines the planned improvements for the `yuangs` CLI, focusing on
 ## Phase 3: Advanced Intelligent Git (Next Milestone) 🧠
 *Goal: Deeper AI integration for complex workflows.*
 
-- [x] **Capability-Aware Pipeline** [v1.0]: Implement capability levels and graceful degradation for AI agents.
-- [ ] **Semantic Commit Parsing**: Better understanding of commit history through AI analysis.
+- [x] **Semantic Commit Parsing**: Better understanding of commit history through AI analysis.
 - [x] **AI-Assisted Conflict Resolution**: Use AI to help resolve Git conflicts during merges.
 - [x] **Semantic Diff Engine**: Move from text-based diffs to structural/semantic understanding of changes.
 - [ ] **Smart Commit Management**: Improve commit message generation and multi-step commits.
@@ -47,6 +46,8 @@ This roadmap outlines the planned improvements for the `yuangs` CLI, focusing on
 - ✅ Added `PipelineFactory` for quick creation of common pipeline templates (code review, code generation, commit message).
 - ✅ Implemented **Semantic Diff Engine (v0.1)** with structural analysis support.
 - ✅ Added `yuangs git diff-semantic` (alias `sd`) command.
+- ✅ Implemented **Semantic Commit Parsing** with impact level analysis and AI-generated trend reports.
+- ✅ Added `yuangs git history-semantic` (alias `hs`) command.
 - ✅ Implemented **AI-Assisted Conflict Resolution** with `p-limit` concurrency, automated backups, and syntax safety checks.
 - ✅ Added `yuangs git resolve` command with `--dry-run` and model whitelist validation.
 - ✅ Improved repository hygiene (.gitignore updates).
