@@ -1,0 +1,334 @@
+import { Command } from 'commander';
+import chalk from 'chalk';
+import ora from 'ora';
+import fs from 'fs';
+import path from 'path';
+import { GitService } from '../../core/git/GitService';
+import { runLLM, AIError } from '../../agent/llm';
+import { AIRequestMessage } from '../../core/validation';
+import {
+    parseTodoFile,
+    updateTaskStatus,
+    updateMetadata,
+    getNextTask,
+    calculateProgress,
+    TaskStatus
+} from '../../core/git/TodoManager';
+import { ReviewLevel } from '../../core/git/CodeReviewer';
+import {
+    MAX_RETRY_ATTEMPTS,
+    MIN_REVIEW_SCORE,
+    REVIEW_FAILURE_SCORE,
+    DEFAULT_AI_MODEL
+} from '../../core/git/constants';
+import {
+    parseGeneratedCode,
+    writeGeneratedCode,
+    saveRawOutput
+} from '../../core/git/CodeGenerator';
+
+/**
+ * 执行单个任务
+ */
+async function executeTask(
+    task: TaskStatus,
+    context: string,
+    model: string,
+    previousFeedback?: string
+): Promise<{ code: string; success: boolean }> {
+    const prompt: AIRequestMessage[] = [
+        {
+            role: 'system',
+            content: `你是一个资深软件工程师。请根据任务描述生成完整的代码实现。
+
+**重要输出格式要求：**
+对于每个需要创建或修改的文件，请使用以下格式：
+
+### 文件: src/path/to/file.ts
+\`\`\`typescript
+// 完整的文件代码
+\`\`\`
+
+要求：
+1. 明确指出每个文件的完整路径
+2. 提供完整的、可直接使用的代码
+3. 包含必要的注释
+4. 遵循最佳实践`
+        },
+        {
+            role: 'user',
+            content: `
+[项目上下文]
+${context}
+
+[当前任务]
+${task.description}
+
+${previousFeedback ? `\n[上次实现的问题]\n${previousFeedback}\n\n请根据以上反馈重新实现。` : ''}
+
+请生成完整的实现代码，并明确标注每个文件的路径。
+`
+        }
+    ];
+
+    try {
+        const response = await runLLM({
+            prompt: { messages: prompt },
+            model,
+            stream: false,
+            bypassRouter: true
+        });
+
+        return { code: response.rawText, success: true };
+    } catch (e) {
+        return { code: '', success: false };
+    }
+}
+
+/**
+ * 执行代码审查
+ */
+async function reviewCode(): Promise<{ score: number; issues: string[]; error?: string }> {
+    try {
+        const { CodeReviewer } = await import('../../core/git/CodeReviewer');
+        const { getRouter } = await import('../../core/modelRouter');
+        const gitService = new GitService();
+        
+        const router = getRouter();
+        const reviewer = new CodeReviewer(gitService, router);
+        
+        const result = await reviewer.review(ReviewLevel.STANDARD, true);
+        
+        return {
+            score: result.score,
+            issues: result.issues.map(i => `${i.severity}: ${i.message}`)
+        };
+    } catch (e: unknown) {
+        const errorMsg = e instanceof Error ? e.message : '未知错误';
+        console.warn(chalk.yellow(`⚠️  代码审查失败: ${errorMsg}`));
+        
+        // 审查失败时返回低分，避免掩盖问题
+        return {
+            score: REVIEW_FAILURE_SCORE,
+            issues: [`审查系统错误: ${errorMsg}`],
+            error: errorMsg
+        };
+    }
+}
+
+/**
+ * 注册 git auto 命令
+ */
+export function registerAutoCommand(gitCmd: Command) {
+    gitCmd
+        .command('auto')
+        .description('全自动工作流：plan → exec → review 循环')
+        .option('--max-tasks <number>', '最大执行任务数', '5')
+        .option('--model <model>', '指定 AI 模型', 'Assistant')
+        .option('--min-score <score>', '最低审查分数', '85')
+        .option('--skip-review', '跳过代码审查')
+        .option('--save-only', '只保存代码，不写入文件系统')
+        .action(async (options) => {
+            const todoPath = path.join(process.cwd(), 'todo.md');
+            const maxTasks = parseInt(options.maxTasks) || 5;
+            const minScore = parseInt(options.minScore) || MIN_REVIEW_SCORE;
+            
+            console.log(chalk.bold.cyan('\n🤖 启动全自动 AI 开发工作流...\n'));
+            console.log(chalk.gray(`📋 最大任务数: ${maxTasks}`));
+            console.log(chalk.gray(`🎯 最低审查分数: ${minScore}`));
+            console.log(chalk.gray(`🤖 AI 模型: ${options.model}\n`));
+            
+            const spinner = ora('正在初始化...').start();
+            
+            try {
+                // 1. 检查 todo.md 是否存在
+                await fs.promises.access(todoPath, fs.constants.F_OK);
+                
+                // 2. 解析任务
+                const { metadata, tasks, rawContent } = await parseTodoFile(todoPath);
+                
+                if (tasks.length === 0) {
+                    spinner.fail('未找到任何任务');
+                    console.log(chalk.yellow('💡 提示：请先运行 yuangs git plan 生成任务'));
+                    return;
+                }
+                
+                spinner.succeed(`发现 ${tasks.length} 个任务`);
+                
+                const progress = calculateProgress(tasks);
+                console.log(chalk.cyan(`📊 当前进度: ${progress.completed}/${progress.total}\n`));
+                
+                let tasksExecuted = 0;
+                
+                // 3. 循环执行任务
+                while (tasksExecuted < maxTasks) {
+                    const nextTask = getNextTask(tasks);
+                    
+                    if (!nextTask) {
+                        console.log(chalk.green('\n🎉 所有任务已完成！'));
+                        break;
+                    }
+                    
+                    console.log(chalk.bold.cyan(`\n━━━ 任务 #${nextTask.index + 1} ━━━`));
+                    console.log(chalk.white(`📝 ${nextTask.description}\n`));
+                    
+                    let attempts = nextTask.attempts || 0;
+                    let taskCompleted = false;
+                    
+                    while (attempts <= MAX_RETRY_ATTEMPTS && !taskCompleted) {
+                        attempts++;
+                        
+                        // 3a. 执行任务
+                        spinner.start(`[尝试 ${attempts}/${MAX_RETRY_ATTEMPTS + 1}] 正在生成代码...`);
+                        
+                        await updateTaskStatus(todoPath, nextTask.index, {
+                            execStatus: 'in_progress',
+                            attempts
+                        });
+                        
+                        const previousFeedback = attempts > 1 && nextTask.reviewIssues 
+                            ? nextTask.reviewIssues.join('\n') 
+                            : undefined;
+                        
+                        const { code, success } = await executeTask(
+                            nextTask,
+                            rawContent,
+                            options.model,
+                            previousFeedback
+                        );
+                        
+                        if (!success) {
+                            spinner.fail('代码生成失败');
+                            await updateTaskStatus(todoPath, nextTask.index, {
+                                execStatus: 'failed'
+                            });
+                            break;
+                        }
+                        
+                        spinner.succeed('代码已生成');
+                        
+                        // 3b. 保存原始输出
+                        const savedPath = await saveRawOutput(code, nextTask.index);
+                        console.log(chalk.gray(`📄 原始输出已保存: ${path.relative(process.cwd(), savedPath)}`));
+                        
+                        // 3c. 解析并写入代码
+                        const generated = parseGeneratedCode(code);
+                        
+                        if (generated.files.length > 0) {
+                            console.log(chalk.cyan(`\n📦 检测到 ${generated.files.length} 个文件:\n`));
+                            
+                            if (!options.saveOnly) {
+                                const { written, skipped } = await writeGeneratedCode(generated);
+                                
+                                if (written.length > 0) {
+                                    console.log(chalk.green(`\n✅ 成功写入 ${written.length} 个文件`));
+                                }
+                                if (skipped.length > 0) {
+                                    console.log(chalk.yellow(`⚠️  跳过 ${skipped.length} 个文件`));
+                                }
+                            } else {
+                                console.log(chalk.gray('  (--save-only 模式，未写入文件系统)'));
+                                generated.files.forEach(f => {
+                                    console.log(chalk.gray(`  - ${f.path}`));
+                                });
+                            }
+                        } else {
+                            console.log(chalk.yellow('\n⚠️  未检测到可解析的文件路径和代码'));
+                            console.log(chalk.gray('💡 提示：请检查 AI 输出格式，或查看原始输出文件'));
+                        }
+                        
+                        // 3b. 代码审查（如果未跳过）
+                        if (!options.skipReview) {
+                            spinner.start('正在进行代码审查...');
+                            
+                            const review = await reviewCode();
+                            
+                            spinner.succeed(`审查完成 (评分: ${review.score}/100)`);
+                            
+                            await updateTaskStatus(todoPath, nextTask.index, {
+                                reviewScore: review.score,
+                                reviewIssues: review.issues
+                            });
+                            
+                            // 3c. 判断是否通过
+                            if (review.score >= minScore) {
+                                console.log(chalk.green(`✅ 审查通过！(${review.score} >= ${minScore})\n`));
+                                taskCompleted = true;
+                                
+                                await updateTaskStatus(todoPath, nextTask.index, {
+                                    completed: true,
+                                    execStatus: 'done'
+                                });
+                                
+                                nextTask.completed = true;
+                            } else {
+                                console.log(chalk.yellow(`⚠️  审查未通过 (${review.score} < ${minScore})`));
+                                
+                                if (review.issues.length > 0) {
+                                    console.log(chalk.yellow('问题列表:'));
+                                    review.issues.forEach(issue => {
+                                        console.log(chalk.yellow(`  • ${issue}`));
+                                    });
+                                }
+                                
+                                if (attempts <= MAX_RETRY_ATTEMPTS) {
+                                    console.log(chalk.cyan(`\n🔄 将根据反馈重新生成...\n`));
+                                } else {
+                                    console.log(chalk.red(`\n❌ 已达最大重试次数，跳过此任务\n`));
+                                    await updateTaskStatus(todoPath, nextTask.index, {
+                                        execStatus: 'failed'
+                                    });
+                                }
+                            }
+                        } else {
+                            // 跳过审查，直接标记完成
+                            console.log(chalk.gray('⏭️  已跳过代码审查\n'));
+                            taskCompleted = true;
+                            
+                            await updateTaskStatus(todoPath, nextTask.index, {
+                                completed: true,
+                                execStatus: 'done'
+                            });
+                            
+                            nextTask.completed = true;
+                        }
+                    }
+                    
+                    tasksExecuted++;
+                    
+                    // 更新总体进度
+                    const newProgress = calculateProgress(tasks);
+                    await updateMetadata(todoPath, {
+                        progress: newProgress,
+                        currentTask: nextTask.index + 1
+                    });
+                }
+                
+                // 4. 总结
+                const finalProgress = calculateProgress(tasks);
+                console.log(chalk.bold.cyan('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━'));
+                console.log(chalk.bold.cyan('📊 工作流执行完成'));
+                console.log(chalk.bold.cyan('━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'));
+                console.log(chalk.white(`✅ 已完成: ${finalProgress.completed}/${finalProgress.total}`));
+                console.log(chalk.white(`🔄 本次执行: ${tasksExecuted} 个任务\n`));
+                
+                if (finalProgress.completed < finalProgress.total) {
+                    console.log(chalk.yellow('💡 提示：还有未完成的任务，可以再次运行 yuangs git auto 继续'));
+                }
+                
+            } catch (e: unknown) {
+                if (e instanceof Error && (e as NodeJS.ErrnoException).code === 'ENOENT') {
+                    spinner.fail('未找到 todo.md 文件');
+                    console.log(chalk.yellow('\n💡 建议流程:'));
+                    console.log(chalk.gray('  1. yuangs git plan "你的需求"  # 生成任务清单'));
+                    console.log(chalk.gray('  2. yuangs git auto            # 启动自动化工作流\n'));
+                } else if (e instanceof AIError) {
+                    spinner.fail(`AI 调用失败: ${e.message}`);
+                } else if (e instanceof Error) {
+                    spinner.fail(`执行失败: ${e.message}`);
+                } else {
+                    spinner.fail('未知错误');
+                }
+            }
+        });
+}

@@ -1,0 +1,21 @@
+"use strict";
+/**
+ * Git 模块公共常量
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.REVIEW_FAILURE_SCORE = exports.MIN_REVIEW_SCORE = exports.MAX_RETRY_ATTEMPTS = exports.DEFAULT_AI_MODEL = exports.DEFAULT_PLAN_PROMPT = exports.TODO_FILENAME = exports.METADATA_PREFIX = void 0;
+/** todo.md 元数据行前缀 */
+exports.METADATA_PREFIX = '>';
+/** 默认 todo 文件名 */
+exports.TODO_FILENAME = 'todo.md';
+/** 默认规划提示词 */
+exports.DEFAULT_PLAN_PROMPT = '分析项目现状并规划下一步开发任务';
+/** 默认 AI 模型 */
+exports.DEFAULT_AI_MODEL = 'Assistant';
+/** 最大重试次数 */
+exports.MAX_RETRY_ATTEMPTS = 2;
+/** 最低审查分数 */
+exports.MIN_REVIEW_SCORE = 85;
+/** 代码审查失败时的默认分数 */
+exports.REVIEW_FAILURE_SCORE = 60;
+//# sourceMappingURL=constants.js.map

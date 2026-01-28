@@ -7,6 +7,49 @@ import { GitService } from '../../core/git/GitService';
 import { runLLM, AIError } from '../../agent/llm';
 import { AIRequestMessage } from '../../core/validation';
 
+const DEFAULT_PLAN_PROMPT = '分析项目现状并规划下一步开发任务';
+const METADATA_PREFIX = '>';
+
+/**
+ * 解析用户指令（优先级：命令行 > todo.md > 默认值）
+ */
+async function resolveUserPrompt(cliPrompt: string, todoPath: string): Promise<{ prompt: string; fromFile: boolean }> {
+    if (cliPrompt) {
+        return { prompt: cliPrompt, fromFile: false };
+    }
+
+    try {
+        await fs.promises.access(todoPath, fs.constants.F_OK);
+        const content = await fs.promises.readFile(todoPath, 'utf8');
+        
+        // 过滤掉文件开头由 yuangs 生成的元数据行（连续的 > 开头的行）
+        const lines = content.split('\n');
+        let startIndex = 0;
+        
+        // 跳过开头连续的元数据行
+        while (startIndex < lines.length && lines[startIndex].trim().startsWith(METADATA_PREFIX)) {
+            startIndex++;
+        }
+        
+        // 跳过元数据后的空行
+        while (startIndex < lines.length && lines[startIndex].trim() === '') {
+            startIndex++;
+        }
+        
+        const filePrompt = lines.slice(startIndex).join('\n').trim();
+        
+        if (filePrompt) {
+            return { prompt: filePrompt, fromFile: true };
+        }
+    } catch (e: unknown) {
+        if (e instanceof Error && (e as NodeJS.ErrnoException).code !== 'ENOENT') {
+            console.warn(chalk.yellow(`⚠️  读取 todo.md 失败: ${e.message}`));
+        }
+    }
+
+    return { prompt: DEFAULT_PLAN_PROMPT, fromFile: false };
+}
+
 /**
  * 注册 git plan 命令
  */
@@ -16,11 +59,14 @@ export function registerPlanCommand(gitCmd: Command) {
         .description('自动读取最近 10 次提交，由两个 AI (架构师 & 审查员) 协作生成 todo.md')
         .option('-r, --rounds <number>', '对话轮数', '2')
         .action(async (promptParts, options) => {
-            const userPrompt = promptParts.join(' ').trim() || '分析项目现状并规划下一步开发任务';
+            const cliPrompt = promptParts.join(' ').trim();
             const maxRounds = parseInt(options.rounds) || 2;
+            const todoPath = path.join(process.cwd(), 'todo.md');
+            
+            const { prompt: userPrompt, fromFile } = await resolveUserPrompt(cliPrompt, todoPath);
             
             // 使用主 spinner 管理整体状态
-            const spinner = ora('正在初始化分析规划...').start();
+            const spinner = ora(fromFile ? '正在从 todo.md 读取并初始化分析规划...' : '正在初始化分析规划...').start();
             
             try {
                 const gitService = new GitService();
