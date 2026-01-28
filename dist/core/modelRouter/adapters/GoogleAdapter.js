@@ -85,9 +85,13 @@ class GoogleAdapter extends BaseAdapter_1.BaseAdapter {
             const { result, executionTime } = await this.measureExecutionTime(async () => {
                 // 根据任务类型选择合适的模型
                 const model = this.selectModel(config.type);
+                // 处理 prompt: 如果是数组，则合并为字符串
+                const singlePrompt = typeof prompt === 'string'
+                    ? prompt
+                    : prompt.map(m => `${m.role}: ${m.content}`).join('\n\n');
                 // 构建参数数组 (适配 gemini-cli 0.1.7)
                 const args = [
-                    '-p', prompt,
+                    '-p', singlePrompt,
                     '-m', model,
                 ];
                 const { stdout, stderr } = await this.runSpawnCommand('gemini', args, config.expectedResponseTime || 60000, onChunk, apiKey ? { GEMINI_API_KEY: apiKey } : undefined);

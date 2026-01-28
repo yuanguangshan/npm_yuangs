@@ -1,3 +1,4 @@
+import { AIRequestMessage } from '../../core/validation';
 import { ModelAdapter, TaskConfig, RoutingConfig, RoutingResult, ModelExecutionResult, ModelStats, SupervisorConfig } from './types';
 import { RoutingPolicy } from './policies/types';
 import { MetricsCollector } from '../metrics/MetricsCollector';
@@ -25,7 +26,7 @@ export declare class ModelRouter {
     getStats(modelName?: string): ModelStats | ModelStats[];
     route(taskConfig: TaskConfig, routingConfig: RoutingConfig): Promise<RoutingResult>;
     private executePolicyWithExploration;
-    executeTask(adapter: ModelAdapter, prompt: string, config: TaskConfig, onChunk?: (chunk: string) => void): Promise<ModelExecutionResult>;
+    executeTask(adapter: ModelAdapter, prompt: string | AIRequestMessage[], config: TaskConfig, onChunk?: (chunk: string) => void): Promise<ModelExecutionResult>;
     private getAvailableAdapters;
     private selectRoundRobin;
     private updateDomainHealthStates;

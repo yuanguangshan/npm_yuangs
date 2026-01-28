@@ -35,6 +35,7 @@ export { GoogleAdapter } from './adapters/GoogleAdapter';
 export { QwenAdapter } from './adapters/QwenAdapter';
 export { CodebuddyAdapter } from './adapters/CodebuddyAdapter';
 export { YuangsAdapter } from './adapters/YuangsAdapter';
+import { AIRequestMessage } from '../../core/validation';
 import { ModelRouter } from './ModelRouter';
 import { TaskConfig, RoutingConfig, ModelExecutionResult } from './types';
 /**
@@ -52,7 +53,7 @@ export declare function resetRouter(): void;
 /**
  * 快捷函数：执行任务
  */
-export declare function executeTask(prompt: string, taskConfig: TaskConfig, routingConfig?: Partial<RoutingConfig>, onChunk?: (chunk: string) => void): Promise<ModelExecutionResult>;
+export declare function executeTask(prompt: string | AIRequestMessage[], taskConfig: TaskConfig, routingConfig?: Partial<RoutingConfig>, onChunk?: (chunk: string) => void): Promise<ModelExecutionResult>;
 /**
  * 快捷函数：获取所有适配器的统计信息
  */

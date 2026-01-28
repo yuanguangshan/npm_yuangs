@@ -1,3 +1,5 @@
+import { AIRequestMessage } from '../../core/validation';
+
 /**
  * 模型路由系统类型定义
  * 
@@ -111,7 +113,7 @@ export interface ModelAdapter {
 
   /** 执行任务 */
   execute(
-    prompt: string,
+    prompt: string | AIRequestMessage[], // 支持字符串或结构化消息列表
     config: TaskConfig,
     onChunk?: (chunk: string) => void
   ): Promise<ModelExecutionResult>;

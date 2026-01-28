@@ -1,5 +1,6 @@
 import { BaseAdapter } from '../BaseAdapter';
 import { ModelCapabilities, TaskConfig, ModelExecutionResult, TaskType } from '../types';
+import { AIRequestMessage } from '../../../core/validation';
 
 /**
  * Gemini CLI 适配器
@@ -88,7 +89,7 @@ export class GoogleAdapter extends BaseAdapter {
    * 执行任务
    */
   async execute(
-    prompt: string,
+    prompt: string | AIRequestMessage[],
     config: TaskConfig,
     onChunk?: (chunk: string) => void
   ): Promise<ModelExecutionResult> {
@@ -99,9 +100,14 @@ export class GoogleAdapter extends BaseAdapter {
         // 根据任务类型选择合适的模型
         const model = this.selectModel(config.type);
 
+        // 处理 prompt: 如果是数组，则合并为字符串
+        const singlePrompt = typeof prompt === 'string' 
+            ? prompt 
+            : prompt.map(m => `${m.role}: ${m.content}`).join('\n\n');
+
         // 构建参数数组 (适配 gemini-cli 0.1.7)
         const args = [
-          '-p', prompt,
+          '-p', singlePrompt,
           '-m', model,
         ];
 

@@ -1,6 +1,7 @@
 import { BaseAdapter } from '../BaseAdapter';
 import { ModelCapabilities, TaskConfig, ModelExecutionResult, TaskType } from '../types';
 import { callAI_Stream, askAI } from '../../../ai/client';
+import { AIRequestMessage } from '../../../core/validation';
 
 /**
  * Yuangs 内部适配器
@@ -38,16 +39,20 @@ export class YuangsAdapter extends BaseAdapter {
   }
 
   async execute(
-    prompt: string,
+    prompt: string | AIRequestMessage[],
     config: TaskConfig,
     onChunk?: (chunk: string) => void
   ): Promise<ModelExecutionResult> {
     const startTime = Date.now();
     try {
+      const messages: AIRequestMessage[] = typeof prompt === 'string' 
+        ? [{ role: 'user', content: prompt }] 
+        : prompt;
+
       if (onChunk) {
         let fullContent = '';
         await callAI_Stream(
-          [{ role: 'user', content: prompt }],
+          messages,
           undefined, // 使用默认模型 (Assistant)
           (chunk) => {
             fullContent += chunk;
@@ -56,7 +61,12 @@ export class YuangsAdapter extends BaseAdapter {
         );
         return this.createSuccessResult(fullContent, Date.now() - startTime);
       } else {
-        const response = await askAI(prompt);
+        // askAI 目前只支持 string prompt，我们需要转换回来或者让它支持 messages
+        const singlePrompt = typeof prompt === 'string' 
+            ? prompt 
+            : prompt.map(m => `${m.role}: ${m.content}`).join('\n\n');
+            
+        const response = await askAI(singlePrompt);
         return this.createSuccessResult(response, Date.now() - startTime);
       }
     } catch (error: any) {

@@ -1,5 +1,6 @@
 import { BaseAdapter } from '../BaseAdapter';
 import { ModelCapabilities, TaskConfig, ModelExecutionResult } from '../types';
+import { AIRequestMessage } from '../../../core/validation';
 /**
  * Gemini CLI 适配器
  * 支持 Gemini 系列模型
@@ -19,7 +20,7 @@ export declare class GoogleAdapter extends BaseAdapter {
     /**
      * 执行任务
      */
-    execute(prompt: string, config: TaskConfig, onChunk?: (chunk: string) => void): Promise<ModelExecutionResult>;
+    execute(prompt: string | AIRequestMessage[], config: TaskConfig, onChunk?: (chunk: string) => void): Promise<ModelExecutionResult>;
     /**
      * 根据任务类型选择模型
      */

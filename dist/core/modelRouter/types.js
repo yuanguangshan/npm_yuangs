@@ -1,12 +1,12 @@
 "use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ActionType = exports.ExplorationStrategy = exports.RoutingStrategy = exports.Priority = exports.TaskType = void 0;
 /**
  * 模型路由系统类型定义
  *
  * 该系统允许整合多个 CLI 工具（如 Google CLI、Qwen CLI、Codebuddy CLI 等）
  * 根据任务特性和需求，智能路由到最合适的模型执行
  */
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.ActionType = exports.ExplorationStrategy = exports.RoutingStrategy = exports.Priority = exports.TaskType = void 0;
 /**
  * 任务类型
  */

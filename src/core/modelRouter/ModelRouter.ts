@@ -1,4 +1,5 @@
 import * as crypto from 'crypto';
+import { AIRequestMessage } from '../../core/validation';
 import {
   ModelAdapter,
   TaskConfig,
@@ -265,7 +266,7 @@ export class ModelRouter {
 
   async executeTask(
     adapter: ModelAdapter,
-    prompt: string,
+    prompt: string | AIRequestMessage[],
     config: TaskConfig,
     onChunk?: (chunk: string) => void
   ): Promise<ModelExecutionResult> {

@@ -1,5 +1,6 @@
 import { BaseAdapter } from '../BaseAdapter';
 import { ModelCapabilities, TaskConfig, ModelExecutionResult, TaskType } from '../types';
+import { AIRequestMessage } from '../../../core/validation';
 
 /**
  * Codebuddy CLI 适配器
@@ -40,14 +41,19 @@ export class CodebuddyAdapter extends BaseAdapter {
    * 执行任务
    */
   async execute(
-    prompt: string,
+    prompt: string | AIRequestMessage[],
     config: TaskConfig,
     onChunk?: (chunk: string) => void
   ): Promise<ModelExecutionResult> {
     try {
       const { result, executionTime } = await this.measureExecutionTime(async () => {
+        // 处理 prompt: 如果是数组，则合并为字符串
+        const singlePrompt = typeof prompt === 'string' 
+            ? prompt 
+            : prompt.map(m => `${m.role}: ${m.content}`).join('\n\n');
+
         // 构建参数数组
-        const args = ['-p', prompt];
+        const args = ['-p', singlePrompt];
         
         // 根据任务类型添加 flags
         this.addTaskSpecificArgs(args, config.type);

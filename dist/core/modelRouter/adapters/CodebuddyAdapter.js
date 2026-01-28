@@ -42,8 +42,12 @@ class CodebuddyAdapter extends BaseAdapter_1.BaseAdapter {
     async execute(prompt, config, onChunk) {
         try {
             const { result, executionTime } = await this.measureExecutionTime(async () => {
+                // 处理 prompt: 如果是数组，则合并为字符串
+                const singlePrompt = typeof prompt === 'string'
+                    ? prompt
+                    : prompt.map(m => `${m.role}: ${m.content}`).join('\n\n');
                 // 构建参数数组
-                const args = ['-p', prompt];
+                const args = ['-p', singlePrompt];
                 // 根据任务类型添加 flags
                 this.addTaskSpecificArgs(args, config.type);
                 const { stdout, stderr } = await this.runSpawnCommand('codebuddy', args, config.expectedResponseTime || 60000, // Codebuddy 可能需要更长时间

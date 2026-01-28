@@ -49,9 +49,13 @@ class QwenAdapter extends BaseAdapter_1.BaseAdapter {
             const { result, executionTime } = await this.measureExecutionTime(async () => {
                 // 根据任务类型选择模型
                 const model = this.selectModel(config.type);
+                // 处理 prompt: 如果是数组，则合并为字符串
+                const singlePrompt = typeof prompt === 'string'
+                    ? prompt
+                    : prompt.map(m => `${m.role}: ${m.content}`).join('\n\n');
                 // 构建带上下文的完整prompt（如果配置中启用了上下文）
                 const useContext = config.metadata?.useContext !== false;
-                const fullPrompt = useContext ? this.buildPromptWithContext(prompt) : prompt;
+                const fullPrompt = useContext ? this.buildPromptWithContext(singlePrompt) : singlePrompt;
                 // 构建参数数组，prompt 作为位置参数
                 const args = [fullPrompt];
                 // 添加模型参数
@@ -59,7 +63,7 @@ class QwenAdapter extends BaseAdapter_1.BaseAdapter {
                     args.push('-m', model);
                 }
                 // 使用 spawn 执行命令
-                const { stdout, stderr } = await this.runSpawnCommand('qwen', args, config.expectedResponseTime || 30000, onChunk);
+                const { stdout, stderr } = await this.runSpawnCommand('qwen', args, config.expectedResponseTime || 60000, onChunk);
                 if (stderr && !stdout) {
                     throw new Error(stderr);
                 }
@@ -67,7 +71,7 @@ class QwenAdapter extends BaseAdapter_1.BaseAdapter {
                 const response = this.parseQwenOutput(stdout);
                 // 保存到上下文
                 if (useContext) {
-                    this.saveToContext(prompt, response);
+                    this.saveToContext(singlePrompt, response);
                 }
                 return response;
             });

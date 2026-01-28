@@ -1,5 +1,6 @@
 import { BaseAdapter } from '../BaseAdapter';
 import { ModelCapabilities, TaskConfig, ModelExecutionResult, TaskType } from '../types';
+import { AIRequestMessage } from '../../../core/validation';
 
 /**
  * Qwen CLI 适配器
@@ -45,7 +46,7 @@ export class QwenAdapter extends BaseAdapter {
    * 执行任务
    */
   async execute(
-    prompt: string,
+    prompt: string | AIRequestMessage[],
     config: TaskConfig,
     onChunk?: (chunk: string) => void
   ): Promise<ModelExecutionResult> {
@@ -54,9 +55,14 @@ export class QwenAdapter extends BaseAdapter {
         // 根据任务类型选择模型
         const model = this.selectModel(config.type);
         
+        // 处理 prompt: 如果是数组，则合并为字符串
+        const singlePrompt = typeof prompt === 'string' 
+            ? prompt 
+            : prompt.map(m => `${m.role}: ${m.content}`).join('\n\n');
+
         // 构建带上下文的完整prompt（如果配置中启用了上下文）
         const useContext = config.metadata?.useContext !== false;
-        const fullPrompt = useContext ? this.buildPromptWithContext(prompt) : prompt;
+        const fullPrompt = useContext ? this.buildPromptWithContext(singlePrompt) : singlePrompt;
         
         // 构建参数数组，prompt 作为位置参数
         const args = [fullPrompt];
@@ -70,7 +76,7 @@ export class QwenAdapter extends BaseAdapter {
         const { stdout, stderr } = await this.runSpawnCommand(
           'qwen',
           args,
-          config.expectedResponseTime || 30000,
+          config.expectedResponseTime || 60000,
           onChunk
         );
 
@@ -83,7 +89,7 @@ export class QwenAdapter extends BaseAdapter {
         
         // 保存到上下文
         if (useContext) {
-          this.saveToContext(prompt, response);
+          this.saveToContext(singlePrompt, response);
         }
         
         return response;

@@ -38,9 +38,12 @@ class YuangsAdapter extends BaseAdapter_1.BaseAdapter {
     async execute(prompt, config, onChunk) {
         const startTime = Date.now();
         try {
+            const messages = typeof prompt === 'string'
+                ? [{ role: 'user', content: prompt }]
+                : prompt;
             if (onChunk) {
                 let fullContent = '';
-                await (0, client_1.callAI_Stream)([{ role: 'user', content: prompt }], undefined, // 使用默认模型 (Assistant)
+                await (0, client_1.callAI_Stream)(messages, undefined, // 使用默认模型 (Assistant)
                 (chunk) => {
                     fullContent += chunk;
                     onChunk(chunk);
@@ -48,7 +51,11 @@ class YuangsAdapter extends BaseAdapter_1.BaseAdapter {
                 return this.createSuccessResult(fullContent, Date.now() - startTime);
             }
             else {
-                const response = await (0, client_1.askAI)(prompt);
+                // askAI 目前只支持 string prompt，我们需要转换回来或者让它支持 messages
+                const singlePrompt = typeof prompt === 'string'
+                    ? prompt
+                    : prompt.map(m => `${m.role}: ${m.content}`).join('\n\n');
+                const response = await (0, client_1.askAI)(singlePrompt);
                 return this.createSuccessResult(response, Date.now() - startTime);
             }
         }

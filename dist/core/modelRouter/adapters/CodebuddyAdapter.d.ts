@@ -1,5 +1,6 @@
 import { BaseAdapter } from '../BaseAdapter';
 import { ModelCapabilities, TaskConfig, ModelExecutionResult } from '../types';
+import { AIRequestMessage } from '../../../core/validation';
 /**
  * Codebuddy CLI 适配器
  * 专门用于代码相关的任务
@@ -16,7 +17,7 @@ export declare class CodebuddyAdapter extends BaseAdapter {
     /**
      * 执行任务
      */
-    execute(prompt: string, config: TaskConfig, onChunk?: (chunk: string) => void): Promise<ModelExecutionResult>;
+    execute(prompt: string | AIRequestMessage[], config: TaskConfig, onChunk?: (chunk: string) => void): Promise<ModelExecutionResult>;
     /**
      * 根据任务类型添加特定的 args
      */

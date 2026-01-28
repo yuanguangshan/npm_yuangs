@@ -39,6 +39,7 @@ export { QwenAdapter } from './adapters/QwenAdapter';
 export { CodebuddyAdapter } from './adapters/CodebuddyAdapter';
 export { YuangsAdapter } from './adapters/YuangsAdapter';
 
+import { AIRequestMessage } from '../../core/validation';
 import chalk from 'chalk';
 import { ModelRouter } from './ModelRouter';
 import { GoogleAdapter } from './adapters/GoogleAdapter';
@@ -102,7 +103,7 @@ export function resetRouter(): void {
  * 快捷函数：执行任务
  */
 export async function executeTask(
-  prompt: string,
+  prompt: string | AIRequestMessage[],
   taskConfig: TaskConfig,
   routingConfig?: Partial<RoutingConfig>,
   onChunk?: (chunk: string) => void
