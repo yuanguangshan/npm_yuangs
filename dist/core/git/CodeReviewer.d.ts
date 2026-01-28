@@ -1,5 +1,6 @@
 import { GitService } from './GitService';
 import { ModelRouter } from '../modelRouter/ModelRouter';
+import { CapabilityLevel } from '../capability/CapabilityLevel';
 /**
  * 代码审查级别
  */
@@ -53,6 +54,15 @@ export interface ReviewResult {
     recommendations: string[];
     /** 审查的文件数 */
     filesReviewed: number;
+    /** 置信度 (0-1) */
+    confidence: number;
+    /** 降级决策 */
+    degradation?: {
+        applied: boolean;
+        originalLevel: CapabilityLevel;
+        targetLevel: CapabilityLevel;
+        reason: string;
+    };
 }
 /**
  * AI 代码审查器
@@ -61,6 +71,7 @@ export declare class CodeReviewer {
     private gitService;
     private router?;
     static readonly VERSION = "v1.0";
+    private degradationPolicy;
     constructor(gitService: GitService, router?: ModelRouter | undefined);
     /**
      * 构建审查提示词

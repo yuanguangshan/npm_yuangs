@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ContextGatherer = void 0;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
+const ContextMeta_1 = require("../context/ContextMeta");
 /**
  * 项目上下文采集器
  * 负责为 LLM 提供项目现状的真实快照
@@ -24,11 +25,38 @@ class ContextGatherer {
     async gather(taskDescription) {
         const repoRoot = await this.gitService.getRepoRoot();
         const fileTree = await this.getFileTree(repoRoot);
-        // 领域探测：结合任务描述和文件后缀进行判定
+        const metaBuilder = new ContextMeta_1.ContextMetaBuilder();
+        metaBuilder.setProvenance('ContextGatherer', 'git:files');
         const isDocTask = /docs?\/|\.md$|\.html$|文章|章节|文档/.test(taskDescription.toLowerCase());
         const packageJson = isDocTask ? undefined : await this.getPackageJson(repoRoot);
         const relevantFiles = await this.getRelevantFiles(taskDescription, repoRoot, fileTree, isDocTask, packageJson);
-        // 构建综合摘要
+        let confidence = 0.5;
+        const confidenceReasons = [];
+        if (packageJson) {
+            confidence += 0.2;
+            confidenceReasons.push('Has package.json');
+        }
+        if (relevantFiles.length > 0) {
+            confidence += 0.2;
+            confidenceReasons.push(`Found ${relevantFiles.length} relevant files`);
+        }
+        if (fileTree.length > 0 && !fileTree.includes('无法获取完整文件树')) {
+            confidence += 0.1;
+            confidenceReasons.push('Successfully retrieved file tree');
+        }
+        const droppedItems = [];
+        const totalFiles = fileTree.split('\n').filter(Boolean).length;
+        if (totalFiles > 150) {
+            droppedItems.push(`${totalFiles - 150} files from file tree (truncated)`);
+            confidence -= 0.05;
+            confidenceReasons.push('File tree truncated');
+        }
+        if (droppedItems.length > 0) {
+            metaBuilder.setClipped('Context size limit exceeded', droppedItems);
+        }
+        confidence = Math.max(0, Math.min(1, confidence));
+        metaBuilder.setConfidence(confidence, confidenceReasons.join('; ') || 'Default confidence');
+        const meta = metaBuilder.build();
         let summary = `[项目文件树 (主要结构)]\n${fileTree}\n\n`;
         if (!isDocTask && packageJson) {
             const deps = packageJson.dependencies ? Object.keys(packageJson.dependencies).join(', ') : 'none';
@@ -45,7 +73,8 @@ class ContextGatherer {
             fileTree,
             packageJson,
             relevantFiles,
-            summary
+            summary,
+            meta,
         };
     }
     /**
@@ -161,6 +190,12 @@ class ContextGatherer {
             }
         }
         return results;
+    }
+    /**
+     * 获取审计日志
+     */
+    getAuditLog(context) {
+        return (0, ContextMeta_1.toAuditLog)(context.meta);
     }
 }
 exports.ContextGatherer = ContextGatherer;

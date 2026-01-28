@@ -2,10 +2,13 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
 import fs from 'fs';
+import fsPromises from 'fs/promises';
 import path from 'path';
+import pLimit from 'p-limit';
 import { GitService } from '../../core/git/GitService';
 import { CodeReviewer, ReviewLevel, IssueSeverity } from '../../core/git/CodeReviewer';
 import { getRouter } from '../../core/modelRouter';
+import { SecurityScanner, SecurityIssueType } from '../../core/security/SecurityScanner';
 
 export function registerReviewCommand(gitCmd: Command) {
     // git review - AI 代码审查
@@ -17,6 +20,8 @@ export function registerReviewCommand(gitCmd: Command) {
         .option('--unstaged', '审查未暂存的变更')
         .option('--no-ai', '禁用 AI (将显示变更摘要)')
         .option('--no-save', '不保存审查结果到 git_reviews.md')
+        .option('--force', '忽略安全警告继续执行')
+        .option('--no-security', '跳过安全扫描')
         .action(async (options) => {
             if (options.ai === false) {
                 const gitService = new GitService();
@@ -39,6 +44,23 @@ export function registerReviewCommand(gitCmd: Command) {
                     return;
                 }
 
+                const securityScanner = new SecurityScanner();
+                const diff = await gitService.getDiff();
+                const files = options.unstaged ? diff.files.unstaged : diff.files.staged;
+
+                // 安全扫描（如果未禁用）
+                if (options.security !== false) {
+                    spinner.text = '执行安全扫描...';
+                    const scanResult = await performSecurityScan(gitService, securityScanner, files, options);
+
+                    if (scanResult.hasIssues && !scanResult.shouldContinue) {
+                        spinner.stop();
+                        return;
+                    }
+                    spinner.succeed('安全扫描完成');
+                }
+
+                spinner.text = '加载 AI 模型配置...';
                 const router = getRouter();
                 const reviewer = new CodeReviewer(gitService, router);
 
@@ -54,11 +76,18 @@ export function registerReviewCommand(gitCmd: Command) {
 
                 spinner.succeed('代码审查完成');
 
-                // 显示审查结果
                 console.log(chalk.bold.cyan('\n🔍 代码审查报告\n'));
                 const scoreColor = getScoreColor(result.score);
                 console.log(chalk.bold('评分: ') + scoreColor(result.score.toString()) + chalk.bold('/100'));
-                console.log(chalk.gray(`审查文件: ${result.filesReviewed} 个\n`));
+                console.log(chalk.gray(`审查文件: ${result.filesReviewed} 个`));
+                console.log(chalk.gray(`置信度: ${(result.confidence * 100).toFixed(1)}%`));
+                
+                if (result.degradation?.applied) {
+                    console.log(chalk.yellow(`降级: ${result.degradation.originalLevel} → ${result.degradation.targetLevel}`));
+                    console.log(chalk.gray(`原因: ${result.degradation.reason}`));
+                }
+                
+                console.log();
 
                 console.log(chalk.bold('📋 总体评价:'));
                 console.log(chalk.white(`  ${result.summary}\n`));
@@ -286,4 +315,89 @@ function formatReviewAsMarkdown(review: {
     md += `[↑ 返回顶部](#)\n\n`;
     
     return md;
+}
+
+/**
+ * 执行安全扫描
+ */
+async function performSecurityScan(
+    gitService: GitService,
+    securityScanner: SecurityScanner,
+    files: string[],
+    options: any
+): Promise<{ hasIssues: boolean; shouldContinue: boolean }> {
+    const repoRoot = await gitService.getRepoRoot();
+    const filesToScan = new Map<string, string>();
+
+    // 限制扫描文件数量和并发数，避免性能问题
+    const MAX_SCAN_FILES = 50;
+    const MAX_CONCURRENT = 5; // 限制并发数
+    const limit = pLimit(MAX_CONCURRENT);
+    const filesToProcess = files.slice(0, MAX_SCAN_FILES);
+
+    if (files.length > MAX_SCAN_FILES) {
+        console.log(chalk.yellow(`\nℹ️  文件数量过多，仅扫描前 ${MAX_SCAN_FILES} 个文件\n`));
+    }
+
+    // 使用并发限制异步扫描文件
+    const scanPromises = filesToProcess.map(file =>
+        limit(async () => {
+            const filePath = path.join(repoRoot, file);
+            try {
+                const stats = await fsPromises.stat(filePath);
+                if (!stats.isFile()) return null;
+
+                // 限制文件大小，避免扫描大文件
+                const MAX_FILE_SIZE = 1024 * 1024; // 1MB
+                if (stats.size > MAX_FILE_SIZE) {
+                    console.log(chalk.yellow(`⚠️  跳过大文件: ${file} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`));
+                    return null;
+                }
+
+                const content = await fsPromises.readFile(filePath, 'utf8');
+                const scanResult = securityScanner.scanAndRedact(content, file);
+
+                if (scanResult.issues.length > 0) {
+                    return { file, issues: scanResult.issues };
+                }
+                return null;
+            } catch (error: any) {
+                console.warn(chalk.yellow(`Warning: 无法读取文件 ${file}: ${error.message}`));
+                return null;
+            }
+        })
+    );
+
+    const results = await Promise.all(scanPromises);
+
+    for (const result of results) {
+        if (result && result.issues.length > 0) {
+            filesToScan.set(result.file, '');
+            console.log(chalk.yellow(`⚠️  发现 ${result.issues.length} 个安全问题在 ${result.file}`));
+            for (const issue of result.issues) {
+                console.log(chalk.red(`  ${issue.type}: ${issue.description} (line ${issue.line})`));
+            }
+        }
+    }
+
+    if (filesToScan.size > 0) {
+        console.log(chalk.yellow('\n⚠️  警告：检测到可能的敏感信息！'));
+        console.log(chalk.yellow('建议：'));
+        console.log(chalk.yellow('  • 移除硬编码的密钥、密码、令牌等敏感信息'));
+        console.log(chalk.yellow('  • 使用环境变量或配置文件管理敏感数据'));
+        console.log(chalk.yellow('  • 考虑添加到 .gitignore 中\n'));
+
+        // 检查是否强制继续
+        const shouldContinue = options.force || process.env.YUANGS_AUTO_CONTINUE === 'true';
+        if (!shouldContinue) {
+            console.log(chalk.cyan('💡 使用 --force 选项可跳过此警告继续执行'));
+            console.log(chalk.cyan('💡 或设置环境变量 YUANGS_AUTO_CONTINUE=true\n'));
+            return { hasIssues: true, shouldContinue: false };
+        } else {
+            console.log(chalk.yellow('⚠️  已强制继续，请注意安全风险\n'));
+            return { hasIssues: true, shouldContinue: true };
+        }
+    }
+
+    return { hasIssues: false, shouldContinue: true };
 }

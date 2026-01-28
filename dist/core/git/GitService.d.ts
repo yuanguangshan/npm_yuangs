@@ -10,6 +10,14 @@ export interface GitDiff {
     };
 }
 /**
+ * Git Numstat 统计信息
+ */
+export interface GitNumstat {
+    added: number;
+    deleted: number;
+    files: string[];
+}
+/**
  * Git 分支信息
  */
 export interface GitBranchInfo {
@@ -54,6 +62,11 @@ export declare class GitService {
      * 获取完整的 diff 信息
      */
     getDiff(): Promise<GitDiff>;
+    /**
+     * 获取 diff 的 numstat 统计信息（准确统计行数）
+     * 格式：added deleted filename
+     */
+    getDiffNumstat(): Promise<GitNumstat>;
     /**
      * 获取文件的 diff
      */

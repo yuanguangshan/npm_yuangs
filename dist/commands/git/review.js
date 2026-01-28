@@ -7,10 +7,12 @@ exports.registerReviewCommand = registerReviewCommand;
 const chalk_1 = __importDefault(require("chalk"));
 const ora_1 = __importDefault(require("ora"));
 const fs_1 = __importDefault(require("fs"));
+const promises_1 = __importDefault(require("fs/promises"));
 const path_1 = __importDefault(require("path"));
 const GitService_1 = require("../../core/git/GitService");
 const CodeReviewer_1 = require("../../core/git/CodeReviewer");
 const modelRouter_1 = require("../../core/modelRouter");
+const SecurityScanner_1 = require("../../core/security/SecurityScanner");
 function registerReviewCommand(gitCmd) {
     // git review - AI 代码审查
     gitCmd
@@ -21,6 +23,8 @@ function registerReviewCommand(gitCmd) {
         .option('--unstaged', '审查未暂存的变更')
         .option('--no-ai', '禁用 AI (将显示变更摘要)')
         .option('--no-save', '不保存审查结果到 git_reviews.md')
+        .option('--force', '忽略安全警告继续执行')
+        .option('--no-security', '跳过安全扫描')
         .action(async (options) => {
         if (options.ai === false) {
             const gitService = new GitService_1.GitService();
@@ -38,6 +42,76 @@ function registerReviewCommand(gitCmd) {
                 spinner.fail('当前目录不是 Git 仓库');
                 return;
             }
+            const securityScanner = new SecurityScanner_1.SecurityScanner();
+            const diff = await gitService.getDiff();
+            const files = options.unstaged ? diff.files.unstaged : diff.files.staged;
+            // 安全扫描（如果未禁用）
+            if (options.security !== false) {
+                spinner.text = '执行安全扫描...';
+                const repoRoot = await gitService.getRepoRoot();
+                const filesToScan = new Map();
+                // 限制扫描文件数量，避免性能问题
+                const MAX_SCAN_FILES = 50;
+                const filesToProcess = files.slice(0, MAX_SCAN_FILES);
+                if (files.length > MAX_SCAN_FILES) {
+                    console.log(chalk_1.default.yellow(`\nℹ️  文件数量过多，仅扫描前 ${MAX_SCAN_FILES} 个文件\n`));
+                }
+                // 异步扫描文件
+                const scanPromises = filesToProcess.map(async (file) => {
+                    const filePath = path_1.default.join(repoRoot, file);
+                    try {
+                        const stats = await promises_1.default.stat(filePath);
+                        if (!stats.isFile())
+                            return null;
+                        // 限制文件大小，避免扫描大文件
+                        const MAX_FILE_SIZE = 1024 * 1024; // 1MB
+                        if (stats.size > MAX_FILE_SIZE) {
+                            console.log(chalk_1.default.yellow(`⚠️  跳过大文件: ${file} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`));
+                            return null;
+                        }
+                        const content = await promises_1.default.readFile(filePath, 'utf8');
+                        const scanResult = securityScanner.scanAndRedact(content, file);
+                        if (scanResult.issues.length > 0) {
+                            return { file, issues: scanResult.issues };
+                        }
+                        return null;
+                    }
+                    catch (error) {
+                        console.warn(chalk_1.default.yellow(`Warning: 无法读取文件 ${file}: ${error.message}`));
+                        return null;
+                    }
+                });
+                const results = await Promise.all(scanPromises);
+                for (const result of results) {
+                    if (result && result.issues.length > 0) {
+                        filesToScan.set(result.file, '');
+                        spinner.warn(`发现 ${result.issues.length} 个安全问题在 ${result.file}`);
+                        for (const issue of result.issues) {
+                            console.log(chalk_1.default.red(`  ${issue.type}: ${issue.description} (line ${issue.line})`));
+                        }
+                    }
+                }
+                if (filesToScan.size > 0) {
+                    spinner.warn('安全扫描发现敏感信息');
+                    console.log(chalk_1.default.yellow('\n⚠️  警告：检测到可能的敏感信息！'));
+                    console.log(chalk_1.default.yellow('建议：'));
+                    console.log(chalk_1.default.yellow('  • 移除硬编码的密钥、密码、令牌等敏感信息'));
+                    console.log(chalk_1.default.yellow('  • 使用环境变量或配置文件管理敏感数据'));
+                    console.log(chalk_1.default.yellow('  • 考虑添加到 .gitignore 中\n'));
+                    // 检查是否强制继续
+                    const shouldContinue = options.force || process.env.YUANGS_AUTO_CONTINUE === 'true';
+                    if (!shouldContinue) {
+                        console.log(chalk_1.default.cyan('💡 使用 --force 选项可跳过此警告继续执行'));
+                        console.log(chalk_1.default.cyan('💡 或设置环境变量 YUANGS_AUTO_CONTINUE=true\n'));
+                        spinner.stop();
+                        return;
+                    }
+                    else {
+                        console.log(chalk_1.default.yellow('⚠️  已强制继续，请注意安全风险\n'));
+                    }
+                }
+            }
+            spinner.text = '加载 AI 模型配置...';
             const router = (0, modelRouter_1.getRouter)();
             const reviewer = new CodeReviewer_1.CodeReviewer(gitService, router);
             const level = options.level;
@@ -50,11 +124,16 @@ function registerReviewCommand(gitCmd) {
                 result = await reviewer.review(level, !options.unstaged);
             }
             spinner.succeed('代码审查完成');
-            // 显示审查结果
             console.log(chalk_1.default.bold.cyan('\n🔍 代码审查报告\n'));
             const scoreColor = getScoreColor(result.score);
             console.log(chalk_1.default.bold('评分: ') + scoreColor(result.score.toString()) + chalk_1.default.bold('/100'));
-            console.log(chalk_1.default.gray(`审查文件: ${result.filesReviewed} 个\n`));
+            console.log(chalk_1.default.gray(`审查文件: ${result.filesReviewed} 个`));
+            console.log(chalk_1.default.gray(`置信度: ${(result.confidence * 100).toFixed(1)}%`));
+            if (result.degradation?.applied) {
+                console.log(chalk_1.default.yellow(`降级: ${result.degradation.originalLevel} → ${result.degradation.targetLevel}`));
+                console.log(chalk_1.default.gray(`原因: ${result.degradation.reason}`));
+            }
+            console.log();
             console.log(chalk_1.default.bold('📋 总体评价:'));
             console.log(chalk_1.default.white(`  ${result.summary}\n`));
             if (result.issues.length > 0) {

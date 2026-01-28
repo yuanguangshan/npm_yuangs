@@ -17,6 +17,15 @@ export interface GitDiff {
 }
 
 /**
+ * Git Numstat 统计信息
+ */
+export interface GitNumstat {
+    added: number;
+    deleted: number;
+    files: string[];
+}
+
+/**
  * Git 分支信息
  */
 export interface GitBranchInfo {
@@ -123,6 +132,59 @@ export class GitService {
                 staged: stagedFiles ? stagedFiles.split('\n').filter(Boolean) : [],
                 unstaged: unstagedFiles ? unstagedFiles.split('\n').filter(Boolean) : [],
             },
+        };
+    }
+
+    /**
+     * 获取 diff 的 numstat 统计信息（准确统计行数）
+     * 格式：added deleted filename
+     */
+    async getDiffNumstat(): Promise<GitNumstat> {
+        const stagedNumstat = await this.execSafe('diff --staged --numstat');
+        const unstagedNumstat = await this.execSafe('diff --numstat');
+
+        let totalAdded = 0;
+        let totalDeleted = 0;
+        const allFiles: string[] = [];
+
+        // 解析 staged 的 numstat
+        if (stagedNumstat) {
+            for (const line of stagedNumstat.split('\n')) {
+                if (!line.trim()) continue;
+                const parts = line.split(/\s+/);
+                if (parts.length >= 3) {
+                    const added = parseInt(parts[0], 10) || 0;
+                    const deleted = parseInt(parts[1], 10) || 0;
+                    totalAdded += added;
+                    totalDeleted += deleted;
+                    // 最后部分是文件名（可能包含空格）
+                    const fileName = parts.slice(2).join(' ');
+                    allFiles.push(fileName);
+                }
+            }
+        }
+
+        // 解析 unstaged 的 numstat
+        if (unstagedNumstat) {
+            for (const line of unstagedNumstat.split('\n')) {
+                if (!line.trim()) continue;
+                const parts = line.split(/\s+/);
+                if (parts.length >= 3) {
+                    const added = parseInt(parts[0], 10) || 0;
+                    const deleted = parseInt(parts[1], 10) || 0;
+                    totalAdded += added;
+                    totalDeleted += deleted;
+                    // 最后部分是文件名（可能包含空格）
+                    const fileName = parts.slice(2).join(' ');
+                    allFiles.push(fileName);
+                }
+            }
+        }
+
+        return {
+            added: totalAdded,
+            deleted: totalDeleted,
+            files: allFiles,
         };
     }
 

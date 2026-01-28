@@ -85,6 +85,56 @@ class GitService {
         };
     }
     /**
+     * 获取 diff 的 numstat 统计信息（准确统计行数）
+     * 格式：added deleted filename
+     */
+    async getDiffNumstat() {
+        const stagedNumstat = await this.execSafe('diff --staged --numstat');
+        const unstagedNumstat = await this.execSafe('diff --numstat');
+        let totalAdded = 0;
+        let totalDeleted = 0;
+        const allFiles = [];
+        // 解析 staged 的 numstat
+        if (stagedNumstat) {
+            for (const line of stagedNumstat.split('\n')) {
+                if (!line.trim())
+                    continue;
+                const parts = line.split(/\s+/);
+                if (parts.length >= 3) {
+                    const added = parseInt(parts[0], 10) || 0;
+                    const deleted = parseInt(parts[1], 10) || 0;
+                    totalAdded += added;
+                    totalDeleted += deleted;
+                    // 最后部分是文件名（可能包含空格）
+                    const fileName = parts.slice(2).join(' ');
+                    allFiles.push(fileName);
+                }
+            }
+        }
+        // 解析 unstaged 的 numstat
+        if (unstagedNumstat) {
+            for (const line of unstagedNumstat.split('\n')) {
+                if (!line.trim())
+                    continue;
+                const parts = line.split(/\s+/);
+                if (parts.length >= 3) {
+                    const added = parseInt(parts[0], 10) || 0;
+                    const deleted = parseInt(parts[1], 10) || 0;
+                    totalAdded += added;
+                    totalDeleted += deleted;
+                    // 最后部分是文件名（可能包含空格）
+                    const fileName = parts.slice(2).join(' ');
+                    allFiles.push(fileName);
+                }
+            }
+        }
+        return {
+            added: totalAdded,
+            deleted: totalDeleted,
+            files: allFiles,
+        };
+    }
+    /**
      * 获取文件的 diff
      */
     async getFileDiff(filePath, staged = false) {
