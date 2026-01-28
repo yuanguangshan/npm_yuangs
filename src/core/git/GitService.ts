@@ -81,7 +81,7 @@ export class GitService {
     /**
      * 安全执行 Git 命令(失败返回 null)
      */
-    private async execSafe(command: string): Promise<string | null> {
+    public async execSafe(command: string): Promise<string | null> {
         try {
             return await this.exec(command);
         } catch {
