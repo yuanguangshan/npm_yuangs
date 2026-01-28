@@ -3,6 +3,7 @@ import { promisify } from 'util';
 import { GitError } from '../errors';
 import { SemanticDiffEngine } from './semantic/SemanticDiffEngine';
 import { SemanticDiffResult } from './semantic/types';
+import { GIT_CONFLICT_CODES } from './constants';
 
 const execAsync = promisify(exec);
 
@@ -379,6 +380,27 @@ export class GitService {
         }
 
         return { modified, added, deleted, untracked };
+    }
+
+    /**
+     * 获取存在冲突的文件列表
+     */
+    async getConflictedFiles(): Promise<string[]> {
+        const status = await this.execSafe('status --porcelain');
+        if (!status) return [];
+
+        const conflictedFiles: string[] = [];
+        const lines = status.split('\n');
+
+        for (const line of lines) {
+            if (line.length < 3) continue;
+            const statusCode = line.substring(0, 2);
+            if (GIT_CONFLICT_CODES.includes(statusCode)) {
+                conflictedFiles.push(line.substring(3).trim());
+            }
+        }
+
+        return conflictedFiles;
     }
 
     /**

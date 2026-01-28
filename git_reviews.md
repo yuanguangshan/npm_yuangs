@@ -672,3 +672,488 @@ describe('SemanticDiffEngine', () => {
 
 [↑ 返回顶部](#)
 
+
+---
+
+## 📋 Code Review - 2026/1/29 01:27:52
+
+**📊 评分:** 👍 83/100  
+**🔧 级别:** STANDARD  
+**🌿 分支:** `main`  
+**💾 提交:** `d75914d`  
+**📂 范围:** 暂存区 (4 个文件)  
+
+### 📝 总体评价
+
+该变更引入了一个基于 AI 的 Git 冲突自动解决命令，整体设计清晰、职责分离良好，CLI 体验友好。但在错误处理健壮性、边界条件、安全性和可测试性方面仍有改进空间，尤其是对 AI 输出结果的信任边界和 Git 状态解析的严谨性。
+
+### ⚠️ 发现的问题 (6)
+
+#### 1. [WARNING] src/commands/git/resolve.ts:14
+
+未校验 options.model 的合法性
+
+**💡 建议:** 在传入 ConflictResolver 之前，对 model 参数进行白名单或格式校验，避免传入无效模型导致下游异常
+
+<details>
+<summary>代码片段</summary>
+
+```
+const result = await resolver.resolveFile(file, options.model);
+```
+
+</details>
+
+#### 2. [WARNING] src/commands/git/resolve.ts:33
+
+results 数组未指定明确类型
+
+**💡 建议:** 显式声明 results 为 ConflictResolutionResult[]，提高类型安全性和可读性
+
+<details>
+<summary>代码片段</summary>
+
+```
+const results = [];
+```
+
+</details>
+
+#### 3. [WARNING] src/core/git/ConflictResolver.ts:29
+
+使用 fs.existsSync / readFileSync / writeFileSync 为同步 I/O，可能阻塞事件循环
+
+**💡 建议:** 在 CLI 可能处理大量文件的情况下，考虑使用 fs.promises 进行异步 I/O
+
+<details>
+<summary>代码片段</summary>
+
+```
+const content = fs.readFileSync(fullPath, 'utf8');
+```
+
+</details>
+
+#### 4. [WARNING] src/core/git/ConflictResolver.ts:53
+
+对 AI 输出内容缺乏语义级校验
+
+**💡 建议:** 在写回文件前增加基本校验（如非空、长度合理、是否为文本文件），或提供 dry-run/预览模式
+
+<details>
+<summary>代码片段</summary>
+
+```
+const resolvedContent = response.rawText;
+```
+
+</details>
+
+#### 5. [INFO] src/core/git/GitService.ts:392
+
+Git 冲突状态解析逻辑较为宽松，可能包含误判
+
+**💡 建议:** 考虑显式匹配 Git 文档中定义的冲突状态组合（如 UU, AU, UA, DU, UD, AA, DD），避免 statusCode.includes('U') 带来的潜在误报
+
+<details>
+<summary>代码片段</summary>
+
+```
+if (statusCode.includes('U') || statusCode === 'AA' || statusCode === 'DD') {
+```
+
+</details>
+
+#### 6. [WARNING] src/commands/git/resolve.ts:61
+
+catch 块中假设 error 一定包含 message 字段
+
+**💡 建议:** 使用更安全的错误处理方式，例如 instanceof Error 或兜底字符串化
+
+<details>
+<summary>代码片段</summary>
+
+```
+spinner.fail(`执行过程中出现错误: ${error.message}`);
+```
+
+</details>
+
+### 👍 优点
+
+- ✅ CLI 命令结构清晰，符合 Commander.js 的常见用法
+- ✅ GitService、ConflictResolver 与 CLI 层职责划分合理
+- ✅ 用户体验友好，使用 ora 和 chalk 提供了清晰的进度与反馈
+- ✅ Prompt 设计明确，对 AI 行为约束较为严格（如禁止输出解释、必须移除冲突标记）
+- ✅ 整体代码风格统一，易于维护和扩展
+
+### 💡 建议
+
+- 为 ConflictResolver 添加单元测试，覆盖无冲突标记、AI 返回异常内容、文件不存在等场景
+- 考虑增加 dry-run 或 preview 模式，让用户在覆盖文件前查看 AI 生成的 diff
+- 为 resolve 命令增加 --concurrency 或串/并行策略配置，以便在大型仓库中优化体验
+- 在文档中明确提示该功能会直接覆盖文件内容，并说明风险
+- 长期可考虑将 Git 冲突解析逻辑与 AI prompt 抽象为可配置策略，便于后续演进
+
+[↑ 返回顶部](#)
+
+
+---
+
+## 📋 Code Review - 2026/1/29 01:31:04
+
+**📊 评分:** 👍 88/100  
+**🔧 级别:** STANDARD  
+**🌿 分支:** `main`  
+**💾 提交:** `d75914d`  
+**📂 范围:** 暂存区 (5 个文件)  
+
+### 📝 总体评价
+
+本次代码变更整体质量较高，功能设计清晰，职责分层合理，已经体现出语义级别的冲突解决思路与较成熟的 CLI 体验设计。在错误处理健壮性、AI 输出信任边界、安全回滚能力以及可测试性方面仍有提升空间，但不影响其作为 STANDARD 级别功能进入主分支。
+
+### ⚠️ 发现的问题 (5)
+
+#### 1. [WARNING] src/commands/git/resolve.ts:21
+
+模型名称校验仅使用简单正则，无法保证模型在运行环境中真实可用
+
+**💡 建议:** 建议增加与 runLLM 支持模型列表的白名单校验，或在调用前做一次 capability 探测
+
+<details>
+<summary>代码片段</summary>
+
+```
+if (options.model && !/^[a-zA-Z0-9\-_/]+$/.test(options.model)) { ... }
+```
+
+</details>
+
+#### 2. [WARNING] src/commands/git/resolve.ts:44
+
+冲突文件逐个串行处理，在大量冲突文件场景下可能导致执行时间过长
+
+**💡 建议:** 可考虑增加并发控制（如 p-limit）或提供 --concurrency 参数供用户配置
+
+<details>
+<summary>代码片段</summary>
+
+```
+for (const file of conflictedFiles) { const result = await resolver.resolveFile(...) }
+```
+
+</details>
+
+#### 3. [WARNING] src/core/git/ConflictResolver.ts:58
+
+AI 输出的安全校验仍偏弱，无法识别语法错误或结构性破坏
+
+**💡 建议:** 可按文件类型引入基础语法校验（如 TS/JS 使用 tsc 或 esbuild parse），或提供 dry-run 模式
+
+<details>
+<summary>代码片段</summary>
+
+```
+const resolvedContent = response.rawText;
+```
+
+</details>
+
+#### 4. [INFO] src/core/git/ConflictResolver.ts:74
+
+直接覆盖原文件，缺少失败回滚或备份机制
+
+**💡 建议:** 建议在写入前生成 .bak 文件或提供 --backup / --dry-run 选项，降低误覆盖风险
+
+<details>
+<summary>代码片段</summary>
+
+```
+await fs.promises.writeFile(fullPath, resolvedContent, 'utf8');
+```
+
+</details>
+
+#### 5. [INFO] src/core/git/GitService.ts:388
+
+Git 冲突状态解析依赖硬编码状态码列表，未来 Git 行为变更需同步维护
+
+**💡 建议:** 可将 conflictCodes 提取为常量或增加注释说明其来源（Git 官方文档）
+
+<details>
+<summary>代码片段</summary>
+
+```
+const conflictCodes = ['UU', 'AA', 'DD', 'AU', 'UD', 'UA', 'DU'];
+```
+
+</details>
+
+### 👍 优点
+
+- ✅ CLI 层、Git 服务层与 AI 解析逻辑职责分离清晰
+- ✅ 使用明确、约束严格的 Prompt，降低 AI 输出不确定性
+- ✅ 错误信息对用户友好，CLI 交互体验良好（ora + chalk）
+- ✅ 对 AI 生成结果进行了基础的安全与完整性校验
+- ✅ 代码风格统一，命名语义清晰，易于维护和扩展
+
+### 💡 建议
+
+- 为 ConflictResolver 编写单元测试，覆盖无冲突标记、AI 返回异常、内容被拦截等场景
+- 考虑增加 dry-run / preview 模式，允许用户查看 AI 生成结果或 diff 后再写入
+- 引入并发控制与进度汇总，提升在大型仓库中的可用性
+- 在文档中明确说明该命令会直接覆盖文件内容，并提示风险
+- 长期可将 AI 冲突解决策略与 Prompt 抽象为可配置模块，支持多策略演进
+
+[↑ 返回顶部](#)
+
+
+---
+
+## 📋 Code Review - 2026/1/29 01:33:47
+
+**📊 评分:** 👍 86/100  
+**🔧 级别:** STANDARD  
+**🌿 分支:** `main`  
+**💾 提交:** `d75914d`  
+**📂 范围:** 暂存区 (7 个文件)  
+
+### 📝 总体评价
+
+整体代码质量较高，体现了良好的分层设计和语义级别的 AI 冲突解决思路。CLI 体验友好，安全意识较强。但在并发控制严谨性、AI 输出信任边界、回滚机制和可测试性方面仍有改进空间。
+
+### ⚠️ 发现的问题 (6)
+
+#### 1. [WARNING] src/commands/git/resolve.ts:22
+
+模型名称仅做格式校验，未验证模型是否真实可用
+
+**💡 建议:** 建议与 runLLM 支持的模型列表进行白名单校验，或在运行前做一次 capability 探测
+
+<details>
+<summary>代码片段</summary>
+
+```
+if (options.model && !/^[a-zA-Z0-9\-_/]+$/.test(options.model)) { ... }
+```
+
+</details>
+
+#### 2. [WARNING] src/commands/git/resolve.ts:48
+
+并发处理实现为手动分块，缺乏对异常和资源压力的精细控制
+
+**💡 建议:** 考虑使用成熟的并发控制库（如 p-limit），并明确最大并发的合理上限
+
+<details>
+<summary>代码片段</summary>
+
+```
+for (let i = 0; i < conflictedFiles.length; i += concurrency) { ... }
+```
+
+</details>
+
+#### 3. [WARNING] src/commands/git/resolve.ts:63
+
+Promise.all 中任一任务抛出异常会导致整个批次失败
+
+**💡 建议:** 在 Promise.all 内部对单文件异常进行捕获，避免影响同批次其他文件
+
+<details>
+<summary>代码片段</summary>
+
+```
+await Promise.all(chunk.map(async (file) => { ... }))
+```
+
+</details>
+
+#### 4. [WARNING] src/core/git/ConflictResolver.ts:55
+
+AI 输出内容的语义与语法校验仍然较弱
+
+**💡 建议:** 可按文件类型引入基础语法解析（如 JS/TS 的 AST 解析）或提供 dry-run/preview 机制
+
+<details>
+<summary>代码片段</summary>
+
+```
+const resolvedContent = response.rawText;
+```
+
+</details>
+
+#### 5. [INFO] src/core/git/ConflictResolver.ts:78
+
+仅通过花括号数量判断语法完整性，可能产生误判
+
+**💡 建议:** 明确该校验为启发式检查，并避免将其作为强一致性保证
+
+<details>
+<summary>代码片段</summary>
+
+```
+if (openBraces !== closeBraces) { ... }
+```
+
+</details>
+
+#### 6. [INFO] src/core/git/ConflictResolver.ts:90
+
+文件覆盖前虽支持备份，但缺乏统一的失败回滚策略
+
+**💡 建议:** 建议在文档中明确说明覆盖行为，或提供显式的 --backup / --restore 流程
+
+<details>
+<summary>代码片段</summary>
+
+```
+await fs.promises.writeFile(fullPath, resolvedContent, 'utf8');
+```
+
+</details>
+
+### 👍 优点
+
+- ✅ CLI、Git 服务层与 AI 解析逻辑职责划分清晰
+- ✅ 整体代码风格统一，命名语义明确，可维护性较好
+- ✅ 对 AI 输出设置了多层安全拦截，具备风险意识
+- ✅ 支持 dry-run、backup、auto-add 等实用参数，CLI 体验成熟
+- ✅ 错误信息和用户反馈清晰，适合在真实仓库中使用
+
+### 💡 建议
+
+- 为 ConflictResolver 编写单元测试，覆盖空输出、异常输出、无冲突标记等场景
+- 考虑引入 preview / diff 输出模式，增强用户对 AI 修改结果的可控性
+- 将 AI Prompt 与冲突解决策略抽象为可配置模块，便于后续演进
+- 在文档中明确提示该命令会直接修改文件内容及其潜在风险
+- 长期可结合 AST 或语义 Diff 提升冲突合并的可靠性
+
+[↑ 返回顶部](#)
+
+
+---
+
+## 📋 Code Review - 2026/1/29 01:36:18
+
+**📊 评分:** 👍 86/100  
+**🔧 级别:** STANDARD  
+**🌿 分支:** `main`  
+**💾 提交:** `d75914d`  
+**📂 范围:** 暂存区 (7 个文件)  
+
+### 📝 总体评价
+
+该代码变更整体质量较高，体现了良好的分层设计与语义级别的 AI 冲突解决思路。CLI 交互友好，职责划分清晰，并对 AI 输出风险具备基本防护意识。但在并发鲁棒性、AI 输出信任边界、回滚机制、类型严谨性和测试覆盖方面仍有改进空间。
+
+### ⚠️ 发现的问题 (6)
+
+#### 1. [WARNING] src/commands/git/resolve.ts:26
+
+模型名称仅校验格式和是否在推荐列表中，未验证模型在当前运行环境中是否真实可用
+
+**💡 建议:** 在调用前增加 capability 探测，或与 runLLM 实际支持的模型列表做一致性校验
+
+<details>
+<summary>代码片段</summary>
+
+```
+const isStandardModel = SUPPORTED_AI_MODELS.includes(options.model);
+```
+
+</details>
+
+#### 2. [WARNING] src/commands/git/resolve.ts:49
+
+并发数量由用户输入直接控制，缺乏上限保护，可能导致资源耗尽
+
+**💡 建议:** 为 concurrency 设置合理的最大值（如 CPU 核数或固定上限），并在文档中说明
+
+<details>
+<summary>代码片段</summary>
+
+```
+const concurrency = parseInt(options.concurrency, 10) || 2;
+```
+
+</details>
+
+#### 3. [WARNING] src/commands/git/resolve.ts:56
+
+Promise.all 中单个任务异常虽被捕获，但错误信息仅返回 message，可能丢失上下文
+
+**💡 建议:** 考虑统一错误结构，保留 error code / stack（在 debug 模式下）以便排查问题
+
+<details>
+<summary>代码片段</summary>
+
+```
+return { file, success: false, error: err.message };
+```
+
+</details>
+
+#### 4. [WARNING] src/core/git/ConflictResolver.ts:30
+
+存在使用同步文件 I/O（readFileSync / writeFileSync）的风险，可能阻塞事件循环
+
+**💡 建议:** 在 CLI 可能处理大量文件时，优先使用 fs.promises 进行异步 I/O
+
+<details>
+<summary>代码片段</summary>
+
+```
+const content = fs.readFileSync(fullPath, 'utf8');
+```
+
+</details>
+
+#### 5. [WARNING] src/core/git/ConflictResolver.ts:52
+
+AI 输出内容缺乏强语义或语法级校验，可能引入不可编译或逻辑错误的代码
+
+**💡 建议:** 按文件类型引入基础语法校验（如 TS/JS AST parse），或至少提供 preview/diff 模式
+
+<details>
+<summary>代码片段</summary>
+
+```
+const resolvedContent = response.rawText;
+```
+
+</details>
+
+#### 6. [INFO] src/core/git/ConflictResolver.ts:70
+
+文件覆盖虽支持备份，但缺乏统一的失败回滚策略
+
+**💡 建议:** 考虑在批量失败时提供 restore 流程，或在文档中明确备份与回滚的使用方式
+
+<details>
+<summary>代码片段</summary>
+
+```
+await fs.promises.writeFile(fullPath, resolvedContent, 'utf8');
+```
+
+</details>
+
+### 👍 优点
+
+- ✅ CLI、Git 服务层与 AI 冲突解析逻辑职责分离清晰
+- ✅ 命令参数设计完善，支持 dry-run、backup、auto-add 与并发控制
+- ✅ 使用 p-limit 控制并发，体现对性能与资源使用的关注
+- ✅ 对 AI Prompt 和输出结果具备基本安全约束意识
+- ✅ 整体代码风格统一，可读性和可维护性较好
+
+### 💡 建议
+
+- 为 ConflictResolver 编写单元测试，覆盖无冲突标记、AI 返回异常、空输出等场景
+- 增加 preview / diff 输出模式，提升用户对 AI 修改结果的可控性
+- 为并发处理和模型选择补充文档说明与使用建议
+- 长期可将 AI 冲突解决策略与 Prompt 抽象为可配置模块，支持多策略演进
+- 在 README 或命令帮助中明确说明该命令会直接修改文件内容及潜在风险
+
+[↑ 返回顶部](#)
+

@@ -7,6 +7,7 @@ import { registerPlanCommand } from './git/plan';
 import { registerExecCommand } from './git/exec';
 import { registerAutoCommand } from './git/auto';
 import { registerSemanticDiffCommand } from './git/semanticDiff';
+import { registerResolveCommand } from './git/resolve';
 
 /**
  * 注册 Git 相关命令
@@ -29,4 +30,5 @@ export function registerGitCommands(program: Command) {
     registerExecCommand(gitCmd);
     registerAutoCommand(gitCmd);
     registerSemanticDiffCommand(gitCmd);
+    registerResolveCommand(gitCmd);
 }

@@ -22,3 +22,18 @@ export const MIN_REVIEW_SCORE = 85;
 
 /** 代码审查失败时的默认分数 */
 export const REVIEW_FAILURE_SCORE = 60;
+
+/** Git 冲突状态码 (参考 Git 官方文档 porcelain 格式) */
+export const GIT_CONFLICT_CODES = ['UU', 'AA', 'DD', 'AU', 'UD', 'UA', 'DU'];
+
+/** 支持的 AI 模型列表 (用于验证) */
+export const SUPPORTED_AI_MODELS = [
+    'gpt-4o',
+    'gpt-4o-mini',
+    'gpt-4-turbo',
+    'claude-3.5-sonnet',
+    'claude-3.5-haiku',
+    'gemini-2.0-flash',
+    'gemini-2.0-pro',
+    'Assistant'
+];
