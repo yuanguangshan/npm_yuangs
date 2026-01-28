@@ -1,4 +1,5 @@
 import { GitService } from './GitService';
+import { ContextMeta } from '../context/ContextMeta';
 /**
  * 收集到的项目上下文接口
  */
@@ -10,6 +11,7 @@ export interface GatheredContext {
         content: string;
     }[];
     summary: string;
+    meta: ContextMeta;
 }
 /**
  * 项目上下文采集器
@@ -37,4 +39,8 @@ export declare class ContextGatherer {
      * 根据任务描述寻找相关文件
      */
     private getRelevantFiles;
+    /**
+     * 获取审计日志
+     */
+    getAuditLog(context: GatheredContext): string;
 }

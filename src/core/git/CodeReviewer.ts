@@ -2,6 +2,8 @@ import chalk from 'chalk';
 import { GitService } from './GitService';
 import { ModelRouter } from '../modelRouter/ModelRouter';
 import { TaskConfig, TaskType } from '../modelRouter/types';
+import { CapabilityLevel, MinCapability } from '../capability/CapabilityLevel';
+import { DecisionInput, ThresholdDegradationPolicy } from '../capability/DegradationPolicy';
 
 /**
  * 代码审查级别
@@ -59,6 +61,15 @@ export interface ReviewResult {
     recommendations: string[];
     /** 审查的文件数 */
     filesReviewed: number;
+    /** 置信度 (0-1) */
+    confidence: number;
+    /** 降级决策 */
+    degradation?: {
+        applied: boolean;
+        originalLevel: CapabilityLevel;
+        targetLevel: CapabilityLevel;
+        reason: string;
+    };
 }
 
 /**
@@ -66,23 +77,35 @@ export interface ReviewResult {
  */
 export class CodeReviewer {
     public static readonly VERSION = 'v1.0';
+    private degradationPolicy: ThresholdDegradationPolicy;
 
     constructor(
         private gitService: GitService,
         private router?: ModelRouter
-    ) { }
+    ) {
+        this.degradationPolicy = new ThresholdDegradationPolicy();
+    }
 
     /**
      * 构建审查提示词
      */
-    private buildReviewPrompt(diff: string, level: ReviewLevel): string {
+    private buildReviewPrompt(diff: string, level: ReviewLevel, capabilityLevel: CapabilityLevel): string {
         const levelInstructions = {
             [ReviewLevel.QUICK]: '快速扫描,只关注明显的 bug、安全问题和严重的代码异味',
             [ReviewLevel.STANDARD]: '进行标准的代码审查,包括代码质量、最佳实践、潜在问题',
             [ReviewLevel.DEEP]: '进行深度审查,包括架构设计、性能优化、安全性、可维护性等所有方面',
         };
 
+        const capabilityInstructions = {
+            [CapabilityLevel.SEMANTIC]: '进行语义级别的审查,深入理解代码意图和设计',
+            [CapabilityLevel.STRUCTURAL]: '进行结构级别的审查,关注代码结构和依赖关系',
+            [CapabilityLevel.LINE]: '进行行级别的审查,关注具体代码行的实现',
+            [CapabilityLevel.TEXT]: '进行文本级别的审查,关注文本内容和格式',
+            [CapabilityLevel.NONE]: '不进行深度审查,仅输出摘要',
+        };
+
         return `你是一位资深的代码审查专家。请对以下代码变更进行${levelInstructions[level]}。
+当前能力等级: ${capabilityInstructions[capabilityLevel]}
 
 ## 代码变更
 \`\`\`diff
@@ -121,17 +144,18 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
   "recommendations": [
     "建议添加单元测试",
     "考虑提取公共逻辑"
-  ]
+  ],
+  "confidence": 0.85
 }
 \`\`\`
 
-请确保输出是有效的 JSON 格式。`;
+请确保输出是有效的 JSON 格式，并包含 confidence 字段。`;
     }
 
     /**
      * 解析 AI 返回的审查结果
      */
-    private parseReviewResult(content: string): Partial<ReviewResult> {
+    private parseReviewResult(content: string): Partial<ReviewResult> & { confidence?: number } {
         try {
             // 尝试提取 JSON
             const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/) ||
@@ -142,7 +166,6 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
                 return JSON.parse(jsonStr);
             }
 
-            // 如果没有 JSON,尝试解析文本
             return this.parseTextReview(content);
         } catch (error) {
             console.warn('Failed to parse review result:', error);
@@ -152,6 +175,7 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
                 issues: [],
                 strengths: [],
                 recommendations: [],
+                confidence: 0.5,
             };
         }
     }
@@ -159,12 +183,11 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
     /**
      * 解析文本格式的审查结果
      */
-    private parseTextReview(content: string): Partial<ReviewResult> {
+    private parseTextReview(content: string): Partial<ReviewResult> & { confidence?: number } {
         const issues: ReviewIssue[] = [];
         const strengths: string[] = [];
         const recommendations: string[] = [];
 
-        // 简单的文本解析逻辑
         const lines = content.split('\n');
         let currentSection = '';
 
@@ -192,6 +215,7 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
             issues,
             strengths,
             recommendations,
+            confidence: 0.7,
         };
     }
 
@@ -211,7 +235,6 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
 
         const files = staged ? diff.files.staged : diff.files.unstaged;
 
-        // Guardrail: Deep review 模式下文件数量保护
         if (level === ReviewLevel.DEEP && files.length > 20) {
             throw new Error(
                 'Deep review is not recommended for more than 20 files.\n' +
@@ -223,7 +246,16 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
             throw new Error('AI code review requires model configuration. Please configure AI models using: yuangs config');
         }
 
-        const prompt = this.buildReviewPrompt(diffContent, level);
+        const minCapability: MinCapability = {
+            minCapability: CapabilityLevel.SEMANTIC,
+            fallbackChain: [CapabilityLevel.STRUCTURAL, CapabilityLevel.LINE, CapabilityLevel.TEXT, CapabilityLevel.NONE],
+        };
+
+        let currentCapability = minCapability.minCapability;
+        let confidence = 1.0;
+        let degradationApplied = false;
+        let degradationReason = '';
+        const startTime = Date.now();
 
         const taskConfig: TaskConfig = {
             type: TaskType.CODE_REVIEW,
@@ -238,6 +270,8 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
         console.log(chalk.cyan(`🤖 使用模型: ${routingResult.adapter.name}`));
         console.log(chalk.gray(`📋 理由: ${routingResult.reason}\n`));
 
+        const prompt = this.buildReviewPrompt(diffContent, level, currentCapability);
+
         const execution = await this.router.executeTask(
             routingResult.adapter,
             prompt,
@@ -248,7 +282,23 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
             throw new Error('Failed to perform code review');
         }
 
+        const timeElapsed = Date.now() - startTime;
+
         const parsed = this.parseReviewResult(execution.content);
+        confidence = parsed.confidence ?? 0.8;
+
+        const decisionInput: DecisionInput = {
+            timeElapsed,
+            confidence,
+        };
+
+        const degradationDecision = this.degradationPolicy.decide(decisionInput, minCapability);
+
+        if (degradationDecision.shouldDegrade && currentCapability !== degradationDecision.targetLevel) {
+            degradationApplied = true;
+            degradationReason = degradationDecision.reason;
+            console.log(chalk.yellow(`⚠️  降级触发: ${degradationReason}`));
+        }
 
         return {
             score: parsed.score || 70,
@@ -257,6 +307,13 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
             strengths: parsed.strengths || [],
             recommendations: parsed.recommendations || [],
             filesReviewed: files.length,
+            confidence,
+            degradation: degradationApplied ? {
+                applied: true,
+                originalLevel: minCapability.minCapability,
+                targetLevel: degradationDecision.targetLevel,
+                reason: degradationReason,
+            } : undefined,
         };
     }
 
@@ -277,7 +334,16 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
             throw new Error('AI code review requires model configuration. Please configure AI models using: yuangs config');
         }
 
-        const prompt = this.buildReviewPrompt(diff, level);
+        const minCapability: MinCapability = {
+            minCapability: CapabilityLevel.SEMANTIC,
+            fallbackChain: [CapabilityLevel.STRUCTURAL, CapabilityLevel.LINE, CapabilityLevel.TEXT, CapabilityLevel.NONE],
+        };
+
+        let currentCapability = minCapability.minCapability;
+        let confidence = 1.0;
+        let degradationApplied = false;
+        let degradationReason = '';
+        const startTime = Date.now();
 
         const taskConfig: TaskConfig = {
             type: TaskType.CODE_REVIEW,
@@ -292,6 +358,8 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
         console.log(chalk.cyan(`🤖 使用模型: ${routingResult.adapter.name}`));
         console.log(chalk.gray(`📋 理由: ${routingResult.reason}\n`));
 
+        const prompt = this.buildReviewPrompt(diff, level, currentCapability);
+
         const execution = await this.router.executeTask(
             routingResult.adapter,
             prompt,
@@ -302,7 +370,23 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
             throw new Error('Failed to perform code review');
         }
 
+        const timeElapsed = Date.now() - startTime;
+
         const parsed = this.parseReviewResult(execution.content);
+        confidence = parsed.confidence ?? 0.8;
+
+        const decisionInput: DecisionInput = {
+            timeElapsed,
+            confidence,
+        };
+
+        const degradationDecision = this.degradationPolicy.decide(decisionInput, minCapability);
+
+        if (degradationDecision.shouldDegrade && currentCapability !== degradationDecision.targetLevel) {
+            degradationApplied = true;
+            degradationReason = degradationDecision.reason;
+            console.log(chalk.yellow(`⚠️  降级触发: ${degradationReason}`));
+        }
 
         return {
             score: parsed.score || 70,
@@ -311,6 +395,13 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
             strengths: parsed.strengths || [],
             recommendations: parsed.recommendations || [],
             filesReviewed: 1,
+            confidence,
+            degradation: degradationApplied ? {
+                applied: true,
+                originalLevel: minCapability.minCapability,
+                targetLevel: degradationDecision.targetLevel,
+                reason: degradationReason,
+            } : undefined,
         };
     }
 }

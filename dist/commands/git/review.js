@@ -11,6 +11,9 @@ const path_1 = __importDefault(require("path"));
 const GitService_1 = require("../../core/git/GitService");
 const CodeReviewer_1 = require("../../core/git/CodeReviewer");
 const modelRouter_1 = require("../../core/modelRouter");
+const SecurityScanner_1 = require("../../core/security/SecurityScanner");
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
 function registerReviewCommand(gitCmd) {
     // git review - AI 代码审查
     gitCmd
@@ -38,6 +41,46 @@ function registerReviewCommand(gitCmd) {
                 spinner.fail('当前目录不是 Git 仓库');
                 return;
             }
+            const securityScanner = new SecurityScanner_1.SecurityScanner();
+            const diff = await gitService.getDiff();
+            const files = options.unstaged ? diff.files.unstaged : diff.files.staged;
+            spinner.text = '执行安全扫描...';
+            const repoRoot = await gitService.getRepoRoot();
+            const filesToScan = new Map();
+            for (const file of files) {
+                const filePath = path_1.default.join(repoRoot, file);
+                try {
+                    if (fs_1.default.existsSync(filePath) && fs_1.default.statSync(filePath).isFile()) {
+                        const content = fs_1.default.readFileSync(filePath, 'utf8');
+                        const scanResult = securityScanner.scanAndRedact(content, file);
+                        if (scanResult.issues.length > 0) {
+                            filesToScan.set(file, content);
+                            spinner.warn(`发现 ${scanResult.issues.length} 个安全问题在 ${file}`);
+                            for (const issue of scanResult.issues) {
+                                console.log(chalk_1.default.red(`  ${issue.type}: ${issue.description} (line ${issue.line})`));
+                            }
+                        }
+                    }
+                }
+                catch (error) {
+                    console.warn(`Warning: 无法读取文件 ${file}: ${error.message}`);
+                }
+            }
+            if (filesToScan.size > 0) {
+                spinner.warn('安全扫描发现敏感信息');
+                console.log(chalk_1.default.yellow('\n⚠️  警告：检测到可能的敏感信息！'));
+                console.log(chalk_1.default.yellow('建议：'));
+                console.log(chalk_1.default.yellow('  • 移除硬编码的密钥、密码、令牌等敏感信息'));
+                console.log(chalk_1.default.yellow('  • 使用环境变量或配置文件管理敏感数据'));
+                console.log(chalk_1.default.yellow('  • 考虑添加到 .gitignore 中\n'));
+                const shouldContinue = process.env.YUANGS_AUTO_CONTINUE === 'true';
+                if (!shouldContinue) {
+                    console.log(chalk_1.default.cyan('💡 设置环境变量 YUANGS_AUTO_CONTINUE=true 可跳过此警告'));
+                    spinner.stop();
+                    return;
+                }
+            }
+            spinner.text = '加载 AI 模型配置...';
             const router = (0, modelRouter_1.getRouter)();
             const reviewer = new CodeReviewer_1.CodeReviewer(gitService, router);
             const level = options.level;
@@ -50,11 +93,16 @@ function registerReviewCommand(gitCmd) {
                 result = await reviewer.review(level, !options.unstaged);
             }
             spinner.succeed('代码审查完成');
-            // 显示审查结果
             console.log(chalk_1.default.bold.cyan('\n🔍 代码审查报告\n'));
             const scoreColor = getScoreColor(result.score);
             console.log(chalk_1.default.bold('评分: ') + scoreColor(result.score.toString()) + chalk_1.default.bold('/100'));
-            console.log(chalk_1.default.gray(`审查文件: ${result.filesReviewed} 个\n`));
+            console.log(chalk_1.default.gray(`审查文件: ${result.filesReviewed} 个`));
+            console.log(chalk_1.default.gray(`置信度: ${(result.confidence * 100).toFixed(1)}%`));
+            if (result.degradation?.applied) {
+                console.log(chalk_1.default.yellow(`降级: ${result.degradation.originalLevel} → ${result.degradation.targetLevel}`));
+                console.log(chalk_1.default.gray(`原因: ${result.degradation.reason}`));
+            }
+            console.log();
             console.log(chalk_1.default.bold('📋 总体评价:'));
             console.log(chalk_1.default.white(`  ${result.summary}\n`));
             if (result.issues.length > 0) {
