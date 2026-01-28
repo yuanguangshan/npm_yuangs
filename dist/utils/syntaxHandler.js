@@ -305,10 +305,76 @@ async function handleListContext() {
             return { processed: true, result: '当前没有上下文' };
         }
         const list = contextBuffer.list();
-        let result = '当前上下文列表：\n';
+        // 格式化时间显示
+        const formatAge = (ageMin) => {
+            if (ageMin < 1)
+                return '刚刚';
+            if (ageMin < 60)
+                return `${ageMin}分钟前`;
+            const hours = Math.floor(ageMin / 60);
+            if (hours < 24)
+                return `${hours}小时前`;
+            const days = Math.floor(hours / 24);
+            return `${days}天前`;
+        };
+        // 格式化重要度显示
+        const formatImportance = (importance) => {
+            const value = parseFloat(importance);
+            if (value >= 0.8)
+                return chalk_1.default.red('★★★');
+            if (value >= 0.6)
+                return chalk_1.default.yellow('★★☆');
+            if (value >= 0.4)
+                return chalk_1.default.green('★☆☆');
+            return chalk_1.default.gray('☆☆☆');
+        };
+        // 计算列宽
+        const maxIndexWidth = Math.max(String(list.length).length, 1);
+        const maxTypeWidth = Math.max(...list.map(item => item.type.length), 4);
+        const maxPathWidth = Math.max(...list.map(item => item.path.length), 40); // 限制最大宽度
+        const maxAliasWidth = Math.max(...list.map(item => item.alias?.length || 0), 5);
+        const importanceWidth = 3; // 星级固定宽度
+        const ageWidth = 10;
+        const tokensWidth = 6;
+        const pinnedWidth = 2;
+        // 构建表格边框
+        const header = `┌${'─'.repeat(maxIndexWidth + 2)}┬${'─'.repeat(pinnedWidth + 2)}┬${'─'.repeat(maxTypeWidth + 2)}┬${'─'.repeat(Math.min(maxPathWidth, 40) + 2)}┬${'─'.repeat(importanceWidth + 2)}┬${'─'.repeat(ageWidth + 2)}┬${'─'.repeat(tokensWidth + 2)}┐`;
+        const separator = `├${'─'.repeat(maxIndexWidth + 2)}┼${'─'.repeat(pinnedWidth + 2)}┼${'─'.repeat(maxTypeWidth + 2)}┼${'─'.repeat(Math.min(maxPathWidth, 40) + 2)}┼${'─'.repeat(importanceWidth + 2)}┼${'─'.repeat(ageWidth + 2)}┼${'─'.repeat(tokensWidth + 2)}┤`;
+        const footer = `└${'─'.repeat(maxIndexWidth + 2)}┴${'─'.repeat(pinnedWidth + 2)}┴${'─'.repeat(maxTypeWidth + 2)}┴${'─'.repeat(Math.min(maxPathWidth, 40) + 2)}┴${'─'.repeat(importanceWidth + 2)}┴${'─'.repeat(ageWidth + 2)}┴${'─'.repeat(tokensWidth + 2)}┘`;
+        // 表头
+        const headerRow = `│ ${chalk_1.default.bold('#'.padEnd(maxIndexWidth))} │ ${chalk_1.default.bold('📌'.padEnd(pinnedWidth))} │ ${chalk_1.default.bold('Type'.padEnd(maxTypeWidth))} │ ${chalk_1.default.bold('Path'.padEnd(Math.min(maxPathWidth, 40)))} │ ${chalk_1.default.bold('重要度')} │ ${chalk_1.default.bold('添加时间'.padEnd(ageWidth))} │ ${chalk_1.default.bold('Tokens'.padEnd(tokensWidth))} │`;
+        let result = chalk_1.default.cyan.bold('📋 当前上下文列表\n\n');
+        result += chalk_1.default.gray(header) + '\n';
+        result += headerRow + '\n';
+        result += chalk_1.default.gray(separator) + '\n';
+        // 数据行
         list.forEach((item, index) => {
-            result += `${index + 1}. ${item.type}: ${item.path} (${item.tokens} tokens)\n`;
+            const indexStr = String(index + 1).padEnd(maxIndexWidth);
+            const pinnedStr = (item.pinned || '').padEnd(pinnedWidth);
+            const typeStr = item.type.padEnd(maxTypeWidth);
+            // 路径截断处理
+            let pathStr = item.path;
+            if (pathStr.length > 40) {
+                pathStr = '...' + pathStr.slice(-37);
+            }
+            pathStr = pathStr.padEnd(Math.min(maxPathWidth, 40));
+            const importanceStr = formatImportance(item.importance);
+            const ageStr = formatAge(item.ageMin).padEnd(ageWidth);
+            const tokensStr = String(item.tokens).padStart(tokensWidth);
+            // 根据类型着色
+            let typeColor = chalk_1.default.cyan;
+            if (item.type === 'memory')
+                typeColor = chalk_1.default.magenta;
+            if (item.type === 'antipattern')
+                typeColor = chalk_1.default.red;
+            result += `│ ${chalk_1.default.yellow(indexStr)} │ ${pinnedStr} │ ${typeColor(typeStr)} │ ${chalk_1.default.white(pathStr)} │ ${importanceStr} │ ${chalk_1.default.gray(ageStr)} │ ${chalk_1.default.green(tokensStr)} │\n`;
         });
+        result += chalk_1.default.gray(footer);
+        // 统计信息（单行）
+        const totalTokens = list.reduce((sum, item) => sum + item.tokens, 0);
+        const pinnedCount = list.filter(item => item.pinned).length;
+        const memoryCount = list.filter(item => item.type === 'memory').length;
+        result += `\n\n${chalk_1.default.cyan('📊')} ${chalk_1.default.gray('总计:')} ${chalk_1.default.yellow(list.length)} ${chalk_1.default.gray('|')} ${chalk_1.default.gray('固定:')} ${chalk_1.default.yellow(pinnedCount)} ${chalk_1.default.gray('|')} ${chalk_1.default.gray('记忆:')} ${chalk_1.default.magenta(memoryCount)} ${chalk_1.default.gray('|')} ${chalk_1.default.gray('Token:')} ${chalk_1.default.green(totalTokens.toLocaleString())}`;
         return { processed: true, result };
     }
     catch (error) {

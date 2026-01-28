@@ -100,6 +100,18 @@ export function registerReviewCommand(gitCmd: Command) {
                     console.log(chalk.yellow('💡 建议：'));
                     console.log('  • 使用 --level standard');
                     console.log('  • 或指定 --file 进行重点审查');
+                } else if (error.message.includes('No changes to review')) {
+                    const gitService = new GitService();
+                    const diff = await gitService.getDiff();
+                    
+                    if (!options.unstaged && diff.files.unstaged.length > 0) {
+                        spinner.warn('当前没有已暂存 (staged) 的文件变更');
+                        console.log(chalk.cyan('\n💡 建议：'));
+                        console.log(`  • 运行 ${chalk.green('git add <file>')} 将文件加入暂存区`);
+                        console.log(`  • 或运行 ${chalk.green('yuangs git review --unstaged')} 直接审查未暂存的变更`);
+                    } else {
+                        spinner.fail('没有检测到任何代码变更');
+                    }
                 } else {
                     spinner.fail(`错误: ${error.message}`);
                 }
