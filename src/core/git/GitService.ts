@@ -1,6 +1,8 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { GitError } from '../errors';
+import { SemanticDiffEngine } from './semantic/SemanticDiffEngine';
+import { SemanticDiffResult } from './semantic/types';
 
 const execAsync = promisify(exec);
 
@@ -229,6 +231,18 @@ export class GitService {
             diff,
             files: files ? files.split('\n').filter(Boolean) : [],
         };
+    }
+
+    /**
+     * 获取语义级 Diff 分析结果
+     * @param staged 是否只分析已暂存的变更
+     */
+    async getSemanticDiff(staged: boolean = true): Promise<SemanticDiffResult | null> {
+        const diffContent = await this.execSafe(staged ? 'diff --staged' : 'diff');
+
+        if (!diffContent) return null;
+
+        return SemanticDiffEngine.analyze(diffContent);
     }
 
     /**

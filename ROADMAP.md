@@ -25,7 +25,7 @@ This roadmap outlines the planned improvements for the `yuangs` CLI, focusing on
 - [ ] **Semantic Commit Parsing**: Better understanding of commit history through AI analysis.
 - [ ] **AI-Assisted Conflict Resolution**: Use AI to help resolve Git conflicts during merges.
 - [ ] **Capability-Aware Pipeline**: Implement capability levels and graceful degradation for AI agents.
-- [ ] **Semantic Diff Engine**: Move from text-based diffs to structural/semantic understanding of changes.
+- [x] **Semantic Diff Engine**: Move from text-based diffs to structural/semantic understanding of changes.
 - [ ] **Smart Commit Management**: Improve commit message generation and multi-step commits.
 
 ## 🏆 Milestones
@@ -42,6 +42,8 @@ This roadmap outlines the planned improvements for the `yuangs` CLI, focusing on
 - ✅ Refactored CLI UI with `CLIComponent` (Terminal-width aware).
 - ✅ Fixed ProgressBar edge cases (Division by zero, TTY detection).
 - ✅ Improved CapabilityLevel hierarchy and robust parsing.
+- ✅ Implemented **Semantic Diff Engine (v0.1)** with structural analysis support.
+- ✅ Added `yuangs git diff-semantic` (alias `sd`) command.
 - ✅ Improved repository hygiene (.gitignore updates).
 
 > *Note: Roadmap status and Changelog are currently manually synced. Future enhancement: Implement CI check for consistency.*

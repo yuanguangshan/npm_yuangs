@@ -107,6 +107,24 @@ describe('GitService', () => {
         });
     });
 
+    describe('getSemanticDiff', () => {
+        test('should return analyzed semantic results', async () => {
+            const mockDiff = `diff --git a/file.ts b/file.ts
+--- a/file.ts
++++ b/file.ts
++export function test() {}`;
+
+            mockExec.mockImplementation((cmd: string, opts: any, callback: any) => {
+                if (cmd === 'git diff --staged') callback(null, { stdout: mockDiff });
+                else callback(null, { stdout: '' });
+            });
+
+            const result = await gitService.getSemanticDiff(true);
+            expect(result?.isBreaking).toBe(false);
+            expect(result?.files[0].changes[0].name).toBe('test');
+        });
+    });
+
     describe('commit', () => {
         test('should resolve when spawn git commit succeeds', async () => {
             const { spawn } = require('child_process');
