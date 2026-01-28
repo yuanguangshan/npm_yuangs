@@ -30,31 +30,49 @@ class GoogleAdapter extends BaseAdapter_1.BaseAdapter {
         supportsStreaming: true,
         specialCapabilities: ['long-context', 'multimodal'],
     };
+    getApiKey() {
+        // 优先从环境变量获取
+        if (process.env.GEMINI_API_KEY) {
+            return process.env.GEMINI_API_KEY;
+        }
+        // 尝试从 yuangs 配置读取
+        try {
+            const { getUserConfig } = require('../../../ai/client');
+            const config = getUserConfig();
+            return config.geminiApiKey;
+        }
+        catch (e) {
+            return undefined;
+        }
+    }
     /**
      * 健康检查：检查 Gemini CLI 是否安装并已配置
      */
     async healthCheck() {
         try {
-            const available = await this.checkCommand('gemini');
-            if (!available) {
-                console.warn('⚠️  Gemini CLI 未安装');
+            const { execSync } = require('child_process');
+            try {
+                execSync('which gemini', { stdio: 'ignore' });
+            }
+            catch (e) {
+                console.warn('⚠️  Gemini CLI 未安装 (which gemini 失败)');
                 return false;
             }
             // 检查版本以确认安装
-            const { stdout } = await this.runSpawnCommand('gemini', ['--version'], 30000 // 增加超时时间，gemini cli 启动较慢
-            );
-            if (!stdout.trim())
-                return false;
-            // 检查是否配置了 API key 环境变量
-            if (!process.env.GEMINI_API_KEY) {
-                console.warn('⚠️  未配置 GEMINI_API_KEY 环境变量');
+            const { stdout } = await this.runSpawnCommand('gemini', ['--version'], 30000);
+            if (!stdout.trim()) {
+                console.warn('⚠️  Gemini CLI 返回版本信息为空');
                 return false;
             }
-            // 基本检查通过，认为可用
-            // 实际的 API 调用会在 execute 中进行
+            const apiKey = this.getApiKey();
+            if (!apiKey) {
+                console.warn('⚠️  未配置 GEMINI_API_KEY (环境变量 或 .yuangs.json 中的 geminiApiKey)');
+                return false;
+            }
             return true;
         }
-        catch {
+        catch (error) {
+            console.warn(`⚠️  Gemini 检查异常: ${error.message}`);
             return false;
         }
     }
@@ -63,6 +81,7 @@ class GoogleAdapter extends BaseAdapter_1.BaseAdapter {
      */
     async execute(prompt, config, onChunk) {
         try {
+            const apiKey = this.getApiKey();
             const { result, executionTime } = await this.measureExecutionTime(async () => {
                 // 根据任务类型选择合适的模型
                 const model = this.selectModel(config.type);
@@ -72,7 +91,7 @@ class GoogleAdapter extends BaseAdapter_1.BaseAdapter {
                     '--model', model,
                     '--output-format', 'json' // 使用 JSON 格式输出
                 ];
-                const { stdout, stderr } = await this.runSpawnCommand('gemini', args, config.expectedResponseTime || 60000, onChunk);
+                const { stdout, stderr } = await this.runSpawnCommand('gemini', args, config.expectedResponseTime || 60000, onChunk, apiKey ? { GEMINI_API_KEY: apiKey } : undefined);
                 // 检查是否有 API key 错误
                 if (stdout.includes('GEMINI_API_KEY') || stderr.includes('GEMINI_API_KEY')) {
                     throw new Error('未配置 GEMINI_API_KEY 环境变量。请设置后重试。');

@@ -54,15 +54,14 @@ class BaseAdapter {
      * 检查 CLI 命令是否可用
      */
     async checkCommand(command) {
-        return new Promise((resolve) => {
-            const child = (0, child_process_1.spawn)('command', ['-v', command]);
-            child.on('close', (code) => {
-                resolve(code === 0);
-            });
-            child.on('error', () => {
-                resolve(false);
-            });
-        });
+        try {
+            const { execSync } = require('child_process');
+            execSync(`which ${command}`, { stdio: 'ignore' });
+            return true;
+        }
+        catch {
+            return false;
+        }
     }
     /**
      * 使用 spawn 执行命令（支持流式输出和自动转义）
@@ -71,9 +70,11 @@ class BaseAdapter {
      * @param timeout 超时时间（毫秒）
      * @param onChunk 流式输出回调函数
      */
-    async runSpawnCommand(command, args, timeout = 30000, onChunk) {
+    async runSpawnCommand(command, args, timeout = 30000, onChunk, env) {
         return new Promise((resolve, reject) => {
-            const child = (0, child_process_1.spawn)(command, args);
+            const child = (0, child_process_1.spawn)(command, args, {
+                env: { ...process.env, ...env }
+            });
             let stdout = '';
             let stderr = '';
             let timeoutId = null;

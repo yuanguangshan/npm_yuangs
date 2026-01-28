@@ -36,7 +36,7 @@ export declare abstract class BaseAdapter implements ModelAdapter {
      * @param timeout 超时时间（毫秒）
      * @param onChunk 流式输出回调函数
      */
-    protected runSpawnCommand(command: string, args: string[], timeout?: number, onChunk?: (chunk: string) => void): Promise<{
+    protected runSpawnCommand(command: string, args: string[], timeout?: number, onChunk?: (chunk: string) => void, env?: Record<string, string>): Promise<{
         stdout: string;
         stderr: string;
     }>;

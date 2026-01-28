@@ -74,15 +74,13 @@ export abstract class BaseAdapter implements ModelAdapter {
    * 检查 CLI 命令是否可用
    */
   protected async checkCommand(command: string): Promise<boolean> {
-    return new Promise((resolve) => {
-      const child = spawn('command', ['-v', command]);
-      child.on('close', (code) => {
-        resolve(code === 0);
-      });
-      child.on('error', () => {
-        resolve(false);
-      });
-    });
+    try {
+      const { execSync } = require('child_process');
+      execSync(`which ${command}`, { stdio: 'ignore' });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -96,10 +94,13 @@ export abstract class BaseAdapter implements ModelAdapter {
     command: string,
     args: string[],
     timeout: number = 30000,
-    onChunk?: (chunk: string) => void
+    onChunk?: (chunk: string) => void,
+    env?: Record<string, string>
   ): Promise<{ stdout: string; stderr: string }> {
     return new Promise((resolve, reject) => {
-      const child = spawn(command, args);
+      const child = spawn(command, args, {
+        env: { ...process.env, ...env }
+      });
       
       let stdout = '';
       let stderr = '';

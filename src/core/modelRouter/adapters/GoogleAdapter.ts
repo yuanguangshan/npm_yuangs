@@ -30,14 +30,32 @@ export class GoogleAdapter extends BaseAdapter {
     specialCapabilities: ['long-context', 'multimodal'],
   };
 
+  private getApiKey(): string | undefined {
+    // 优先从环境变量获取
+    if (process.env.GEMINI_API_KEY) {
+      return process.env.GEMINI_API_KEY;
+    }
+
+    // 尝试从 yuangs 配置读取
+    try {
+      const { getUserConfig } = require('../../../ai/client');
+      const config = getUserConfig();
+      return config.geminiApiKey;
+    } catch (e) {
+      return undefined;
+    }
+  }
+
   /**
    * 健康检查：检查 Gemini CLI 是否安装并已配置
    */
   async healthCheck(): Promise<boolean> {
     try {
-      const available = await this.checkCommand('gemini');
-      if (!available) {
-        console.warn('⚠️  Gemini CLI 未安装');
+      const { execSync } = require('child_process');
+      try {
+        execSync('which gemini', { stdio: 'ignore' });
+      } catch (e) {
+        console.warn('⚠️  Gemini CLI 未安装 (which gemini 失败)');
         return false;
       }
 
@@ -45,21 +63,23 @@ export class GoogleAdapter extends BaseAdapter {
       const { stdout } = await this.runSpawnCommand(
         'gemini',
         ['--version'],
-        30000 // 增加超时时间，gemini cli 启动较慢
+        30000 
       );
 
-      if (!stdout.trim()) return false;
-
-      // 检查是否配置了 API key 环境变量
-      if (!process.env.GEMINI_API_KEY) {
-        console.warn('⚠️  未配置 GEMINI_API_KEY 环境变量');
+      if (!stdout.trim()) {
+        console.warn('⚠️  Gemini CLI 返回版本信息为空');
         return false;
       }
 
-      // 基本检查通过，认为可用
-      // 实际的 API 调用会在 execute 中进行
+      const apiKey = this.getApiKey();
+      if (!apiKey) {
+        console.warn('⚠️  未配置 GEMINI_API_KEY (环境变量 或 .yuangs.json 中的 geminiApiKey)');
+        return false;
+      }
+
       return true;
-    } catch {
+    } catch (error: any) {
+      console.warn(`⚠️  Gemini 检查异常: ${error.message}`);
       return false;
     }
   }
@@ -73,6 +93,8 @@ export class GoogleAdapter extends BaseAdapter {
     onChunk?: (chunk: string) => void
   ): Promise<ModelExecutionResult> {
     try {
+      const apiKey = this.getApiKey();
+      
       const { result, executionTime } = await this.measureExecutionTime(async () => {
         // 根据任务类型选择合适的模型
         const model = this.selectModel(config.type);
@@ -88,7 +110,8 @@ export class GoogleAdapter extends BaseAdapter {
           'gemini',
           args,
           config.expectedResponseTime || 60000,
-          onChunk
+          onChunk,
+          apiKey ? { GEMINI_API_KEY: apiKey } : undefined
         );
 
         // 检查是否有 API key 错误
