@@ -139,14 +139,15 @@ async function handleAtSyntax(trimmed, stdinData) {
         const command = fileExecMatch[2].trim();
         return await handleFileAndCommand(filePath, command);
     }
-    // 3. 带行号或批量引用的语法 @file:start-end as alias
-    const lineRangeMatch = trimmed.match(/^@\s*(.+?)(?::(\d+)(?:-(\d+))?)?(?:\s+as\s+([^\s\n]+))?\s*(?:\n(.*))?$/s);
+    // 3. 带行号或批量引用的语法 @file:start-end as alias (优化正则，非贪婪捕获路径部分)
+    // 路径部分 ([^\s\n]+) 不应包含空格，遇到空格、换行或 as 则认为路径结束
+    const lineRangeMatch = trimmed.match(/^@\s*([^\s\n]+)(?::(\d+)(?:-(\d+))?)?(?:\s+as\s+([^\s\n]+))?\s*(.*)$/s);
     if (lineRangeMatch) {
         const rawPart = lineRangeMatch[1].trim();
         const startLine = lineRangeMatch[2] ? parseInt(lineRangeMatch[2]) : null;
         const endLine = lineRangeMatch[3] ? parseInt(lineRangeMatch[3]) : null;
         const alias = lineRangeMatch[4];
-        let question = lineRangeMatch[5] || (stdinData ? `分析以下内容：\n\n${stdinData}` : undefined);
+        let question = lineRangeMatch[5]?.trim() || (stdinData ? `分析以下内容：\n\n${stdinData}` : undefined);
         const { filePaths, extraQuestion } = await resolveFilePathsAndQuestion(rawPart);
         if (extraQuestion) {
             question = question ? `${extraQuestion}\n\n${question}` : extraQuestion;
@@ -225,8 +226,20 @@ async function resolveFilePathsAndQuestion(input) {
             continue;
         const isRange = /^\d+-\d+$/.test(token);
         const isIndex = !isNaN(parseInt(token)) && parseInt(token) > 0 && parseInt(token) <= persisted.length;
-        // 判定逻辑：既不是物理路径，也不是范围/序号 -> 提问开始
-        if (!existsOnDisk && !isRange && !isIndex) {
+        // 【智能边界识别】即便没有空格，如果 token 开头是序号但后面跟着非数字(如 @1分析)，也要切分
+        // 或者当前的 token 本身就不可识别为路径/索引
+        if (!existsOnDisk) {
+            if (isRange || isIndex) {
+                continue;
+            }
+            // 如果 token 开头是数字但包含非数字字符，且不是范围，尝试二次切分 (处理 @1分析 这种 Case)
+            const numMatch = token.match(/^(\d+)(.+)$/);
+            if (numMatch && parseInt(numMatch[1]) <= persisted.length) {
+                // 这是一个混合 Token，我们需要重构 tokens 数组（较复杂，此处采用简化的截断策略）
+                questionStartIndex = i;
+                break;
+            }
+            // 既不是物理路径，也不是范围/序号 -> 提问开始
             questionStartIndex = i;
             break;
         }

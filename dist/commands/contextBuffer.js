@@ -8,15 +8,29 @@ class ContextBuffer {
     add(item, bypassTokenLimit = false) {
         const text = item.content ?? item.summary ?? '';
         const tokens = estimateTokens(text);
-        const itemId = item.id || `${item.type}:${item.path}:${Date.now()}`;
-        const full = {
-            ...item,
-            id: itemId,
-            tokens,
-            importance: 0.5,
-            lastUsedAt: Date.now()
-        };
-        this.items.push(full);
+        // 查找是否已存在相同路径和类型的项
+        const existingIndex = this.items.findIndex(i => i.path === item.path && i.type === item.type);
+        if (existingIndex !== -1) {
+            // 更新现有项
+            this.items[existingIndex] = {
+                ...this.items[existingIndex],
+                ...item,
+                tokens,
+                lastUsedAt: Date.now()
+            };
+        }
+        else {
+            // 添加新项
+            const itemId = item.id || `${item.type}:${item.path}`;
+            const full = {
+                ...item,
+                id: itemId,
+                tokens,
+                importance: 0.5,
+                lastUsedAt: Date.now()
+            };
+            this.items.push(full);
+        }
         if (!bypassTokenLimit) {
             this.trimIfNeeded();
         }
@@ -44,12 +58,19 @@ class ContextBuffer {
         return this.items;
     }
     import(items) {
-        this.items = items.map(i => ({
-            ...i,
-            id: i.id || `${i.type}:${i.path}`,
-            importance: i.importance ?? 0.5,
-            lastUsedAt: i.lastUsedAt ?? Date.now()
-        }));
+        const uniqueItems = new Map();
+        items.forEach(i => {
+            const key = `${i.type}:${i.path}`;
+            const item = {
+                ...i,
+                id: i.id || key,
+                importance: i.importance ?? 0.5,
+                lastUsedAt: i.lastUsedAt ?? Date.now()
+            };
+            // 存入 Map 以去重，后来的覆盖先来的
+            uniqueItems.set(key, item);
+        });
+        this.items = Array.from(uniqueItems.values());
     }
     totalTokens() {
         return this.items.reduce((s, i) => s + i.tokens, 0);
