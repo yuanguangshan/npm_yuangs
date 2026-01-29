@@ -10,14 +10,11 @@ const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const GitService_1 = require("../../core/git/GitService");
 const llm_1 = require("../../agent/llm");
-const CostProfile_1 = require("../../core/capability/CostProfile");
-const constants_1 = require("./constants");
+const workflows_1 = require("../../core/workflows");
+const CapabilityLevel_1 = require("../../core/capability/CapabilityLevel");
 const utils_1 = require("./utils");
 const DEFAULT_PLAN_PROMPT = '分析项目现状并规划下一步开发任务';
 const METADATA_PREFIX = '>';
-/**
- * 解析用户指令（优先级：命令行 > todo.md > 默认值）
- */
 async function resolveUserPrompt(cliPrompt, todoPath) {
     if (cliPrompt) {
         return { prompt: cliPrompt, fromFile: false };
@@ -25,14 +22,11 @@ async function resolveUserPrompt(cliPrompt, todoPath) {
     try {
         await fs_1.default.promises.access(todoPath, fs_1.default.constants.F_OK);
         const content = await fs_1.default.promises.readFile(todoPath, 'utf8');
-        // 过滤掉文件开头由 yuangs 生成的元数据行（连续的 > 开头的行）
         const lines = content.split('\n');
         let startIndex = 0;
-        // 跳过开头连续的元数据行
         while (startIndex < lines.length && lines[startIndex].trim().startsWith(METADATA_PREFIX)) {
             startIndex++;
         }
-        // 跳过元数据后的空行
         while (startIndex < lines.length && lines[startIndex].trim() === '') {
             startIndex++;
         }
@@ -48,9 +42,6 @@ async function resolveUserPrompt(cliPrompt, todoPath) {
     }
     return { prompt: DEFAULT_PLAN_PROMPT, fromFile: false };
 }
-/**
- * 注册 git plan 命令
- */
 function registerPlanCommand(gitCmd) {
     gitCmd
         .command('plan [prompt...]')
@@ -63,7 +54,6 @@ function registerPlanCommand(gitCmd) {
         const maxRounds = parseInt(options.rounds) || 2;
         const todoPath = path_1.default.join(process.cwd(), 'todo.md');
         const { prompt: userPrompt, fromFile } = await resolveUserPrompt(cliPrompt, todoPath);
-        // 使用主 spinner 管理整体状态
         const spinner = (0, ora_1.default)(fromFile ? '正在从 todo.md 读取并初始化分析规划...' : '正在初始化分析规划...').start();
         try {
             const gitService = new GitService_1.GitService();
@@ -71,186 +61,69 @@ function registerPlanCommand(gitCmd) {
                 spinner.fail('当前目录不是 Git 仓库');
                 return;
             }
-            // 1. 获取最近 10 次提交
-            spinner.text = '正在读取 Git 历史记录...';
-            const commits = await gitService.getRecentCommits(10);
-            const commitContext = commits.length > 0
-                ? commits.map(c => `- ${c.date} [${c.hash.substring(0, 7)}] ${c.message}`).join('\n')
-                : '暂无提交记录';
-            spinner.succeed('已获取 Git 上下文');
-            // 定义两个角色的配置
-            const ARCHITECT_MODEL = options.model || 'Assistant'; // 负责写方案
-            const REVIEWER_MODEL = options.reviewerModel || 'gemini-2.5-flash-lite'; // 负责挑刺
-            // 共享的项目上下文
-            const projectContext = `
-[项目背景 - 最近 Git 提交]
-${commitContext}
-
-[用户需求]
-${userPrompt}
-`;
-            let currentPlan = ""; // 用于存储当前的方案草稿
-            let reviewComments = ""; // 用于存储审查意见
-            console.log(chalk_1.default.bold.cyan('\n🚀 启动双智能体协作引擎...\n'));
-            // --- 阶段 1: 架构师起草初稿 ---
-            spinner.start(`[架构师] ${ARCHITECT_MODEL} 正在起草初步方案...`);
-            const draftPrompt = [
-                {
-                    role: 'system',
-                    content: `你是一个资深软件架构师。请根据 Git 历史确保新功能与现有代码风格一致。
-请基于用户需求输出一份初步的开发计划 (Draft Plan)。
-包含：核心目标、修改文件列表、关键步骤。`
-                },
-                { role: 'user', content: projectContext }
-            ];
-            const draftRes = await (0, llm_1.runLLM)({
-                prompt: { messages: draftPrompt },
-                model: ARCHITECT_MODEL,
-                stream: false,
-                bypassRouter: true
+            spinner.succeed('Git 仓库验证通过');
+            const workflowConfig = {
+                sessionId: Date.now().toString(36) + Math.random().toString(36).substring(2, 11),
+                model: options.model || 'Assistant',
+                capability: CapabilityLevel_1.CapabilityLevel.SEMANTIC
+            };
+            const session = new workflows_1.GitWorkflowSession(workflowConfig);
+            const planWorkflow = new workflows_1.PlanWorkflow(gitService);
+            console.log(chalk_1.default.bold.cyan('\n🚀 启动工作流会话...\n'));
+            spinner.start('[工作流] 正在执行计划阶段...');
+            const result = await session.runPlan(async (input) => planWorkflow.run(input, session.getConfig()), {
+                userPrompt,
+                maxRounds,
+                architectModel: options.model,
+                reviewerModel: options.reviewerModel
             });
-            currentPlan = draftRes.rawText;
-            spinner.succeed(chalk_1.default.blue(`[架构师] 初稿已完成`));
-            // console.log(chalk.gray(currentPlan.substring(0, 100) + '...'));
-            // --- 阶段 2: 循环打磨 ---
-            for (let i = 1; i <= maxRounds; i++) {
-                console.log(chalk_1.default.gray(`\n--- Round ${i}/${maxRounds} ---`));
-                // Step A: 审查员 (Gemini) 评审
-                spinner.start(`[审查员] ${REVIEWER_MODEL} 正在评审方案...`);
-                const reviewPrompt = [
-                    {
-                        role: 'system',
-                        content: `你是一个严格的代码审查员和产品经理。
-你的任务是找出架构师方案中的漏洞、遗漏、安全风险或逻辑错误。
-请简明扼要地列出修改建议。不要重写计划，只给建议。`
-                    },
-                    {
-                        role: 'user',
-                        content: `
-${projectContext}
-
-[待评审的方案]
-${currentPlan}
-`
-                    }
+            if (result.success && result.data) {
+                spinner.succeed('计划执行成功');
+                const filePath = path_1.default.join(process.cwd(), 'todo.md');
+                const metadataLines = [
+                    `> 📅 Generated by Yuangs Git Plan at ${new Date().toLocaleString()}`,
+                    `> 🎯 Context: ${userPrompt}`,
+                    `> 🔧 Capability Level: ${(0, utils_1.getCapabilityLevelDisplay)(result.data.capability.minCapability)}`,
+                    `> ⚙️  Estimated Time: ${result.data.estimatedTime}ms`,
+                    `> 📊 Estimated Tokens: ${result.data.estimatedTokens}`,
+                    '',
                 ];
-                const reviewRes = await (0, llm_1.runLLM)({
-                    prompt: { messages: reviewPrompt },
-                    model: REVIEWER_MODEL,
-                    stream: false,
-                    bypassRouter: true
-                });
-                reviewComments = reviewRes.rawText;
-                spinner.succeed(chalk_1.default.magenta(`[审查员] 已提出修改意见`));
-                console.log(chalk_1.default.gray(`   💬 "${reviewComments.replace(/\n/g, ' ').substring(0, 80)}..."`));
-                // Step B: 架构师 (Assistant) 修正
-                spinner.start(`[架构师] ${ARCHITECT_MODEL} 正在根据意见修订方案...`);
-                const refinePrompt = [
-                    {
-                        role: 'system',
-                        content: `你是一个资深软件架构师。请根据审查员的意见优化你的开发计划。`
-                    },
-                    {
-                        role: 'user',
-                        content: `
-这是你之前的方案：
-${currentPlan}
-
-审查员给出的意见：
-${reviewComments}
-
-请输出修正后的完整方案。`
-                    }
-                ];
-                const refineRes = await (0, llm_1.runLLM)({
-                    prompt: { messages: refinePrompt },
-                    model: ARCHITECT_MODEL,
-                    stream: false,
-                    bypassRouter: true
-                });
-                currentPlan = refineRes.rawText;
-                spinner.succeed(chalk_1.default.blue(`[架构师] 方案已修订`));
+                const fileOutput = metadataLines.join('\n') + result.data.todoMarkdown;
+                fs_1.default.writeFileSync(filePath, fileOutput);
+                console.log('');
+                console.log(chalk_1.default.green(`✅ 规划完成！文件已生成: ${chalk_1.default.bold('todo.md')}`));
+                console.log(chalk_1.default.gray(`👉 你可以使用 'code todo.md' 打开查看`));
+                console.log('');
+                console.log(chalk_1.default.bold.cyan('📊 会话摘要:'));
+                console.log(chalk_1.default.gray(session.getSummary()));
+                session.complete();
             }
-            // 4. 生成最终 todo.md
-            spinner.start('正在生成最终 todo.md 文件...');
-            // 计算任务复杂度和能力需求
-            const diff = await gitService.getDiff();
-            // 对文件列表去重，避免 staged 和 unstaged 中的重复文件被重复计数
-            const allFiles = (0, utils_1.deduplicateFiles)([...diff.files.staged, ...diff.files.unstaged]);
-            // 使用 git diff --numstat 获取准确的行数统计
-            let estimatedTotalLines = 0;
-            try {
-                const numstat = await gitService.getDiffNumstat();
-                // numstat 直接提供准确的 added 和 deleted 行数
-                estimatedTotalLines = numstat.added + numstat.deleted;
-                // 如果 numstat 没有数据（如没有变更），使用文件数估算
-                if (estimatedTotalLines === 0 && allFiles.length > 0) {
-                    estimatedTotalLines = allFiles.length * constants_1.DIFF_ESTIMATION.LINES_PER_FILE_DEFAULT;
+            else {
+                spinner.fail('计划执行失败');
+                if (result.errors && result.errors.length > 0) {
+                    console.log('');
+                    console.log(chalk_1.default.bold.red('❌ 错误详情:'));
+                    result.errors.forEach((error, index) => {
+                        console.log(chalk_1.default.red(`  ${index + 1}. [${error.kind}] ${error.message}`));
+                        if (error.suggestions && error.suggestions.length > 0) {
+                            error.suggestions.forEach(suggestion => {
+                                console.log(chalk_1.default.yellow(`     💡 ${suggestion}`));
+                            });
+                        }
+                    });
+                }
+                if (result.summary) {
+                    console.log('');
+                    console.log(chalk_1.default.gray(`📝 ${result.summary}`));
                 }
             }
-            catch (e) {
-                // numstat 失败，使用更保守的估算值作为后备
-                estimatedTotalLines = allFiles.length * constants_1.DIFF_ESTIMATION.LINES_PER_FILE_FALLBACK;
-            }
-            const costProfile = CostProfile_1.defaultCostProfileCalculator.calculate(allFiles, estimatedTotalLines);
-            const finalPrompt = [
-                {
-                    role: 'system',
-                    content: `你是一个技术文档专家。请将以下开发方案整理为一份标准的 todo.md 文档。
-
-重要要求：
-1. 格式清晰，使用 Markdown Checkbox (- [ ] )。
-2. 包含 [目标]、[文件变更]、[详细步骤]。
-3. 直接输出 Markdown 内容，不要使用 Markdown 代码块 (\`\`\`) 包裹。
-4. 不要包含任何对话式前缀（如"好的"、"这是"）或后缀（如"希望这对你有帮助"）。
-5. 开头直接输出内容，不要有任何问候语或开场白。
-
-能力等级标注：
-- SEMANTIC: 语义理解，需要理解代码意图和设计
-- STRUCTURAL: 结构分析，需要理解代码结构和依赖关系
-- LINE: 行级分析，需要理解具体代码行
-- TEXT: 文本分析，只需要处理文本内容
-- NONE: 无需智能分析
-
-格式示例：
-- [ ] 实现用户认证 [SEMANTIC]
-  - capability: SEMANTIC
-  - fallbackChain: [STRUCTURAL, LINE, TEXT, NONE]`
-                },
-                {
-                    role: 'user',
-                    content: currentPlan
-                }
-            ];
-            const finalResponse = await (0, llm_1.runLLM)({
-                prompt: { messages: finalPrompt },
-                model: 'Assistant',
-                stream: false,
-                bypassRouter: true
-            });
-            const todoContent = finalResponse.rawText;
-            const filePath = path_1.default.join(process.cwd(), 'todo.md');
-            // 使用工具函数清理 LLM 输出
-            const cleanedContent = (0, utils_1.cleanLLMOutput)(todoContent);
-            // 添加能力元数据到文件头
-            const metadataLines = [
-                `> 📅 Generated by Yuangs Git Plan at ${new Date().toLocaleString()}`,
-                `> 🎯 Context: ${userPrompt}`,
-                `> 🔧 Capability Level: ${(0, utils_1.getCapabilityLevelDisplay)(costProfile.requiredCapability)}`,
-                `> ⚙️  Estimated Time: ${costProfile.estimatedTime}ms`,
-                `> 📊 Estimated Tokens: ${costProfile.estimatedTokens}`,
-                '',
-            ];
-            const fileOutput = metadataLines.join('\n') + cleanedContent;
-            fs_1.default.writeFileSync(filePath, fileOutput);
-            spinner.succeed(chalk_1.default.green(`\n✅ 规划完成！文件已生成: ${chalk_1.default.bold('todo.md')}`));
-            console.log(chalk_1.default.gray(`👉 你可以使用 'code todo.md' 打开查看`));
         }
         catch (error) {
-            spinner.fail(chalk_1.default.red(`规划过程中出错: ${error.message}`));
+            spinner.fail(chalk_1.default.red(`执行过程中出错: ${error.message}`));
             if (error instanceof llm_1.AIError) {
                 console.error(chalk_1.default.red(`Status: ${error.statusCode}`));
             }
+            process.exit(1);
         }
     });
 }

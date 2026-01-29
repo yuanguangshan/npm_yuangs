@@ -67,10 +67,10 @@ export function registerAutoCommand(gitCmd: Command) {
                     const autoWorkflow = new AutoWorkflow(
                         gitService,
                         new ContextGatherer(gitService),
-                        new CodeReviewer(gitService, undefined)
+                        new CodeReviewer(gitService)
                     );
-                    return autoWorkflow.run(input, session.getConfig());
-                }, autoInput);
+                    return autoWorkflow.run({...input, ...autoInput}, session.getConfig());
+                });
 
                 if (result.success && result.data) {
                     spinner.succeed('自动执行完成');
