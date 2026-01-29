@@ -22,3 +22,9 @@ coverage/
 .DS_Store
 gcloud init
 .yuangs
+
+# backup files
+*.bak
+
+# code review reports
+git_reviews.md

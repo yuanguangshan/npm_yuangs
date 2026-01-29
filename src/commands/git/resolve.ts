@@ -5,6 +5,7 @@ import path from 'path';
 import { GitService } from '../../core/git/GitService';
 import { ConflictResolver, ConflictResolutionResult } from '../../core/git/ConflictResolver';
 import { DEFAULT_AI_MODEL, SUPPORTED_AI_MODELS } from '../../core/git/constants';
+import { runLLM } from '../../agent/llm';
 import pLimit from 'p-limit';
 
 export function registerResolveCommand(gitCmd: Command) {
@@ -81,7 +82,7 @@ export function registerResolveCommand(gitCmd: Command) {
                             });
 
                             if (result.success) {
-                                taskSpinner.succeed(`解决成功: ${chalk.green(file}`);
+                                taskSpinner.succeed(`解决成功: ${chalk.green(file)})`);
                                 if (result.backupFile && !options.dryRun) {
                                     console.log(chalk.gray(`  └─ 备份已生成: ${path.basename(result.backupFile)}`));
                                 }
