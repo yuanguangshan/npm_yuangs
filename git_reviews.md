@@ -1690,3 +1690,423 @@ Capability-Aware Pipeline 已标记完成，但缺少与其直接关联的文档
 
 [↑ 返回顶部](#)
 
+
+---
+
+## 📋 Code Review - 2026/1/29 10:29:14
+
+**📊 评分:** 👍 82/100  
+**🔧 级别:** STANDARD  
+**🌿 分支:** `main`  
+**💾 提交:** `a1a17a8`  
+**📂 范围:** 未暂存 (2 个文件)  
+
+### 📝 总体评价
+
+此次变更体现了从“命令式脚本 + 多工具拼装”向“工作流抽象（Workflow / Session）”的重大架构升级，整体可维护性和扩展性显著提升。但当前实现在配置校验、错误处理一致性、类型安全以及可测试性方面仍存在明显改进空间，部分隐式行为可能在边界条件下导致不可预期的问题。
+
+### ⚠️ 发现的问题 (7)
+
+#### 1. [WARNING] src/commands/git/auto.ts:34
+
+CLI 选项的默认值在 commander 层和业务层重复定义，可能导致配置漂移。
+
+**💡 建议:** 建议在 commander.option 中仅定义 CLI 默认值，WorkflowConfig / autoInput 中直接信任解析后的 options，或引入统一的配置归一化函数。
+
+<details>
+<summary>代码片段</summary>
+
+```
+.option('-m, --model <model>', '使用的 AI 模型', 'Assistant')
+```
+
+</details>
+
+#### 2. [WARNING] src/commands/git/auto.ts:63
+
+sessionId 使用时间戳 + Math.random 生成，存在碰撞风险且不可复现。
+
+**💡 建议:** 建议使用 uuid v4 或由 GitWorkflowSession 内部负责 sessionId 生成，以减少调用方的责任。
+
+<details>
+<summary>代码片段</summary>
+
+```
+sessionId: Date.now().toString(36) + Math.random().toString(36).substring(2, 11)
+```
+
+</details>
+
+#### 3. [WARNING] src/commands/git/auto.ts:82
+
+CapabilityLevel 被硬编码为 STRUCTURAL，与 CLI 能力等级或用户意图未建立映射关系。
+
+**💡 建议:** 建议通过 CLI 参数或配置文件显式指定 capability，或在此处说明默认策略。
+
+<details>
+<summary>代码片段</summary>
+
+```
+capability: CapabilityLevel.STRUCTURAL
+```
+
+</details>
+
+#### 4. [ERROR] src/commands/git/auto.ts:96
+
+session.runAuto 的回调中动态 new AutoWorkflow，缺乏异常隔离，内部异常可能破坏整个会话状态。
+
+**💡 建议:** 建议在回调内部增加 try-catch，并将异常转换为统一的 WorkflowError 返回，而不是依赖外层 runAuto 行为。
+
+<details>
+<summary>代码片段</summary>
+
+```
+return autoWorkflow.run(input, session.getConfig());
+```
+
+</details>
+
+#### 5. [WARNING] src/commands/git/auto.ts:95
+
+CodeReviewer 构造函数第二个参数传入 undefined，语义不清晰，降低可读性。
+
+**💡 建议:** 建议使用显式的可选参数对象，或提供具名参数 / 工厂方法来表达意图。
+
+<details>
+<summary>代码片段</summary>
+
+```
+new CodeReviewer(gitService, undefined)
+```
+
+</details>
+
+#### 6. [WARNING] src/commands/git/auto.ts:120
+
+result.success 为 false 时，仅打印错误信息，但未调用 session.complete 或 session.abort，可能导致会话资源未正确释放。
+
+**💡 建议:** 建议为 GitWorkflowSession 增加显式的 abort / fail API，并在失败分支中调用。
+
+<details>
+<summary>代码片段</summary>
+
+```
+spinner.fail('自动执行失败');
+```
+
+</details>
+
+#### 7. [WARNING] src/commands/git/auto.ts:109
+
+result.data 的结构依赖隐式约定（executedTasks、filesModified 等），缺乏类型保护。
+
+**💡 建议:** 建议为 runAuto 返回值定义明确的 Result 泛型接口，并在此处使用 TypeScript 进行结构约束。
+
+<details>
+<summary>代码片段</summary>
+
+```
+if (result.success && result.data) {
+```
+
+</details>
+
+### 👍 优点
+
+- ✅ 显著降低了 auto 命令的圈复杂度，核心流程从数百行缩减为清晰的工作流调用
+- ✅ 引入 AutoWorkflow / GitWorkflowSession，体现了良好的领域建模和分层设计意识
+- ✅ CLI 层与业务执行层职责更加清晰，命令代码不再直接操作 todo、git、review 等细节
+- ✅ 统一的 result / errors 输出结构，有利于后续 UI 或日志系统集成
+- ✅ ContextGatherer、CodeReviewer 通过依赖注入方式使用，测试替换成本降低
+
+### 💡 建议
+
+- 为 GitWorkflowSession / AutoWorkflow 编写集成测试，重点覆盖成功、失败、部分成功三种路径
+- 引入统一的 ConfigSchema（如 zod / yup）对 CLI 输入进行校验和归一化
+- 将 spinner / console 输出抽象为 UIAdapter，以便未来支持非 CLI 环境（如 Web / TUI）
+- 为 result.errors 定义标准错误码体系，避免仅依赖字符串 message
+- 在 README 或开发文档中补充新旧 auto 工作流的设计差异和迁移说明
+
+[↑ 返回顶部](#)
+
+
+---
+
+## 📋 Code Review - 2026/1/29 10:50:27
+
+**📊 评分:** 👍 82/100  
+**🔧 级别:** STANDARD  
+**🌿 分支:** `main`  
+**💾 提交:** `a1a17a8`  
+**📂 范围:** 未暂存 (3 个文件)  
+
+### 📝 总体评价
+
+此次变更是一次明显的架构级重构，从高度命令式、过程化的实现升级为基于 Workflow / Session 的抽象模型，显著改善了可维护性、可扩展性和职责分离。但在配置一致性、异常隔离、类型安全和会话生命周期管理方面仍存在一些设计和实现层面的不足，需要进一步完善。
+
+### ⚠️ 发现的问题 (7)
+
+#### 1. [WARNING] src/commands/git/auto.ts:34
+
+CLI 默认值在 commander 层与业务配置中重复定义，存在配置漂移风险。
+
+**💡 建议:** 建议只在 commander.option 中定义默认值，在 WorkflowConfig / autoInput 中直接使用解析后的 options，或引入统一的配置归一化函数。
+
+<details>
+<summary>代码片段</summary>
+
+```
+.option('-m, --model <model>', '使用的 AI 模型', 'Assistant')
+```
+
+</details>
+
+#### 2. [WARNING] src/commands/git/auto.ts:63
+
+sessionId 使用时间戳 + Math.random 生成，存在碰撞风险且不可复现。
+
+**💡 建议:** 建议使用 uuid v4，或将 sessionId 的生成职责下沉到 GitWorkflowSession 内部。
+
+<details>
+<summary>代码片段</summary>
+
+```
+sessionId: Date.now().toString(36) + Math.random().toString(36).substring(2, 11)
+```
+
+</details>
+
+#### 3. [WARNING] src/commands/git/auto.ts:82
+
+CapabilityLevel 被硬编码为 STRUCTURAL，未与 CLI 参数或用户意图建立映射。
+
+**💡 建议:** 建议通过 CLI 参数显式指定 capability，或在代码中清晰说明默认策略及其适用场景。
+
+<details>
+<summary>代码片段</summary>
+
+```
+capability: CapabilityLevel.STRUCTURAL
+```
+
+</details>
+
+#### 4. [ERROR] src/commands/git/auto.ts:96
+
+session.runAuto 回调中直接 new AutoWorkflow，缺乏异常隔离，内部异常可能破坏会话状态。
+
+**💡 建议:** 建议在回调内部增加 try-catch，并将异常转换为统一的 WorkflowError 返回。
+
+<details>
+<summary>代码片段</summary>
+
+```
+return autoWorkflow.run(input, session.getConfig());
+```
+
+</details>
+
+#### 5. [WARNING] src/commands/git/auto.ts:95
+
+CodeReviewer 构造函数第二个参数传入 undefined，语义不清晰。
+
+**💡 建议:** 建议使用显式的可选参数对象、具名参数，或提供工厂方法以提升可读性。
+
+<details>
+<summary>代码片段</summary>
+
+```
+new CodeReviewer(gitService, undefined)
+```
+
+</details>
+
+#### 6. [WARNING] src/commands/git/auto.ts:120
+
+执行失败时仅打印错误信息，未显式结束或中止会话，可能导致资源未释放。
+
+**💡 建议:** 建议为 GitWorkflowSession 增加 abort / fail API，并在失败分支中调用。
+
+<details>
+<summary>代码片段</summary>
+
+```
+spinner.fail('自动执行失败');
+```
+
+</details>
+
+#### 7. [WARNING] src/commands/git/auto.ts:109
+
+result.data 的结构依赖隐式约定，缺乏类型保护。
+
+**💡 建议:** 建议为 runAuto 返回值定义明确的 Result<T> 泛型接口，并在此处使用 TypeScript 进行结构约束。
+
+<details>
+<summary>代码片段</summary>
+
+```
+if (result.success && result.data) {
+```
+
+</details>
+
+### 👍 优点
+
+- ✅ 大幅降低了 auto 命令的圈复杂度，核心流程更加清晰
+- ✅ 通过 AutoWorkflow / GitWorkflowSession 体现了良好的领域建模和分层设计
+- ✅ CLI 层与业务执行层职责分离明显，命令代码不再关心具体实现细节
+- ✅ 依赖注入 ContextGatherer、CodeReviewer，有利于测试替换和扩展
+- ✅ 统一的 result / errors 输出结构，为后续 UI 或日志系统打下基础
+
+### 💡 建议
+
+- 为 GitWorkflowSession 和 AutoWorkflow 编写集成测试，覆盖成功、失败和部分成功路径
+- 引入配置校验与归一化方案（如 zod / yup），集中处理 CLI 输入
+- 将 spinner 和 console 输出抽象为 UIAdapter，以支持非 CLI 场景
+- 为错误体系引入标准错误码，而非仅依赖字符串 message
+- 在 README 或开发文档中补充新旧 auto 工作流的设计差异与迁移说明
+
+[↑ 返回顶部](#)
+
+
+---
+
+## 📋 Code Review - 2026/1/29 10:57:13
+
+**📊 评分:** 👍 82/100  
+**🔧 级别:** STANDARD  
+**🌿 分支:** `main`  
+**💾 提交:** `a1a17a8`  
+**📂 范围:** 未暂存 (3 个文件)  
+
+### 📝 总体评价
+
+此次变更是一次明显的架构级重构，从高度命令式、过程化实现升级为基于 Workflow / Session 的抽象模型，显著提升了可维护性、可扩展性和职责分离程度。但在配置一致性、异常隔离、会话生命周期管理和类型安全方面仍存在一些语义层面的设计缺陷，需要进一步完善以支撑长期演进。
+
+### ⚠️ 发现的问题 (7)
+
+#### 1. [WARNING] src/commands/git/auto.ts:34
+
+CLI 选项默认值在 commander 层与业务配置中重复定义，存在配置漂移风险。
+
+**💡 建议:** 建议仅在 commander.option 中定义默认值，在 WorkflowConfig 或 autoInput 中直接信任解析后的 options，或引入统一的配置归一化函数。
+
+<details>
+<summary>代码片段</summary>
+
+```
+.option('-m, --model <model>', '使用的 AI 模型', 'Assistant')
+```
+
+</details>
+
+#### 2. [WARNING] src/commands/git/auto.ts:63
+
+sessionId 使用时间戳 + Math.random 生成，存在碰撞风险且不可复现。
+
+**💡 建议:** 建议使用 uuid v4，或将 sessionId 的生成职责下沉到 GitWorkflowSession 内部以减少调用方责任。
+
+<details>
+<summary>代码片段</summary>
+
+```
+sessionId: Date.now().toString(36) + Math.random().toString(36).substring(2, 11)
+```
+
+</details>
+
+#### 3. [WARNING] src/commands/git/auto.ts:82
+
+CapabilityLevel 被硬编码为 STRUCTURAL，未与 CLI 参数或用户意图建立映射。
+
+**💡 建议:** 建议通过 CLI 参数或配置文件显式指定 capability，或在此处清晰说明默认策略及其适用场景。
+
+<details>
+<summary>代码片段</summary>
+
+```
+capability: CapabilityLevel.STRUCTURAL
+```
+
+</details>
+
+#### 4. [ERROR] src/commands/git/auto.ts:96
+
+session.runAuto 回调中直接实例化并执行 AutoWorkflow，缺乏异常隔离，内部异常可能破坏会话状态。
+
+**💡 建议:** 建议在回调内部增加 try-catch，将异常转换为统一的 WorkflowError 或失败结果返回，而不是依赖外层 runAuto 行为。
+
+<details>
+<summary>代码片段</summary>
+
+```
+return autoWorkflow.run(input, session.getConfig());
+```
+
+</details>
+
+#### 5. [WARNING] src/commands/git/auto.ts:95
+
+CodeReviewer 构造函数第二个参数传入 undefined，语义不清晰，降低代码可读性。
+
+**💡 建议:** 建议使用显式的可选参数对象、具名参数，或提供工厂方法来表达调用意图。
+
+<details>
+<summary>代码片段</summary>
+
+```
+new CodeReviewer(gitService, undefined)
+```
+
+</details>
+
+#### 6. [WARNING] src/commands/git/auto.ts:120
+
+执行失败时仅打印错误信息，未显式结束或中止会话，可能导致会话资源未正确释放。
+
+**💡 建议:** 建议为 GitWorkflowSession 增加 abort / fail API，并在失败分支中显式调用。
+
+<details>
+<summary>代码片段</summary>
+
+```
+spinner.fail('自动执行失败');
+```
+
+</details>
+
+#### 7. [WARNING] src/commands/git/auto.ts:109
+
+result.data 的结构依赖隐式约定，缺乏类型保护，容易在后续演进中引入运行时错误。
+
+**💡 建议:** 建议为 runAuto 返回值定义明确的 Result<T> 泛型接口，并在此处通过 TypeScript 进行结构约束。
+
+<details>
+<summary>代码片段</summary>
+
+```
+if (result.success && result.data) {
+```
+
+</details>
+
+### 👍 优点
+
+- ✅ 通过 AutoWorkflow / GitWorkflowSession 明显降低了 auto 命令的圈复杂度
+- ✅ CLI 层与业务执行层职责分离清晰，命令代码不再直接操作底层细节
+- ✅ 引入工作流和会话概念，体现了良好的领域建模和架构演进方向
+- ✅ ContextGatherer、CodeReviewer 通过依赖注入使用，测试替换成本降低
+- ✅ 统一的 result / errors 输出结构，为未来 UI 或日志系统集成奠定基础
+
+### 💡 建议
+
+- 为 GitWorkflowSession 和 AutoWorkflow 编写集成测试，覆盖成功、失败和部分成功路径
+- 引入配置校验与归一化方案（如 zod / yup），集中处理 CLI 输入
+- 将 spinner / console 输出抽象为 UIAdapter，以支持非 CLI 场景（如 Web / TUI）
+- 为错误体系设计标准错误码，而不是仅依赖字符串 message
+- 在 README 或开发文档中补充新旧 auto 工作流的设计差异和迁移说明
+
+[↑ 返回顶部](#)
+
