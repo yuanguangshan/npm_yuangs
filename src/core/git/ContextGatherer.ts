@@ -23,9 +23,11 @@ export class ContextGatherer {
     private MAX_FILE_CONTENT_LENGTH = 10000; // 单个文件读取上限
     private MAX_TOTAL_CONTEXT_LENGTH = 50000; // 总上限
     private SUMMARY_THRESHOLD = 2000; // 文件大小超过此阈值时进行摘要
+    private astParser: EnhancedASTParser; // Reuse AST parser instance
 
     constructor(private gitService: GitService) {
-        // Initialize AST parser for semantic summarization
+        // Initialize AST parser for semantic summarization (created once to avoid performance issues)
+        this.astParser = new EnhancedASTParser();
     }
 
     /**
@@ -208,7 +210,6 @@ export class ContextGatherer {
 
         // 3. 读取内容 (带上限)
         let currentTotalLength = 0;
-        const astParser = new EnhancedASTParser();
 
         for (const filePath of potentialPaths) {
             if (currentTotalLength > this.MAX_TOTAL_CONTEXT_LENGTH) break;
@@ -226,7 +227,7 @@ export class ContextGatherer {
                     if (isReferenceOnly && isTooLarge && isTSFile) {
                         // Generate semantic summary for large TS files that are not directly referenced
                         try {
-                            content = astParser.generateSummary(filePath, content);
+                            content = this.astParser.generateSummary(filePath, content);
                             console.log(`[Economy] ✂️  Summarized ${filePath} to save tokens.`);
                         } catch (error) {
                             console.warn(`[ContextGatherer] 警告：摘要生成失败 "${filePath}": ${(error as Error).message}`);

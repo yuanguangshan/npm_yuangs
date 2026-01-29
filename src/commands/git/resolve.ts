@@ -82,7 +82,7 @@ export function registerResolveCommand(gitCmd: Command) {
                             });
 
                             if (result.success) {
-                                taskSpinner.succeed(`解决成功: ${chalk.green(file)})`);
+                                taskSpinner.succeed(`解决成功: ${chalk.green(file)}`);
                                 if (result.backupFile && !options.dryRun) {
                                     console.log(chalk.gray(`  └─ 备份已生成: ${path.basename(result.backupFile)}`));
                                 }
