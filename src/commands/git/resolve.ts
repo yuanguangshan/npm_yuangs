@@ -34,6 +34,22 @@ export function registerResolveCommand(gitCmd: Command) {
                 spinner.warn(`非官方推荐模型: ${chalk.yellow(options.model)} (可能解析效果不佳)`);
             }
 
+            // 额外验证模型是否真实可用
+            try {
+                await runLLM({
+                    prompt: {
+                        system: "请回复 'OK'",
+                        messages: [{ role: 'user', content: '测试模型连接' }]
+                    },
+                    model: options.model,
+                    stream: false
+                });
+            } catch (error: unknown) {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                spinner.fail(`模型不可用: ${options.model} (${errorMessage})`);
+                return;
+            }
+
             try {
                 if (!(await gitService.isGitRepository())) {
                     spinner.fail('当前目录不是 Git 仓库');
@@ -50,7 +66,7 @@ export function registerResolveCommand(gitCmd: Command) {
                 spinner.succeed(`发现 ${conflictedFiles.length} 个冲突文件:\n` +
                     conflictedFiles.map(f => chalk.red(`  • ${f}`)).join('\n') + '\n');
 
-                const concurrency = parseInt(options.concurrency, 10) || 2;
+                const concurrency = Math.max(1, Math.min(10, parseInt(options.concurrency, 10) || 2)); // 限制并发数在1-10之间
                 const limit = pLimit(concurrency);
                 const results: ConflictResolutionResult[] = [];
 
@@ -65,7 +81,7 @@ export function registerResolveCommand(gitCmd: Command) {
                             });
 
                             if (result.success) {
-                                taskSpinner.succeed(`解决成功: ${chalk.green(file)}`);
+                                taskSpinner.succeed(`解决成功: ${chalk.green(file}`);
                                 if (result.backupFile && !options.dryRun) {
                                     console.log(chalk.gray(`  └─ 备份已生成: ${path.basename(result.backupFile)}`));
                                 }
@@ -82,14 +98,23 @@ export function registerResolveCommand(gitCmd: Command) {
                             return result;
                         } catch (err: any) {
                             taskSpinner.fail(`执行异常: ${chalk.red(file)}`);
-                            console.log(chalk.red(`     错误: ${err.message}`));
-                            return { file, success: false, error: err.message };
+                            console.log(chalk.red(`     错误: ${err.message || String(err)}`));
+                            return { file, success: false, error: err.message || String(err) };
                         }
                     })
                 );
 
-                const resolvedResults = await Promise.all(tasks);
-                results.push(...resolvedResults);
+                // 使用更安全的 Promise.allSettled 替代，确保单个文件失败不会影响其他文件
+                const promiseResults = await Promise.allSettled(tasks);
+
+                for (const result of promiseResults) {
+                    if (result.status === 'fulfilled') {
+                        results.push(result.value);
+                    } else {
+                        // 处理 rejected 的情况
+                        console.log(chalk.red(`     任务执行异常: ${result.reason.message || String(result.reason)}`));
+                    }
+                }
 
                 const successCount = results.filter(r => r.success).length;
                 console.log(chalk.bold(`\n✨ 完成！成功解决 ${successCount}/${results.length} 个文件的冲突\n`));
@@ -103,7 +128,7 @@ export function registerResolveCommand(gitCmd: Command) {
                 }
 
             } catch (error: unknown) {
-                const errMsg = error instanceof Error ? error.message : String(error);
+                const errMsg = error instanceof Error ? error.message : (typeof error === 'string' ? error : String(error));
                 spinner.fail(`执行过程中出现错误: ${errMsg}`);
             }
         });

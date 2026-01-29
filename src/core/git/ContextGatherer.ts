@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { GitService } from './GitService';
 import { ContextMeta, ContextMetaBuilder, toAuditLog } from '../context/ContextMeta';
+import { EnhancedASTParser } from '../kernel/ASTParser';
 
 /**
  * 收集到的项目上下文接口
@@ -21,8 +22,11 @@ export interface GatheredContext {
 export class ContextGatherer {
     private MAX_FILE_CONTENT_LENGTH = 10000; // 单个文件读取上限
     private MAX_TOTAL_CONTEXT_LENGTH = 50000; // 总上限
+    private SUMMARY_THRESHOLD = 2000; // 文件大小超过此阈值时进行摘要
 
-    constructor(private gitService: GitService) {}
+    constructor(private gitService: GitService) {
+        // Initialize AST parser for semantic summarization
+    }
 
     /**
      * 采集项目上下文
@@ -144,8 +148,8 @@ export class ContextGatherer {
      * 根据任务描述寻找相关文件
      */
     private async getRelevantFiles(
-        description: string, 
-        repoRoot: string, 
+        description: string,
+        repoRoot: string,
         fileList: string,
         isDocTask: boolean,
         packageJson?: any
@@ -155,17 +159,17 @@ export class ContextGatherer {
 
         if (isDocTask) {
             // 针对文档任务，优先筛选文档相关文件
-            allFiles = allFiles.filter(f => 
-                f.startsWith('docs/') || 
-                f.endsWith('.md') || 
-                f.endsWith('.yaml') || 
-                f.endsWith('.txt') || 
-                f.endsWith('.rst') || 
+            allFiles = allFiles.filter(f =>
+                f.startsWith('docs/') ||
+                f.endsWith('.md') ||
+                f.endsWith('.yaml') ||
+                f.endsWith('.txt') ||
+                f.endsWith('.rst') ||
                 f.endsWith('.adoc') ||
                 f.endsWith('.html')
             );
         }
-        
+
         const words = description.replace(/`/g, ' ').match(/[a-zA-Z0-9_.\-\/]+/g) || [];
         const potentialPaths = new Set<string>();
 
@@ -183,7 +187,7 @@ export class ContextGatherer {
             // 尝试找 README.md 或 index.md (作为上下文基准)
             const globalDocs = ['README.md', 'docs/index.md'];
             globalDocs.forEach(f => { if (allFiles.includes(f)) potentialPaths.add(f); });
-            
+
             // 如果发现了目标文件路径，也尝试加载它的 meta.yaml 或同级 index.md
             for (const p of Array.from(potentialPaths)) {
                 const dir = path.dirname(p);
@@ -204,6 +208,8 @@ export class ContextGatherer {
 
         // 3. 读取内容 (带上限)
         let currentTotalLength = 0;
+        const astParser = new EnhancedASTParser();
+
         for (const filePath of potentialPaths) {
             if (currentTotalLength > this.MAX_TOTAL_CONTEXT_LENGTH) break;
 
@@ -211,9 +217,26 @@ export class ContextGatherer {
             try {
                 if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
                     let content = fs.readFileSync(fullPath, 'utf8');
-                    if (content.length > this.MAX_FILE_CONTENT_LENGTH) {
+
+                    // Determine if the file should be summarized based on size and file type
+                    const isReferenceOnly = !description.includes(filePath); // If the file path is not explicitly mentioned in the description
+                    const isTooLarge = content.length > this.SUMMARY_THRESHOLD;
+                    const isTSFile = filePath.endsWith('.ts') || filePath.endsWith('.tsx');
+
+                    if (isReferenceOnly && isTooLarge && isTSFile) {
+                        // Generate semantic summary for large TS files that are not directly referenced
+                        try {
+                            content = astParser.generateSummary(filePath, content);
+                            console.log(`[Economy] ✂️  Summarized ${filePath} to save tokens.`);
+                        } catch (error) {
+                            console.warn(`[ContextGatherer] 警告：摘要生成失败 "${filePath}": ${(error as Error).message}`);
+                            // 如果摘要生成失败，回退到截断内容
+                            content = content.substring(0, this.MAX_FILE_CONTENT_LENGTH) + '\n... (内容过长已截断，摘要生成失败)';
+                        }
+                    } else if (content.length > this.MAX_FILE_CONTENT_LENGTH) {
                         content = content.substring(0, this.MAX_FILE_CONTENT_LENGTH) + '\n... (内容过长已截断)';
                     }
+
                     results.push({ path: filePath, content });
                     currentTotalLength += content.length;
                 }

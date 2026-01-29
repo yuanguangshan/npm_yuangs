@@ -2360,3 +2360,307 @@ expect(calcTotal?.jsDoc).toContain('@param');
 
 [↑ 返回顶部](#)
 
+
+---
+
+## 📋 Code Review - 2026/1/29 18:51:58
+
+**📊 评分:** 👍 82/100  
+**🔧 级别:** STANDARD  
+**🌿 分支:** `main`  
+**💾 提交:** `caf9196`  
+**📂 范围:** 暂存区 (5 个文件)  
+
+### 📝 总体评价
+
+本次代码变更引入了一项非常有价值的功能：对大型 TypeScript 文件进行语义摘要，以优化 LLM 上下文的 token 使用。这个设计思路非常出色，能够显著提升系统的效率和效果。然而，在实现细节和最佳实践方面，存在几处需要改进的地方，包括 AST Parser 的实例化方式、对 JSDoc 的保留、以及一些错误处理和日志规范。
+
+### ⚠️ 发现的问题 (6)
+
+#### 1. [ERROR] src/core/git/ContextGatherer.ts:204
+
+EnhancedASTParser 被重复实例化
+
+**💡 建议:** 目前 `EnhancedASTParser` 在 `getRelevantFiles` 方法的每次调用中都会被重新实例化。如果 `EnhancedASTParser` 的构造函数或其内部状态涉及开销较大的操作（例如初始化 TypeScript Compiler API），这将导致性能浪费。建议将其作为 `ContextGatherer` 类的私有成员，并在 `ContextGatherer` 的构造函数中只实例化一次。
+
+<details>
+<summary>代码片段</summary>
+
+```
+const astParser = new EnhancedASTParser();
+```
+
+</details>
+
+#### 2. [ERROR] src/core/kernel/ASTParser.ts:560
+
+摘要功能未保留 JSDoc 注释
+
+**💡 建议:** 在 `generateSummary` 方法中，函数的 JSDoc 注释并未被显式提取并包含在摘要中，尽管需求（'仅保留 Export 声明和 JSDoc'）中明确提到了这一点。请修改 `generateSummary` 方法，在生成函数、方法、属性等声明的摘要时，使用 `ts.getJSDocTags` 或 `ts.getJSDocText` 来提取并保留相关的 JSDoc 注释。
+
+<details>
+<summary>代码片段</summary>
+
+```
+summary += `${signature};
+`
+```
+
+</details>
+
+#### 3. [WARNING] src/core/git/ContextGatherer.ts:213
+
+文件相关性判断的启发式方法可能过于简单
+
+**💡 建议:** `isReferenceOnly = !description.includes(filePath)` 这个逻辑可能过于简单。一个文件即使在任务描述中没有明确提及其路径，也可能在语义上高度相关。考虑引入更复杂的启发式方法（例如，基于关键字匹配、文件类型与任务类型的关联、或使用更智能的嵌入式搜索）来判断文件的相关性，或提供配置项允许用户手动指定相关文件。
+
+<details>
+<summary>代码片段</summary>
+
+```
+const isReferenceOnly = !description.includes(filePath);
+```
+
+</details>
+
+#### 4. [WARNING] src/core/git/ContextGatherer.ts:219
+
+缺少对 `astParser.generateSummary` 方法的错误处理
+
+**💡 建议:** 如果 `astParser.generateSummary` 在处理某个文件时遇到异常（例如，TS 文件格式错误导致 AST 解析失败），当前代码不会捕获此错误。建议在调用 `astParser.generateSummary` 时添加 `try-catch` 块，以便在摘要生成失败时能够优雅地回退（例如，进行普通截断）或记录错误。
+
+<details>
+<summary>代码片段</summary>
+
+```
+content = astParser.generateSummary(filePath, content);
+```
+
+</details>
+
+#### 5. [INFO] src/core/git/ContextGatherer.ts:220
+
+直接使用 `console.log` 进行日志输出
+
+**💡 建议:** 在生产环境中，建议使用专业的日志库（如 Winston, Pino），以便更好地控制日志级别、格式、输出目标和性能。这也有助于在部署后更方便地管理和分析日志。
+
+<details>
+<summary>代码片段</summary>
+
+```
+console.log(`[Economy] ✂️ Summarized ${filePath} to save tokens.`);
+```
+
+</details>
+
+#### 6. [INFO] src/core/kernel/ASTParser.ts.bak
+
+.bak 文件不应被纳入版本控制
+
+**💡 建议:** 项目中出现了 `.bak` 备份文件（`src/core/kernel/ASTParser.ts.bak`）。这类文件通常不应提交到版本控制系统。请确保 `.gitignore` 文件中包含 `*.bak` 或更具体的忽略规则，以避免将来再次提交。
+
+<details>
+<summary>代码片段</summary>
+
+```
+diff --git a/src/core/kernel/ASTParser.ts.bak b/src/core/kernel/ASTParser.ts.bak
+```
+
+</details>
+
+### 👍 优点
+
+- ✅ **优秀的 Token 经济策略**：引入语义摘要功能，对于 LLM 应用而言，能够显著减少上下文长度，降低成本并提高处理效率，是极具价值的设计。
+- ✅ **智能的摘要逻辑**：通过 `isReferenceOnly`, `isTooLarge`, `isTSFile` 等条件组合，智能判断何时进行摘要，避免了不必要的处理，并专注于对 TypeScript 文件进行深度处理。
+- ✅ **AST 利用得当**：`EnhancedASTParser` 对 TypeScript Compiler API 的运用准确有效，能够精确解析代码结构，提取关键信息（如导出声明和签名）。
+- ✅ **代码结构清晰**：`generateSummary` 方法针对不同类型的 AST 节点（函数、类、接口、变量、枚举）有清晰的处理逻辑，可读性良好。
+
+### 💡 建议
+
+- **优化 AST Parser 实例化**：将 `EnhancedASTParser` 作为 `ContextGatherer` 的成员变量，在构造函数中初始化，避免重复开销。
+- **确保 JSDoc 保留**：完善 `generateSummary` 方法，在摘要中包含对应的 JSDoc 注释，以充分保留语义信息。
+- **增强文件相关性判断**：评估和改进 `isReferenceOnly` 的判断逻辑，使其更智能地识别语义相关文件。
+- **强化错误处理机制**：为 `generateSummary` 方法添加专门的 `try-catch` 块，提升系统的鲁棒性。
+- **统一日志管理**：引入专业的日志库，提升日志的可维护性和分析能力。
+- **清理 `.bak` 文件**：将 `.bak` 文件添加到 `.gitignore` 中，确保版本控制的整洁。
+- **考虑测试用例**：为 `generateSummary` 方法添加单元测试，覆盖不同类型的 TypeScript 声明和边界情况，确保摘要的准确性和健壮性。
+
+[↑ 返回顶部](#)
+
+
+---
+
+## 📋 Code Review - 2026/1/29 19:02:05
+
+**📊 评分:** 🌟 92/100  
+**🔧 级别:** STANDARD  
+**🌿 分支:** `main`  
+**💾 提交:** `caf9196`  
+**📂 范围:** 未暂存 (6 个文件)  
+
+### 📝 总体评价
+
+本次代码变更整体质量高，在LLM模型连接验证、并发控制、错误处理和TypeScript语法校验方面都有显著增强，提升了系统的鲁棒性和智能化水平。尤其值得称赞的是对`Promise.allSettled`的采用和高级语法校验的引入。但也存在一个路径解析的潜在Bug，以及一些需要优化的最佳实践。
+
+### ⚠️ 发现的问题 (3)
+
+#### 1. [ERROR] src/core/git/semantic/SemanticDiffEngine.ts:50
+
+文件路径提取逻辑可能存在截断错误
+
+**💡 建议:** 在 `extractFilePaths` 方法中，当从 `---` 或 `+++` 行提取路径并去除 `a/` 或 `b/` 前缀时，`substring(4)` 的逻辑是错误的。`pathStr` 此时应始终以 `a/` 或 `b/` 开头（因为已过滤 `/dev/null`）。因此，应统一使用 `pathStr.substring(2)` 来去除前缀。或者使用更通用的 `pathStr.replace(/^[ab]//, '')`。
+
+<details>
+<summary>代码片段</summary>
+
+```
+const cleanPath = pathStr.startsWith('b/') ? pathStr.substring(2) : pathStr.substring(4);
+```
+
+</details>
+
+#### 2. [INFO] src/commands/git/resolve.ts:43
+
+错误捕获类型不一致
+
+**💡 建议:** 在 `registerResolveCommand` 函数中，第一个 `try-catch` 块（用于验证模型可用性）的 `catch` 语句使用了 `error: any`。为了保持与文件内其他 `catch` 块以及整个项目（如 `ConflictResolver.ts`）的风格一致性，建议统一使用 `catch (error: unknown)` 并进行类型守卫（例如 `error instanceof Error ? error.message : String(error)`）。
+
+<details>
+<summary>代码片段</summary>
+
+```
+        } catch (error: any) {
+```
+
+</details>
+
+#### 3. [WARNING] git_reviews.md:1
+
+代码审查报告作为Markdown文件直接提交版本控制
+
+**💡 建议:** 将详细的代码审查报告（如本文件所示）作为Markdown文件直接提交到代码仓库中，可能不是最理想的长期实践。随着项目发展，此文件会变得非常庞大且难以管理，不利于自动化分析或查询。建议考虑使用专门的代码审查工具（如 GitHub/GitLab Code Review 功能、Gerrit 等），或将审查结果集成到 Issue Tracker 中。如果此文件仅用于演示或临时记录，请明确其目的和生命周期。
+
+<details>
+<summary>代码片段</summary>
+
+```
+diff --git a/git_reviews.md b/git_reviews.md
+```
+
+</details>
+
+### 👍 优点
+
+- ✅ **完善的LLM模型可用性验证**：在执行核心任务前，增加了对LLM模型连接的预检查，有效避免了因模型不可用而导致的后续失败，提升了用户体验和系统健壮性。
+- ✅ **智能的并发数限制**：对 `concurrency` 参数进行了合理的范围限制（1-10），防止用户设置过高或过低的值，有效控制了资源消耗和任务执行效率。
+- ✅ **增强的批处理错误处理**：将 `Promise.all` 替换为 `Promise.allSettled`，确保在处理多个冲突文件时，单个文件的失败不会中断整个批处理过程，大幅提升了系统的容错性。
+- ✅ **高级TypeScript语法校验**：引入了基于TypeScript Compiler API的语义级语法校验 (`validateAdvancedSyntax`)，能够更准确地识别AI生成代码中的潜在语法错误，对于保持代码质量至关重要。
+- ✅ **全面且健壮的错误信息处理**：在多个 `catch` 块中都使用了 `error instanceof Error ? error.message : (typeof error === 'string' ? error : String(error))` 或类似的逻辑，确保了无论何种类型的错误都能提供有意义的错误信息。
+- ✅ **改进的Diff解析逻辑**：`SemanticDiffEngine` 中新增的 `validateDiffFormat` 提供了基本的diff格式校验，并且重构了 `extractFilePaths` 以更可靠地从diff头部信息中解析文件路径，提高了对不同diff格式的适应性。
+
+### 💡 建议
+
+- **采纳Markdown报告中的建议**：`git_reviews.md` 中列出的其他建议（例如：优化AST Parser实例化、保留JSDoc、改进文件相关性判断、`generateSummary`的错误处理、使用专业日志库、清理`.bak`文件）应被视为高优先级任务，以进一步提升代码质量和性能。
+- **增加单元测试覆盖**：为 `ConflictResolver.ts` 中的 `validateAdvancedSyntax` 和 `SemanticDiffEngine.ts` 中的 `extractFilePaths` 方法添加全面的单元测试。这对于确保其在各种边界条件（如不同文件类型、不同语法错误场景、各种diff格式）下的正确性至关重要。
+- **统一日志输出**：正如 `git_reviews.md` 中所指出的，在整个项目中统一使用专业的日志库（如 Winston, Pino），替换现有的 `console.log`，以便更好地管理日志级别、格式和输出目标。
+
+[↑ 返回顶部](#)
+
+
+---
+
+## 📋 Code Review - 2026/1/29 19:05:52
+
+**📊 评分:** 👍 85/100  
+**🔧 级别:** STANDARD  
+**🌿 分支:** `main`  
+**💾 提交:** `caf9196`  
+**📂 范围:** 未暂存 (6 个文件)  
+
+### 📝 总体评价
+
+本次代码变更在多个方面显著提升了系统的鲁棒性、智能化水平和用户体验。通过引入LLM模型可用性验证、并发控制、批处理错误增强（Promise.allSettled）以及TypeScript高级语法校验，代码质量和功能稳定性均有显著进步。但在文件路径解析逻辑中存在一处关键性潜在Bug，部分错误捕获类型不一致，并且以Markdown文件形式直接管理代码审查报告的实践值得商榷。
+
+### ⚠️ 发现的问题 (4)
+
+#### 1. [ERROR] src/core/git/semantic/SemanticDiffEngine.ts:50
+
+文件路径提取逻辑可能存在截断错误
+
+**💡 建议:** 根据 `git_reviews.md` 中指出的问题，`extractFilePaths` 方法在从 `---` 或 `+++` 行提取路径并去除 `a/` 或 `b/` 前缀时，`pathStr.substring(4)` 的逻辑是错误的。`pathStr` 此时应始终以 `a/` 或 `b/` 开头。因此，应统一使用 `pathStr.substring(2)` 来去除前缀，或使用更通用的 `pathStr.replace(/^[ab]\//, '')`。
+
+<details>
+<summary>代码片段</summary>
+
+```
+const cleanPath = pathStr.startsWith('b/') ? pathStr.substring(2) : pathStr.substring(4);
+```
+
+</details>
+
+#### 2. [WARNING] git_reviews.md:1
+
+代码审查报告作为Markdown文件直接提交版本控制
+
+**💡 建议:** 将详细的代码审查报告作为Markdown文件直接提交到代码仓库中，随着项目发展会变得非常庞大且难以管理，不利于自动化分析或查询。建议考虑使用专门的代码审查工具（如 GitHub/GitLab Code Review 功能、Gerrit 等），或将审查结果集成到 Issue Tracker 中。如果此文件仅用于演示或临时记录，请明确其目的和生命周期。
+
+<details>
+<summary>代码片段</summary>
+
+```
+diff --git a/git_reviews.md b/git_reviews.md
+```
+
+</details>
+
+#### 3. [INFO] src/commands/git/resolve.ts:43
+
+错误捕获类型不一致
+
+**💡 建议:** 在 `registerResolveCommand` 函数中，第一个 `try-catch` 块（用于验证模型可用性）的 `catch` 语句使用了 `error: any`。为了保持与文件内其他 `catch` 块以及整个项目（如 `ConflictResolver.ts`）的风格一致性，建议统一使用 `catch (error: unknown)` 并进行类型守卫（例如 `error instanceof Error ? error.message : String(error)`）。
+
+<details>
+<summary>代码片段</summary>
+
+```
+        } catch (error: any) {
+```
+
+</details>
+
+#### 4. [INFO] src/commands/git/resolve.ts:65
+
+`taskSpinner.succeed` 消息中缺少闭括号
+
+**💡 建议:** 在成功消息字符串中，`chalk.green(file)` 后缺少一个闭括号。应修改为 `taskSpinner.succeed(`解决成功: ${chalk.green(file)})`);`，确保消息显示完整。
+
+<details>
+<summary>代码片段</summary>
+
+```
+                                taskSpinner.succeed(`解决成功: ${chalk.green(file}`);
+```
+
+</details>
+
+### 👍 优点
+
+- ✅ 完善的LLM模型可用性验证：在执行核心任务前增加了对LLM模型连接的预检查，有效避免了因模型不可用而导致的后续失败，显著提升了用户体验和系统健壮性。并且，采用了 `catch (error: unknown)` 和适当的类型守卫，符合TypeScript最佳实践。
+- ✅ 智能的并发数限制：对 `concurrency` 参数进行了合理的范围限制（1-10），防止用户设置过高或过低的值，有效控制了资源消耗和任务执行效率，提升了系统的稳定性。
+- ✅ 增强的批处理错误处理：将 `Promise.all` 替换为 `Promise.allSettled`，确保在处理多个冲突文件时，单个文件的失败不会中断整个批处理过程，大幅提升了系统的容错性，是处理并发任务的优秀实践。
+- ✅ 高级TypeScript语法校验：引入了基于TypeScript Compiler API的语义级语法校验 (`validateAdvancedSyntax`)，能够更准确地识别AI生成代码中的潜在语法错误，这对于保持AI生成代码的质量和可靠性至关重要。同时，动态导入 `typescript` 库有助于减少不必要的加载开销。
+- ✅ 全面且健壮的错误信息处理：在多个 `catch` 块中都使用了 `error instanceof Error ? error.message : (typeof error === 'string' ? error : String(error))` 或类似的逻辑，确保了无论何种类型的错误都能提供清晰有意义的错误信息，便于调试和问题追踪。
+- ✅ 改进的Diff解析初步验证：`SemanticDiffEngine` 中新增的 `validateDiffFormat` 提供了基本的diff格式校验，通过检查 `diff --git` 标识符，提高了对不同diff格式输入的适应性和鲁棒性。
+
+### 💡 建议
+
+- 优化AST Parser实例化：`git_reviews.md` 中提及 `EnhancedASTParser` 在 `ContextGatherer` 中被重复实例化。建议将其作为 `ContextGatherer` 类的私有成员，并在 `ContextGatherer` 的构造函数中只实例化一次，以避免潜在的性能开销，特别是如果其初始化成本较高。
+- 确保JSDoc在摘要中保留：`git_reviews.md` 中指出，`ASTParser.generateSummary` 方法未显式提取和包含函数的 JSDoc 注释。应修改该方法，在生成函数、方法、属性等声明的摘要时，保留相关的 JSDoc 注释，以充分保留代码的语义信息。
+- 增强文件相关性判断逻辑：评估和改进 `ContextGatherer.ts` 中 `isReferenceOnly` 的判断逻辑（`!description.includes(filePath)`），目前可能过于简单。考虑引入更复杂的启发式方法（例如，基于关键字匹配、文件类型与任务类型的关联、或使用更智能的嵌入式搜索）来更准确地识别语义相关文件。
+- 为 `astParser.generateSummary` 方法添加错误处理：`git_reviews.md` 中提到，当前代码缺少对 `astParser.generateSummary` 方法的错误处理。建议在调用此方法时添加 `try-catch` 块，以便在摘要生成失败时（例如，TS 文件格式错误）能够优雅地回退（如进行普通截断）或记录错误，提升系统鲁棒性。
+- 统一日志管理：正如 `git_reviews.md` 中所指出的，在整个项目中统一使用专业的日志库（如 Winston, Pino），替换现有的 `console.log`。这将有助于更好地管理日志级别、格式、输出目标和性能，提升日志的可维护性和分析能力。
+- 清理 `.bak` 文件：`git_reviews.md` 中提到项目中出现了 `.bak` 备份文件（`src/core/kernel/ASTParser.ts.bak`）。这类文件通常不应提交到版本控制系统。请确保 `.gitignore` 文件中包含 `*.bak` 或更具体的忽略规则，以避免将来再次提交，保持代码仓库的整洁。
+- 增加单元测试覆盖：为 `ConflictResolver.ts` 中的 `validateAdvancedSyntax` 和 `SemanticDiffEngine.ts` 中的 `extractFilePaths` 方法添加全面的单元测试。这对于确保其在各种边界条件（如不同文件类型、不同语法错误场景、各种diff格式）下的正确性至关重要。
+
+[↑ 返回顶部](#)
+

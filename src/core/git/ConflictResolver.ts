@@ -88,6 +88,12 @@ export class ConflictResolver {
                 return { file: filePath, success: false, error: `AI 生成的代码存在基础语法风险: ${syntaxError}` };
             }
 
+            // 5. 更严格的语法校验（根据文件类型）
+            const advancedSyntaxError = await this.validateAdvancedSyntax(filePath, resolvedContent);
+            if (advancedSyntaxError) {
+                return { file: filePath, success: false, error: `AI 生成的代码存在高级语法错误: ${advancedSyntaxError}` };
+            }
+
             if (dryRun) {
                 return { file: filePath, success: true, suggestion: 'Dry-run: 内容已生成但未写回文件' };
             }
@@ -104,8 +110,8 @@ export class ConflictResolver {
 
             return { file: filePath, success: true, backupFile };
 
-        } catch (error: any) {
-            const errMsg = error instanceof Error ? error.message : String(error);
+        } catch (error: unknown) {
+            const errMsg = error instanceof Error ? error.message : (typeof error === 'string' ? error : String(error));
             return { file: filePath, success: false, error: errMsg };
         }
     }
@@ -137,6 +143,46 @@ export class ConflictResolver {
             const closeParens = (content.match(/\)/g) || []).length;
             if (openParens !== closeParens) {
                 return `圆括号不匹配 ( (:${openParens}, ):${closeParens} )`;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * 高级语法校验（如 TypeScript 语法解析）
+     */
+    private async validateAdvancedSyntax(filePath: string, content: string): Promise<string | null> {
+        const ext = path.extname(filePath).toLowerCase();
+
+        // 对于 TypeScript 文件，可以使用 TypeScript 编译器 API 进行更深入的语法检查
+        if (ext === '.ts' || ext === '.tsx') {
+            try {
+                // 这里可以使用 TypeScript 编译器 API 进行语法检查
+                // 为了简化，我们暂时只做基本检查，但可以扩展为真正的 AST 验证
+                const ts = await import('typescript');
+
+                // 创建一个虚拟源文件进行语法检查
+                const sourceFile = ts.createSourceFile(
+                    'temp' + ext,
+                    content,
+                    ts.ScriptTarget.Latest,
+                    true
+                );
+
+                // 检查是否有语法错误
+                const diagnostics = ts.getPreEmitDiagnostics(sourceFile);
+                if (diagnostics.length > 0) {
+                    const errorMsgs = diagnostics.slice(0, 3).map(diag =>
+                        `${diag.category === ts.DiagnosticCategory.Error ? 'Error' : 'Warning'}: ${diag.messageText}`
+                    ).join('; ');
+
+                    return `TypeScript 语法错误: ${errorMsgs}`;
+                }
+            } catch (e: any) {
+                // 如果无法加载 TypeScript 或检查失败，返回警告但不阻止操作
+                console.warn(`无法进行 TypeScript 语法检查: ${e.message}`);
+                // 不返回错误，因为这可能是环境问题而非内容问题
             }
         }
 

@@ -21,6 +21,11 @@ export class SemanticDiffEngine {
             return { files: [], isBreaking: false, overallSummary: '无变更内容或格式错误' };
         }
 
+        // 验证 diff 格式的基本有效性
+        if (!this.validateDiffFormat(diff)) {
+            return { files: [], isBreaking: false, overallSummary: '无效的 diff 格式' };
+        }
+
         const fileBlocks = this.splitDiffIntoFiles(diff);
         const fileDiffs: FileSemanticDiff[] = [];
 
@@ -38,6 +43,14 @@ export class SemanticDiffEngine {
             isBreaking,
             overallSummary: this.generateOverallSummary(fileDiffs)
         };
+    }
+
+    /**
+     * 验证 diff 格式的基本有效性
+     */
+    private static validateDiffFormat(diff: string): boolean {
+        // 检查是否包含基本的 diff 标识符
+        return diff.includes('diff --git');
     }
 
     private static splitDiffIntoFiles(diff: string): string[] {
@@ -62,23 +75,54 @@ export class SemanticDiffEngine {
         return blocks;
     }
 
+    /**
+     * 解析文件路径，优先使用 --- / +++ 行
+     */
+    private static extractFilePaths(header: string, sourceLine?: string, targetLine?: string): { sourcePath?: string, targetPath?: string } {
+        // 优先使用 --- / +++ 行来获取路径
+        if (targetLine && targetLine !== '+++ /dev/null') {
+            const targetMatch = targetLine.match(/^\+\+\+ (a\/)?(.+)$/);
+            if (targetMatch) {
+                // targetMatch[2] 是去掉 a/ 或 b/ 前缀的实际路径
+                return { targetPath: targetMatch[2] };
+            }
+        }
+
+        if (sourceLine && sourceLine !== '--- /dev/null') {
+            const sourceMatch = sourceLine.match(/^--- (a\/)?(.+)$/);
+            if (sourceMatch) {
+                // sourceMatch[2] 是去掉 a/ 或 b/ 前缀的实际路径
+                return { sourcePath: sourceMatch[2] };
+            }
+        }
+
+        // 回退到使用 diff --git 行
+        const pathMatch = header.match(/diff --git (?:a\/)?(.+?) (?:b\/)?(.+?)$/);
+        if (pathMatch) {
+            // 提取并清理路径，移除 a/ 和 b/ 前缀
+            const sourcePath = pathMatch[1].replace(/^[ab]\//, '');
+            const targetPath = pathMatch[2].replace(/^[ab]\//, '');
+            return { sourcePath, targetPath };
+        }
+
+        return { sourcePath: 'unknown', targetPath: 'unknown' };
+    }
+
     private static analyzeFileBlock(block: string): FileSemanticDiff | null {
         const lines = block.split('\n');
 
-        let filePath = 'unknown';
+        // 查找 diff header、source 和 target 行
+        const headerLine = lines.find(l => l.startsWith('diff --git '));
         const targetLine = lines.find(l => l.startsWith('+++ '));
         const sourceLine = lines.find(l => l.startsWith('--- '));
 
-        if (targetLine && targetLine !== '+++ /dev/null') {
-            filePath = targetLine.startsWith('+++ b/') ? targetLine.substring(6) : targetLine.substring(4);
-        } else if (sourceLine && sourceLine !== '--- /dev/null') {
-            filePath = sourceLine.startsWith('--- a/') ? sourceLine.substring(6) : sourceLine.substring(4);
-        } else {
-            const header = lines.find(l => l.startsWith('diff --git '));
-            if (!header) return null;
-            const pathMatch = header.match(/b\/(.+)$/);
-            filePath = pathMatch ? pathMatch[1] : 'unknown';
-        }
+        if (!headerLine) return null;
+
+        // 使用改进的路径提取方法
+        const { targetPath, sourcePath } = this.extractFilePaths(headerLine, sourceLine, targetLine);
+
+        // 优先使用 targetPath，如果不存在则使用 sourcePath（适用于删除文件的情况）
+        const filePath = targetPath || sourcePath || 'unknown';
 
         const extension = filePath.split('.').pop()?.toLowerCase();
         const changes: SemanticChange[] = [];
@@ -86,12 +130,6 @@ export class SemanticDiffEngine {
         // 目前主要针对 TS/JS 进行正则分析
         if (['ts', 'js', 'tsx', 'jsx'].includes(extension || '')) {
             this.analyzeTSJSChanges(lines, changes);
-        }
-
-        // 如果路径是 /dev/null 说明是彻底删除文件
-        if (filePath === '/dev/null') {
-            const sourceLine = lines.find(l => l.startsWith('--- a/'));
-            if (sourceLine) filePath = sourceLine.substring(6);
         }
 
         return {

@@ -1,6 +1,8 @@
 export enum ChangeType {
     ADDITION = 'addition',
     DELETION = 'deletion',
+    MODIFICATION = 'modification',
+    RENAME = 'rename',
 }
 
 export enum SemanticCategory {
