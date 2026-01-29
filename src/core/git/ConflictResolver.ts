@@ -158,22 +158,23 @@ export class ConflictResolver {
         // 对于 TypeScript 文件，尝试进行更深入的语法检查
         if (ext === '.ts' || ext === '.tsx') {
             try {
-                const ts = await import('typescript');
+                const tsModule = await import('typescript');
+                const ts = tsModule.default || tsModule;
 
                 // 创建一个虚拟源文件进行语法检查
-                const sourceFile = ts.createSourceFile(
+                // 如果内容有严重语法错误，createSourceFile 可能会抛出异常
+                ts.createSourceFile(
                     'temp' + ext,
                     content,
                     ts.ScriptTarget.Latest,
                     true
                 );
 
-                // 使用简单的语法检查：如果创建失败或有基本问题，会在 createSourceFile 时抛出异常
-                // 这里我们只做基本验证，避免复杂的编译器 API 使用
+                // 如果没有抛出异常，说明基本的语法结构是正确的
                 return null;
             } catch (e: any) {
                 // 如果 TypeScript 解析失败，说明有语法错误
-                return `TypeScript 语法错误: ${e.message}`;
+                return `TypeScript 语法错误: ${e.message || String(e)}`;
             }
         }
 
