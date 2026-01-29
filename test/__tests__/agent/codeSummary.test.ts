@@ -295,8 +295,8 @@ function calculateAverage() {}
   describe('generateSummaryReport', () => {
     it('should generate report within maxLength', () => {
       const summaries = [
-        { path: 'file1.ts', summary: 'Summary for file 1', symbols: [] },
-        { path: 'file2.ts', summary: 'Summary for file 2', symbols: [] },
+        { path: 'file1.ts', summary: 'File: file1.ts\nSummary for file 1', symbols: [] },
+        { path: 'file2.ts', summary: 'File: file2.ts\nSummary for file 2', symbols: [] },
       ];
 
       const report = generateSummaryReport(summaries, 1000);

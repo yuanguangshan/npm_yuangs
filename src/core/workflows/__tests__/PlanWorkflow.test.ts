@@ -15,7 +15,7 @@ vi.mock('../../../agent/llm');
 
 describe('PlanWorkflow', () => {
   let planWorkflow: PlanWorkflow;
-  let mockGitService: GitService;
+  let mockGitService: any;
 
   beforeEach(() => {
     mockGitService = {

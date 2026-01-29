@@ -130,10 +130,7 @@ diff --git a/file2.ts b/file2.ts
 +  class: 'not a class',
 +};
 +
-+export const complexArrowFunc = (params: {
-+  callback: () => void;
-+  data: string;
-+}) => {
++export const complexArrowFunc = (params: { callback: () => void; data: string; }) => {
 +  // Implementation here
 +};
 `;

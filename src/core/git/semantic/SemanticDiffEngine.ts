@@ -81,18 +81,18 @@ export class SemanticDiffEngine {
     private static extractFilePaths(header: string, sourceLine?: string, targetLine?: string): { sourcePath?: string, targetPath?: string } {
         // 优先使用 --- / +++ 行来获取路径
         if (targetLine && targetLine !== '+++ /dev/null') {
-            const targetMatch = targetLine.match(/^\+\+\+ (a\/)?(.+)$/);
+            const targetMatch = targetLine.match(/^\+\+\+ (?:[ab]\/)?(.+)$/);
             if (targetMatch) {
-                // targetMatch[2] 是去掉 a/ 或 b/ 前缀的实际路径
-                return { targetPath: targetMatch[2] };
+                // targetMatch[1] 是去掉 a/ 或 b/ 前缀的实际路径
+                return { targetPath: targetMatch[1] };
             }
         }
 
         if (sourceLine && sourceLine !== '--- /dev/null') {
-            const sourceMatch = sourceLine.match(/^--- (a\/)?(.+)$/);
+            const sourceMatch = sourceLine.match(/^--- (?:[ab]\/)?(.+)$/);
             if (sourceMatch) {
-                // sourceMatch[2] 是去掉 a/ 或 b/ 前缀的实际路径
-                return { sourcePath: sourceMatch[2] };
+                // sourceMatch[1] 是去掉 a/ 或 b/ 前缀的实际路径
+                return { sourcePath: sourceMatch[1] };
             }
         }
 
