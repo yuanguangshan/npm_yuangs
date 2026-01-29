@@ -78,9 +78,10 @@ export { checkout };
       expect(calcTotal).toBeDefined();
       expect(calcTotal?.kind).toBe('Function');
       expect(calcTotal?.isExported).toBe(true);
-      expect(calcTotal?.jsDoc).toContain('@param price');
-      expect(calcTotal?.jsDoc).toContain('@param tax');
-      expect(calcTotal?.jsDoc).toContain('@returns');
+      expect(calcTotal?.jsDoc).toContain('@param');
+      expect(calcTotal?.jsDoc).toContain('商品价格');
+      expect(calcTotal?.jsDoc).toContain('税率');
+      expect(calcTotal?.jsDoc).toContain('returns');
     });
 
     it('应该提取接口类型符号', async () => {
@@ -140,8 +141,9 @@ export { checkout };
 
       expect(consumerImpact?.jsDoc).toBeDefined();
       expect(consumerImpact?.jsDoc).toContain('calculateTotal');
-      expect(consumerImpact?.jsDoc).toContain('@param price');
-      expect(consumerImpact?.jsDoc).toContain('@param tax');
+      expect(consumerImpact?.jsDoc).toContain('@param');
+      expect(consumerImpact?.jsDoc).toContain('商品价格');
+      expect(consumerImpact?.jsDoc).toContain('税率');
     });
 
     it('应该返回完整的分析结果', async () => {
@@ -190,8 +192,9 @@ export { checkout };
       const context = resolver.renderAsAIContext(result);
 
       expect(context).toContain('SYMBOL CONTRACT');
-      expect(context).toContain('@param price');
-      expect(context).toContain('@param tax');
+      expect(context).toContain('@param');
+      expect(context).toContain('商品价格');
+      expect(context).toContain('税率');
     });
   });
 

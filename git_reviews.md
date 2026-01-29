@@ -2110,3 +2110,253 @@ if (result.success && result.data) {
 
 [↑ 返回顶部](#)
 
+
+---
+
+## 📋 Code Review - 2026/1/29 12:17:38
+
+**📊 评分:** 👍 86/100  
+**🔧 级别:** STANDARD  
+**🌿 分支:** `main`  
+**💾 提交:** `b325f59`  
+**📂 范围:** 未暂存 (3 个文件)  
+
+### 📝 总体评价
+
+这是一次语义层面较深、目标明确的重构与能力增强，引入了嵌套符号解析、类型分析、哈希审计等高级能力。整体设计方向正确，工程价值高，但当前实现在复杂度控制、边界条件处理、TypeScript Compiler API 使用方式以及测试稳健性方面仍存在若干潜在风险，需要在进入稳定阶段前进一步收敛和加固。
+
+### ⚠️ 发现的问题 (6)
+
+#### 1. [WARNING] src/core/kernel/ASTParser.ts:63
+
+在 parse 方法中为每次解析创建新的 Program 和 TypeChecker，可能导致性能问题
+
+**💡 建议:** 如果该解析器会被频繁调用，建议引入 Program/TypeChecker 的缓存或复用策略，或在更高层统一管理 Program 生命周期
+
+<details>
+<summary>代码片段</summary>
+
+```
+const program = ts.createProgram([filePath], {}, host);
+```
+
+</details>
+
+#### 2. [WARNING] src/core/kernel/ASTParser.ts:115
+
+visitAndExtractSymbols 方法职责过重，包含节点识别、元数据构建、父栈管理等多重逻辑
+
+**💡 建议:** 建议按“节点分类识别”“SymbolMetadata 构建”“父级路径维护”拆分为多个私有方法，以降低认知复杂度和未来维护成本
+
+<details>
+<summary>代码片段</summary>
+
+```
+private visitAndExtractSymbols(node: ts.Node, symbols: SymbolMetadata[], parentStack: string[]): void {
+```
+
+</details>
+
+#### 3. [WARNING] src/core/kernel/ASTParser.ts:182
+
+ArrowFunction 和 FunctionExpression 被统一标记为 isAnonymous=true，即使它们具有语义上的变量名
+
+**💡 建议:** 可区分“语法匿名”和“语义匿名”，例如：由变量承载的箭头函数可认为是具名符号
+
+<details>
+<summary>代码片段</summary>
+
+```
+kind = 'ArrowFunction'; isAnonymous = true;
+```
+
+</details>
+
+#### 4. [WARNING] src/core/kernel/ASTParser.ts:260
+
+normalizeCode 使用正则移除注释和空白，可能在字符串字面量或正则表达式中产生误判
+
+**💡 建议:** 如哈希用于强审计场景，建议基于 AST Token 或 Printer 输出进行规范化，而非正则文本处理
+
+<details>
+<summary>代码片段</summary>
+
+```
+normalized = code.replace(/\/\/.*$/gm, '');
+```
+
+</details>
+
+#### 5. [WARNING] src/core/kernel/ASTParser.ts:300
+
+extractJSDoc 会将多个 JSDoc block 拼接，可能产生重复或顺序不稳定的文档结果
+
+**💡 建议:** 建议明确规则：只取最近的 JSDoc，或定义清晰的合并策略，并在注释中说明
+
+<details>
+<summary>代码片段</summary>
+
+```
+for (const jsDocNode of jsDocNodes) {
+```
+
+</details>
+
+#### 6. [INFO] src/__tests__/core/kernel/XResolver.test.ts:80
+
+测试从精确匹配 @param price 改为宽松匹配 @param + 中文描述，降低了约束强度
+
+**💡 建议:** 建议补充针对参数数量、顺序或参数名的结构性断言，以避免回归时误报通过
+
+<details>
+<summary>代码片段</summary>
+
+```
+expect(calcTotal?.jsDoc).toContain('@param');
+```
+
+</details>
+
+### 👍 优点
+
+- ✅ 整体设计目标清晰：将 ASTParser 定位为“可审计执行内核的事实提取器”，概念边界明确
+- ✅ SymbolMetadata 结构设计完整，涵盖哈希、源码内容、嵌套路径等高价值审计信息
+- ✅ 正确使用 TypeScript Compiler API（TypeChecker）以提升类型解析准确性
+- ✅ 对嵌套结构（类方法、函数内函数）的支持为后续高级分析打下良好基础
+- ✅ 测试同步调整，体现出对 JSDoc 国际化/自然语言描述变化的适配意识
+
+### 💡 建议
+
+- 在进入稳定阶段前，引入复杂度控制：拆分 visitAndExtractSymbols，降低单函数逻辑密度
+- 为 hash / normalizeCode 行为补充单元测试，覆盖字符串、正则、模板字符串等边界情况
+- 补充针对嵌套符号（Class.method、函数内函数）的专项测试用例
+- 明确 isAnonymous、fullPath、parentName 等语义规则，并在接口或注释中固化
+- 如果 compareResults 用于审计或安全场景，建议增加顺序无关、哈希冲突等防御性逻辑
+
+[↑ 返回顶部](#)
+
+
+---
+
+## 📋 Code Review - 2026/1/29 12:28:51
+
+**📊 评分:** 👍 86/100  
+**🔧 级别:** STANDARD  
+**🌿 分支:** `main`  
+**💾 提交:** `b325f59`  
+**📂 范围:** 未暂存 (4 个文件)  
+
+### 📝 总体评价
+
+这是一次目标清晰、语义层次较深的增强型重构，引入了嵌套符号解析、类型分析、符号哈希等高级能力，整体设计方向正确，工程价值较高。但当前实现中存在复杂度偏高、性能与边界条件处理不足、TypeScript Compiler API 使用方式有待优化等问题，建议在进入稳定阶段前进一步收敛实现并补强测试。
+
+### ⚠️ 发现的问题 (6)
+
+#### 1. [WARNING] src/core/kernel/ASTParser.ts:63
+
+parse 方法中每次调用都会创建新的 Program 和 TypeChecker，可能导致性能问题
+
+**💡 建议:** 如果解析器被频繁调用，建议在更高层缓存或复用 Program / TypeChecker，或通过统一的 Program 管理器控制生命周期
+
+<details>
+<summary>代码片段</summary>
+
+```
+const program = ts.createProgram([filePath], {}, host);
+```
+
+</details>
+
+#### 2. [WARNING] src/core/kernel/ASTParser.ts:115
+
+visitAndExtractSymbols 方法职责过重，集成了节点遍历、符号提取、父级栈维护等多种逻辑
+
+**💡 建议:** 建议拆分为更小的私有方法（如 extractCurrentSymbol、updateParentStack、visitChildren），以降低认知复杂度和维护成本
+
+<details>
+<summary>代码片段</summary>
+
+```
+private visitAndExtractSymbols(node: ts.Node, symbols: SymbolMetadata[], parentStack: string[], typeChecker: ts.TypeChecker): void {
+```
+
+</details>
+
+#### 3. [WARNING] src/core/kernel/ASTParser.ts:182
+
+匿名函数与具名但语义可推断名称的箭头函数/函数表达式在匿名语义上容易混淆
+
+**💡 建议:** 建议在接口或注释中明确 isAnonymous 的判定规则（语法匿名 vs 语义匿名），并保证规则在所有分支中一致
+
+<details>
+<summary>代码片段</summary>
+
+```
+name = `anonymous_arrow_${this.generateAnonymousName(node)}`;
+```
+
+</details>
+
+#### 4. [WARNING] src/core/kernel/ASTParser.ts:260
+
+normalizeCode 使用正则移除注释和空白，可能误伤字符串字面量或正则表达式内容
+
+**💡 建议:** 如哈希用于审计或安全场景，建议基于 AST Token 或 ts.Printer 输出进行规范化，而非简单正则处理
+
+<details>
+<summary>代码片段</summary>
+
+```
+normalized = code.replace(/\/\/.*$/gm, '');
+```
+
+</details>
+
+#### 5. [WARNING] src/core/kernel/ASTParser.ts:300
+
+extractJSDoc 会拼接多个 JSDoc block，可能导致重复或顺序不稳定
+
+**💡 建议:** 建议明确规则（如仅取最近的 JSDoc，或定义稳定的合并策略），并在代码注释中说明
+
+<details>
+<summary>代码片段</summary>
+
+```
+for (const jsDocNode of jsDocNodes) {
+```
+
+</details>
+
+#### 6. [INFO] src/__tests__/core/kernel/XResolver.test.ts:80
+
+测试从精确匹配参数名改为宽松匹配 @param 和自然语言描述，降低了约束强度
+
+**💡 建议:** 建议补充结构性断言（如参数数量、顺序或名称），以避免回归时出现误报通过
+
+<details>
+<summary>代码片段</summary>
+
+```
+expect(calcTotal?.jsDoc).toContain('@param');
+```
+
+</details>
+
+### 👍 优点
+
+- ✅ 整体设计目标清晰，将 ASTParser 定位为“可审计执行内核的事实提取器”，概念边界明确
+- ✅ SymbolMetadata 结构设计完整，覆盖哈希、源码内容、嵌套路径等高价值审计信息
+- ✅ 合理使用 TypeScript Compiler API（TypeChecker）以提升类型解析准确性
+- ✅ 支持嵌套结构（类方法、函数内函数），为后续高级分析打下良好基础
+- ✅ 测试同步调整，体现了对 JSDoc 国际化和自然语言变化的适配意识
+
+### 💡 建议
+
+- 在进入稳定阶段前重点控制复杂度，进一步拆分 visitAndExtractSymbols
+- 为 hash / normalizeCode 行为补充单元测试，覆盖字符串、正则、模板字符串等边界情况
+- 增加针对嵌套符号（Class.method、函数内函数）的专项测试用例
+- 明确 isAnonymous、fullPath、parentName 等字段的语义规则，并在接口或文档中固化
+- 如果符号对比或哈希用于审计或安全场景，建议增加顺序无关性和哈希冲突的防御性处理
+
+[↑ 返回顶部](#)
+
