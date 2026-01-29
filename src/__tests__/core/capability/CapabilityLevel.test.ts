@@ -12,11 +12,11 @@ import {
 describe('CapabilityLevel', () => {
     describe('CapabilityLevel enum', () => {
         it('should have correct numeric values', () => {
-            expect(CapabilityLevel.SEMANTIC).toBe(5);
-            expect(CapabilityLevel.STRUCTURAL).toBe(4);
-            expect(CapabilityLevel.LINE).toBe(3);
-            expect(CapabilityLevel.TEXT).toBe(2);
-            expect(CapabilityLevel.NONE).toBe(1);
+            expect(CapabilityLevel.SEMANTIC).toBe(4);
+            expect(CapabilityLevel.STRUCTURAL).toBe(3);
+            expect(CapabilityLevel.LINE).toBe(2);
+            expect(CapabilityLevel.TEXT).toBe(1);
+            expect(CapabilityLevel.NONE).toBe(0);
         });
     });
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from '@jest/globals';
 import { PlanWorkflow } from '../PlanWorkflow';
 import { GitService } from '../../git/GitService';
 import { runLLM, AIError } from '../../../agent/llm';
@@ -10,8 +10,8 @@ import {
 } from '../types';
 import { CapabilityLevel } from '../../capability/CapabilityLevel';
 
-vi.mock('../../git/GitService');
-vi.mock('../../../agent/llm');
+jest.mock('../../git/GitService');
+jest.mock('../../../agent/llm');
 
 describe('PlanWorkflow', () => {
   let planWorkflow: PlanWorkflow;
@@ -19,9 +19,9 @@ describe('PlanWorkflow', () => {
 
   beforeEach(() => {
     mockGitService = {
-      getRecentCommits: vi.fn(),
-      getDiff: vi.fn(),
-      getDiffNumstat: vi.fn()
+      getRecentCommits: jest.fn(),
+      getDiff: jest.fn(),
+      getDiffNumstat: jest.fn()
     } as any;
 
     planWorkflow = new PlanWorkflow(mockGitService);
@@ -43,7 +43,7 @@ describe('PlanWorkflow', () => {
       const reviewerComments = 'Some improvements';
       const refinedPlan = 'Refined plan';
 
-      vi.mocked(runLLM)
+      (runLLM as jest.Mock)
         .mockResolvedValueOnce({
           rawText: architectDraft
         } as any)
@@ -72,14 +72,14 @@ describe('PlanWorkflow', () => {
 
       expect(result.success).toBe(true);
       expect(mockGitService.getRecentCommits).toHaveBeenCalledWith(10);
-      expect(vi.mocked(runLLM)).toHaveBeenCalledTimes(4);
+      expect(runLLM as jest.Mock).toHaveBeenCalledTimes(4);
     });
 
     it('should handle LLM errors and return workflow failure', async () => {
       mockGitService.getRecentCommits.mockResolvedValue([]);
 
       const aiError = new AIError('LLM failed', 500, {});
-      vi.mocked(runLLM).mockRejectedValue(aiError);
+      (runLLM as jest.Mock).mockRejectedValue(aiError);
 
       const config: WorkflowConfig = {
         sessionId: 'test',
@@ -114,7 +114,7 @@ describe('PlanWorkflow', () => {
         deleted: 20
       });
 
-      vi.mocked(runLLM).mockResolvedValue({
+      (runLLM as jest.Mock).mockResolvedValue({
         rawText: 'test todo content'
       } as any);
 
@@ -148,7 +148,7 @@ describe('PlanWorkflow', () => {
         deleted: 10
       });
 
-      vi.mocked(runLLM).mockResolvedValue({
+      (runLLM as jest.Mock).mockResolvedValue({
         rawText: 'test'
       } as any);
 
@@ -172,7 +172,7 @@ describe('PlanWorkflow', () => {
         deleted: 50
       });
 
-      vi.mocked(runLLM).mockResolvedValue({
+      (runLLM as jest.Mock).mockResolvedValue({
         rawText: 'test'
       } as any);
 
@@ -196,7 +196,7 @@ describe('PlanWorkflow', () => {
         deleted: 150
       });
 
-      vi.mocked(runLLM).mockResolvedValue({
+      (runLLM as jest.Mock).mockResolvedValue({
         rawText: 'test'
       } as any);
 

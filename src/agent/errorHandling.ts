@@ -64,7 +64,7 @@ function calculateBackoffDelay(
 /**
  * 判断错误是否可重试
  */
-function isRetryableError(error: Error, config: RetryConfig): boolean {
+export function isRetryableError(error: Error, config: RetryConfig): boolean {
   // Safely extract error message
   let errorMessage = '';
   if (typeof error.message === 'string') {
@@ -148,29 +148,32 @@ export async function withAlternatives<T>(
   const primaryResult = await withRetry(primary, config);
 
   if (primaryResult.success) {
-    return primaryResult;
+    return {
+      ...primaryResult,
+      fallbackUsed: false
+    };
   }
 
   // 主策略失败，尝试替代方案
   console.log(`[替代方案] 主策略失败，尝试${alternatives.length}个替代方案...`);
 
+  let totalAttempts = primaryResult.attempts;
+  
   for (const alternative of alternatives) {
     console.log(`[替代方案] 尝试: ${alternative.name} - ${alternative.description}`);
 
-    try {
-      const data = await alternative.execute();
+    // 对每个替代方案也进行重试
+    const altResult = await withRetry(alternative.execute, config);
+    totalAttempts += altResult.attempts;
+    
+    if (altResult.success) {
       return {
         success: true,
-        data,
-        attempts: primaryResult.attempts + 1,
-        totalDuration: primaryResult.totalDuration,
+        data: altResult.data,
+        attempts: totalAttempts,
+        totalDuration: primaryResult.totalDuration + altResult.totalDuration,
         fallbackUsed: true,
       };
-    } catch (error) {
-      const errorMsg = error instanceof Error && typeof error.message === 'string' 
-        ? error.message 
-        : String(error);
-      console.log(`[替代方案] ${alternative.name} 失败: ${errorMsg}`);
     }
   }
 
@@ -178,7 +181,7 @@ export async function withAlternatives<T>(
   return {
     success: false,
     error: new Error('所有执行方案均失败'),
-    attempts: primaryResult.attempts + alternatives.length,
+    attempts: totalAttempts,
     totalDuration: primaryResult.totalDuration,
     lastError: primaryResult.lastError,
     fallbackUsed: true,
@@ -189,35 +192,6 @@ export async function withAlternatives<T>(
  * 生成错误解释
  */
 export function generateErrorExplanation(error: Error, context: string = ''): string {
-  const explanations: Record<string, string> = {
-    network:
-      '网络连接失败。请检查：1. 网络连接是否正常 2. 防火墙设置 3. 代理配置',
-    timeout:
-      '请求超时。可能原因：1. 网络延迟 2. 服务器响应慢 3. 请求处理时间过长',
-    'rate limit':
-      'API调用频率超限。请稍后重试，或考虑升级API计划以获得更高的速率限制',
-    'econnreset':
-      '连接被重置。可能是网络不稳定或服务器暂时不可用',
-    'etimedout':
-      '连接超时。请检查网络连接和服务器状态',
-    '503':
-      '服务暂时不可用。服务器可能正在维护或过载，请稍后重试',
-    '502':
-      '网关错误。服务器返回了无效的响应，请稍后重试',
-    '429':
-      '请求过多。超过了API的速率限制，请等待一段时间后重试',
-    'enotfound':
-      '主机未找到。请检查：1. 域名拼写 2. DNS配置 3. 网络连接',
-    'authentication':
-      '认证失败。请检查API密钥或认证凭证',
-    'authorization':
-      '授权失败。您可能没有执行此操作的权限',
-    'invalid request':
-      '请求无效。请检查请求格式和参数',
-    'context length':
-      '上下文长度超限。请减少输入内容或使用更短的Prompt',
-  };
-
   // Safely extract error message
   let errorMessage = '';
   if (typeof error.message === 'string') {
@@ -227,6 +201,47 @@ export function generateErrorExplanation(error: Error, context: string = ''): st
   }
   
   const lowerMessage = errorMessage.toLowerCase();
+  
+  // Rate limit errors
+  if (lowerMessage.includes('rate limit')) {
+    return `❌ 错误类型: rate limit\nAPI调用频率超限。请稍后重试，或考虑升级API计划以获得更高的速率限制${context ? '\n\n上下文: ' + context : ''}`;
+  }
+  
+  // Authentication errors
+  if (lowerMessage.includes('authentication')) {
+    return `❌ 错误类型: authentication\n认证失败。请检查API密钥或认证凭证${context ? '\n\n上下文: ' + context : ''}`;
+  }
+  
+  // Context length errors
+  if (lowerMessage.includes('context length')) {
+    return `❌ 错误类型: context length\n上下文长度超限。请减少输入内容或使用更短的Prompt${context ? '\n\n上下文: ' + context : ''}`;
+  }
+  
+  // 429 errors
+  if (lowerMessage.includes('429')) {
+    return `❌ 错误类型: 429\n请求过多。超过了API的速率限制，请等待一段时间后重试${context ? '\n\n上下文: ' + context : ''}`;
+  }
+  
+  const explanations: Record<string, string> = {
+    network:
+      '网络连接失败。请检查：1. 网络连接是否正常 2. 防火墙设置 3. 代理配置',
+    timeout:
+      '请求超时。可能原因：1. 网络延迟 2. 服务器响应慢 3. 请求处理时间过长',
+    'econnreset':
+      '连接被重置。可能是网络不稳定或服务器暂时不可用',
+    'etimedout':
+      '连接超时。请检查网络连接和服务器状态',
+    '503':
+      '服务暂时不可用。服务器可能正在维护或过载，请稍后重试',
+    '502':
+      '网关错误。服务器返回了无效的响应，请稍后重试',
+    'enotfound':
+      '主机未找到。请检查：1. 域名拼写 2. DNS配置 3. 网络连接',
+    'authorization':
+      '授权失败。您可能没有执行此操作的权限',
+    'invalid request':
+      '请求无效。请检查请求格式和参数',
+  };
   
   // 查找匹配的错误解释
   for (const [key, explanation] of Object.entries(explanations)) {

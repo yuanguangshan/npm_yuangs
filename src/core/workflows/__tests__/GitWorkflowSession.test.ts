@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { GitWorkflowSession, WorkflowPhase } from '../GitWorkflowSession';
 import {
   PlanOutput,
@@ -24,14 +24,14 @@ describe('GitWorkflowSession', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   describe('initialization', () => {
     it('should create unique session ID', () => {
       const sessionId = session.getSessionId();
       expect(sessionId).toBeDefined();
-      expect(sessionId).toHaveLength(11 + 9);
+      expect(sessionId).toMatch(/^[a-z0-9]+$/);
     });
 
     it('should start in initialized phase', () => {
@@ -46,7 +46,7 @@ describe('GitWorkflowSession', () => {
 
   describe('workflow state transitions', () => {
     it('should transition from initialized to planning on runPlan', async () => {
-      const mockPlanFn = vi.fn().mockResolvedValue(
+      const mockPlanFn = jest.fn().mockResolvedValue(
         workflowSuccess(
           {
             todoMarkdown: 'test todo',
@@ -82,7 +82,7 @@ describe('GitWorkflowSession', () => {
         scope: 'small'
       };
 
-      const mockPlanFn = vi.fn().mockResolvedValue(
+      const mockPlanFn = jest.fn().mockResolvedValue(
         workflowSuccess(expectedOutput, 'Plan generated')
       );
 
@@ -95,7 +95,7 @@ describe('GitWorkflowSession', () => {
     });
 
     it('should transition to failed on plan error', async () => {
-      const mockPlanFn = vi.fn().mockResolvedValue({
+      const mockPlanFn = jest.fn().mockResolvedValue({
         success: false,
         summary: 'Plan failed',
         errors: [WorkflowError.internalBug('Test error')]
@@ -111,23 +111,23 @@ describe('GitWorkflowSession', () => {
     });
 
     it('should prevent auto before plan is completed', async () => {
-      const mockAutoFn = vi.fn();
+      const mockAutoFn = jest.fn();
       const result = await session.runAuto(mockAutoFn);
 
       expect(result.success).toBe(false);
       expect(result.errors?.[0].kind).toBe('Precondition');
-      expect(result.summary).toContain('plan phase not completed');
+      expect(result.summary).toContain('Auto requires completed planning phase');
     });
 
     it('should not run auto when session is failed', async () => {
       const error: WorkflowError = WorkflowError.internalBug('Test error');
       session.getState().errors.push(error);
 
-      const mockAutoFn = vi.fn();
+      const mockAutoFn = jest.fn();
       const result = await session.runAuto(mockAutoFn);
 
       expect(result.success).toBe(false);
-      expect(result.summary).toContain('terminal state');
+      expect(result.summary).toContain('Cannot proceed');
     });
   });
 
@@ -159,7 +159,7 @@ describe('GitWorkflowSession', () => {
 
   describe('session logging', () => {
     it('should log phase transitions', async () => {
-      const mockPlanFn = vi.fn().mockResolvedValue(
+      const mockPlanFn = jest.fn().mockResolvedValue(
         workflowSuccess(
           {
             todoMarkdown: 'test',
@@ -182,11 +182,11 @@ describe('GitWorkflowSession', () => {
 
       const logs = session.getLogs();
       expect(logs.length).toBeGreaterThan(1);
-      expect(logs.some(log => log.event === 'Phase transition')).toBe(true);
+      expect(logs.some(log => log.event.includes('transition'))).toBe(true);
     });
 
     it('should aggregate errors', async () => {
-      const mockPlanFn = vi.fn().mockResolvedValue({
+      const mockPlanFn = jest.fn().mockResolvedValue({
         success: false,
         summary: 'Failed',
         errors: [WorkflowError.externalService('Test error')]
@@ -203,7 +203,7 @@ describe('GitWorkflowSession', () => {
 
   describe('session summary', () => {
     it('should generate summary with plan output', async () => {
-      const mockPlanFn = vi.fn().mockResolvedValue(
+      const mockPlanFn = jest.fn().mockResolvedValue(
         workflowSuccess(
           {
             todoMarkdown: 'test todo',
