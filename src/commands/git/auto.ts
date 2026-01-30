@@ -1,17 +1,193 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
+import fs from 'fs';
 import path from 'path';
 import { GitService } from '../../core/git/GitService';
 import { AIError } from '../../agent/llm';
 import {
   AutoWorkflow,
   GitWorkflowSession,
-  WorkflowConfig
+  WorkflowConfig,
+  PlanOutput
 } from '../../core/workflows';
 import { CapabilityLevel } from '../../core/capability/CapabilityLevel';
 import { ContextGatherer } from '../../core/git/ContextGatherer';
 import { CodeReviewer } from '../../core/git/CodeReviewer';
+import { stringToCapabilityLevel } from '../../core/capability/CapabilityLevel';
+
+const METADATA_PREFIX = '>';
+
+/**
+ * 用于判断计划范围的行数阈值常量
+ */
+const SMALL_SCOPE_LINES_THRESHOLD = 100;
+const MEDIUM_SCOPE_LINES_THRESHOLD = 500;
+
+/**
+ * 元数据解析器类型
+ */
+type MetadataParser = (line: string, metadata: Partial<PlanOutput>) => void;
+
+/**
+ * 元数据解析器映射
+ * 使用配置驱动的方式提高可维护性
+ */
+const METADATA_PARSERS: Record<string, MetadataParser> = {
+    'Capability Level:': (line, metadata) => {
+        const capabilityStr = line.split(':', 2)[1]?.trim();
+        if (capabilityStr) {
+            const capability = stringToCapabilityLevel(capabilityStr);
+            if (capability) {
+                metadata.capability = {
+                    minCapability: capability,
+                    fallbackChain: [capability]
+                };
+            }
+        }
+    },
+    'Estimated Time:': (line, metadata) => {
+        // 使用正则表达式提取数字，更鲁棒
+        const timeMatch = line.match(/(\d+)\s*ms/i);
+        if (timeMatch) {
+            const timeValue = parseInt(timeMatch[1], 10);
+            if (!isNaN(timeValue)) {
+                metadata.estimatedTime = timeValue;
+            } else {
+                console.warn(chalk.yellow(`⚠️  解析 Estimated Time 失败: "${timeMatch[1]}"`));
+            }
+        } else {
+            console.warn(chalk.yellow(`⚠️  Estimated Time 格式无效: "${line}"`));
+        }
+    },
+    'Estimated Tokens:': (line, metadata) => {
+        // 使用正则表达式提取数字，更鲁棒
+        const tokensMatch = line.match(/(\d+)/);
+        if (tokensMatch) {
+            const tokensValue = parseInt(tokensMatch[1], 10);
+            if (!isNaN(tokensValue)) {
+                metadata.estimatedTokens = tokensValue;
+            } else {
+                console.warn(chalk.yellow(`⚠️  解析 Estimated Tokens 失败: "${tokensMatch[1]}"`));
+            }
+        } else {
+            console.warn(chalk.yellow(`⚠️  Estimated Tokens 格式无效: "${line}"`));
+        }
+    },
+    'Scope:': (line, metadata) => {
+        // 支持显式指定scope
+        const scopeStr = line.split(':', 2)[1]?.trim().toLowerCase();
+        if (scopeStr && ['small', 'medium', 'large'].includes(scopeStr)) {
+            (metadata as any).explicitScope = scopeStr as 'small' | 'medium' | 'large';
+        }
+    }
+};
+
+/**
+ * 解析单个元数据行
+ * 
+ * @param line 元数据行
+ * @param metadata 元数据对象
+ * @returns 是否成功解析
+ */
+function parseMetadataLine(line: string, metadata: Partial<PlanOutput>): boolean {
+    for (const [prefix, parser] of Object.entries(METADATA_PARSERS)) {
+        if (line.includes(prefix)) {
+            parser(line, metadata);
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * 推断计划范围
+ * 
+ * @param planContent 计划内容行数
+ * @param explicitScope 显式指定的scope（如果存在）
+ * @returns 推断的scope
+ */
+function inferScope(planContentLength: number, explicitScope?: 'small' | 'medium' | 'large'): 'small' | 'medium' | 'large' {
+    // 如果有显式指定的scope，直接使用
+    if (explicitScope) {
+        return explicitScope;
+    }
+    
+    // 否则根据行数推断
+    if (planContentLength < SMALL_SCOPE_LINES_THRESHOLD) {
+        return 'small';
+    } else if (planContentLength < MEDIUM_SCOPE_LINES_THRESHOLD) {
+        return 'medium';
+    } else {
+        return 'large';
+    }
+}
+
+/**
+ * 从todo.md文件加载计划
+ * 
+ * @param todoPath todo.md文件路径
+ * @returns 解析后的PlanOutput，如果文件不存在或解析失败则返回null
+ */
+async function loadPlanFromTodo(todoPath: string): Promise<PlanOutput | null> {
+    try {
+        const content = await fs.promises.readFile(todoPath, 'utf8');
+        const lines = content.split('\n');
+        
+        const planContent: string[] = [];
+        let metadata: Partial<PlanOutput> = {};
+        let explicitScope: 'small' | 'medium' | 'large' | undefined;
+
+        for (const line of lines) {
+            const trimmedLine = line.trim();
+            
+            if (trimmedLine.startsWith(METADATA_PREFIX)) {
+                // 解析元数据行
+                const metadataLine = trimmedLine.replace(METADATA_PREFIX, '').trim();
+                
+                // 检查是否是显式scope
+                if (metadataLine.startsWith('Scope:')) {
+                    const scopeStr = metadataLine.split(':', 2)[1]?.trim().toLowerCase();
+                    if (scopeStr && ['small', 'medium', 'large'].includes(scopeStr)) {
+                        explicitScope = scopeStr as 'small' | 'medium' | 'large';
+                    }
+                } else {
+                    // 使用通用的元数据解析器
+                    parseMetadataLine(metadataLine, metadata);
+                }
+            } else if (trimmedLine) {
+                planContent.push(line);
+            }
+        }
+
+        if (planContent.length === 0) {
+            console.warn(chalk.yellow('⚠️  todo.md 文件内容为空'));
+            return null;
+        }
+
+        // 推断scope（优先使用显式指定的）
+        const scope = inferScope(planContent.length, explicitScope);
+
+        return {
+            todoMarkdown: planContent.join('\n'),
+            capability: metadata.capability || {
+                minCapability: CapabilityLevel.SEMANTIC,
+                fallbackChain: [CapabilityLevel.SEMANTIC]
+            },
+            estimatedTime: metadata.estimatedTime || 60000,
+            estimatedTokens: metadata.estimatedTokens || 1000,
+            scope
+        };
+    } catch (e) {
+        const error = e as NodeJS.ErrnoException;
+        if (error.code === 'ENOENT') {
+            console.warn(chalk.yellow('⚠️  未找到 todo.md 文件'));
+        } else {
+            console.warn(chalk.yellow(`⚠️  读取 todo.md 文件失败: ${error.message}`));
+        }
+        return null;
+    }
+}
 
 export function registerAutoCommand(gitCmd: Command) {
     gitCmd
@@ -46,6 +222,15 @@ export function registerAutoCommand(gitCmd: Command) {
                 };
 
                 const session = new GitWorkflowSession(workflowConfig);
+
+                // Try to load plan from todo.md
+                const planOutput = await loadPlanFromTodo(todoPath);
+                
+                if (planOutput) {
+                    console.log(chalk.gray(`📋 从 todo.md 加载计划: ${planOutput.scope} scope`));
+                    // Use the public method to safely load the plan
+                    session.loadPlanFromExternal(planOutput);
+                }
 
                 console.log(chalk.bold.cyan('\n🤖 启动自动执行工作流...\n'));
 

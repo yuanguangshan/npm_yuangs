@@ -259,6 +259,22 @@ export class GitWorkflowSession {
     this.updatePhase('completed');
   }
 
+  /**
+   * 安全地从外部加载已完成的计划输出
+   * 用于恢复之前生成的会话状态
+   * 
+   * @param planOutput 计划输出数据
+   */
+  loadPlanFromExternal(planOutput: PlanOutput): void {
+    if (this.state.phase === 'initialized' || this.state.phase === 'planning') {
+      this.state.planOutput = planOutput;
+      this.updatePhase('planned');
+      this.log('planned', 'Plan loaded from external source');
+    } else {
+      throw new Error(`Cannot load plan in current phase: ${this.state.phase}`);
+    }
+  }
+
   getLogs(): Readonly<SessionLog[]> {
     return [...this.state.logs];
   }

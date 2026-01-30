@@ -50,22 +50,22 @@ export function cleanLLMOutput(
     let cleaned = content.trim();
 
     // 检测并移除 Markdown fence
-    const hasOpeningFence = /^```(markdown|md)?\\s*\\n/i.test(cleaned);
-    const hasClosingFence = /\\n\\s*```$/.test(cleaned);
+    const hasOpeningFence = /^```(markdown|md)?\s*\n/i.test(cleaned);
+    const hasClosingFence = /\n\s*```$/.test(cleaned);
 
     if (hasOpeningFence || hasClosingFence) {
         // 仅在存在 fence 时进行清理
-        cleaned = cleaned.replace(/^```(markdown|md)?\\s*\\n/i, '');
-        cleaned = cleaned.replace(/\\n\\s*```$/, '');
+        cleaned = cleaned.replace(/^```(markdown|md)?\s*\n/i, '');
+        cleaned = cleaned.replace(/\n\s*```$/, '');
     }
 
     // 宽松模式：额外清理对话式前缀和后缀
     if (strategy === CleanStrategy.LENIENT) {
         // 移除常见的对话式前缀（如"好的"、"这是"、"以下是"等）
-        cleaned = cleaned.replace(/^(好的[，,。.]?|这是|以下是|为您生成|已生成)[^\\n]*\\n+/i, '');
+        cleaned = cleaned.replace(/^(好的[，,。.]?|这是|以下是|为您生成|已生成)[^\n]*\n+/i, '');
 
         // 移除常见的对话式后缀（如"希望这对你有帮助"等）
-        cleaned = cleaned.replace(/\\n+(希望|祝|如有|还有)[^\\n]*$/i, '');
+        cleaned = cleaned.replace(/\n+(希望|祝|如有|还有)[^\n]*$/i, '');
     }
 
     return cleaned.trim();
