@@ -80,14 +80,17 @@ const METADATA_PARSERS: Record<string, MetadataParser> = {
 /**
  * 解析单个元数据行
  * 
- * @param line 元数据行
+ * @param line 元数据行（可能包含emoji）
  * @param metadata 元数据对象
  * @returns 是否成功解析
  */
 function parseMetadataLine(line: string, metadata: Partial<PlanOutput>): boolean {
+    // 移除emoji和特殊字符，保留英文、数字、冒号和空格
+    const cleanedLine = line.replace(/[^\x00-\x7F]/g, '').trim();
+    
     for (const [prefix, parser] of Object.entries(METADATA_PARSERS)) {
-        if (line.includes(prefix)) {
-            parser(line, metadata);
+        if (cleanedLine.includes(prefix)) {
+            parser(line, metadata); // 使用原始行（包含emoji）传给解析器
             return true;
         }
     }
