@@ -52,12 +52,21 @@ export class AutoWorkflow {
       };
 
       const todoPath = process.cwd() + '/todo.md';
-      const { tasks } = await parseTodoFile(todoPath);
+      console.error('[DEBUG] Reading todo.md from:', todoPath);
+      
+      const { tasks, rawContent } = await parseTodoFile(todoPath);
+      
+      console.error('[DEBUG] Todo content length:', rawContent.length);
+      console.error('[DEBUG] Parsed tasks:', tasks.length);
+      console.error('[DEBUG] Raw content preview:', rawContent.substring(0, 200));
 
       if (tasks.length === 0) {
         return workflowFailure(
           'No tasks found in todo.md',
-          [WorkflowError.userInput('Please run git plan first to generate tasks')]
+          [
+            WorkflowError.userInput('Please run git plan first to generate tasks'),
+            WorkflowError.internalBug('Todo.md content: ' + rawContent.substring(0, 100))
+          ]
         );
       }
 

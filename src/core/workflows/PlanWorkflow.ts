@@ -227,7 +227,13 @@ ${reviewComments}
       bypassRouter: true
     });
 
+    console.error('[DEBUG PlanWorkflow] Raw LLM output length:', finalResponse.rawText.length);
+    console.error('[DEBUG PlanWorkflow] Raw LLM output preview:', finalResponse.rawText.substring(0, 500));
+    
     const todoMarkdown = cleanLLMOutput(finalResponse.rawText);
+    
+    console.error('[DEBUG PlanWorkflow] Cleaned output length:', todoMarkdown.length);
+    console.error('[DEBUG PlanWorkflow] Cleaned output preview:', todoMarkdown.substring(0, 500));
 
     const scope = this.determineScope(allFiles, estimatedTotalLines);
 
