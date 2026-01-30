@@ -2,6 +2,7 @@ import { GitService } from '../git/GitService';
 import { ContextGatherer } from '../git/ContextGatherer';
 import { CodeReviewer, ReviewLevel } from '../git/CodeReviewer';
 import { runLLM, AIError } from '../../agent/llm';
+import chalk from 'chalk';
 import { AIRequestMessage } from '../../core/validation';
 import { MAX_RETRY_ATTEMPTS, MIN_REVIEW_SCORE } from '../git/constants';
 import {
@@ -167,6 +168,18 @@ export class AutoWorkflow {
       }
 
       const savedPath = await saveRawOutput(code, task.index);
+
+      // Debug: 检查生成的代码内容
+      if (code.trim().length === 0) {
+        console.warn(chalk.yellow(`⚠️  AI 返回空内容，跳过此任务`));
+        await updateTaskStatus(todoPath, task.index, {
+          execStatus: 'failed'
+        });
+        return {
+          success: true, // 返回 true 让流程继续
+          errors: []
+        };
+      }
 
       const generated = parseGeneratedCode(code);
 
