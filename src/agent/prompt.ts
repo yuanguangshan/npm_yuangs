@@ -15,9 +15,9 @@ import {
     DynamicContext
 } from './dynamicPrompt';
 import {
-    buildV2_2ProtocolPrompt,
+    buildV2_3ProtocolPrompt,
     buildOutputConstraints,
-    ProtocolV2_2Config
+    ProtocolV2_3Config
 } from './protocolV2_2';
 
 export function buildPrompt(
@@ -54,13 +54,13 @@ function buildChatPrompt(
         content: input,
     });
 
-    const v2Config: ProtocolV2_2Config = {
-        mode: 'chat',
+    const v2Config: ProtocolV2_3Config = {
+        mode: input.includes('#protocol') ? 'workflow' : 'chat',
         enableStrictOutput: false,
         enableReasoningTrace: true
     };
 
-    const baseSystemPrompt = buildV2_2ProtocolPrompt(v2Config);
+    const baseSystemPrompt = buildV2_3ProtocolPrompt(v2Config);
     const outputConstraints = buildOutputConstraints();
 
     const dynamicContext: DynamicContext = {};
@@ -89,13 +89,13 @@ function buildCommandPromptObject(
         promptText = `【参考技能库】\n${skillList}\n\n${promptText}`;
     }
 
-    const v2Config: ProtocolV2_2Config = {
-        mode: 'command',
+    const v2Config: ProtocolV2_3Config = {
+        mode: input.includes('#chat') ? 'chat' : 'command',
         enableStrictOutput: true,
         enableReasoningTrace: true
     };
 
-    const systemPrompt = buildV2_2ProtocolPrompt(v2Config);
+    const systemPrompt = buildV2_3ProtocolPrompt(v2Config);
 
     return {
         system: systemPrompt,

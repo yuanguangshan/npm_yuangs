@@ -15,6 +15,7 @@ import { CapabilityLevel } from '../../core/capability/CapabilityLevel';
 import { ContextGatherer } from '../../core/git/ContextGatherer';
 import { CodeReviewer } from '../../core/git/CodeReviewer';
 import { stringToCapabilityLevel } from '../../core/capability/CapabilityLevel';
+import { getRouter } from '../../core/modelRouter';
 
 const METADATA_PREFIX = '>';
 
@@ -72,13 +73,6 @@ const METADATA_PARSERS: Record<string, MetadataParser> = {
             }
         } else {
             console.warn(chalk.yellow(`⚠️  Estimated Tokens 格式无效: "${line}"`));
-        }
-    },
-    'Scope:': (line, metadata) => {
-        // 支持显式指定scope
-        const scopeStr = line.split(':', 2)[1]?.trim().toLowerCase();
-        if (scopeStr && ['small', 'medium', 'large'].includes(scopeStr)) {
-            (metadata as any).explicitScope = scopeStr as 'small' | 'medium' | 'large';
         }
     }
 };
@@ -142,17 +136,17 @@ async function loadPlanFromTodo(todoPath: string): Promise<PlanOutput | null> {
             const trimmedLine = line.trim();
             
             if (trimmedLine.startsWith(METADATA_PREFIX)) {
-                // 解析元数据行
-                const metadataLine = trimmedLine.replace(METADATA_PREFIX, '').trim();
+                // 解析元数据行 - 保留完整的行（包括emoji），传递给解析器处理
+                const metadataLine = trimmedLine.substring(METADATA_PREFIX.length).trim();
                 
                 // 检查是否是显式scope
-                if (metadataLine.startsWith('Scope:')) {
+                if (metadataLine.includes('Scope:')) {
                     const scopeStr = metadataLine.split(':', 2)[1]?.trim().toLowerCase();
                     if (scopeStr && ['small', 'medium', 'large'].includes(scopeStr)) {
                         explicitScope = scopeStr as 'small' | 'medium' | 'large';
                     }
                 } else {
-                    // 使用通用的元数据解析器
+                    // 使用通用的元数据解析器（支持包含emoji的行）
                     parseMetadataLine(metadataLine, metadata);
                 }
             } else if (trimmedLine) {
@@ -249,10 +243,11 @@ export function registerAutoCommand(gitCmd: Command) {
                 spinner.start('[工作流] 正在执行任务...');
 
                 const result = await session.runAuto(async (input) => {
+                    const router = await getRouter();
                     const autoWorkflow = new AutoWorkflow(
                         gitService,
                         new ContextGatherer(gitService),
-                        new CodeReviewer(gitService)
+                        new CodeReviewer(gitService, router)
                     );
                     return autoWorkflow.run({...input, ...autoInput}, session.getConfig());
                 });

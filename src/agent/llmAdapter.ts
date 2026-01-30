@@ -5,7 +5,7 @@ import type { AIRequestMessage } from '../core/validation';
 import { getUserConfig } from '../ai/client';
 import JSON5 from 'json5';
 import { ContextManager } from './contextManager';
-import { buildV2_2ProtocolPrompt, ProtocolV2_2Config } from './protocolV2_2';
+import { buildV2_3ProtocolPrompt, buildOutputConstraints, ProtocolV2_3Config } from './protocolV2_2';
 
 export class LLMAdapter {
   static async think(
@@ -16,13 +16,15 @@ export class LLMAdapter {
     customSystemPrompt?: string,
     contextManager?: ContextManager
   ): Promise<AgentThought> {
-    const v2Config: ProtocolV2_2Config = {
+    const v2Config: ProtocolV2_3Config = {
         mode: mode === 'chat' ? 'chat' : 'command',
         enableStrictOutput: mode !== 'chat',
         enableReasoningTrace: true
     };
 
-    let protocol = buildV2_2ProtocolPrompt(v2Config);
+    let protocol = buildV2_3ProtocolPrompt(v2Config);
+    const outputConstraints = buildOutputConstraints();
+    protocol += `\n${outputConstraints}`;
 
     if (mode === 'command' || mode === 'command+exec') {
       protocol += `\n\nCOMMAND MODE ACTIVE:
@@ -55,8 +57,9 @@ export class LLMAdapter {
 
   static parseThought(raw: string): AgentThought {
     try {
-      // CoT V2.2: 分别提取 [THOUGHT] 块和 JSON 块
-      const thoughtMatch = raw.match(/\[THOUGHT\]([\s\S]*?)\[\/THOUGHT\]/);
+      // CoT V2.3: 提取 PHASE 1: THINK 块或 [THOUGHT] 块
+      const thoughtMatch = raw.match(/\[PHASE 1: THINK - 深度推理\]([\s\S]*?)\[PHASE 2/) || 
+                          raw.match(/\[THOUGHT\]([\s\S]*?)\[\/THOUGHT\]/);
       const jsonMatch = raw.match(/```json\n([\s\S]*?)\n```/) || raw.match(/\{[\s\S]*\}/);
       
       if (jsonMatch) {

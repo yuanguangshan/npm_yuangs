@@ -52,14 +52,8 @@ export class AutoWorkflow {
       };
 
       const todoPath = process.cwd() + '/todo.md';
-      console.error('[DEBUG] Reading todo.md from:', todoPath);
-      
       const { tasks, rawContent } = await parseTodoFile(todoPath);
       
-      console.error('[DEBUG] Todo content length:', rawContent.length);
-      console.error('[DEBUG] Parsed tasks:', tasks.length);
-      console.error('[DEBUG] Raw content preview:', rawContent.substring(0, 200));
-
       if (tasks.length === 0) {
         return workflowFailure(
           'No tasks found in todo.md',
@@ -125,7 +119,7 @@ export class AutoWorkflow {
       return workflowFailure(
         'Unexpected error during auto execution',
         [
-          WorkflowError.internalBug('Auto execution failed', error as Error)
+          WorkflowError.internalBug('Auto execution failed: ' + (error instanceof Error ? error.message : String(error)), error as Error)
         ]
       );
     }
@@ -245,14 +239,12 @@ export class AutoWorkflow {
     try {
       const response = await runLLM({
         prompt: {
-          system: `你是一个全方位的交付专家。
+          system: `你是一个全方位的交付专家。请遵循 [SYSTEM PROTOCOL V2.3] (Ref: src/agent/how.md)。
 1. 如果当前任务涉及代码（如 .ts, .js, .py 等文件），请扮演**资深软件工程师**，确保代码健壮、注释详尽、遵循最佳实践，并追求极致的模块化与性能。
 2. 如果当前任务涉及文档（如 .md, .yaml, .html 等文件），请扮演**资深内容专家或历史学者**，确保叙事优美、逻辑严密、事实准确。
 
-**重要输出格式要求：**
-- 每个文件必须以 \`### 文件: path\` 或 \`**文件**: path\` 明确标注。
-- 代码内容必须包裹在对应的 Markdown 代码块中。
-- 不要解释，直接输出文件内容。`,
+**核心协议：THINK → ACT → OBSERVE**
+你必须按此协议进行输出，确保每一步都有明确的意图、行动和观察。`,
           messages: [
             {
               role: 'user',
