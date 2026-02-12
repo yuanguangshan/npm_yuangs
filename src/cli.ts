@@ -23,7 +23,6 @@ import { registerSSHCommand } from './commands/ssh';
 import { registerRouterCommands } from './commands/routerCommands';
 import { registerGitCommands } from './commands/gitCommands';
 import { wouldExpandAsGlob } from './utils/globDetector';
-// import { createDiffEditCommand } from './governance/commands/diffEdit';
 
 // Mandatory Node.js version check
 const majorVersion = Number(process.versions.node.split('.')[0]);
@@ -395,10 +394,6 @@ registerConfigCommands(program);
 registerSSHCommand(program);
 registerRouterCommands(program);
 registerGitCommands(program);
-
-// Add governance diff-edit command
-// const diffEditCmd = createDiffEditCommand();
-// program.addCommand(diffEditCmd);
 
 program
     .command('help')

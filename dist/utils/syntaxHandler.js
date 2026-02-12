@@ -443,7 +443,7 @@ async function handleDirectoryReference(dirPath, question) {
                 result: `目录 "${dirPath}" 下没有文件`
             };
         }
-        const contentMap = (0, fileReader_1.readFilesContent)(filePaths);
+        const contentMap = await (0, fileReader_1.readFilesContent)(filePaths, { showProgress: true, concurrency: 5 });
         // 持久化到上下文
         const contextBuffer = new contextBuffer_1.ContextBuffer();
         const persisted = await (0, contextStorage_1.loadContext)();
