@@ -332,7 +332,7 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
             throw new Error(`No changes in file: ${filePath}`);
         }
 
-        // Check cache first
+        // Check cache first (使用 hash 作为缓存 key，避免存储大 diff)
         const cachedResult = await this.cache.get(filePath, diff, level);
         if (cachedResult) {
             console.log(chalk.gray(`💾 从缓存加载审查结果: ${filePath}`));

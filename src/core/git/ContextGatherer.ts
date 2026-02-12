@@ -24,7 +24,7 @@ export interface GatheredContext {
 export class ContextGatherer {
     private MAX_FILE_CONTENT_LENGTH = 10000; // 单个文件读取上限
     private MAX_TOTAL_CONTEXT_LENGTH = 50000; // 总上限
-    private SUMMARY_THRESHOLD = 50; // P1: 改为基于行数判断（超过50行认为是大文件）
+    private SUMMARY_THRESHOLD = 200; // P2: 改为200行，避免过度摘要
     private astParser: EnhancedASTParser; // Reuse AST parser instance
 
     constructor(private gitService: GitService) {
@@ -210,57 +210,67 @@ export class ContextGatherer {
             });
         }
 
-        // P1: 3. 读取内容 (使用异步 I/O + 并发控制)
-        let currentTotalLength = 0;
+        // P2: 3. 读取内容 (正确使用异步 I/O + 并发控制 + 原子长度计数)
         const limit = pLimit(5); // 限制并发数为 5
+        const totalLength = { value: 0 }; // 使用对象实现原子计数器
+        const readResults: (null | { path: string; content: string })[] = [];
 
-        const readTasks = Array.from(potentialPaths).map(async (filePath) => {
-            if (currentTotalLength > this.MAX_TOTAL_CONTEXT_LENGTH) return null;
+        for (const filePath of potentialPaths) {
+            // 如果已达到总长度限制，提前终止
+            if (totalLength.value >= this.MAX_TOTAL_CONTEXT_LENGTH) {
+                console.log(`[ContextGatherer] 达到总长度限制 (${this.MAX_TOTAL_CONTEXT_LENGTH})，停止读取更多文件`);
+                break;
+            }
 
-            const fullPath = path.join(repoRoot, filePath);
             try {
-                // P1: 使用异步 I/O 替代同步调用
-                const stats = await fs.stat(fullPath);
-                if (stats.isFile()) {
+                // 使用 limit 包裹任务，真正控制并发
+                const result = await limit(async () => {
+                    const fullPath = path.join(repoRoot, filePath);
+                    
+                    // 检查文件是否存在并获取信息
+                    const stats = await fs.stat(fullPath);
+                    if (!stats.isFile()) return null;
+
+                    // 读取文件内容
                     let content = await fs.readFile(fullPath, 'utf8');
 
-                    // P1: 改进大文件判断逻辑，基于行数而非字符长度
+                    // 判断是否需要摘要
                     const isReferenceOnly = !description.includes(filePath);
                     const lineCount = content.split('\n').length;
-                    const isTooLarge = lineCount > this.SUMMARY_THRESHOLD; // 超过 50 行认为是大文件
+                    const isTooLarge = lineCount > this.SUMMARY_THRESHOLD;
                     const isTSFile = filePath.endsWith('.ts') || filePath.endsWith('.tsx');
 
                     if (isReferenceOnly && isTooLarge && isTSFile) {
-                        // Generate semantic summary for large TS files that are not directly referenced
                         try {
                             content = this.astParser.generateSummary(filePath, content);
                             console.log(`[Economy] ✂️  Summarized ${filePath} (${lineCount} lines) to save tokens.`);
                         } catch (error) {
                             console.warn(`[ContextGatherer] 警告：摘要生成失败 "${filePath}": ${(error as Error).message}`);
-                            // 如果摘要生成失败，回退到截断内容
                             content = content.substring(0, this.MAX_FILE_CONTENT_LENGTH) + '\n... (内容过长已截断，摘要生成失败)';
                         }
                     } else if (content.length > this.MAX_FILE_CONTENT_LENGTH) {
                         content = content.substring(0, this.MAX_FILE_CONTENT_LENGTH) + '\n... (内容过长已截断)';
                     }
 
-                    currentTotalLength += content.length;
-                    return { path: filePath, content };
+                    // 原子地更新总长度
+                    if (totalLength.value + content.length <= this.MAX_TOTAL_CONTEXT_LENGTH) {
+                        totalLength.value += content.length;
+                        return { path: filePath, content };
+                    } else {
+                        console.log(`[ContextGatherer] 跳过 ${filePath} (会超过总长度限制)`);
+                        return null;
+                    }
+                });
+
+                if (result) {
+                    readResults.push(result);
                 }
             } catch (e: any) {
                 console.warn(`[ContextGatherer] 警告：无法读取相关上下文文件 "${filePath}": ${e.message}`);
             }
-            return null;
-        });
+        }
 
-        const readResults = await Promise.all(readTasks);
-        readResults.forEach(result => {
-            if (result && currentTotalLength <= this.MAX_TOTAL_CONTEXT_LENGTH) {
-                results.push(result);
-            }
-        });
-
-        return results;
+        return readResults.filter((r): r is { path: string; content: string } => r !== null);
     }
 
     /**
