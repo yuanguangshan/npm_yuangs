@@ -108,7 +108,7 @@ program
             if (options.withContent) {
                 const { parseFilePathsFromLsOutput, readFilesContent, buildPromptWithFileContent } = await import('./core/fileReader');
                 const filePaths = parseFilePathsFromLsOutput(stdinData);
-                const contentMap = readFilesContent(filePaths);
+                const contentMap = await readFilesContent(filePaths, { showProgress: false });
                 question = buildPromptWithFileContent(stdinData, filePaths, contentMap, question || undefined);
             } else {
                 question = `以下是输入内容：\n\n${stdinData}\n\n我的问题是：${question || '分析以上内容'}`;
@@ -541,7 +541,7 @@ async function main() {
                         if (options.withContent) {
                             const { parseFilePathsFromLsOutput, readFilesContent, buildPromptWithFileContent } = await import('./core/fileReader');
                             const filePaths = parseFilePathsFromLsOutput(stdinData);
-                            const contentMap = readFilesContent(filePaths);
+                            const contentMap = await readFilesContent(filePaths, { showProgress: false });
                             question = buildPromptWithFileContent(stdinData, filePaths, contentMap, question || undefined);
                         } else {
                             question = `以下是输入内容：\n\n${stdinData}\n\n我的问题是：${question || '分析以上内容'}`;
@@ -551,7 +551,7 @@ async function main() {
                     if (options.withContent) {
                         const { parseFilePathsFromLsOutput, readFilesContent, buildPromptWithFileContent } = await import('./core/fileReader');
                         const filePaths = parseFilePathsFromLsOutput(stdinData);
-                        const contentMap = readFilesContent(filePaths);
+                        const contentMap = await readFilesContent(filePaths, { showProgress: false });
                         question = buildPromptWithFileContent(stdinData, filePaths, contentMap, question || undefined);
                     } else {
                         question = `以下是输入内容：\n\n${stdinData}\n\n我的问题是：${question || '分析以上内容'}`;

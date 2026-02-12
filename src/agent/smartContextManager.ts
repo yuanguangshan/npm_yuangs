@@ -1,5 +1,6 @@
 import { ContextManager } from './contextManager';
 import { rankByRelevance, filterContextByRelevance, calculateTotalTokens, RankedContextItem } from './relevance';
+import { loadContext } from '../commands/contextStorage';
 
 export interface EnhancedContextOptions {
   query: string;
@@ -22,13 +23,25 @@ export class SmartContextManager extends ContextManager {
 
     const messages = this.getMessages();
 
-    const contextItems = messages
+    let contextItems = messages
       .filter(m => m.role === 'user')
       .map(m => ({
         path: this.extractPathFromMessage(m.content) || '',
         content: m.content
       }))
       .filter(item => item.path && item.path.length > 0);
+
+    const persistedItems = await this.loadPersistedContext();
+    if (persistedItems.length > 0) {
+      const persistedContextItems = persistedItems
+        .map((item: { path: string; content?: string; summary?: string }) => ({
+          path: item.path,
+          content: item.content || item.summary || ''
+        }))
+        .filter((item: { path: string; content: string }) => item.path && item.path.length > 0);
+
+      contextItems = [...contextItems, ...persistedContextItems];
+    }
 
     const rankedItems = await rankByRelevance(contextItems, query);
     this.cachedRankedItems = rankedItems;
@@ -64,6 +77,14 @@ export class SmartContextManager extends ContextManager {
   private extractPathFromMessage(content: string): string | undefined {
     const pathMatch = content.match(/@([^\s]+)/);
     return pathMatch ? pathMatch[1] : undefined;
+  }
+
+  private async loadPersistedContext(): Promise<Array<{ path: string; content?: string; summary?: string }>> {
+    try {
+      return (await loadContext()) || [];
+    } catch (error) {
+      return [];
+    }
   }
 
   private buildSmartSummary(

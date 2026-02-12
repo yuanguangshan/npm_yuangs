@@ -17,9 +17,26 @@ export type ContextItem = {
 
 const estimateTokens = (text: string) => Math.ceil(text.length / 4);
 
+export interface ContextBufferConfig {
+    maxTokens?: number;
+    defaultDecayRate?: number;
+}
+
+const DEFAULT_CONFIG: Required<ContextBufferConfig> = {
+    maxTokens: 100000,
+    defaultDecayRate: 0.95
+};
+
 export class ContextBuffer {
     private items: ContextItem[] = [];
-    private maxTokens = 100000;
+    private maxTokens: number;
+    private defaultDecayRate: number;
+
+    constructor(config: ContextBufferConfig = {}) {
+        const { maxTokens, defaultDecayRate } = { ...DEFAULT_CONFIG, ...config };
+        this.maxTokens = maxTokens;
+        this.defaultDecayRate = defaultDecayRate;
+    }
 
     add(
         item: Partial<ContextItem> & { type: ContextItem['type']; path: string },
@@ -133,7 +150,7 @@ export class ContextBuffer {
         const last = item.lastUsedAt ?? now;
         const hours = (now - last) / 36e5;
 
-        const rate = item.decayRate ?? 0.95;
+        const rate = item.decayRate ?? this.defaultDecayRate;
         item.importance = (item.importance ?? 0.5) * Math.pow(rate, hours);
     }
 

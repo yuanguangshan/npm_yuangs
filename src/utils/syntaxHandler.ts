@@ -521,9 +521,9 @@ async function handleDirectoryReference(dirPath: string, question?: string): Pro
     const fullPath = path.resolve(dirPath);
 
     if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isDirectory()) {
-        return { 
-            processed: true, 
-            result: `错误: 目录 "${dirPath}" 不存在或不是一个目录` 
+        return {
+            processed: true,
+            result: `错误: 目录 "${dirPath}" 不存在或不是一个目录`
         };
     }
 
@@ -536,13 +536,13 @@ async function handleDirectoryReference(dirPath: string, question?: string): Pro
         const filePaths = stdout.trim().split('\n').filter(f => f);
 
         if (filePaths.length === 0) {
-            return { 
-                processed: true, 
-                result: `目录 "${dirPath}" 下没有文件` 
+            return {
+                processed: true,
+                result: `目录 "${dirPath}" 下没有文件`
             };
         }
 
-        const contentMap = readFilesContent(filePaths);
+        const contentMap = await readFilesContent(filePaths, { showProgress: true, concurrency: 5 });
 
         // 持久化到上下文
         const contextBuffer = new ContextBuffer();
@@ -555,7 +555,7 @@ async function handleDirectoryReference(dirPath: string, question?: string): Pro
         for (const [filePath, content] of contentMap) {
             const tokens = Math.ceil(content.length / 4);
             totalOriginalTokens += tokens;
-            
+
             // 如果单个文件太大，跳过它以免撑爆上下文
             if (tokens > MAX_FILE_TOKENS) {
                 continue;
