@@ -333,7 +333,8 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
         }
 
         // Check cache first (使用 hash 作为缓存 key，避免存储大 diff)
-        const cachedResult = await this.cache.get(filePath, diff, level);
+        // P1: 传递版本号，避免模型升级后误用旧缓存
+        const cachedResult = await this.cache.get(filePath, diff, level, CodeReviewer.VERSION);
         if (cachedResult) {
             console.log(chalk.gray(`💾 从缓存加载审查结果: ${filePath}`));
             return cachedResult;
@@ -413,8 +414,8 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
             } : undefined,
         };
 
-        // Cache the result
-        await this.cache.set(filePath, diff, level, result);
+        // Cache the result (P1: 传递版本号)
+        await this.cache.set(filePath, diff, level, result, CodeReviewer.VERSION);
 
         return result;
     }

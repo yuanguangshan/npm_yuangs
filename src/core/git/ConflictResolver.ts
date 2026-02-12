@@ -12,10 +12,18 @@ export interface ConflictResolutionResult {
     backupFile?: string;
 }
 
+export enum ResolveStrategy {
+    SEMANTIC = 'semantic',
+    OURS = 'ours',
+    THEIRS = 'theirs',
+}
+
 export interface ResolveOptions {
     model?: string;
     dryRun?: boolean;
     backup?: boolean;
+    strategy?: ResolveStrategy;
+    timeout?: number; // P1: 超时熔断（毫秒），默认 30s
 }
 
 export class ConflictResolver {
@@ -25,7 +33,13 @@ export class ConflictResolver {
      * 使用 AI 尝试自动解决冲突
      */
     async resolveFile(filePath: string, options: ResolveOptions = {}): Promise<ConflictResolutionResult> {
-        const { model = DEFAULT_AI_MODEL, dryRun = false, backup = true } = options;
+        const { 
+            model = DEFAULT_AI_MODEL, 
+            dryRun = false, 
+            backup = true,
+            strategy = ResolveStrategy.SEMANTIC,
+            timeout = 30000 // P1: 默认 30 秒超时
+        } = options;
 
         try {
             const fullPath = path.isAbsolute(filePath) ? filePath : path.join(process.cwd(), filePath);
@@ -42,8 +56,83 @@ export class ConflictResolver {
                 return { file: filePath, success: false, error: '未检测到冲突标记' };
             }
 
-            const prompt = {
-                system: `你是一个资深软件工程师，擅长解决 Git 合并冲突。
+            // P1: 如果策略是 ours 或 theirs，直接使用 Git 命令
+            if (strategy === ResolveStrategy.OURS || strategy === ResolveStrategy.THEIRS) {
+                return await this.resolveWithGit(fullPath, filePath, strategy, backup);
+            }
+
+            // P1: 使用超时熔断（Promise.race 实现）
+            const resolveWithTimeout = this.resolveWithAI(
+                filePath, 
+                fullPath, 
+                content, 
+                model, 
+                dryRun, 
+                backup
+            );
+
+            const timeoutPromise = new Promise<ConflictResolutionResult>((_, reject) => {
+                setTimeout(() => {
+                    reject(new Error(`冲突解决超时（${timeout}ms），请手动处理或使用 --strategy ours/theirs`));
+                }, timeout);
+            });
+
+            const result = await Promise.race([resolveWithTimeout, timeoutPromise]);
+            return result;
+        } catch (error: unknown) {
+            const errMsg = error instanceof Error ? error.message : (typeof error === 'string' ? error : String(error));
+            return { file: filePath, success: false, error: errMsg };
+        }
+    }
+
+    /**
+     * P1: 使用 Git 命令解决冲突（ours/theirs 策略）
+     */
+    private async resolveWithGit(
+        fullPath: string,
+        filePath: string,
+        strategy: ResolveStrategy,
+        backup: boolean
+    ): Promise<ConflictResolutionResult> {
+        try {
+            const gitOption = strategy === ResolveStrategy.OURS ? '--ours' : '--theirs';
+            
+            // 备份原文件
+            let backupFile: string | undefined;
+            if (backup) {
+                const content = await fs.promises.readFile(fullPath, 'utf8');
+                backupFile = `${fullPath}.bak`;
+                await fs.promises.writeFile(backupFile, content, 'utf8');
+            }
+
+            // 使用 git checkout 选择版本
+            await this.gitService.execSafe(`checkout ${gitOption} -- "${filePath}"`);
+            
+            return { 
+                file: filePath, 
+                success: true, 
+                suggestion: `已使用 ${strategy} 策略解决冲突`,
+                backupFile 
+            };
+        } catch (error: unknown) {
+            const errMsg = error instanceof Error ? error.message : String(error);
+            return { file: filePath, success: false, error: `Git 策略失败: ${errMsg}` };
+        }
+    }
+
+    /**
+     * P1: 使用 AI 解决冲突（带超时保护）
+     */
+    private async resolveWithAI(
+        filePath: string,
+        fullPath: string,
+        content: string,
+        model: string,
+        dryRun: boolean,
+        backup: boolean
+    ): Promise<ConflictResolutionResult> {
+        const prompt = {
+            system: `你是一个资深软件工程师，擅长解决 Git 合并冲突。
 你的任务是：
 1. 分析提供的文件内容。
 2. 识别冲突部分（由 <<<<<<<, =======, >>>>>>> 标记）。
@@ -51,69 +140,68 @@ export class ConflictResolver {
 4. **绝对不要**遗漏任何必要的逻辑或闭合括号。
 5. 移除所有 Git 冲突标记。
 6. 输出完整的、修复后的文件内容，不要包含任何解释或 Markdown 代码块容器（直接输出原始内容）。`,
-                messages: [
-                    {
-                        role: 'user' as const,
-                        content: `文件路径: ${filePath}\n\n内容:\n${content}`
-                    }
-                ]
-            };
+            messages: [
+                {
+                    role: 'user' as const,
+                    content: `文件路径: ${filePath}\n\n内容:\n${content}`
+                }
+            ]
+        };
 
-            const response = await runLLM({
-                prompt,
-                model: model || DEFAULT_AI_MODEL,
-                stream: false
-            });
+        const response = await runLLM({
+            prompt,
+            model: model || DEFAULT_AI_MODEL,
+            stream: false
+        });
 
-            const resolvedContent = response.rawText;
-
-            // 1. 基本非空校验
-            if (!resolvedContent || resolvedContent.trim().length === 0) {
-                return { file: filePath, success: false, error: 'AI 生成了空内容，操作已拦截' };
-            }
-
-            // 2. 长度偏差校验
-            if (content.length > 300 && resolvedContent.length < content.length * 0.3) {
-                return { file: filePath, success: false, error: 'AI 生成的内容量严重缺失，疑似合并失败' };
-            }
-
-            // 3. 冲突标记残留校验
-            if (resolvedContent.includes('<<<<<<<') || resolvedContent.includes('=======') || resolvedContent.includes('>>>>>>>')) {
-                return { file: filePath, success: false, error: 'AI 生成的内容仍包含冲突标记' };
-            }
-
-            // 4. 基础语法完整性校验
-            const syntaxError = this.validateSyntax(filePath, resolvedContent);
-            if (syntaxError) {
-                return { file: filePath, success: false, error: `AI 生成的代码存在基础语法风险: ${syntaxError}` };
-            }
-
-            // 5. 更严格的语法校验（根据文件类型）
-            const advancedSyntaxError = await this.validateAdvancedSyntax(filePath, resolvedContent);
-            if (advancedSyntaxError) {
-                return { file: filePath, success: false, error: `AI 生成的代码存在高级语法错误: ${advancedSyntaxError}` };
-            }
-
-            if (dryRun) {
-                return { file: filePath, success: true, suggestion: 'Dry-run: 内容已生成但未写回文件' };
-            }
-
-            // 5. 备份处理
-            let backupFile: string | undefined;
-            if (backup) {
-                backupFile = `${fullPath}.bak`;
-                await fs.promises.writeFile(backupFile, content, 'utf8');
-            }
-
-            // 6. 覆盖写入
-            await fs.promises.writeFile(fullPath, resolvedContent, 'utf8');
-
-            return { file: filePath, success: true, backupFile };
-
-        } catch (error: unknown) {
-            const errMsg = error instanceof Error ? error.message : (typeof error === 'string' ? error : String(error));
-            return { file: filePath, success: false, error: errMsg };
+        // WARNING: 增加 response?.rawText 类型保护
+        const resolvedContent = response?.rawText;
+        if (!resolvedContent) {
+            return { file: filePath, success: false, error: 'AI 返回了无效响应（缺少 rawText 字段）' };
         }
+
+        // 1. 基本非空校验
+        if (!resolvedContent || resolvedContent.trim().length === 0) {
+            return { file: filePath, success: false, error: 'AI 生成了空内容，操作已拦截' };
+        }
+
+        // 2. 长度偏差校验
+        if (content.length > 300 && resolvedContent.length < content.length * 0.3) {
+            return { file: filePath, success: false, error: 'AI 生成的内容量严重缺失，疑似合并失败' };
+        }
+
+        // 3. 冲突标记残留校验
+        if (resolvedContent.includes('<<<<<<<') || resolvedContent.includes('=======') || resolvedContent.includes('>>>>>>>')) {
+            return { file: filePath, success: false, error: 'AI 生成的内容仍包含冲突标记' };
+        }
+
+        // 4. 基础语法完整性校验
+        const syntaxError = this.validateSyntax(filePath, resolvedContent);
+        if (syntaxError) {
+            return { file: filePath, success: false, error: `AI 生成的代码存在基础语法风险: ${syntaxError}` };
+        }
+
+        // 5. 更严格的语法校验（根据文件类型）
+        const advancedSyntaxError = await this.validateAdvancedSyntax(filePath, resolvedContent);
+        if (advancedSyntaxError) {
+            return { file: filePath, success: false, error: `AI 生成的代码存在高级语法错误: ${advancedSyntaxError}` };
+        }
+
+        if (dryRun) {
+            return { file: filePath, success: true, suggestion: 'Dry-run: 内容已生成但未写回文件' };
+        }
+
+        // 6. 备份处理
+        let backupFile: string | undefined;
+        if (backup) {
+            backupFile = `${fullPath}.bak`;
+            await fs.promises.writeFile(backupFile, content, 'utf8');
+        }
+
+        // 7. 覆盖写入
+        await fs.promises.writeFile(fullPath, resolvedContent, 'utf8');
+
+        return { file: filePath, success: true, backupFile };
     }
 
     /**

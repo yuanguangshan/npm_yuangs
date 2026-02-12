@@ -60,19 +60,20 @@ export class ReviewCache {
         return crypto.createHash('sha256').update(content).digest('hex');
     }
 
-    private getCacheKey(filePath: string, content: string, level: string): string {
+    private getCacheKey(filePath: string, content: string, level: string, version: string = 'v1.0'): string {
         const contentHash = this.hashContent(content);
         const relativePath = path.relative(process.cwd(), filePath);
-        const keyData = `${relativePath}:${contentHash}:${level}`;
+        // P1: 加入版本号作为缓存键的一部分，避免模型升级后误用旧缓存
+        const keyData = `${relativePath}:${contentHash}:${level}:${version}`;
         return crypto.createHash('sha256').update(keyData).digest('hex');
     }
 
-    async get(filePath: string, content: string, level: string): Promise<any | null> {
+    async get(filePath: string, content: string, level: string, version: string = 'v1.0'): Promise<any | null> {
         try {
             // P0: 确保初始化完成
             await this.readyPromise;
             
-            const key = this.getCacheKey(filePath, content, level);
+            const key = this.getCacheKey(filePath, content, level, version);
             
             // Check memory cache first
             const memoryEntry = this.memoryCache.get(key);
@@ -101,12 +102,12 @@ export class ReviewCache {
         }
     }
 
-    async set(filePath: string, content: string, level: string, result: any): Promise<void> {
+    async set(filePath: string, content: string, level: string, result: any, version: string = 'v1.0'): Promise<void> {
         try {
             // P0: 确保初始化完成
             await this.readyPromise;
             
-            const key = this.getCacheKey(filePath, content, level);
+            const key = this.getCacheKey(filePath, content, level, version);
             const now = Date.now();
             
             const entry: CacheEntry = {

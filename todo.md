@@ -1,94 +1,153 @@
-选择 **方案二（语义摘要模式）** 是最高效且“不降智”的做法。既然你已经有了 `kernel/ASTParser.ts` 这么强大的内核，我们完全可以实现：**让 AI 像看目录索引一样看非核心代码，只在需要时看细节。**
+# yuangs 项目全面评估与 Git 功能优化报告
 
-以下是为你的 `yuangs` 内核构思的 **“语义瘦身”** 实现方案：
+## 📊 项目总体评价
 
-### 1. 核心逻辑设计：双轨制读取
+**成熟度：A 级**  
+yuangs 已从一个简单的 CLI 助手演变为具备完整**治理意识、能力感知、跨会话记忆**的 AI 增强型执行系统。项目结构清晰，文档体系完整，核心设计哲学（执行权在用户、显式上下文、可审计性）贯彻始终。
 
-在 `ContextGatherer.ts` 收集文件时，引入一个 `mode` 概念：
+**亮点：**
+- 独创的 `Governance-First` 架构，将 AI 推理与执行严格分离。
+- 智能 Git 工作流已覆盖从计划、编码、审查到提交的全生命周期。
+- 能力分级（SEMANTIC → NONE）与优雅降级机制，成本与质量动态平衡。
+- 模型路由系统支持多供应商适配，具备生产级熔断与探索能力。
+- 上下文持久化、技能学习、回放审计等特性显著超越同类工具。
 
-* **Active Mode (全量)**：用户明确使用 `@` 指定的文件，或者 Git Diff 中的修改行。
-* **Summary Mode (摘要)**：通过 `#` 引入的关联文件，或者 `XResolver` 探测到的下游依赖。
+**主要短板：**
+- **测试覆盖率不足**，核心 Git 工作流缺乏充分的单元/集成测试。
+- **部分模块复杂度偏高**（如 `review.ts`, `plan.ts`, `ReviewCache.ts`），可维护性有隐患。
+- **AI 成本控制仍可优化**，重复审查、无缓存命中场景存在资源浪费。
+- **用户配置与扩展性较弱**，缺乏自定义审查规则、插件机制。
+- **部分边缘场景体验粗糙**（如大仓库首次 `git auto` 无进度反馈）。
 
-### 2. 代码实现构思
+以下将**聚焦 Git 相关功能**，逐一分析并提出可落地的优化建议。
 
-你可以为 `ASTParser` 增加一个 `generateSummary` 方法，专门用于这种“抽脂”操作：
+---
 
-```typescript
-// src/core/kernel/ASTParser.ts 增强建议
+## 🔧 Git 功能详细评估与优化建议
 
-export class ASTParser {
-  /**
-   * 将庞大的文件内容压缩为“语义摘要”
-   * 仅保留 Export 声明和 JSDoc，剔除函数体实现
-   */
-  public generateSummary(filePath: string, content: string): string {
-    const sourceFile = ts.createSourceFile(filePath, content, ts.ScriptTarget.Latest);
-    let summary = `// [Summary Mode] Content of ${filePath} (Implementation omitted)\n`;
+### 1. 核心稳定性与错误恢复
 
-    const visitor = (node: ts.Node) => {
-      // 仅处理 Exported 的声明
-      if (this.isExported(node)) {
-        if (ts.isFunctionDeclaration(node)) {
-          // 提取函数签名：function name(args): type;
-          const signature = node.getText().split('{')[0].trim();
-          summary += `${signature};\n`;
-        } else if (ts.isClassDeclaration(node)) {
-          // 提取类名及其成员定义（不含方法体）
-          summary += `class ${node.name?.getText()} {\n`;
-          node.members.forEach(member => {
-             if (ts.isMethodDeclaration(member)) {
-               summary += `  ${member.getText().split('{')[0].trim()};\n`;
-             }
-          });
-          summary += `}\n`;
-        } else if (ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node)) {
-          // 类型定义对 AI 理解上下文很重要，全量保留（通常比较短）
-          summary += `${node.getText()}\n`;
-        }
-      }
-      ts.forEachChild(node, visitor);
-    };
+| 模块 | 现状 | 问题/风险 | 优化建议 |
+|------|------|-----------|----------|
+| **`git auto` 自动执行** | 支持任务拆解、重试、审查评分 | 重试逻辑仅依赖 `attempts`，未保存失败快照；中断后恢复依赖 `todo.md` 元数据，但无显式状态机。 | 1. 引入**执行快照**，每次 `auto` 启动前将工作区状态存档（`.yuangs/auto/snapshot`），失败后可回滚并恢复。2. 增加 `--resume` 标志，自动加载上次未完成的会话。 |
+| **`git resolve` 冲突解决** | 支持 AI 合并、语法校验、备份 | 对大型冲突文件可能超时；多文件并发控制虽好，但无**失败重试**；对非标准冲突格式（如 JSON 合并）处理不理想。 | 1. 为 `ConflictResolver` 添加**超时熔断**（默认 30s），超时后回退到用户手动解决。2. 引入**按文件类型定制合并策略**（JSON/YAML/XML 使用结构化合并库）。3. 增加 `--strategy` 参数，允许指定 `ours` / `theirs` / `semantic`。 |
+| **`git review` 代码审查** | 支持三级审查、缓存、降级 | **缓存键**生成存在缺陷（`filePath + diff + level`，但 diff 未做 hash），导致相同 diff 可能因格式差异无法命中。`invalidate` 逻辑与 `getCacheKey` 不一致，失效机制基本无效。 | 1. **修复缓存键**：使用 `sha256(filePath + diff) + level`，避免大字符串直接作为键。2. **重构 `ReviewCache`**：统一 key 生成逻辑，使用 `pathToKeyMap` 精确失效。3. 为缓存增加 **版本号**（与 `CodeReviewer.VERSION` 绑定），避免模型升级后误用旧缓存。 |
+| **`git diff-semantic`** | 基于正则的语义分析，准确率尚可 | 无法处理复杂重构（如函数重命名、参数变化）；对 TypeScript 泛型、装饰器支持弱。 | 1. **升级到基于 AST 的差异分析**：复用 `ASTParser` 提取符号签名，对比前后版本。2. 增加 `breaking` 标记的**精确触发**（不仅依赖删除，还包括公共 API 签名变更）。3. 输出中**关联影响文件**（通过 X-Resolver）。 |
 
-    visitor(sourceFile);
-    return summary;
-  }
-}
+---
 
-```
+### 2. 性能与资源优化
 
-### 3. 在 `ContextGatherer` 中集成
+| 场景 | 当前表现 | 瓶颈 | 优化方案 |
+|------|---------|------|----------|
+| **`git review --deep` 大仓库** | 会警告超过 20 个文件并退出，但未提供渐进式扫描选项。 | 单次 LLM 调用 diff 量过大，Token 成本高且易超时。 | 1. **增量审查**：支持 `--since <commit>` 或 `--changed-lines <N>`，仅审查新增/变更的核心逻辑部分。2. **文件优先级排序**：根据最近修改频率、测试覆盖率、关键路径权重，优先审查高风险文件。 |
+| **`git auto` 并行执行** | 任务按顺序执行，多文件生成时等待 I/O 完成才进入下一任务。 | 未充分利用并发能力。 | 1. **任务级并发**：对于无依赖的任务，使用 `p-limit` 并发生成代码（默认并发 2）。2. **流式反馈**：在执行面板中显示各任务进度，而非仅总进度条。 |
+| **`git resolve` 并发限制** | 使用 `p-limit` 控制并发，但未考虑 AI 服务本身的速率限制。 | 可能因 QPS 超限导致部分文件解决失败。 | 1. **动态限流**：根据 `ModelRouter` 统计的 `recentFailures` 自适应降低并发数。2. **请求队列持久化**：中断后可重试。 |
 
-修改你的读取循环，加入体积判断和模式切换：
+---
 
-```typescript
-// src/core/git/ContextGatherer.ts
+### 3. 可观测性与调试能力
 
-for (const filePath of potentialPaths) {
-    let content = fs.readFileSync(fullPath, 'utf8');
-    
-    // 💡 策略：如果不是用户主动指定的活跃文件，且文件很大
-    const isReferenceOnly = !activeFiles.has(filePath); 
-    const isTooLarge = content.length > 2000; // 超过2000字符就算大文件
+| 缺陷 | 现状 | 优化方向 |
+|------|------|---------|
+| **`git review` 无详细日志** | 仅输出最终评分，无法追溯 AI 决策依据。 | 1. 增加 `--verbose` 输出，打印发送给 LLM 的完整 Prompt 和 Raw Response（敏感信息脱敏）。2. 将审查记录保存为结构化 JSON 文件（`.yuangs/reviews/`），支持 `yuangs git review --id <id>` 重览。 |
+| **`git auto` 任务失败难以复现** | 失败后仅标记 `failed`，无快照。 | 1. **失败录像**：当任务连续重试 2 次失败时，自动创建快照（`.yuangs/auto/failures/`），包含：当前上下文、计划步骤、AI 输出、文件改动 diff。2. 提供 `yuangs git auto --replay-failure <id>` 进行复现调试。 |
+| **`git plan` 规划过程不可见** | 用户只看到最终 `todo.md`，不了解多轮交互内容。 | 1. 将架构师与审查员的全部对话记录到 `.yuangs/plan/`，以 Markdown 格式导出。2. 增加 `--show-reasoning` 参数，实时显示双 Agent 的思考过程（类似 CoT）。 |
 
-    if (isReferenceOnly && isTooLarge) {
-        // 调用方案二：生成语义摘要
-        content = this.astParser.generateSummary(filePath, content);
-        console.log(`[Economy] ✂️  Summarized ${filePath} to save tokens.`);
-    }
+---
 
-    results.push({ path: filePath, content });
-}
+### 4. 用户体验与交互设计
 
-```
+| 痛点 | 描述 | 改进方案 |
+|------|------|---------|
+| **首次使用 `git auto` 无指引** | 新用户不知道需要先执行 `git plan`。 | 1. 当 `todo.md` 不存在时，自动提示 `yuangs git plan <description>` 并给出示例。2. 提供交互式向导：`yuangs git auto --init`。 |
+| **`git status` 增强输出颜色混乱** | 部分终端主题下颜色对比度低。 | 1. 采用 `chalk.level` 检测终端色彩支持，降级时使用普通符号。2. 增加配置项 `ui.theme` 或 `ui.colorScheme`。 |
+| **`git commit` 消息预览不方便** | 使用 `--dry-run` 仅输出消息，无法交互式编辑。 | 1. 实现 `yuangs git commit --edit`，在生成消息后自动打开 `$EDITOR` 允许用户修改。2. 消息历史保存，支持 `--last-message` 复用上次。 |
+| **`git review` 结果保存为 `git_reviews.md`** | 文件会无限膨胀，缺乏轮转机制。 | 1. 改为分文件存储：`reviews/2026-02-13.md`，每月归档。2. 提供 `yuangs git review --output <format>` 支持 JSON、CSV 导出。 |
 
-### 4. 方案二带来的收益
+---
 
-* **Token 节省**：对于一个 500 行的业务逻辑类，摘要通常只有 30-50 行。你的 3.2M 上下文可能会直接缩减到 **300KB - 500KB**，费用直接打 **1 折**。
-* **AI 专注度**：AI 不再被复杂的内部实现干扰，它能更清晰地看到模块之间的 **API 契约**。这对于 `XResolver` 分析影响面反而更有利。
-* **保留智商**：比起方案三（直接删掉历史），方案二保留了所有的类型和接口信息，AI 依然知道怎么调用这些函数，只是不知道函数里面是怎么写的（而这在分析跨文件逻辑时通常不重要）。
+### 5. 安全与治理对齐
 
-### 🚀 建议下一步
+**现状**：项目已建立完善的 `semantics.md` 和 `non-goals.md`，明确禁止 AI 自动执行。但在 Git 自动化中，`git auto --commit` 选项**绕过了用户确认**，直接提交变更，与“执行权在用户”的宪法冲突。
 
-你可以先尝试手动改写 `ContextGatherer`，给它加一个简单的 **“大文件摘要开关”**。
+**优化建议**：
+- **移除 `--commit` 自动提交**，或将其标记为 `[EXPERIMENTAL]` 并强制要求 `--force` 参数，同时在非目标文档中明确声明。
+- 增加 **`--stage-only`**，仅将生成的文件 `git add`，提交动作由用户手动执行。
+- 审计 `git auto` 执行记录，确保每一次 `git commit` 都对应一条用户确认的审计条目。
 
-**既然你有 3.2M 的记录，要不要拿其中一个最大的文件（比如 `kernel/XResolver.ts`）试一下，看看如果只保留导出签名，它的体积能缩小多少？** 我可以帮你写一个更完善的正则或 AST 提取脚本。
+---
+
+### 6. 扩展性与集成能力
+
+| 缺失 | 用户需求 | 建议方案 |
+|------|---------|--------|
+| **自定义审查规则** | 企业可能希望增加内部编码规范检测。 | 1. 实现 **ReviewRuleProvider** 接口，允许用户通过配置文件（`.yuangs/review-rules.js`）注册正则或 AST 规则。2. 规则结果与 AI 审查结果合并展示。 |
+| **Git Hooks 集成** | 希望在 `pre-commit` 中自动执行 `git review --quick`。 | 1. 提供 `yuangs git install-hooks` 命令，自动写入 `.git/hooks/pre-commit`。2. 支持配置允许失败继续或阻断提交。 |
+| **第三方 CI 集成** | 希望在 GitHub Actions 中运行 `git review` 并评论 PR。 | 1. 提供 `--format=json` 输出，便于 CI 解析。2. 示例 GitHub Action 工作流模板。 |
+
+---
+
+## 🧪 测试与质量保障
+
+**现状**：项目包含单元测试（Jest），但主要覆盖独立工具类（`CostProfile`, `ASTParser`, `CapabilityLevel`），**Git 核心工作流缺乏端到端测试**。
+
+**风险**：`git auto`、`git plan` 等多 Agent 协作流程在重构时极易引入回归。
+
+**优化清单**：
+
+1. **为 Git 工作流建立集成测试套件**  
+   - 使用 `node:test` 或 Jest 模拟真实 Git 仓库（`tmp` 目录）。  
+   - 测试场景：`git plan` → `git auto` → `git review` → `git commit`。  
+   - 断言：`todo.md` 更新、文件变更、提交哈希存在。
+
+2. **为 `ReviewCache` 增加**  
+   - **一致性测试**：key 生成与恢复、invalidate 精确删除、TTL 过期。  
+   - **并发测试**：多进程同时读写同一缓存文件。
+
+3. **性能基准测试**  
+   - 监控 `git diff --numstat`、`git ls-files` 等命令在 10k+ 文件仓库下的耗时，并设置性能回归门禁。
+
+---
+
+## 📈 成本与效能优化
+
+### AI Token 节省
+
+| 机会 | 当前 | 优化措施 | 预期收益 |
+|------|------|------|---------|
+| **重复代码审查** | 每次 `git review` 均调用 LLM，即使变更内容相同。 | 增强 `ReviewCache`，增加**内容哈希 + 审查级别 + 能力等级**的复合键，缓存有效期 7 天。 | 重复审查率下降 60%+ |
+| **计划生成冗余** | `git plan` 每次执行两轮对话（架构师 + 审查员）。 | 1. 缓存相似的 `userPrompt`（使用 TF-IDF 或 embedding 近似匹配）。2. 对于微小变更，跳过审查员环节（`--quick-plan`）。 | 计划阶段 Token 减少 30% |
+| **冲突解决上下文过大** | 将整个冲突文件发给 LLM，包含大量无关代码。 | 1. 仅提取冲突区域前后 20 行作为上下文。2. 对 JSON/YAML 文件，先结构化解析再格式化发送。 | 单次冲突解决 Token 减少 70% |
+
+---
+
+## 📦 推荐优先级排序
+
+| 优先级 | 建议内容 | 涉及模块 | 预计工作量 |
+|--------|--------|--------|-----------|
+| **P0（必须做）** | 修复 `ReviewCache` 键不一致 & 失效逻辑 | `ReviewCache.ts` | ⭐⭐ |
+| **P0** | 增加 Git 工作流集成测试 | `__tests__/git/` | ⭐⭐⭐ |
+| **P1（强烈推荐）** | 移除 `git auto --commit` 自动确认或标记为不安全 | `auto.ts` | ⭐ |
+| **P1** | 实现审查结果缓存版本隔离 | `ReviewCache.ts`, `CodeReviewer.ts` | ⭐⭐ |
+| **P1** | 为 `git resolve` 添加超时熔断 | `ConflictResolver.ts` | ⭐⭐ |
+| **P2（推荐）** | 增量审查与文件优先级排序 | `review.ts`, `CodeReviewer.ts` | ⭐⭐⭐ |
+| **P2** | 用户自定义审查规则框架 | 新增 `ReviewRule` 接口 | ⭐⭐⭐⭐ |
+| **P2** | `git auto` 执行快照与恢复 | `AutoWorkflow.ts`, `ProgressManager.ts` | ⭐⭐⭐ |
+
+---
+
+## ✅ 总结
+
+yuangs 的 Git 功能已达到**生产可用级别**，在智能化、可审计性方面明显领先同类工具。然而，**测试覆盖、缓存健壮性、用户体验细节**仍是当前的主要短板。上述优化建议旨在：
+
+- **加固稳定性**：修复缓存、增加快照、超时熔断。
+- **提升可观测性**：详细日志、失败录像、回放调试。
+- **降低用户成本**：Token 优化、增量审查、自定义规则。
+- **保持哲学一致性**：治理宪法的严格执行。
+
+若按优先级逐步实施，yuangs 将不仅是“带 AI 的 Git 助手”，而成为**企业级可信 AI 开发平台**的核心组件。
+
+---
+
+**项目状态评估**：技术债务可控，架构扩展性良好，适合长期演进。建议立即启动 P0 级别修复，并纳入 CI 流程。
