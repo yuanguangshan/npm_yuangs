@@ -27,19 +27,20 @@ export class InteractiveReview {
     }
 
     async startInteractiveFix(issues: ReviewIssue[]): Promise<InteractiveFixResult> {
-        if (issues.length === 0) {
-            console.log(chalk.green('✅ 没有发现需要修复的问题'));
-            return { applied: 0, skipped: 0, edited: 0, batchApplied: 0 };
-        }
+        try {
+            if (issues.length === 0) {
+                console.log(chalk.green('✅ 没有发现需要修复的问题'));
+                return { applied: 0, skipped: 0, edited: 0, batchApplied: 0 };
+            }
 
-        console.log(chalk.bold.cyan(`\n🔧 发现 ${issues.length} 个问题可以交互式修复\n`));
+            console.log(chalk.bold.cyan(`\n🔧 发现 ${issues.length} 个问题可以交互式修复\n`));
 
-        const result: InteractiveFixResult = {
-            applied: 0,
-            skipped: 0,
-            edited: 0,
-            batchApplied: 0
-        };
+            const result: InteractiveFixResult = {
+                applied: 0,
+                skipped: 0,
+                edited: 0,
+                batchApplied: 0
+            };
 
         // 按严重程度分组
         const criticalIssues = issues.filter(i => i.severity === IssueSeverity.CRITICAL);
@@ -85,8 +86,12 @@ export class InteractiveReview {
             this.showProgress(result, allIssues.length);
         }
 
-        this.printSummary(result);
-        return result;
+            this.printSummary(result);
+            return result;
+        } finally {
+            // 确保无论成功或失败都清理 readline 资源
+            this.destroy();
+        }
     }
 
     private async askBatchProcessing(issues: ReviewIssue[]): Promise<'batch' | 'individual'> {
