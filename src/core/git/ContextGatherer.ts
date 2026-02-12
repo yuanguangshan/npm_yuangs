@@ -1,8 +1,10 @@
-import fs from 'fs';
+import fs from 'fs/promises';
+import fsSync from 'fs';
 import path from 'path';
 import { GitService } from './GitService';
 import { ContextMeta, ContextMetaBuilder, toAuditLog } from '../context/ContextMeta';
 import { EnhancedASTParser } from '../kernel/ASTParser';
+import pLimit from 'p-limit';
 
 /**
  * 收集到的项目上下文接口
@@ -22,7 +24,7 @@ export interface GatheredContext {
 export class ContextGatherer {
     private MAX_FILE_CONTENT_LENGTH = 10000; // 单个文件读取上限
     private MAX_TOTAL_CONTEXT_LENGTH = 50000; // 总上限
-    private SUMMARY_THRESHOLD = 2000; // 文件大小超过此阈值时进行摘要
+    private SUMMARY_THRESHOLD = 50; // P1: 改为基于行数判断（超过50行认为是大文件）
     private astParser: EnhancedASTParser; // Reuse AST parser instance
 
     constructor(private gitService: GitService) {
@@ -138,8 +140,8 @@ export class ContextGatherer {
     private async getPackageJson(repoRoot: string): Promise<any> {
         const pPath = path.join(repoRoot, 'package.json');
         try {
-            if (fs.existsSync(pPath)) {
-                return JSON.parse(fs.readFileSync(pPath, 'utf8'));
+            if (fsSync.existsSync(pPath)) {
+                return JSON.parse(fsSync.readFileSync(pPath, 'utf8'));
             }
         } catch (e) {
             return undefined;
@@ -208,27 +210,31 @@ export class ContextGatherer {
             });
         }
 
-        // 3. 读取内容 (带上限)
+        // P1: 3. 读取内容 (使用异步 I/O + 并发控制)
         let currentTotalLength = 0;
+        const limit = pLimit(5); // 限制并发数为 5
 
-        for (const filePath of potentialPaths) {
-            if (currentTotalLength > this.MAX_TOTAL_CONTEXT_LENGTH) break;
+        const readTasks = Array.from(potentialPaths).map(async (filePath) => {
+            if (currentTotalLength > this.MAX_TOTAL_CONTEXT_LENGTH) return null;
 
             const fullPath = path.join(repoRoot, filePath);
             try {
-                if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
-                    let content = fs.readFileSync(fullPath, 'utf8');
+                // P1: 使用异步 I/O 替代同步调用
+                const stats = await fs.stat(fullPath);
+                if (stats.isFile()) {
+                    let content = await fs.readFile(fullPath, 'utf8');
 
-                    // Determine if the file should be summarized based on size and file type
-                    const isReferenceOnly = !description.includes(filePath); // If the file path is not explicitly mentioned in the description
-                    const isTooLarge = content.length > this.SUMMARY_THRESHOLD;
+                    // P1: 改进大文件判断逻辑，基于行数而非字符长度
+                    const isReferenceOnly = !description.includes(filePath);
+                    const lineCount = content.split('\n').length;
+                    const isTooLarge = lineCount > this.SUMMARY_THRESHOLD; // 超过 50 行认为是大文件
                     const isTSFile = filePath.endsWith('.ts') || filePath.endsWith('.tsx');
 
                     if (isReferenceOnly && isTooLarge && isTSFile) {
                         // Generate semantic summary for large TS files that are not directly referenced
                         try {
                             content = this.astParser.generateSummary(filePath, content);
-                            console.log(`[Economy] ✂️  Summarized ${filePath} to save tokens.`);
+                            console.log(`[Economy] ✂️  Summarized ${filePath} (${lineCount} lines) to save tokens.`);
                         } catch (error) {
                             console.warn(`[ContextGatherer] 警告：摘要生成失败 "${filePath}": ${(error as Error).message}`);
                             // 如果摘要生成失败，回退到截断内容
@@ -238,13 +244,21 @@ export class ContextGatherer {
                         content = content.substring(0, this.MAX_FILE_CONTENT_LENGTH) + '\n... (内容过长已截断)';
                     }
 
-                    results.push({ path: filePath, content });
                     currentTotalLength += content.length;
+                    return { path: filePath, content };
                 }
             } catch (e: any) {
                 console.warn(`[ContextGatherer] 警告：无法读取相关上下文文件 "${filePath}": ${e.message}`);
             }
-        }
+            return null;
+        });
+
+        const readResults = await Promise.all(readTasks);
+        readResults.forEach(result => {
+            if (result && currentTotalLength <= this.MAX_TOTAL_CONTEXT_LENGTH) {
+                results.push(result);
+            }
+        });
 
         return results;
     }

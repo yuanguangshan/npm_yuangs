@@ -4,6 +4,7 @@ import { ModelRouter } from '../modelRouter/ModelRouter';
 import { TaskConfig, TaskType } from '../modelRouter/types';
 import { CapabilityLevel, MinCapability } from '../capability/CapabilityLevel';
 import { DecisionInput, ThresholdDegradationPolicy } from '../capability/DegradationPolicy';
+import { getDefaultReviewCache } from './ReviewCache';
 
 /**
  * 代码审查级别
@@ -78,6 +79,7 @@ export interface ReviewResult {
 export class CodeReviewer {
     public static readonly VERSION = 'v1.0';
     private degradationPolicy: ThresholdDegradationPolicy;
+    private cache = getDefaultReviewCache();
 
     constructor(
         private gitService: GitService,
@@ -330,6 +332,13 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
             throw new Error(`No changes in file: ${filePath}`);
         }
 
+        // Check cache first
+        const cachedResult = await this.cache.get(filePath, diff, level);
+        if (cachedResult) {
+            console.log(chalk.gray(`💾 从缓存加载审查结果: ${filePath}`));
+            return cachedResult;
+        }
+
         if (!this.router) {
             throw new Error('AI code review requires model configuration. Please configure AI models using: yuangs config');
         }
@@ -388,7 +397,7 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
             console.log(chalk.yellow(`⚠️  降级触发: ${degradationReason}`));
         }
 
-        return {
+        const result: ReviewResult = {
             score: parsed.score || 70,
             summary: parsed.summary || '审查完成',
             issues: parsed.issues || [],
@@ -403,6 +412,11 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
                 reason: degradationReason,
             } : undefined,
         };
+
+        // Cache the result
+        await this.cache.set(filePath, diff, level, result);
+
+        return result;
     }
 
     /**

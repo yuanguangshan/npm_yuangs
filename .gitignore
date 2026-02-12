@@ -1,30 +1,109 @@
-# dependencies
+# ============================================================================
+# Dependencies
+# ============================================================================
 node_modules/
-**/*.map
+.pnp
+.pnp.js
+jspm_packages/
+.yarn/
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+.pnpm-debug.log*
 
-# build output
+# ============================================================================
+# Build Outputs
+# ============================================================================
 dist/
-*.tgz
+build/
+lib/
+.next/
+out
+.nuxt/
 
-# coverage
+# ============================================================================
+# Testing & Coverage
+# ============================================================================
 coverage/
+.nyc_output/
+*.lcov
 
-# editor
-.vscode/
+# ============================================================================
+# Environment & Configuration
+# ============================================================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# local tools / caches
-.weaver/
-.sisyphus/
+# ============================================================================
+# Logs & Temporary Files
+# ============================================================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+tmp/
+temp/
 
-# AI / temp workflow drafts
-# .github/workflows/*.ai/
-.ai/context.json
+# ============================================================================
+# Caches & Temporary Data
+# ============================================================================
+.cache
+.parcel-cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+.npm
+.eslintcache
+.yarn-integrity
+.node_repl_history
+
+# ============================================================================
+# IDE & Editor Files
+# ============================================================================
+# VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+.history/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+.vscode-test
+
+# Other Editors
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# ============================================================================
+# OS Generated Files
+# ============================================================================
 .DS_Store
-gcloud init
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ============================================================================
+# Yuangs Specific
+# ============================================================================
 .yuangs
-
-# backup files
-*.bak
-
-# code review reports
+.ai
 git_reviews.md
