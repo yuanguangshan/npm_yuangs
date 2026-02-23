@@ -282,13 +282,16 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
                     console.log(result.result);
                     return;
                 } else if (result.isPureReference) {
-                    // 纯引用且没有后续提问，输出提示并退出
+                    // 纯引用（如 #src, @file.ts）：加入上下文后继续进入交互模式
+                    // 不再 return，而是 fall-through 到下方的交互循环
                     if (result.error) {
                         console.log(chalk.red(result.result));
+                        // 出错时才真正退出
                         throw new Error(result.result);
                     } else {
                         console.log(chalk.green(`✓ ${result.result || '已加入上下文'}`));
-                        return;
+                        // ✅ 修复：不 return，继续进入交互模式
+                        initialQuestion = null; // 清空，避免重复发给 AI
                     }
                 } else {
                     // 带问题的引用，将处理后的 prompt 作为新的 initialQuestion
