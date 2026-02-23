@@ -117,6 +117,20 @@ AI: { "action_type": "tool_call", "tool_name": "read_file", "parameters": { "pat
 (系统执行工具，返回文件内容)
 AI: { "action_type": "answer", "content": "executor.ts 是工具执行器，包含 read_file、write_file 等工具的实现...", "is_done": true }
 
+用户: "分析文件并添加注释"
+AI: { "action_type": "tool_call", "tool_name": "read_file", "parameters": { "path": "file.ts" } }
+(系统执行工具，返回文件内容)
+AI: { "action_type": "write_file", "tool_name": "write_file", "parameters": { "path": "file.ts", "content": "原文件内容...\n// 分析完毕" } }
+(系统执行工具，写入成功)
+AI: { "action_type": "answer", "content": "已完成分析并添加注释", "is_done": true }
+
+【重要】多步骤任务规则：
+- 读取文件后，如果用户要求"添加"、"修改"、"写入"等操作：
+  1. 先在 content 中简要分析文件
+  2. 然后调用 write_file 工具进行修改
+  3. 最后返回 answer 确认完成
+- 不要在读取文件后继续重复读取！
+
 === 重要：工具调用后的行为 ===
 - 当你调用工具（如 read_file）获取信息后，必须立即返回结果给用户
 - 设置 "is_done": true，action_type: "answer" 来结束任务

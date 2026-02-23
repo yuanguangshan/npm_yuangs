@@ -42,7 +42,7 @@ export class AgentRuntime {
     const maxTurns = 10;
     let lastError: string | undefined;
     let shouldComplete = false; // 标记是否应该完成
-    let lastToolCall: { tool: string; params: any } | null = null; // 跟踪上次工具调用
+    let lastToolCall: { tool: string; params: any; count: number } | null = null; // 跟踪上次工具调用及重复次数
 
     // 构建初始动态上下文
     const initialDynamicContext = await buildDynamicContext();
@@ -329,25 +329,39 @@ export class AgentRuntime {
 
         // 通用重复检测：所有工具
         const currentToolCall = { tool: action.payload.tool_name || action.type, params: action.payload.parameters || action.payload };
+
+        // 检查是否重复，并允许一定次数的重复（给 AI 时间完成多步骤任务）
+        let duplicateCount = 0;
         const isDuplicate = lastToolCall &&
           lastToolCall.tool === currentToolCall.tool &&
           JSON.stringify(lastToolCall.params) === JSON.stringify(currentToolCall.params);
 
         if (isDuplicate) {
-          console.log(chalk.yellow('[Duplicate Detection] 检测到重复工具调用，强制完成'));
-          console.log(chalk.cyan(`\n✓ ${action.payload.tool_name || action.type} 已完成\n`));
+          duplicateCount = (lastToolCall as any).count || 0;
 
-          if (agentRenderer) {
-            (agentRenderer as any).buffer = '';
-            (agentRenderer as any).quietMode = true;
-            agentRenderer.finish();
+          // 允许最多 2 次重复调用（给 AI 时间完成任务）
+          if (duplicateCount >= 2) {
+            console.log(chalk.yellow('[Duplicate Detection] 达到重复限制，强制完成'));
+            console.log(chalk.cyan(`\n✓ ${action.payload.tool_name || action.type} 已完成\n`));
+
+            if (agentRenderer) {
+              (agentRenderer as any).buffer = '';
+              (agentRenderer as any).quietMode = true;
+              agentRenderer.finish();
+            }
+
+            break;
+          } else {
+            console.log(chalk.gray(`[Repeat Detection] 重复调用 (${duplicateCount + 1}/2)，继续...`));
           }
-
-          break;
         }
 
-        // 更新上次工具调用记录
-        lastToolCall = currentToolCall;
+        // 更新上次工具调用记录（包含计数）
+        if (isDuplicate && lastToolCall) {
+          (lastToolCall as any).count = duplicateCount + 1;
+        } else {
+          lastToolCall = { ...currentToolCall, count: 0 };
+        }
 
         // 智能完成：根据工具类型和用户意图决定是否自动完成
         if (action.type === 'tool_call') {

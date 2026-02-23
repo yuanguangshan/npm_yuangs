@@ -64,7 +64,7 @@ class AgentRuntime {
         const maxTurns = 10;
         let lastError;
         let shouldComplete = false; // 标记是否应该完成
-        let lastToolCall = null; // 跟踪上次工具调用
+        let lastToolCall = null; // 跟踪上次工具调用及重复次数
         // 构建初始动态上下文
         const initialDynamicContext = await (0, dynamicPrompt_1.buildDynamicContext)();
         if (userInput) {
@@ -276,21 +276,35 @@ class AgentRuntime {
                     console.log(chalk_1.default.green(`[SUCCESS] Result:\n${preview}`));
                     // 通用重复检测：所有工具
                     const currentToolCall = { tool: action.payload.tool_name || action.type, params: action.payload.parameters || action.payload };
+                    // 检查是否重复，并允许一定次数的重复（给 AI 时间完成多步骤任务）
+                    let duplicateCount = 0;
                     const isDuplicate = lastToolCall &&
                         lastToolCall.tool === currentToolCall.tool &&
                         JSON.stringify(lastToolCall.params) === JSON.stringify(currentToolCall.params);
                     if (isDuplicate) {
-                        console.log(chalk_1.default.yellow('[Duplicate Detection] 检测到重复工具调用，强制完成'));
-                        console.log(chalk_1.default.cyan(`\n✓ ${action.payload.tool_name || action.type} 已完成\n`));
-                        if (agentRenderer) {
-                            agentRenderer.buffer = '';
-                            agentRenderer.quietMode = true;
-                            agentRenderer.finish();
+                        duplicateCount = lastToolCall.count || 0;
+                        // 允许最多 2 次重复调用（给 AI 时间完成任务）
+                        if (duplicateCount >= 2) {
+                            console.log(chalk_1.default.yellow('[Duplicate Detection] 达到重复限制，强制完成'));
+                            console.log(chalk_1.default.cyan(`\n✓ ${action.payload.tool_name || action.type} 已完成\n`));
+                            if (agentRenderer) {
+                                agentRenderer.buffer = '';
+                                agentRenderer.quietMode = true;
+                                agentRenderer.finish();
+                            }
+                            break;
                         }
-                        break;
+                        else {
+                            console.log(chalk_1.default.gray(`[Repeat Detection] 重复调用 (${duplicateCount + 1}/2)，继续...`));
+                        }
                     }
-                    // 更新上次工具调用记录
-                    lastToolCall = currentToolCall;
+                    // 更新上次工具调用记录（包含计数）
+                    if (isDuplicate && lastToolCall) {
+                        lastToolCall.count = duplicateCount + 1;
+                    }
+                    else {
+                        lastToolCall = { ...currentToolCall, count: 0 };
+                    }
                     // 智能完成：根据工具类型和用户意图决定是否自动完成
                     if (action.type === 'tool_call') {
                         const toolName = action.payload.tool_name;
