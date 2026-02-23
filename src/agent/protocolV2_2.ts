@@ -33,13 +33,47 @@ export function buildV2_3ProtocolPrompt(config: ProtocolV2_3Config): string {
 1. 验证 预期 vs 实际。
 2. 识别错误，处理异常。
 
+=== 可用工具 (Available Tools) ===
+
+当 action_type 为 "tool_call" 时，你可以使用以下工具：
+
+1. **read_file** - 读取文件内容
+   - 用途: 读取指定路径的文件内容
+   - 参数: { "path": "文件路径（绝对路径或相对路径）" }
+   - 示例: { "action_type": "tool_call", "tool_name": "read_file", "parameters": { "path": "src/main.ts" } }
+
+2. **list_files** - 列出目录文件
+   - 用途: 列出指定目录下的文件和子目录
+   - 参数: { "path": "目录路径（默认当前目录）", "recursive": true/false（是否递归，默认false）" }
+   - 示例: { "action_type": "tool_call", "tool_name": "list_files", "parameters": { "path": "src", "recursive": true } }
+
+3. **write_file** - 写入文件
+   - 用途: 创建或覆盖文件内容
+   - 参数: { "path": "文件路径", "content": "文件内容" }
+   - 示例: { "action_type": "tool_call", "tool_name": "write_file", "parameters": { "path": "output.txt", "content": "Hello World" } }
+
+4. **shell_cmd** - 执行 Shell 命令
+   - 用途: 执行终端命令
+   - 参数: 通过 command 字段传递，如 { "action_type": "shell_cmd", "command": "ls -la" }
+   - 示例: { "action_type": "shell_cmd", "command": "git status" }
+
+注意: 优先使用工具而非 shell_cmd 进行文件操作，工具更可靠且有更好的错误处理。
+
+=== 任务完成条件 ===
+- 当你成功获取了用户请求的信息后，必须设置 "is_done": true 并使用 action_type: "answer" 返回结果
+- 不要重复调用相同的工具
+- 例如：用户请求"读取 package.json"，你应该：
+  1. 调用 read_file 工具读取文件
+  2. 立即设置 is_done: true，action_type: "answer"，在 content 中返回文件内容或分析结果
+  3. 不要继续循环调用其他工具
+
 === 模式切换规则 ===
 - **CHAT MODE** (默认): 用于一般咨询。推理内联，不显式输出 THINK/ACT 区块。
 - **WORKFLOW MODE**: 用于 Git 操作、TODO 处理或执行任务。必须使用完整协议。
 - **调试指令**: 识别 \`#protocol\` (强制工作流) 和 \`#chat\` (强制对话)。
 
 === 安全约束 (Safety Levels) ===
-- LV1 (Safe): 只读操作 (ls, cat, git status)。
+- LV1 (Safe): 只读操作 (ls, cat, git status, read_file, list_files)。
 - LV2 (Normal): 写文件、常规 git commit/branch。
 - LV3 (Danger): rm, sudo, git reset --hard。必须显著提醒。
 `;

@@ -3,6 +3,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.evaluateProposal = evaluateProposal;
 function evaluateProposal(action, rules, ledger) {
     const now = Date.now();
+    // 内置低风险工具自动批准规则
+    if (action.type === 'tool_call') {
+        const toolName = action.payload.tool_name;
+        const lowRiskTools = ['read_file', 'list_files', 'web_search'];
+        if (lowRiskTools.includes(toolName)) {
+            return { effect: 'allow', reason: `Built-in allow for low-risk tool: ${toolName}` };
+        }
+    }
+    // 检查用户自定义规则
     for (const rule of rules) {
         const typeMatch = !rule.when.type || rule.when.type === action.type;
         const payloadStr = JSON.stringify(action.payload);
