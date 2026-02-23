@@ -340,7 +340,14 @@ async function handleAIChat(initialQuestion, model) {
                 await runPipeline(trimmed, rl, runtime, model, contextStore, processInteraction);
                 continue;
             }
-            const specialResult = await (0, syntaxHandler_1.handleSpecialSyntax)(trimmed);
+            rl.pause();
+            let specialResult;
+            try {
+                specialResult = await (0, syntaxHandler_1.handleSpecialSyntax)(trimmed);
+            }
+            finally {
+                rl.resume();
+            }
             if (specialResult.processed) {
                 if (specialResult.result) {
                     if (specialResult.type === 'management') {

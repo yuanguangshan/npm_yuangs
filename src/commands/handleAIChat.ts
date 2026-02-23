@@ -361,7 +361,14 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
                 continue;
             }
 
-            const specialResult = await handleSpecialSyntax(trimmed);
+            rl.pause();
+            let specialResult: Awaited<ReturnType<typeof handleSpecialSyntax>>;
+            try {
+                specialResult = await handleSpecialSyntax(trimmed);
+            } finally {
+                rl.resume();
+            }
+
             if (specialResult.processed) {
                 if (specialResult.result) {
                     if (specialResult.type === 'management') {
