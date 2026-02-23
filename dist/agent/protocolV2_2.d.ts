@@ -1,17 +1,16 @@
 /**
- * System Prompt V2.2 - THINK → ACT → OBSERVE Protocol
- *
- * 链式思维 (CoT) 显式分离，结构化推理
+ * System Protocol V2.3 - Based on src/agent/how.md
+ * THINK → ACT → OBSERVE Protocol with Explicit Mode Switching
  */
-export interface ProtocolV2_2Config {
-    mode: 'chat' | 'command' | 'replanning';
+export interface ProtocolV2_3Config {
+    mode: 'chat' | 'command' | 'workflow' | 'replanning';
     enableStrictOutput: boolean;
     enableReasoningTrace: boolean;
 }
 /**
- * 构建完整的 V2.2 协议 Prompt
+ * 构建完整的 V2.3 协议 Prompt
  */
-export declare function buildV2_2ProtocolPrompt(config: ProtocolV2_2Config): string;
+export declare function buildV2_3ProtocolPrompt(config: ProtocolV2_3Config): string;
 /**
  * 构建输出格式约束
  */

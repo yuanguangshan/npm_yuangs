@@ -157,25 +157,6 @@ class MarkdownRenderer {
                 i += 1;
                 continue;
             }
-            if (token.type === 'list_item_open') {
-                let content = '';
-                let j = i + 1;
-                let depth = 1;
-                while (j < tokens.length && depth > 0) {
-                    const t = tokens[j];
-                    if (t.type === 'list_item_open')
-                        depth++;
-                    if (t.type === 'list_item_close')
-                        depth--;
-                    if (depth === 1 && t.type === 'inline') {
-                        content += this.renderInline(t.children || []) + ' ';
-                    }
-                    j++;
-                }
-                output += STYLES.list_item(content.trim()) + '\n';
-                i = j;
-                continue;
-            }
             // 处理有序列表
             if (token.type === 'ordered_list_open') {
                 i += 1;
@@ -187,10 +168,26 @@ class MarkdownRenderer {
                 i += 1;
                 continue;
             }
-            if (token.type === 'list_item_open' && i > 0 && tokens[i - 1]?.type === 'ordered_list_open') {
+            // 处理列表项（检测是有序还是无序）
+            if (token.type === 'list_item_open') {
                 let content = '';
                 let j = i + 1;
                 let depth = 1;
+                // 检查这是否是有序列表项
+                let isOrdered = false;
+                for (let k = i - 1; k >= 0 && depth === 1; k--) {
+                    if (tokens[k].type === 'ordered_list_open') {
+                        isOrdered = true;
+                        break;
+                    }
+                    if (tokens[k].type === 'bullet_list_open') {
+                        isOrdered = false;
+                        break;
+                    }
+                    if (tokens[k].type === 'list_item_close') {
+                        break;
+                    }
+                }
                 while (j < tokens.length && depth > 0) {
                     const t = tokens[j];
                     if (t.type === 'list_item_open')
@@ -202,7 +199,12 @@ class MarkdownRenderer {
                     }
                     j++;
                 }
-                output += STYLES.ordered_item(content.trim(), orderedListIndex++) + '\n';
+                if (isOrdered) {
+                    output += STYLES.ordered_item(content.trim(), orderedListIndex++) + '\n';
+                }
+                else {
+                    output += STYLES.list_item(content.trim()) + '\n';
+                }
                 i = j;
                 continue;
             }

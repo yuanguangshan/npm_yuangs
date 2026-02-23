@@ -60,6 +60,14 @@ const execAsync = (0, util_1.promisify)(child_process_1.exec);
 // 全局变量：存储最后的 AI 输出内容，用于快速插入
 let lastAIOutput = '';
 let clipboardContent = '';
+function truncateContent(content, maxLines) {
+    const contentLines = content.split('\n');
+    if (contentLines.length <= maxLines) {
+        return content;
+    }
+    return contentLines.slice(0, maxLines).join('\n') +
+        `\n\n... (已截断，共 ${contentLines.length} 行，使用 --lines N 显示更多)`;
+}
 function findCommonPrefix(strings) {
     if (strings.length === 0)
         return '';
@@ -186,19 +194,17 @@ async function handleDirectoryReference(input) {
         console.log(chalk_1.default.red(`错误: 目录 "${dirPath}" 不存在或不是一个目录\n`));
         return question;
     }
-    const spinner = (0, ora_1.default)(chalk_1.default.cyan('正在读取文件...')).start();
     try {
         const findCommand = process.platform === 'darwin' || process.platform === 'linux'
             ? `find "${fullPath}" -type f`
             : `dir /s /b "${fullPath}"`;
         const { stdout } = await execAsync(findCommand);
         const filePaths = stdout.trim().split('\n').filter(f => f);
-        spinner.stop();
         if (filePaths.length === 0) {
             console.log(chalk_1.default.yellow(`目录 "${dirPath}" 下没有文件\n`));
             return question;
         }
-        const contentMap = (0, fileReader_1.readFilesContent)(filePaths);
+        const contentMap = await (0, fileReader_1.readFilesContent)(filePaths, { showProgress: true, concurrency: 5 });
         const relativeFilePaths = filePaths.map(p => path_1.default.relative(process.cwd(), p));
         const prompt = (0, fileReader_1.buildPromptWithFileContent)(`目录: ${dirPath}\n找到 ${filePaths.length} 个文件`, relativeFilePaths, contentMap, question);
         const globalOptions = global.yuangsOptions || {};
@@ -234,7 +240,6 @@ async function handleDirectoryReference(input) {
         return prompt;
     }
     catch (error) {
-        spinner.stop();
         console.error(chalk_1.default.red(`读取目录失败: ${error}\n`));
         return question;
     }
@@ -264,14 +269,17 @@ async function handleAIChat(initialQuestion, model) {
                     return;
                 }
                 else if (result.isPureReference) {
-                    // 纯引用且没有后续提问，输出提示并退出
+                    // 纯引用（如 #src, @file.ts）：加入上下文后继续进入交互模式
+                    // 不再 return，而是 fall-through 到下方的交互循环
                     if (result.error) {
                         console.log(chalk_1.default.red(result.result));
+                        // 出错时才真正退出
                         throw new Error(result.result);
                     }
                     else {
                         console.log(chalk_1.default.green(`✓ ${result.result || '已加入上下文'}`));
-                        return;
+                        // ✅ 修复：不 return，继续进入交互模式
+                        initialQuestion = null; // 清空，避免重复发给 AI
                     }
                 }
                 else {
@@ -408,6 +416,8 @@ async function handleAIChat(initialQuestion, model) {
             if (trimmed === ':cat' || trimmed.startsWith(':cat ')) {
                 const parts = trimmed.split(' ');
                 const index = parts.length > 1 ? parseInt(parts[1]) : null;
+                const linesArgIndex = parts.findIndex(p => p === '--lines');
+                const maxLines = linesArgIndex !== -1 && parts[linesArgIndex + 1] ? parseInt(parts[linesArgIndex + 1]) : 100;
                 const items = contextStore.export();
                 if (items.length === 0) {
                     console.log(chalk_1.default.gray('📭 当前没有上下文内容可查阅\n'));
@@ -418,16 +428,26 @@ async function handleAIChat(initialQuestion, model) {
                     }
                     else {
                         const item = items[index - 1];
+                        const content = item.content || item.summary || '';
+                        const contentLines = content.split('\n');
+                        const truncatedContent = contentLines.length > maxLines
+                            ? contentLines.slice(0, maxLines).join('\n') + `\n\n... (已截断，共 ${contentLines.length} 行，使用 --lines N 显示更多)`
+                            : content;
                         console.log(chalk_1.default.cyan(`\n=== [${index}] ${item.path} ===`));
-                        console.log(item.content);
+                        console.log(truncatedContent);
                         console.log(chalk_1.default.cyan(`=== End ===\n`));
                     }
                 }
                 else {
                     console.log(chalk_1.default.cyan('\n=== 当前完整上下文内容 ==='));
                     items.forEach((item, i) => {
+                        const content = item.content || item.summary || '';
+                        const contentLines = content.split('\n');
+                        const truncatedContent = contentLines.length > maxLines
+                            ? contentLines.slice(0, maxLines).join('\n') + `\n\n... (已截断，共 ${contentLines.length} 行，使用 --lines N 显示更多)`
+                            : content;
                         console.log(chalk_1.default.yellow(`\n--- [${i + 1}] ${item.path} ---`));
-                        console.log(item.content);
+                        console.log(truncatedContent);
                     });
                     console.log(chalk_1.default.cyan('\n==========================\n'));
                 }

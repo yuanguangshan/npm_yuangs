@@ -16,6 +16,7 @@ export declare class SmartContextManager extends ContextManager {
         totalCount: number;
     }>;
     private extractPathFromMessage;
+    private loadPersistedContext;
     private buildSmartSummary;
     getCachedRankedItems(): RankedContextItem[];
     getCachedQuery(): string;

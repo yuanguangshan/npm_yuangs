@@ -24,6 +24,10 @@ export interface AlternativeStrategy<T> {
     execute: () => Promise<T>;
 }
 /**
+ * 判断错误是否可重试
+ */
+export declare function isRetryableError(error: Error, config: RetryConfig): boolean;
+/**
  * 自动重试执行器
  */
 export declare function withRetry<T>(operation: () => Promise<T>, config?: Partial<RetryConfig>): Promise<RetryResult<T>>;

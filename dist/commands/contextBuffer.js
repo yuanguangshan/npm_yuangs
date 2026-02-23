@@ -2,9 +2,19 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ContextBuffer = void 0;
 const estimateTokens = (text) => Math.ceil(text.length / 4);
+const DEFAULT_CONFIG = {
+    maxTokens: 100000,
+    defaultDecayRate: 0.95
+};
 class ContextBuffer {
     items = [];
-    maxTokens = 100000;
+    maxTokens;
+    defaultDecayRate;
+    constructor(config = {}) {
+        const { maxTokens, defaultDecayRate } = { ...DEFAULT_CONFIG, ...config };
+        this.maxTokens = maxTokens;
+        this.defaultDecayRate = defaultDecayRate;
+    }
     add(item, bypassTokenLimit = false) {
         const text = item.content ?? item.summary ?? '';
         const tokens = estimateTokens(text);
@@ -96,7 +106,7 @@ class ContextBuffer {
         const now = Date.now();
         const last = item.lastUsedAt ?? now;
         const hours = (now - last) / 36e5;
-        const rate = item.decayRate ?? 0.95;
+        const rate = item.decayRate ?? this.defaultDecayRate;
         item.importance = (item.importance ?? 0.5) * Math.pow(rate, hours);
     }
     trimIfNeeded() {

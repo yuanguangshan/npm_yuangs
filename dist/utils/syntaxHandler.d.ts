@@ -4,7 +4,7 @@ export declare function handleSpecialSyntax(input: string, stdinData?: string): 
     isPureReference?: boolean;
     error?: boolean;
     itemCount?: number;
-    type?: 'file' | 'directory' | 'command' | 'management';
+    type?: "file" | "directory" | "command" | "management";
 }>;
 /**
  * 引号感知的令牌解析器 (Tokenizer)

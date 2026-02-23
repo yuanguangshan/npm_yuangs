@@ -15,7 +15,9 @@ class LLMAdapter {
             enableStrictOutput: mode !== 'chat',
             enableReasoningTrace: true
         };
-        let protocol = (0, protocolV2_2_1.buildV2_2ProtocolPrompt)(v2Config);
+        let protocol = (0, protocolV2_2_1.buildV2_3ProtocolPrompt)(v2Config);
+        const outputConstraints = (0, protocolV2_2_1.buildOutputConstraints)();
+        protocol += `\n${outputConstraints}`;
         if (mode === 'command' || mode === 'command+exec') {
             protocol += `\n\nCOMMAND MODE ACTIVE:
 - Prioritize "shell_cmd" for any terminal-based task.
@@ -42,8 +44,9 @@ class LLMAdapter {
     }
     static parseThought(raw) {
         try {
-            // CoT V2.2: 分别提取 [THOUGHT] 块和 JSON 块
-            const thoughtMatch = raw.match(/\[THOUGHT\]([\s\S]*?)\[\/THOUGHT\]/);
+            // CoT V2.3: 提取 PHASE 1: THINK 块或 [THOUGHT] 块
+            const thoughtMatch = raw.match(/\[PHASE 1: THINK - 深度推理\]([\s\S]*?)\[PHASE 2/) ||
+                raw.match(/\[THOUGHT\]([\s\S]*?)\[\/THOUGHT\]/);
             const jsonMatch = raw.match(/```json\n([\s\S]*?)\n```/) || raw.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
                 const parsed = json5_1.default.parse(jsonMatch[1] || jsonMatch[0]);

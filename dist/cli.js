@@ -61,7 +61,6 @@ const ssh_1 = require("./commands/ssh");
 const routerCommands_1 = require("./commands/routerCommands");
 const gitCommands_1 = require("./commands/gitCommands");
 const globDetector_1 = require("./utils/globDetector");
-// import { createDiffEditCommand } from './governance/commands/diffEdit';
 // Mandatory Node.js version check
 const majorVersion = Number(process.versions.node.split('.')[0]);
 if (majorVersion < 18) {
@@ -135,7 +134,7 @@ program
         if (options.withContent) {
             const { parseFilePathsFromLsOutput, readFilesContent, buildPromptWithFileContent } = await Promise.resolve().then(() => __importStar(require('./core/fileReader')));
             const filePaths = parseFilePathsFromLsOutput(stdinData);
-            const contentMap = readFilesContent(filePaths);
+            const contentMap = await readFilesContent(filePaths, { showProgress: false });
             question = buildPromptWithFileContent(stdinData, filePaths, contentMap, question || undefined);
         }
         else {
@@ -410,9 +409,6 @@ program
 (0, ssh_1.registerSSHCommand)(program);
 (0, routerCommands_1.registerRouterCommands)(program);
 (0, gitCommands_1.registerGitCommands)(program);
-// Add governance diff-edit command
-// const diffEditCmd = createDiffEditCommand();
-// program.addCommand(diffEditCmd);
 program
     .command('help')
     .description('显示帮助信息')
@@ -546,7 +542,7 @@ async function main() {
                         if (options.withContent) {
                             const { parseFilePathsFromLsOutput, readFilesContent, buildPromptWithFileContent } = await Promise.resolve().then(() => __importStar(require('./core/fileReader')));
                             const filePaths = parseFilePathsFromLsOutput(stdinData);
-                            const contentMap = readFilesContent(filePaths);
+                            const contentMap = await readFilesContent(filePaths, { showProgress: false });
                             question = buildPromptWithFileContent(stdinData, filePaths, contentMap, question || undefined);
                         }
                         else {
@@ -558,7 +554,7 @@ async function main() {
                     if (options.withContent) {
                         const { parseFilePathsFromLsOutput, readFilesContent, buildPromptWithFileContent } = await Promise.resolve().then(() => __importStar(require('./core/fileReader')));
                         const filePaths = parseFilePathsFromLsOutput(stdinData);
-                        const contentMap = readFilesContent(filePaths);
+                        const contentMap = await readFilesContent(filePaths, { showProgress: false });
                         question = buildPromptWithFileContent(stdinData, filePaths, contentMap, question || undefined);
                     }
                     else {

@@ -72,6 +72,7 @@ export declare class CodeReviewer {
     private router?;
     static readonly VERSION = "v1.0";
     private degradationPolicy;
+    private cache;
     constructor(gitService: GitService, router?: ModelRouter | undefined);
     /**
      * 构建审查提示词

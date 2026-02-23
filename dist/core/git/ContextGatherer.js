@@ -4,9 +4,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ContextGatherer = void 0;
+const promises_1 = __importDefault(require("fs/promises"));
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const ContextMeta_1 = require("../context/ContextMeta");
+const ASTParser_1 = require("../kernel/ASTParser");
+const p_limit_1 = __importDefault(require("p-limit"));
 /**
  * 项目上下文采集器
  * 负责为 LLM 提供项目现状的真实快照
@@ -15,8 +18,12 @@ class ContextGatherer {
     gitService;
     MAX_FILE_CONTENT_LENGTH = 10000; // 单个文件读取上限
     MAX_TOTAL_CONTEXT_LENGTH = 50000; // 总上限
+    SUMMARY_THRESHOLD = 200; // P2: 改为200行，避免过度摘要
+    astParser; // Reuse AST parser instance
     constructor(gitService) {
         this.gitService = gitService;
+        // Initialize AST parser for semantic summarization (created once to avoid performance issues)
+        this.astParser = new ASTParser_1.EnhancedASTParser();
     }
     /**
      * 采集项目上下文
@@ -169,27 +176,63 @@ class ContextGatherer {
                     potentialPaths.add(f);
             });
         }
-        // 3. 读取内容 (带上限)
-        let currentTotalLength = 0;
+        // P2: 3. 读取内容 (正确使用异步 I/O + 并发控制 + 原子长度计数)
+        const limit = (0, p_limit_1.default)(5); // 限制并发数为 5
+        const totalLength = { value: 0 }; // 使用对象实现原子计数器
+        const readResults = [];
         for (const filePath of potentialPaths) {
-            if (currentTotalLength > this.MAX_TOTAL_CONTEXT_LENGTH)
+            // 如果已达到总长度限制，提前终止
+            if (totalLength.value >= this.MAX_TOTAL_CONTEXT_LENGTH) {
+                console.log(`[ContextGatherer] 达到总长度限制 (${this.MAX_TOTAL_CONTEXT_LENGTH})，停止读取更多文件`);
                 break;
-            const fullPath = path_1.default.join(repoRoot, filePath);
+            }
             try {
-                if (fs_1.default.existsSync(fullPath) && fs_1.default.statSync(fullPath).isFile()) {
-                    let content = fs_1.default.readFileSync(fullPath, 'utf8');
-                    if (content.length > this.MAX_FILE_CONTENT_LENGTH) {
+                // 使用 limit 包裹任务，真正控制并发
+                const result = await limit(async () => {
+                    const fullPath = path_1.default.join(repoRoot, filePath);
+                    // 检查文件是否存在并获取信息
+                    const stats = await promises_1.default.stat(fullPath);
+                    if (!stats.isFile())
+                        return null;
+                    // 读取文件内容
+                    let content = await promises_1.default.readFile(fullPath, 'utf8');
+                    // 判断是否需要摘要
+                    const isReferenceOnly = !description.includes(filePath);
+                    const lineCount = content.split('\n').length;
+                    const isTooLarge = lineCount > this.SUMMARY_THRESHOLD;
+                    const isTSFile = filePath.endsWith('.ts') || filePath.endsWith('.tsx');
+                    if (isReferenceOnly && isTooLarge && isTSFile) {
+                        try {
+                            content = this.astParser.generateSummary(filePath, content);
+                            console.log(`[Economy] ✂️  Summarized ${filePath} (${lineCount} lines) to save tokens.`);
+                        }
+                        catch (error) {
+                            console.warn(`[ContextGatherer] 警告：摘要生成失败 "${filePath}": ${error.message}`);
+                            content = content.substring(0, this.MAX_FILE_CONTENT_LENGTH) + '\n... (内容过长已截断，摘要生成失败)';
+                        }
+                    }
+                    else if (content.length > this.MAX_FILE_CONTENT_LENGTH) {
                         content = content.substring(0, this.MAX_FILE_CONTENT_LENGTH) + '\n... (内容过长已截断)';
                     }
-                    results.push({ path: filePath, content });
-                    currentTotalLength += content.length;
+                    // 原子地更新总长度
+                    if (totalLength.value + content.length <= this.MAX_TOTAL_CONTEXT_LENGTH) {
+                        totalLength.value += content.length;
+                        return { path: filePath, content };
+                    }
+                    else {
+                        console.log(`[ContextGatherer] 跳过 ${filePath} (会超过总长度限制)`);
+                        return null;
+                    }
+                });
+                if (result) {
+                    readResults.push(result);
                 }
             }
             catch (e) {
                 console.warn(`[ContextGatherer] 警告：无法读取相关上下文文件 "${filePath}": ${e.message}`);
             }
         }
-        return results;
+        return readResults.filter((r) => r !== null);
     }
     /**
      * 获取审计日志

@@ -5,9 +5,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.parseFilePathsFromLsOutput = parseFilePathsFromLsOutput;
 exports.readFilesContent = readFilesContent;
+exports.readFilesContentSync = readFilesContentSync;
 exports.buildPromptWithFileContent = buildPromptWithFileContent;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
+const p_limit_1 = __importDefault(require("p-limit"));
+const ora_1 = __importDefault(require("ora"));
 function parseFilePathsFromLsOutput(output) {
     const lines = output.trim().split('\n');
     const filePaths = [];
@@ -20,7 +23,57 @@ function parseFilePathsFromLsOutput(output) {
     }
     return filePaths;
 }
-function readFilesContent(filePaths) {
+async function readFilesContent(filePaths, options = {}) {
+    const { showProgress = true, concurrency = 5 } = options;
+    const contentMap = new Map();
+    if (filePaths.length === 0) {
+        return contentMap;
+    }
+    const spinner = showProgress && filePaths.length > 5
+        ? (0, ora_1.default)(`正在读取 ${filePaths.length} 个文件...`).start()
+        : null;
+    try {
+        const limit = (0, p_limit_1.default)(concurrency);
+        let completed = 0;
+        const total = filePaths.length;
+        const readTasks = filePaths.map(filePath => limit(async () => {
+            try {
+                const fullPath = path_1.default.resolve(filePath);
+                if (fs_1.default.existsSync(fullPath) && fs_1.default.statSync(fullPath).isFile()) {
+                    const content = await fs_1.default.promises.readFile(fullPath, 'utf-8');
+                    return { filePath, content };
+                }
+                return null;
+            }
+            catch (error) {
+                console.error(`无法读取文件: ${filePath}`);
+                return null;
+            }
+        }));
+        for await (const task of readTasks) {
+            const result = await task;
+            if (result) {
+                contentMap.set(result.filePath, result.content);
+            }
+            completed++;
+            if (spinner && completed % Math.max(1, Math.floor(total / 10)) === 0) {
+                const progress = Math.floor((completed / total) * 100);
+                spinner.text = `正在读取文件... ${completed}/${total} (${progress}%)`;
+            }
+        }
+        if (spinner) {
+            spinner.succeed(`已完成读取 ${contentMap.size} 个文件`);
+        }
+    }
+    catch (error) {
+        if (spinner) {
+            spinner.fail('读取文件时出错');
+        }
+        throw error;
+    }
+    return contentMap;
+}
+function readFilesContentSync(filePaths) {
     const contentMap = new Map();
     for (const filePath of filePaths) {
         try {

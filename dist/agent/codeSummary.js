@@ -155,9 +155,25 @@ function extractPythonSymbols(lines, symbols) {
     });
 }
 function extractGoSymbols(lines, symbols) {
+    let inImportBlock = false;
     lines.forEach((line, index) => {
         const lineNum = index + 1;
         const trimmed = line.trim();
+        if (trimmed === 'import (') {
+            inImportBlock = true;
+            return;
+        }
+        if (inImportBlock && trimmed === ')') {
+            inImportBlock = false;
+            return;
+        }
+        if (inImportBlock && trimmed.startsWith('"')) {
+            symbols.push({
+                name: trimmed.replace(/"/g, ''),
+                type: 'import',
+                line: lineNum
+            });
+        }
         if (trimmed.startsWith('import ')) {
             symbols.push({
                 name: trimmed,
@@ -227,7 +243,7 @@ function extractJavaSymbols(lines, symbols) {
                 line: lineNum
             });
         }
-        const classMatch = trimmed.match(/^class\s+(\w+)/);
+        const classMatch = trimmed.match(/^(?:public|private|protected|static|\s)*class\s+(\w+)/);
         if (classMatch) {
             symbols.push({
                 name: classMatch[1],

@@ -12,9 +12,15 @@ export type ContextItem = {
     tags?: string[];
     decayRate?: number;
 };
+export interface ContextBufferConfig {
+    maxTokens?: number;
+    defaultDecayRate?: number;
+}
 export declare class ContextBuffer {
     private items;
     private maxTokens;
+    private defaultDecayRate;
+    constructor(config?: ContextBufferConfig);
     add(item: Partial<ContextItem> & {
         type: ContextItem['type'];
         path: string;

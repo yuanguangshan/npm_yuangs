@@ -28,11 +28,11 @@ function buildChatPrompt(context, input) {
         content: input,
     });
     const v2Config = {
-        mode: 'chat',
+        mode: input.includes('#protocol') ? 'workflow' : 'chat',
         enableStrictOutput: false,
         enableReasoningTrace: true
     };
-    const baseSystemPrompt = (0, protocolV2_2_1.buildV2_2ProtocolPrompt)(v2Config);
+    const baseSystemPrompt = (0, protocolV2_2_1.buildV2_3ProtocolPrompt)(v2Config);
     const outputConstraints = (0, protocolV2_2_1.buildOutputConstraints)();
     const dynamicContext = {};
     const systemPrompt = (0, dynamicPrompt_1.injectDynamicContext)(`${baseSystemPrompt}\n${outputConstraints}`, dynamicContext);
@@ -51,11 +51,11 @@ function buildCommandPromptObject(input, context) {
         promptText = `【参考技能库】\n${skillList}\n\n${promptText}`;
     }
     const v2Config = {
-        mode: 'command',
+        mode: input.includes('#chat') ? 'chat' : 'command',
         enableStrictOutput: true,
         enableReasoningTrace: true
     };
-    const systemPrompt = (0, protocolV2_2_1.buildV2_2ProtocolPrompt)(v2Config);
+    const systemPrompt = (0, protocolV2_2_1.buildV2_3ProtocolPrompt)(v2Config);
     return {
         system: systemPrompt,
         messages: [

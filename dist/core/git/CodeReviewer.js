@@ -8,6 +8,7 @@ const chalk_1 = __importDefault(require("chalk"));
 const types_1 = require("../modelRouter/types");
 const CapabilityLevel_1 = require("../capability/CapabilityLevel");
 const DegradationPolicy_1 = require("../capability/DegradationPolicy");
+const ReviewCache_1 = require("./ReviewCache");
 /**
  * 代码审查级别
  */
@@ -38,6 +39,7 @@ class CodeReviewer {
     router;
     static VERSION = 'v1.0';
     degradationPolicy;
+    cache = (0, ReviewCache_1.getDefaultReviewCache)();
     constructor(gitService, router) {
         this.gitService = gitService;
         this.router = router;
@@ -249,6 +251,13 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
         if (!diff) {
             throw new Error(`No changes in file: ${filePath}`);
         }
+        // Check cache first (使用 hash 作为缓存 key，避免存储大 diff)
+        // P1: 传递版本号，避免模型升级后误用旧缓存
+        const cachedResult = await this.cache.get(filePath, diff, level, CodeReviewer.VERSION);
+        if (cachedResult) {
+            console.log(chalk_1.default.gray(`💾 从缓存加载审查结果: ${filePath}`));
+            return cachedResult;
+        }
         if (!this.router) {
             throw new Error('AI code review requires model configuration. Please configure AI models using: yuangs config');
         }
@@ -289,7 +298,7 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
             degradationReason = degradationDecision.reason;
             console.log(chalk_1.default.yellow(`⚠️  降级触发: ${degradationReason}`));
         }
-        return {
+        const result = {
             score: parsed.score || 70,
             summary: parsed.summary || '审查完成',
             issues: parsed.issues || [],
@@ -304,6 +313,9 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
                 reason: degradationReason,
             } : undefined,
         };
+        // Cache the result (P1: 传递版本号)
+        await this.cache.set(filePath, diff, level, result, CodeReviewer.VERSION);
+        return result;
     }
     /**
      * 审查指定 commit

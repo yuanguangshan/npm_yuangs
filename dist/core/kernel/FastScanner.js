@@ -51,7 +51,6 @@ exports.FastScanner = void 0;
 const child_process_1 = require("child_process");
 const fs = __importStar(require("fs/promises"));
 const path = __importStar(require("path"));
-const ora_1 = __importDefault(require("ora"));
 const chalk_1 = __importDefault(require("chalk"));
 /**
  * 默认忽略的目录
@@ -113,15 +112,15 @@ class FastScanner {
             consumerFiles = await this.scanWithRipgrep(baseName, searchDir);
         }
         else {
-            // Add spinner for fallback scan
-            const spinner = (0, ora_1.default)(chalk_1.default.cyan('Fallback scanning (ripgrep unavailable)...')).start();
-            consumerFiles = await this.fallbackScan(baseName, searchDir, spinner);
+            // Fallback scan without spinner to avoid import issues in tests
+            console.log(chalk_1.default.cyan('Fallback scanning (ripgrep unavailable)...'));
+            consumerFiles = await this.fallbackScan(baseName, searchDir, null);
             if (this.scanStats) {
                 const elapsed = ((Date.now() - this.scanStats.startTime) / 1000).toFixed(2);
-                spinner.succeed(chalk_1.default.green(`Scan complete: ${this.scanStats.filesScanned} files, ${this.scanStats.directoriesProcessed} dirs in ${elapsed}s`));
+                console.log(chalk_1.default.green(`Scan complete: ${this.scanStats.filesScanned} files, ${this.scanStats.directoriesProcessed} dirs in ${elapsed}s`));
             }
             else {
-                spinner.succeed('Scan complete');
+                console.log('Scan complete');
             }
             this.scanStats = null;
         }

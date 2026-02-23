@@ -55,3 +55,34 @@ export declare function canExecute(current: CapabilityLevel, required: Capabilit
  * 获取能力等级的友好显示名称
  */
 export declare function describeCapabilityLevel(level: CapabilityLevel): string;
+/**
+ * 将CapabilityLevel转换为字符串
+ */
+export declare function capabilityLevelToString(level: CapabilityLevel): string;
+/**
+ * 将字符串转换为CapabilityLevel
+ */
+export declare function stringToCapabilityLevel(str: string): CapabilityLevel | undefined;
+/**
+ * 比较两个能力等级
+ */
+export declare function compareCapabilities(a: CapabilityLevel, b: CapabilityLevel): number;
+/**
+ * 判断能力A是否高于能力B
+ */
+export declare function isCapabilityHigher(a: CapabilityLevel, b: CapabilityLevel): boolean;
+/**
+ * 判断能力A是否低于能力B
+ */
+export declare function isCapabilityLower(a: CapabilityLevel, b: CapabilityLevel): boolean;
+/**
+ * 校验能力链的单调性（严格递减）
+ */
+export declare function validateCapabilityMonotonicity(chain: CapabilityLevel[]): boolean;
+/**
+ * 校验降级链配置
+ */
+export declare function validateFallbackChain(config: {
+    minCapability: CapabilityLevel;
+    fallbackChain: CapabilityLevel[];
+}): boolean;

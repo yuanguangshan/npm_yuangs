@@ -23,6 +23,13 @@ exports.validateStrictDecreasing = validateStrictDecreasing;
 exports.parseCapabilityLevel = parseCapabilityLevel;
 exports.canExecute = canExecute;
 exports.describeCapabilityLevel = describeCapabilityLevel;
+exports.capabilityLevelToString = capabilityLevelToString;
+exports.stringToCapabilityLevel = stringToCapabilityLevel;
+exports.compareCapabilities = compareCapabilities;
+exports.isCapabilityHigher = isCapabilityHigher;
+exports.isCapabilityLower = isCapabilityLower;
+exports.validateCapabilityMonotonicity = validateCapabilityMonotonicity;
+exports.validateFallbackChain = validateFallbackChain;
 var CapabilityLevel;
 (function (CapabilityLevel) {
     /** 极致语义：理解业务、架构和设计意图 */
@@ -97,5 +104,78 @@ function describeCapabilityLevel(level) {
         case CapabilityLevel.TEXT: return '文本处理 (Text)';
         default: return '无智能要求 (None)';
     }
+}
+/**
+ * 将CapabilityLevel转换为字符串
+ */
+function capabilityLevelToString(level) {
+    switch (level) {
+        case CapabilityLevel.SEMANTIC: return 'SEMANTIC';
+        case CapabilityLevel.STRUCTURAL: return 'STRUCTURAL';
+        case CapabilityLevel.LINE: return 'LINE';
+        case CapabilityLevel.TEXT: return 'TEXT';
+        case CapabilityLevel.NONE: return 'NONE';
+        default: throw new Error(`Unknown capability level: ${level}`);
+    }
+}
+/**
+ * 将字符串转换为CapabilityLevel
+ */
+function stringToCapabilityLevel(str) {
+    const upper = str.toUpperCase();
+    switch (upper) {
+        case 'SEMANTIC': return CapabilityLevel.SEMANTIC;
+        case 'STRUCTURAL': return CapabilityLevel.STRUCTURAL;
+        case 'LINE': return CapabilityLevel.LINE;
+        case 'TEXT': return CapabilityLevel.TEXT;
+        case 'NONE': return CapabilityLevel.NONE;
+        default: return undefined;
+    }
+}
+/**
+ * 比较两个能力等级
+ */
+function compareCapabilities(a, b) {
+    if (a === b)
+        return 0;
+    return a > b ? 1 : -1;
+}
+/**
+ * 判断能力A是否高于能力B
+ */
+function isCapabilityHigher(a, b) {
+    return a > b;
+}
+/**
+ * 判断能力A是否低于能力B
+ */
+function isCapabilityLower(a, b) {
+    return a < b;
+}
+/**
+ * 校验能力链的单调性（严格递减）
+ */
+function validateCapabilityMonotonicity(chain) {
+    for (let i = 0; i < chain.length - 1; i++) {
+        if (chain[i] <= chain[i + 1])
+            return false;
+    }
+    return true;
+}
+/**
+ * 校验降级链配置
+ */
+function validateFallbackChain(config) {
+    // 空链是有效的
+    if (config.fallbackChain.length === 0)
+        return true;
+    // 链必须单调递减
+    if (!validateCapabilityMonotonicity(config.fallbackChain))
+        return false;
+    // 链必须以NONE结尾
+    const last = config.fallbackChain[config.fallbackChain.length - 1];
+    if (last !== CapabilityLevel.NONE)
+        return false;
+    return true;
 }
 //# sourceMappingURL=CapabilityLevel.js.map

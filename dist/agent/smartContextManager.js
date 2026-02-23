@@ -3,19 +3,30 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SmartContextManager = void 0;
 const contextManager_1 = require("./contextManager");
 const relevance_1 = require("./relevance");
+const contextStorage_1 = require("../commands/contextStorage");
 class SmartContextManager extends contextManager_1.ContextManager {
     cachedRankedItems = [];
     cachedQuery = '';
     async getEnhancedContext(options) {
         const { query, minRelevance = 0.3, maxTokens = 10000, enableSmartSummary = true } = options;
         const messages = this.getMessages();
-        const contextItems = messages
+        let contextItems = messages
             .filter(m => m.role === 'user')
             .map(m => ({
             path: this.extractPathFromMessage(m.content) || '',
             content: m.content
         }))
             .filter(item => item.path && item.path.length > 0);
+        const persistedItems = await this.loadPersistedContext();
+        if (persistedItems.length > 0) {
+            const persistedContextItems = persistedItems
+                .map((item) => ({
+                path: item.path,
+                content: item.content || item.summary || ''
+            }))
+                .filter((item) => item.path && item.path.length > 0);
+            contextItems = [...contextItems, ...persistedContextItems];
+        }
         const rankedItems = await (0, relevance_1.rankByRelevance)(contextItems, query);
         this.cachedRankedItems = rankedItems;
         this.cachedQuery = query;
@@ -39,6 +50,14 @@ class SmartContextManager extends contextManager_1.ContextManager {
     extractPathFromMessage(content) {
         const pathMatch = content.match(/@([^\s]+)/);
         return pathMatch ? pathMatch[1] : undefined;
+    }
+    async loadPersistedContext() {
+        try {
+            return (await (0, contextStorage_1.loadContext)()) || [];
+        }
+        catch (error) {
+            return [];
+        }
     }
     buildSmartSummary(query, items, allItems) {
         if (items.length === 0) {

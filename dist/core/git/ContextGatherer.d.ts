@@ -21,6 +21,8 @@ export declare class ContextGatherer {
     private gitService;
     private MAX_FILE_CONTENT_LENGTH;
     private MAX_TOTAL_CONTEXT_LENGTH;
+    private SUMMARY_THRESHOLD;
+    private astParser;
     constructor(gitService: GitService);
     /**
      * 采集项目上下文
