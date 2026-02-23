@@ -374,7 +374,12 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
                         }
                     } else {
                         // 带问题的引用，发送给 AI (注意：processInteraction 内部已处理 errors)
-                        await processInteraction(specialResult.result);
+                        rl.pause();
+                        try {
+                            await processInteraction(specialResult.result);
+                        } finally {
+                            rl.resume();
+                        }
                     }
                 }
                 

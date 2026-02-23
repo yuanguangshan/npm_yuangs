@@ -356,7 +356,13 @@ async function handleAIChat(initialQuestion, model) {
                     }
                     else {
                         // 带问题的引用，发送给 AI (注意：processInteraction 内部已处理 errors)
-                        await processInteraction(specialResult.result);
+                        rl.pause();
+                        try {
+                            await processInteraction(specialResult.result);
+                        }
+                        finally {
+                            rl.resume();
+                        }
                     }
                 }
                 // 同步本地 contextStore，因为 handleSpecialSyntax 可能修改了持久化上下文
