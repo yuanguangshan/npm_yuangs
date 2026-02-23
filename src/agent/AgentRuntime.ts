@@ -41,6 +41,8 @@ export class AgentRuntime {
     let turnCount = 0;
     const maxTurns = 10;
     let lastError: string | undefined;
+    let shouldComplete = false; // 标记是否应该完成
+    let lastToolCall: { tool: string; params: any } | null = null; // 跟踪上次工具调用
 
     // 构建初始动态上下文
     const initialDynamicContext = await buildDynamicContext();
@@ -50,6 +52,12 @@ export class AgentRuntime {
     }
 
     while (turnCount < maxTurns) {
+      // 检查是否应该完成（上一轮只读工具成功）
+      if (shouldComplete) {
+        console.log(chalk.gray('[Task Complete] 任务已完成'));
+        break;
+      }
+
       const currentTurn = ++turnCount;
       if (currentTurn > 1) {
         console.log(chalk.blue(`\n--- Turn ${currentTurn} ---`));
@@ -318,6 +326,76 @@ export class AgentRuntime {
           ? result.output.substring(0, 300) + '...'
           : result.output;
         console.log(chalk.green(`[SUCCESS] Result:\n${preview}`));
+
+        // 通用重复检测：所有工具
+        const currentToolCall = { tool: action.payload.tool_name || action.type, params: action.payload.parameters || action.payload };
+        const isDuplicate = lastToolCall &&
+          lastToolCall.tool === currentToolCall.tool &&
+          JSON.stringify(lastToolCall.params) === JSON.stringify(currentToolCall.params);
+
+        if (isDuplicate) {
+          console.log(chalk.yellow('[Duplicate Detection] 检测到重复工具调用，强制完成'));
+          console.log(chalk.cyan(`\n✓ ${action.payload.tool_name || action.type} 已完成\n`));
+
+          if (agentRenderer) {
+            (agentRenderer as any).buffer = '';
+            (agentRenderer as any).quietMode = true;
+            agentRenderer.finish();
+          }
+
+          break;
+        }
+
+        // 更新上次工具调用记录
+        lastToolCall = currentToolCall;
+
+        // 智能完成：根据工具类型和用户意图决定是否自动完成
+        if (action.type === 'tool_call') {
+          const toolName = action.payload.tool_name;
+
+          // 写入文件成功后自动完成
+          if (toolName === 'write_file') {
+            console.log(chalk.gray('[Auto-Complete] 文件写入成功，自动完成任务'));
+            console.log(chalk.green(`✓ 已创建文件: ${action.payload.parameters.path}\n`));
+
+            this.context.addMessage("assistant", `已成功创建文件 ${action.payload.parameters.path}`);
+
+            if (agentRenderer) {
+              (agentRenderer as any).buffer = '';
+              (agentRenderer as any).quietMode = true;
+              agentRenderer.finish();
+            }
+
+            break;
+          }
+
+          // 只读工具处理
+          const readOnlyTools = ['read_file', 'list_files'];
+          if (readOnlyTools.includes(toolName)) {
+            // 检测用户意图：如果要求"分析"、"解释"等，则不自动完成
+            const requiresAnalysis = /分析|解释|说明|总结|review|explain/i.test(userInput);
+
+            if (!requiresAnalysis) {
+              // 简单读取请求，直接返回结果
+              console.log(chalk.gray('[Auto-Complete] 只读工具执行成功，自动完成任务'));
+              console.log(chalk.cyan(`\n📄 ${toolName} 结果：\n`));
+              console.log(result.output);
+
+              this.context.addMessage("assistant", `已成功执行 ${toolName}，结果：\n${result.output}`);
+
+              if (agentRenderer) {
+                (agentRenderer as any).buffer = '';
+                (agentRenderer as any).quietMode = true;
+                agentRenderer.finish();
+              }
+
+              break;
+            } else {
+              // 分析请求，继续循环让 AI 分析内容
+              console.log(chalk.gray('[Analysis Mode] 文件已读取，继续分析...'));
+            }
+          }
+        }
 
         // Learn from this successful execution
         try {

@@ -93,6 +93,35 @@ function getModeSpecificPrompt(mode: string): string {
 === CHAT MODE 指南 ===
 - 保持简洁，直接回答。
 - 推理可以内联，除非用户显式要求，否则不输出协议标签。
+
+=== 工具调用后的行为（关键） ===
+【规则】当你调用工具（read_file、list_files等）获取信息后：
+1. 立即分析返回的结果
+2. 设置 "action_type": "answer"
+3. 在 "content" 中提供你的分析或总结
+4. 设置 "is_done": true
+
+【禁止】
+- 禁止重复调用相同的工具
+- 禁止在成功获取信息后继续调用工具
+
+=== 示例对话 ===
+
+用户: "读取 package.json"
+AI: { "action_type": "tool_call", "tool_name": "read_file", "parameters": { "path": "package.json" } }
+(系统执行工具，返回文件内容)
+AI: { "action_type": "answer", "content": "已读取 package.json，版本是 5.55.0...", "is_done": true }
+
+用户: "分析 src/agent/executor.ts"
+AI: { "action_type": "tool_call", "tool_name": "read_file", "parameters": { "path": "src/agent/executor.ts" } }
+(系统执行工具，返回文件内容)
+AI: { "action_type": "answer", "content": "executor.ts 是工具执行器，包含 read_file、write_file 等工具的实现...", "is_done": true }
+
+=== 重要：工具调用后的行为 ===
+- 当你调用工具（如 read_file）获取信息后，必须立即返回结果给用户
+- 设置 "is_done": true，action_type: "answer" 来结束任务
+- 禁止：重复调用相同的工具
+- 禁止：在成功获取信息后继续循环
 `;
 
     case 'workflow':
