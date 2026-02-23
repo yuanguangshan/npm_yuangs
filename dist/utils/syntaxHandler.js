@@ -47,62 +47,64 @@ async function handleSpecialSyntax(input, stdinData) {
                 type: "directory",
             };
         }
-        // 再尝试空格分隔格式：#dirPath 问题
-        // 策略：第一个 token（空格前）视为目录路径，其余视为问题
-        // 如果目录路径在磁盘上存在，则认为识别正确
-        const spaceMatch = trimmed.match(/^#\s*(\S+)(?:\s+(.+))?$/s);
-        if (spaceMatch) {
-            const candidatePath = spaceMatch[1].trim();
-            const inlineQuestion = spaceMatch[2]?.trim();
-            // 检查目录路径是否真实存在
-            const candidateFullPath = path_1.default.resolve(candidatePath);
-            const diskExists = (() => {
-                try {
-                    return fs_1.default.statSync(candidateFullPath).isDirectory();
-                }
-                catch {
-                    return false;
-                }
-            })();
-            if (diskExists) {
-                // 明确是合法目录路径
-                const question = inlineQuestion ||
-                    (stdinData ? `分析以下目录内容：\n\n${stdinData}` : undefined);
-                const hasQuestion = !!question || !!stdinData;
-                const res = await handleDirectoryReference(candidatePath, question);
-                return {
-                    ...res,
-                    isPureReference: !hasQuestion,
-                    type: "directory",
-                };
-            }
-            else if (!inlineQuestion) {
-                // 没有内联问题：整体视为目录路径（可能路径带空格，走旧逻辑）
-                const dirMatch = trimmed.match(/^#\s*(.+?)\s*$/s);
-                if (dirMatch) {
-                    const dirPath = dirMatch[1].trim();
-                    const question = stdinData
-                        ? `分析以下目录内容：\n\n${stdinData}`
-                        : undefined;
-                    const hasQuestion = !!stdinData;
-                    const res = await handleDirectoryReference(dirPath, question);
-                    return {
-                        ...res,
-                        isPureReference: !hasQuestion,
-                        type: "directory",
-                    };
-                }
-            }
-            else {
-                // 目录不存在，给出明确错误提示
-                return {
-                    processed: true,
-                    result: `错误: 目录 "${candidatePath}" 不存在或不是一个目录\n💡 提示: 使用格式 #目录路径 问题，例如: #src 解释这个文件夹的作用`,
-                    error: true,
-                    isPureReference: false,
-                    type: "directory",
-                };
-            }
+        // 空格分隔格式：取 # 后的内容，按第一个空白切分为「路径」和「问题」
+        // 策略：第一个空格前视为目录路径，之后视为问题
+        const afterHash = trimmed.slice(1).trim(); // 去掉 # 前缀
+        const spaceIdx = afterHash.search(/\s/); // 第一个空白符位置
+        let candidatePath;
+        let inlineQuestion;
+        if (spaceIdx === -1) {
+            // 没有空格：整体视为目录路径，无问题
+            candidatePath = afterHash;
+            inlineQuestion = undefined;
+        }
+        else {
+            // 有空格：切分为路径 + 问题
+            candidatePath = afterHash.slice(0, spaceIdx).trim();
+            inlineQuestion = afterHash.slice(spaceIdx).trim() || undefined;
+        }
+        if (!candidatePath) {
+            return { processed: false };
+        }
+        // 检查目录路径是否真实存在于磁盘
+        const candidateFullPath = path_1.default.resolve(candidatePath);
+        let diskExists = false;
+        try {
+            diskExists = fs_1.default.statSync(candidateFullPath).isDirectory();
+        }
+        catch {
+            diskExists = false;
+        }
+        if (diskExists) {
+            // ✅ 目录存在：candidatePath 是合法目录，inlineQuestion 是可选问题
+            const question = inlineQuestion ||
+                (stdinData ? `分析以下目录内容：\n\n${stdinData}` : undefined);
+            const hasQuestion = !!question || !!stdinData;
+            const res = await handleDirectoryReference(candidatePath, question);
+            return {
+                ...res,
+                isPureReference: !hasQuestion,
+                type: "directory",
+            };
+        }
+        else if (!inlineQuestion) {
+            // 目录不存在，且无内联问题：整体直接传给 handleDirectoryReference（路径可能含空格）
+            const res = await handleDirectoryReference(candidatePath, stdinData ? `分析以下目录内容：\n\n${stdinData}` : undefined);
+            return {
+                ...res,
+                isPureReference: !stdinData,
+                type: "directory",
+            };
+        }
+        else {
+            // 目录不存在，且有内联问题：给出明确错误提示
+            return {
+                processed: true,
+                result: `错误: 目录 "${candidatePath}" 不存在或不是一个目录\n💡 提示: 使用格式 #目录路径 问题，例如: #src 解释这个文件夹的作用`,
+                error: true,
+                isPureReference: false,
+                type: "directory",
+            };
         }
     }
     // 处理 :ls 命令
