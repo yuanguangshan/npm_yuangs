@@ -531,41 +531,44 @@ class ToolExecutor {
         const filePattern = params.file_pattern;
         const ignoreCase = params.ignore_case || false;
         const contextLines = params.context_lines || 0;
-        const maxResults = params.max_results || 50;
+        const maxResults = params.max_results || 100;
         try {
-            let grepCmd = 'grep';
+            // 如果指定了文件模式，使用 find + grep 组合，否则直接用 grep
+            let baseCmd = 'grep';
             // 构建 grep 命令
             if (ignoreCase)
-                grepCmd += ' -i';
-            grepCmd += ' -r';
+                baseCmd += ' -i';
+            baseCmd += ' -r';
             if (contextLines > 0)
-                grepCmd += ` -C ${contextLines}`;
-            grepCmd += ` -n`; // 显示行号
+                baseCmd += ` -C ${contextLines}`;
+            baseCmd += ` -n`; // 显示行号
             // 转义 pattern
             const escapedPattern = pattern.replace(/'/g, "'\\''");
-            grepCmd += ` -- '${escapedPattern}'`;
-            // 添加路径
-            grepCmd += ` ${searchPath}`;
-            // 执行搜索
-            const { stdout } = await execAsync(grepCmd, {
-                maxBuffer: 10 * 1024 * 1024,
-                cwd: process.cwd()
-            });
-            // 解析结果并限制数量
-            const lines = String(stdout).split('\n').filter(line => line.trim());
-            const limitedLines = lines.slice(0, maxResults);
-            // 如果指定了文件模式，进行过滤
-            let filteredLines = limitedLines;
+            let grepCmd;
             if (filePattern) {
-                const regex = new RegExp(filePattern.replace(/\*/g, '.*'));
-                filteredLines = limitedLines.filter((line) => {
-                    const match = line.match(/^([^:]+):/);
-                    return match && regex.test(match[1]);
-                });
+                // 使用 find 过滤文件，然后 grep，最后用 head 限制结果
+                grepCmd = `find ${searchPath} -type f -name '${filePattern}' -exec grep ${ignoreCase ? '-i' : ''} -n -- '${escapedPattern}' {} + 2>/dev/null | head -n ${maxResults}`;
             }
+            else {
+                // 直接 grep，用 head 限制结果
+                grepCmd = `${baseCmd} -- '${escapedPattern}' ${searchPath} 2>/dev/null | head -n ${maxResults}`;
+            }
+            // 执行搜索，使用更大的 buffer
+            const { stdout } = await execAsync(grepCmd, {
+                maxBuffer: 50 * 1024 * 1024, // 50MB
+                cwd: process.cwd(),
+                shell: '/bin/bash'
+            });
+            const output = String(stdout).trim();
+            const lines = output.split('\n').filter(line => line.trim());
+            // 检查是否达到限制
+            const hasMore = lines.length >= maxResults;
+            const resultOutput = lines.length > 0
+                ? lines.join('\n') + (hasMore ? `\n\n[⚠️] 结果已限制为前 ${maxResults} 条匹配，使用更大的 max_results 参数获取更多结果` : '')
+                : '未找到匹配结果';
             return {
                 success: true,
-                output: filteredLines.join('\n'),
+                output: resultOutput,
                 artifacts: []
             };
         }

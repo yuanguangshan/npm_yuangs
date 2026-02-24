@@ -341,7 +341,8 @@ class AgentRuntime {
                         const readOnlyTools = ['read_file', 'list_files', 'read_file_lines', 'read_file_lines_from_end', 'file_info', 'git_status', 'git_log', 'git_diff', 'list_directory_tree', 'search_in_files', 'search_symbol', 'continue_reading', 'analyze_dependencies'];
                         if (readOnlyTools.includes(toolName)) {
                             // 检测用户意图：如果要求"分析"、"解释"等，则不自动完成
-                            const requiresAnalysis = /分析|解释|说明|总结|review|explain/i.test(userInput);
+                            // 使用更精确的匹配，避免文件名中的关键词（如 git_reviews.md 中的 review）误触发
+                            const requiresAnalysis = /^(.*?)(帮我|请)?(分析|解释|说明|总结)|\b(review|explain)\s+(this|the|it)\b/i.test(userInput);
                             if (!requiresAnalysis) {
                                 // 简单读取请求，直接返回结果
                                 console.log(chalk_1.default.gray('[Auto-Complete] 只读工具执行成功，自动完成任务'));

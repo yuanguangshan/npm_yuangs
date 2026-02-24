@@ -114,12 +114,24 @@ export class ErrorTracker {
   ): { blocked: boolean; reason?: string; existingError?: ErrorRecord } {
     const existing = this.findSimilarError(toolName, parameters, '');
 
-    if (existing && existing.attemptCount >= maxRetries) {
-      return {
-        blocked: true,
-        reason: `工具 ${toolName} 已连续失败 ${existing.attemptCount} 次。建议：\n1. 检查参数是否正确\n2. 尝试不同的工具\n3. 修改任务策略`,
-        existingError: existing
-      };
+    if (existing) {
+      // 对于 BUFFER_OVERFLOW 错误，立即阻止（重试不会有效）
+      if (existing.errorType === 'BUFFER_OVERFLOW') {
+        return {
+          blocked: true,
+          reason: `工具 ${toolName} 遇到输出过大错误（BUFFER_OVERFLOW）。重试不会有效。建议：\n1. 使用更具体的搜索模式\n2. 限制搜索范围（使用 file_pattern）\n3. 增大 max_results 参数`,
+          existingError: existing
+        };
+      }
+
+      // 对于其他错误，达到重试次数后阻止
+      if (existing.attemptCount >= maxRetries) {
+        return {
+          blocked: true,
+          reason: `工具 ${toolName} 已连续失败 ${existing.attemptCount} 次。建议：\n1. 检查参数是否正确\n2. 尝试不同的工具\n3. 修改任务策略`,
+          existingError: existing
+        };
+      }
     }
 
     return { blocked: false };
@@ -133,14 +145,26 @@ export class ErrorTracker {
     parameters: any,
     errorMessage: string
   ): ErrorRecord | undefined {
-    const paramFingerprint = JSON.stringify(parameters);
-
     for (const record of this.errors.values()) {
       if (record.toolName === toolName) {
-        // 检查参数是否相似
-        const recordParamFingerprint = JSON.stringify(record.parameters);
-        if (paramFingerprint === recordParamFingerprint) {
-          return record;
+        // 对于 search_in_files，比较关键参数
+        if (toolName === 'search_in_files') {
+          const currentPattern = parameters.pattern || '';
+          const recordPattern = record.parameters.pattern || '';
+          const currentFilePattern = parameters.file_pattern || parameters.path || '';
+          const recordFilePattern = record.parameters.file_pattern || record.parameters.path || '';
+
+          // 如果搜索模式相同，认为是相似错误
+          if (currentPattern === recordPattern && currentFilePattern === recordFilePattern) {
+            return record;
+          }
+        } else {
+          // 其他工具使用精确参数匹配
+          const paramFingerprint = JSON.stringify(parameters);
+          const recordParamFingerprint = JSON.stringify(record.parameters);
+          if (paramFingerprint === recordParamFingerprint) {
+            return record;
+          }
         }
       }
     }
@@ -177,6 +201,7 @@ export class ErrorTracker {
     if (lower.includes('timeout') || lower.includes('etimed')) return 'TIMEOUT';
     if (lower.includes('unknown tool')) return 'UNKNOWN_TOOL';
     if (lower.includes('capability') || lower.includes('requires')) return 'CAPABILITY_ERROR';
+    if (lower.includes('maxbuffer') || lower.includes('max_buffer') || lower.includes('buffer')) return 'BUFFER_OVERFLOW';
 
     return 'UNKNOWN';
   }
@@ -215,7 +240,8 @@ export class ErrorTracker {
       NETWORK_ERROR: '检查网络连接，稍后重试',
       TIMEOUT: '增加超时时间，或简化请求',
       UNKNOWN_TOOL: '使用 list_files 查看可用工具列表',
-      CAPABILITY_ERROR: '当前模型能力不足，尝试使用更基础的工具'
+      CAPABILITY_ERROR: '当前模型能力不足，尝试使用更基础的工具',
+      BUFFER_OVERFLOW: '搜索结果过多，建议：1. 使用更具体的搜索模式 2. 限制搜索范围（使用 file_pattern）3. 增大 max_results 参数'
     };
 
     return fixes[errorType] || '检查输入参数和执行环境';
