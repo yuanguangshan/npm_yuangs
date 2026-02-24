@@ -404,24 +404,50 @@ export function calculateImportance(item: ContextItem): number {
 
   // ===== 路径重要性分析 =====
 
-  // 核心目录加分
-  if (cfg.CORE_PATHS.some(cp => path.includes(cp))) score += cfg.CORE_PATH_BOOST;
+  // 核心目录加分 - 使用更精确的路径匹配
+  // 通过检查路径开头或包含 /边界/ 来避免误匹配
+  for (const corePath of cfg.CORE_PATHS) {
+    // 精确匹配：路径以核心目录开头，或包含 /核心目录/ 的模式
+    if (path.startsWith(corePath + '/') || path.includes('/' + corePath + '/')) {
+      score += cfg.CORE_PATH_BOOST;
+      break;
+    }
+  }
 
-  // 重要源码目录加分
-  if (cfg.SOURCE_PATHS.some(sp => path.includes(sp))) score += cfg.SOURCE_PATH_BOOST;
+  // 重要源码目录加分 - 使用精确匹配
+  for (const sourcePath of cfg.SOURCE_PATHS) {
+    if (path.startsWith(sourcePath) || path.includes('/' + sourcePath)) {
+      score += cfg.SOURCE_PATH_BOOST;
+      break;
+    }
+  }
 
-  // 测试文件减分
-  if (path.includes('test') || path.includes('spec') || path.includes('__tests__')) {
+  // 测试文件减分 - 使用路径边界检查避免误匹配
+  // 正则解释：/(\/|^__) → 以 / 或 __ 开头，(tests?|spec) → test/tests/spec，(\/|$) → 以 / 或 结尾
+  // 匹配：/test/, /spec/, __tests__, src/test/, api_spec.ts 等
+  // 不匹配：my-test-utils/, testing/, spectator/ 等
+  if (/(\/|^__)(tests?|spec)(\/|$)/.test(path)) {
     score -= cfg.TEST_FILE_PENALTY;
   }
 
-  // 配置文件加分
-  if (path.includes('config') || path.endsWith('.json') || path.endsWith('.yaml')) {
+  // 配置文件加分 - 使用更精确的路径匹配
+  // /\/config\// → 匹配 /config/ 目录（如 /config/database.ts）
+  // /\/configs?\// → 匹配 /config/ 或 /configs/ 目录
+  // /\.?config\.[a-z]+$/ → 匹配 .config.js 或 config.ts 等文件
+  // 匹配：/config/app.ts, tsconfig.json, vite.config.js 等
+  // 不匹配：my-config/, reconfigure.ts, deconfigurate/ 等
+  if (/\/config\//.test(path) || /\/configs?\//.test(path) ||
+      path.endsWith('.config.js') || path.endsWith('.config.json') ||
+      path.endsWith('.config.ts') || /\/\.?config\.[a-z]+$/.test(path)) {
     score += cfg.CONFIG_FILE_BOOST;
+  } else if (path.endsWith('.json') || path.endsWith('.yaml') || path.endsWith('.yml')) {
+    // JSON/YAML 文件也加分（但权重较低，因为不一定是配置文件）
+    score += cfg.CONFIG_FILE_BOOST * 0.5;
   }
 
   // 文档文件减分
-  if (path.endsWith('.md') || path.includes('docs')) {
+  // 匹配：README.md, /docs/api.md, docs/guide.md 等
+  if (path.endsWith('.md') || path.includes('/docs/') || path.startsWith('docs/')) {
     score -= cfg.DOC_FILE_PENALTY;
   }
 
@@ -497,9 +523,12 @@ function calculateRecencyScore(item: ContextItem): number {
 
   // 获取自定义半衰期
   // decayRate 越大，衰减越快（半衰期越短）
-  const halfLifeDays = item.decayRate
-    ? cfg.DEFAULT_HALF_LIFE_DAYS / item.decayRate
-    : cfg.DEFAULT_HALF_LIFE_DAYS;
+  // 添加输入验证：decayRate 必须为正数，否则使用默认值
+  let halfLifeDays = cfg.DEFAULT_HALF_LIFE_DAYS;
+  if (item.decayRate && item.decayRate > 0) {
+    halfLifeDays = cfg.DEFAULT_HALF_LIFE_DAYS / item.decayRate;
+  }
+  // 如果 decayRate 为 0、负数或无效，使用默认半衰期
 
   // 指数衰减：越久远权重越低
   const decayFactor = Math.exp(-daysSinceAccess / halfLifeDays);

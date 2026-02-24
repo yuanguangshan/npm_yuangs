@@ -157,9 +157,14 @@ export class SmartContextManager extends ContextManager {
       }
     }
 
-    // 如果需要立即刷新，或者设置节流定时器
+    // 如果需要立即刷新，使用 try-catch 包裹以防止未处理的 Promise 拒绝
     if (shouldFlush) {
-      await this.flushPendingUpdates();
+      try {
+        await this.flushPendingUpdates();
+      } catch (error) {
+        // 静默失败，错误已在 flushPendingUpdates 中记录
+        console.debug('Flush failed in updateAccessTracking:', error);
+      }
     } else if (!this.throttleTimer) {
       this.throttleTimer = setTimeout(() => {
         this.flushPendingUpdates().catch(err => {
