@@ -20,16 +20,17 @@ export interface ProposedAction {
   reasoning: string;
 }
 
-export type GovernanceDecision = 
-  | { status: 'approved'; by: 'policy' | 'human'; timestamp: number }
-  | { status: 'rejected'; by: 'policy' | 'human'; reason: string; timestamp: number }
-  | { 
-      status: 'modified'; 
-      by: 'human'; 
+export type GovernanceDecision =
+  | { status: 'approved'; by: 'policy' | 'human'; timestamp: number; riskScore?: number }
+  | { status: 'rejected'; by: 'policy' | 'human'; reason: string; timestamp: number; riskScore?: number }
+  | {
+      status: 'modified';
+      by: 'human';
       originalActionId: string;
       modifiedAction: ProposedAction;
       modificationReason: string;
       timestamp: number;
+      riskScore?: number;
     };
 
 export type EvaluationOutcome = 

@@ -1,18 +1,43 @@
-import { ModelAdapter, TaskConfig, RoutingConfig, ModelStats, DomainHealth, PolicyDsl, TaskType } from '../types';
+import { ModelAdapter, TaskConfig, RoutingConfig, ModelStats, DomainHealth, PolicyDsl, TaskType, PolicyWeights } from '../types';
 import { BasePolicy } from './BasePolicy';
 import { ScoredCandidate } from './types';
 
 /**
  * 通用 DSL 驱动策略
  * 通过配置权重和 Gate 规则来定义路由行为
+ *
+ * 支持动态权重: 可通过 overrideWeights() 方法覆盖默认权重
  */
 export class DslPolicy extends BasePolicy {
+    private dynamicWeights: PolicyWeights | null = null;
+
     constructor(private dsl: PolicyDsl) {
         super();
     }
 
     get name() { return this.dsl.name; }
     get description() { return this.dsl.description; }
+
+    /**
+     * 覆盖默认权重（用于自适应权重系统）
+     */
+    overrideWeights(weights: PolicyWeights): void {
+        this.dynamicWeights = weights;
+    }
+
+    /**
+     * 重置为默认权重
+     */
+    resetWeights(): void {
+        this.dynamicWeights = null;
+    }
+
+    /**
+     * 获取当前使用的权重
+     */
+    private getWeights(): PolicyWeights {
+        return this.dynamicWeights || this.dsl.weights;
+    }
 
     /**
      * 实现 DSL 驱动的 Gate 过滤
@@ -61,7 +86,7 @@ export class DslPolicy extends BasePolicy {
         config: RoutingConfig,
         modelStats: Map<string, ModelStats>
     ): ScoredCandidate[] {
-        const weights = this.dsl.weights;
+        const weights = this.getWeights();
 
         return adapters.map(adapter => {
             let totalScore = 0;

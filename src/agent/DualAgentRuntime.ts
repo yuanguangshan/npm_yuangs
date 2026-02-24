@@ -9,16 +9,20 @@ import { TaskStep, TaskPlan } from './types';
 import { ToolExecutionResult } from './state';
 import { askAI, getUserConfig } from '../ai/client';
 import { callLLMWithRouter } from './modelRouterIntegration';
+import { PlanCache } from './PlanCache';
 
 export class DualAgentRuntime {
   private context: ContextManager;
   private executionId: string;
   private steps: TaskStep[] = [];
   private currentIndex = 0;
+  private planCache: PlanCache;
 
-  constructor(initialContext: any) {
+  constructor(initialContext: any, planCache?: PlanCache) {
     this.context = new ContextManager(initialContext);
     this.executionId = randomUUID();
+    // 默认创建新的缓存实例，避免全局单例导致的测试隔离问题
+    this.planCache = planCache || new PlanCache();
   }
 
   async run(
@@ -141,48 +145,50 @@ export class DualAgentRuntime {
     const config = getUserConfig();
     const finalModel = model || config.defaultModel || 'Assistant';
 
-    const prompt = this.buildPlannerPrompt(input);
+    // 使用计划缓存
+    return this.planCache.getOrGenerate(input, async () => {
+      const prompt = this.buildPlannerPrompt(input);
+      const messages = [{ role: 'user', content: prompt }] as any[];
 
-    const messages = [{ role: 'user', content: prompt }] as any[];
-    
-    try {
-      let response: string;
-      
-      if (model) {
-        console.log(chalk.gray(`[Planner] Using specified model: ${model}`));
-        response = await askAI(prompt, model);
-      } else {
-        console.log(chalk.gray(`[Planner] Choosing best model for planning...`));
-        const routerResult = await callLLMWithRouter(messages, 'command', {
-          taskType: 'analysis' as any, // Planning is primarily analysis
-          routingStrategy: 'best_quality' as any // We want high quality plans
-        });
-        response = routerResult.rawText || await askAI(prompt, finalModel);
+      try {
+        let response: string;
+
+        if (model) {
+          console.log(chalk.gray(`[Planner] Using specified model: ${model}`));
+          response = await askAI(prompt, model);
+        } else {
+          console.log(chalk.gray(`[Planner] Choosing best model for planning...`));
+          const routerResult = await callLLMWithRouter(messages, 'command', {
+            taskType: 'analysis' as any, // Planning is primarily analysis
+            routingStrategy: 'best_quality' as any // We want high quality plans
+          });
+          response = routerResult.rawText || await askAI(prompt, finalModel);
+        }
+
+        const jsonMatch = response.match(/```json\n([\s\S]*?)\n```/);
+        if (jsonMatch) {
+          return JSON.parse(jsonMatch[1]);
+        }
+
+        const braceMatch = response.match(/\{[\s\S]*\}/);
+        if (braceMatch) {
+          return JSON.parse(braceMatch[0]);
+        }
+
+        return {
+          plan: 'No plan generated',
+          steps: [],
+          estimated_time: 'Unknown'
+        };
+      } catch (error) {
+        console.error(chalk.red(`Planner error: ${error}`));
+        return {
+          plan: 'Plan generation failed',
+          steps: [],
+          estimated_time: 'Unknown'
+        };
       }
-
-      const jsonMatch = response.match(/```json\n([\s\S]*?)\n```/);
-      if (jsonMatch) {
-        return JSON.parse(jsonMatch[1]);
-      }
-
-      const braceMatch = response.match(/\{[\s\S]*\}/);
-      if (braceMatch) {
-        return JSON.parse(braceMatch[0]);
-      }
-
-      return {
-        plan: 'No plan generated',
-        steps: [],
-        estimated_time: 'Unknown'
-      };
-    } catch (error) {
-      console.error(chalk.red(`Planner error: ${error}`));
-      return {
-        plan: 'Plan generation failed',
-        steps: [],
-        estimated_time: 'Unknown'
-      };
-    }
+    });
   }
 
   private buildPlannerPrompt(input: string): string {
@@ -342,5 +348,26 @@ ${context ? `Context:\n${context}\n` : ''}
       steps: this.steps,
       currentIndex: this.currentIndex
     };
+  }
+
+  /**
+   * 获取计划缓存统计
+   */
+  getPlanCacheStats() {
+    return this.planCache.getStats();
+  }
+
+  /**
+   * 清理计划缓存
+   */
+  clearPlanCache() {
+    this.planCache.clear();
+  }
+
+  /**
+   * 清理过期的计划缓存
+   */
+  cleanupPlanCache() {
+    return this.planCache.cleanup();
   }
 }
