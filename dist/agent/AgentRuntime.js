@@ -50,6 +50,7 @@ const governance_1 = require("./governance");
 const executor_1 = require("./executor");
 const smartContextManager_1 = require("./smartContextManager");
 const core_1 = require("./governance/core");
+const errorTracker_1 = require("./errorTracker");
 const dynamicPrompt_1 = require("./dynamicPrompt");
 const renderer_1 = require("../utils/renderer");
 class AgentRuntime {
@@ -263,6 +264,22 @@ class AgentRuntime {
                         console.warn(chalk_1.default.yellow(`[KG] Warning: Failed to record causal edge: ${error.message}`));
                     }
                 }
+                // === 执行前错误检查 ===
+                // 检查是否应该阻止执行（防止重复错误）
+                if (action.type === 'tool_call') {
+                    const toolName = action.payload.tool_name;
+                    const blockCheck = errorTracker_1.ErrorTracker.shouldBlockExecution(toolName, action.payload.parameters);
+                    if (blockCheck.blocked) {
+                        console.log(chalk_1.default.red(`[BLOCKED] 🚫 ${blockCheck.reason}`));
+                        // 显示错误历史
+                        if (blockCheck.existingError) {
+                            console.log(chalk_1.default.yellow(`[Error History] 此错误已发生 ${blockCheck.existingError.attemptCount} 次`));
+                            console.log(chalk_1.default.gray(`上次错误: ${blockCheck.existingError.errorMessage}`));
+                        }
+                        this.context.addMessage("system", `BLOCKED: ${blockCheck.reason}. 建议尝试不同的方法。`);
+                        continue;
+                    }
+                }
                 // === 执行 ===
                 console.log(chalk_1.default.yellow(`[EXECUTING] ⚙️ ${action.type}...`));
                 const result = await executor_1.ToolExecutor.execute(action);
@@ -370,10 +387,60 @@ class AgentRuntime {
                     }
                 }
                 else {
-                    // 失败时记录错误，下次循环会注入错误恢复指导
+                    // 失败时记录错误，尝试自动修复
                     lastError = result.error;
                     this.context.addToolResult(action.type, `Error: ${result.error}`);
                     console.log(chalk_1.default.red(`[ERROR] ${result.error}`));
+                    // 记录到错误追踪器
+                    if (action.type === 'tool_call') {
+                        errorTracker_1.ErrorTracker.recordError(action.payload.tool_name, action.payload.parameters, result.error || 'Unknown error', { mode, model: thought.modelName, userInput });
+                    }
+                    else if (action.type === 'shell_cmd') {
+                        errorTracker_1.ErrorTracker.recordError('shell_cmd', { command: action.payload.command }, result.error || 'Unknown error', { mode, model: thought.modelName, userInput });
+                    }
+                    // 尝试自动修复（仅针对 shell_cmd 失败）
+                    if (action.type === 'shell_cmd' && result.error) {
+                        console.log(chalk_1.default.yellow('[AutoFix] 尝试自动修复命令...'));
+                        try {
+                            const { autoFixCommand } = await Promise.resolve().then(() => __importStar(require('../core/autofix')));
+                            const { getOSProfile } = await Promise.resolve().then(() => __importStar(require('../core/os')));
+                            const os = getOSProfile();
+                            const fixPlan = await autoFixCommand(action.payload.command, result.error || result.output || '', os, thought.modelName);
+                            if (fixPlan && fixPlan.command) {
+                                console.log(chalk_1.default.cyan(`[AutoFix] 建议修复命令: ${fixPlan.command}`));
+                                console.log(chalk_1.default.gray(`[AutoFix] 说明: ${fixPlan.plan || '无'}`));
+                                // 将修复建议添加到上下文
+                                this.context.addMessage('system', `自动修复建议：${fixPlan.command}\n原因：${fixPlan.plan || '无'}`);
+                                // 如果修复方案风险低，直接执行
+                                if (fixPlan.risk === 'low') {
+                                    console.log(chalk_1.default.yellow('[AutoFix] 修复方案风险低，自动执行...'));
+                                    const fixedAction = {
+                                        id: (0, crypto_1.randomUUID)(),
+                                        type: 'shell_cmd',
+                                        payload: { command: fixPlan.command },
+                                        riskLevel: 'low',
+                                        reasoning: `AutoFix from failed command: ${action.payload.command}`
+                                    };
+                                    const fixedResult = await executor_1.ToolExecutor.execute(fixedAction);
+                                    if (fixedResult.success) {
+                                        console.log(chalk_1.default.green('[AutoFix] 修复成功！'));
+                                        lastError = undefined;
+                                        this.context.addToolResult('shell_cmd', fixedResult.output);
+                                        continue;
+                                    }
+                                    else {
+                                        console.log(chalk_1.default.red('[AutoFix] 修复失败，继续原始错误处理'));
+                                    }
+                                }
+                            }
+                            else {
+                                console.log(chalk_1.default.gray('[AutoFix] 无法生成修复建议'));
+                            }
+                        }
+                        catch (fixError) {
+                            console.warn(chalk_1.default.yellow(`[AutoFix] 修复过程出错: ${fixError.message}`));
+                        }
+                    }
                 }
             }
             catch (error) {

@@ -86,6 +86,8 @@ export interface ToolExecutionResult {
   output: string;
   error?: string;
   artifacts?: string[];
+  needsContinue?: boolean;  // 标记输出是否被截断，需要继续读取
+  readPosition?: number;    // 当前读取位置（用于 continue_reading）
 }
 
 export interface GovernanceContext {

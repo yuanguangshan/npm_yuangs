@@ -84,6 +84,8 @@ export interface ToolExecutionResult {
     output: string;
     error?: string;
     artifacts?: string[];
+    needsContinue?: boolean;
+    readPosition?: number;
 }
 export interface GovernanceContext {
     input: string;

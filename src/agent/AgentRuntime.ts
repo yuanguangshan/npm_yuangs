@@ -15,6 +15,7 @@ import { ContextManager } from "./contextManager";
 import { SmartContextManager } from "./smartContextManager";
 import { evaluateProposal } from "./governance/core";
 import { ProposedAction } from "./state";
+import { ErrorTracker } from "./errorTracker";
 import {
   buildDynamicContext,
   injectDynamicContext,
@@ -314,6 +315,32 @@ export class AgentRuntime {
         }
       }
 
+      // === 执行前错误检查 ===
+      // 检查是否应该阻止执行（防止重复错误）
+      if (action.type === 'tool_call') {
+        const toolName = action.payload.tool_name;
+        const blockCheck = ErrorTracker.shouldBlockExecution(
+          toolName,
+          action.payload.parameters
+        );
+
+        if (blockCheck.blocked) {
+          console.log(chalk.red(`[BLOCKED] 🚫 ${blockCheck.reason}`));
+
+          // 显示错误历史
+          if (blockCheck.existingError) {
+            console.log(chalk.yellow(`[Error History] 此错误已发生 ${blockCheck.existingError.attemptCount} 次`));
+            console.log(chalk.gray(`上次错误: ${blockCheck.existingError.errorMessage}`));
+          }
+
+          this.context.addMessage(
+            "system",
+            `BLOCKED: ${blockCheck.reason}. 建议尝试不同的方法。`
+          );
+          continue;
+        }
+      }
+
       // === 执行 ===
       console.log(chalk.yellow(`[EXECUTING] ⚙️ ${action.type}...`));
       const result = await ToolExecutor.execute(action as any);
@@ -448,10 +475,80 @@ export class AgentRuntime {
           console.warn(chalk.yellow(`[Skill Learning] Failed: ${error}`));
         }
       } else {
-        // 失败时记录错误，下次循环会注入错误恢复指导
+        // 失败时记录错误，尝试自动修复
         lastError = result.error;
         this.context.addToolResult(action.type, `Error: ${result.error}`);
         console.log(chalk.red(`[ERROR] ${result.error}`));
+
+        // 记录到错误追踪器
+        if (action.type === 'tool_call') {
+          ErrorTracker.recordError(
+            action.payload.tool_name,
+            action.payload.parameters,
+            result.error || 'Unknown error',
+            { mode, model: thought.modelName, userInput }
+          );
+        } else if (action.type === 'shell_cmd') {
+          ErrorTracker.recordError(
+            'shell_cmd',
+            { command: action.payload.command },
+            result.error || 'Unknown error',
+            { mode, model: thought.modelName, userInput }
+          );
+        }
+
+        // 尝试自动修复（仅针对 shell_cmd 失败）
+        if (action.type === 'shell_cmd' && result.error) {
+          console.log(chalk.yellow('[AutoFix] 尝试自动修复命令...'));
+
+          try {
+            const { autoFixCommand } = await import('../core/autofix');
+            const { getOSProfile } = await import('../core/os');
+            const os = getOSProfile();
+
+            const fixPlan = await autoFixCommand(
+              action.payload.command,
+              result.error || result.output || '',
+              os,
+              thought.modelName
+            );
+
+            if (fixPlan && fixPlan.command) {
+              console.log(chalk.cyan(`[AutoFix] 建议修复命令: ${fixPlan.command}`));
+              console.log(chalk.gray(`[AutoFix] 说明: ${fixPlan.plan || '无'}`));
+
+              // 将修复建议添加到上下文
+              this.context.addMessage('system', `自动修复建议：${fixPlan.command}\n原因：${fixPlan.plan || '无'}`);
+
+              // 如果修复方案风险低，直接执行
+              if (fixPlan.risk === 'low') {
+                console.log(chalk.yellow('[AutoFix] 修复方案风险低，自动执行...'));
+
+                const fixedAction: ProposedAction = {
+                  id: randomUUID(),
+                  type: 'shell_cmd',
+                  payload: { command: fixPlan.command },
+                  riskLevel: 'low',
+                  reasoning: `AutoFix from failed command: ${action.payload.command}`
+                };
+
+                const fixedResult = await ToolExecutor.execute(fixedAction as any);
+                if (fixedResult.success) {
+                  console.log(chalk.green('[AutoFix] 修复成功！'));
+                  lastError = undefined;
+                  this.context.addToolResult('shell_cmd', fixedResult.output);
+                  continue;
+                } else {
+                  console.log(chalk.red('[AutoFix] 修复失败，继续原始错误处理'));
+                }
+              }
+            } else {
+              console.log(chalk.gray('[AutoFix] 无法生成修复建议'));
+            }
+          } catch (fixError: any) {
+            console.warn(chalk.yellow(`[AutoFix] 修复过程出错: ${fixError.message}`));
+          }
+        }
       }
       } catch (error: unknown) {
         let errorMessage = '未知执行错误';
