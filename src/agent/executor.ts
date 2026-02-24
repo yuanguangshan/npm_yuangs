@@ -290,10 +290,11 @@ export class ToolExecutor {
         artifacts: [filePath]
       };
     } catch (error: any) {
+      const friendly = this.getFriendlyError('read_file', error);
       return {
         success: false,
-        error: error.message,
-        output: ''
+        error: friendly.message,
+        output: friendly.suggestion
       };
     }
   }
@@ -1027,5 +1028,56 @@ export class ToolExecutor {
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+  }
+
+  /**
+   * 获取用户友好的错误消息和建议
+   */
+  private static getFriendlyError(toolName: string, error: any): { message: string; suggestion: string } {
+    const errorMsg = error?.message || String(error);
+    const lowerError = errorMsg.toLowerCase();
+
+    // 文件不存在
+    if (lowerError.includes('enoent') || lowerError.includes('no such file') || lowerError.includes('not found')) {
+      const match = errorMsg.match(/['"](.*?)['"]|['`](.*?)['`]/);
+      const fileName = match ? match[1] : '指定文件';
+      return {
+        message: `文件未找到: ${fileName}`,
+        suggestion: `💡 建议：使用 list_files 查看可用文件，或检查文件路径是否正确`
+      };
+    }
+
+    // 权限错误
+    if (lowerError.includes('eacces') || lowerError.includes('permission denied')) {
+      return {
+        message: `权限不足：无法访问该文件`,
+        suggestion: `💡 建议：检查文件权限，或使用 sudo（如果适用）`
+      };
+    }
+
+    // 语法错误
+    if (lowerError.includes('syntax') || lowerError.includes('parse')) {
+      return {
+        message: `命令语法错误`,
+        suggestion: `💡 建议：检查命令格式，参考工具文档`
+      };
+    }
+
+    // 根据工具名称提供特定建议
+    const suggestions: Record<string, string> = {
+      read_file_lines: '💡 建议：检查 start_line 是否在文件范围内，使用 file_info 查看文件总行数',
+      read_file_lines_from_end: '💡 建议：count 参数不要超过文件总行数',
+      search_in_files: '💡 建议：使用更具体的搜索词，或使用 file_pattern 限制搜索范围',
+      search_symbol: '💡 建议：检查符号名称是否正确，或尝试使用 search_in_files 搜索',
+      write_file: '💡 建议：确保目录存在，检查文件路径是否正确',
+      git_status: '💡 建议：确认当前在 Git 仓库中',
+      git_diff: '💡 建议：检查是否有未提交的更改',
+      git_log: '💡 建议：检查是否有提交历史'
+    };
+
+    return {
+      message: errorMsg,
+      suggestion: suggestions[toolName] || '💡 建议：检查参数是否正确，或尝试不同的工具'
+    };
   }
 }

@@ -102,4 +102,8 @@ export declare class ToolExecutor {
      * 格式化字节数
      */
     private static formatBytes;
+    /**
+     * 获取用户友好的错误消息和建议
+     */
+    private static getFriendlyError;
 }
