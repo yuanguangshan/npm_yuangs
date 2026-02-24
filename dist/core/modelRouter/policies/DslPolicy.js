@@ -6,15 +6,36 @@ const BasePolicy_1 = require("./BasePolicy");
 /**
  * 通用 DSL 驱动策略
  * 通过配置权重和 Gate 规则来定义路由行为
+ *
+ * 支持动态权重: 可通过 overrideWeights() 方法覆盖默认权重
  */
 class DslPolicy extends BasePolicy_1.BasePolicy {
     dsl;
+    dynamicWeights = null;
     constructor(dsl) {
         super();
         this.dsl = dsl;
     }
     get name() { return this.dsl.name; }
     get description() { return this.dsl.description; }
+    /**
+     * 覆盖默认权重（用于自适应权重系统）
+     */
+    overrideWeights(weights) {
+        this.dynamicWeights = weights;
+    }
+    /**
+     * 重置为默认权重
+     */
+    resetWeights() {
+        this.dynamicWeights = null;
+    }
+    /**
+     * 获取当前使用的权重
+     */
+    getWeights() {
+        return this.dynamicWeights || this.dsl.weights;
+    }
     /**
      * 实现 DSL 驱动的 Gate 过滤
      */
@@ -46,7 +67,7 @@ class DslPolicy extends BasePolicy_1.BasePolicy {
      * 实现 DSL 驱动的加权评分
      */
     score(adapters, task, config, modelStats) {
-        const weights = this.dsl.weights;
+        const weights = this.getWeights();
         return adapters.map(adapter => {
             let totalScore = 0;
             let reasons = [];

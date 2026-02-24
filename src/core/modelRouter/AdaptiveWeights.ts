@@ -1,5 +1,4 @@
 import { RoutingStrategy } from './types';
-import { ModelExecutionResult } from './types';
 
 /**
  * 执行结果，用于学习
@@ -17,11 +16,11 @@ export interface ExecutionOutcome {
  * 权重配置
  */
 export interface WeightConfig {
-  taskMatch: number;
-  context: number;
-  latency: number;
-  cost: number;
-  history: number;
+  taskMatch?: number;
+  context?: number;
+  latency?: number;
+  cost?: number;
+  history?: number;
   quality?: number;
 }
 
@@ -87,8 +86,8 @@ export class AdaptiveWeights {
   private config: LearningConfig;
 
   // 默认权重配置 (与 DslPolicy 保持一致)
-  private readonly DEFAULT_WEIGHTS: Record<RoutingStrategy, WeightConfig> = {
-    [RoutingStrategy.BALANCED]: {
+  private readonly DEFAULT_WEIGHTS: Partial<Record<RoutingStrategy, WeightConfig>> = {
+    [RoutingStrategy.AUTO]: {
       taskMatch: 0.4,
       context: 0.2,
       latency: 0.2,
@@ -300,7 +299,7 @@ export class AdaptiveWeights {
    *
    * 梯度表示: 该权重的增加对奖励的正向影响程度
    */
-  private calculateGradients(outcomes: ExecutionOutcome[], weights: WeightConfig): Record<string, number> {
+  private calculateGradients(outcomes: ExecutionOutcome[], _weights: WeightConfig): Record<string, number> {
     const gradients: Record<string, number> = {};
 
     // 延迟梯度: 延迟越低，延迟权重应该越高

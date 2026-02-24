@@ -11,11 +11,13 @@ export type GovernanceDecision = {
     status: 'approved';
     by: 'policy' | 'human';
     timestamp: number;
+    riskScore?: number;
 } | {
     status: 'rejected';
     by: 'policy' | 'human';
     reason: string;
     timestamp: number;
+    riskScore?: number;
 } | {
     status: 'modified';
     by: 'human';
@@ -23,6 +25,7 @@ export type GovernanceDecision = {
     modifiedAction: ProposedAction;
     modificationReason: string;
     timestamp: number;
+    riskScore?: number;
 };
 export type EvaluationOutcome = {
     kind: 'continue';

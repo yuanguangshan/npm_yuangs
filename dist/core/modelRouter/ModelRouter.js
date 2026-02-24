@@ -40,6 +40,7 @@ const DslPolicy_1 = require("./policies/DslPolicy");
 const ModelSupervisor_1 = require("./ModelSupervisor");
 const MetricsCollector_1 = require("../metrics/MetricsCollector");
 const SupervisorActionLog_1 = require("../observability/SupervisorActionLog");
+const AdaptiveWeights_1 = require("./AdaptiveWeights");
 /**
  * 模型路由器 - 执行面 (Execution Plane)
  * 负责人调配和执行，保持核心逻辑简单
@@ -51,17 +52,20 @@ class ModelRouter {
     metrics;
     supervisor;
     supervisorLogger;
+    adaptiveWeights;
     roundRobinIndex = 0;
     // 唯一监督状态轨迹 (Context)
     supervisorContext = {
         now: Date.now(),
         triggerHitCounts: {}
     };
-    constructor(supervisorConfig, metrics, logger) {
+    constructor(supervisorConfig, metrics, logger, adaptiveWeights) {
         this.metrics = metrics || new MetricsCollector_1.DefaultMetricsCollector();
         this.supervisor = new ModelSupervisor_1.ModelSupervisor(supervisorConfig || ModelSupervisor_1.ModelSupervisor.getDefaultConfig());
         this.supervisorLogger = logger || new SupervisorActionLog_1.ConsoleSupervisorActionLogger();
+        this.adaptiveWeights = adaptiveWeights || new AdaptiveWeights_1.AdaptiveWeights();
         this.registerDefaultPolicies();
+        this.applyLearnedWeights();
     }
     registerDefaultPolicies() {
         this.registerPolicy(new DslPolicy_1.DslPolicy({
@@ -240,11 +244,13 @@ class ModelRouter {
             throw new Error(`策略路由失败: ${error.message}`);
         }
     }
-    async executeTask(adapter, prompt, config, onChunk) {
+    async executeTask(adapter, prompt, config, onChunk, strategy = types_1.RoutingStrategy.AUTO) {
         const domain = adapter.failureDomain ?? adapter.provider;
         try {
             const result = await adapter.execute(prompt, config, onChunk);
             this.metrics.recordRequest(adapter.name, domain, result.executionTime, result.success, adapter.capabilities.costLevel);
+            // 记录执行结果用于自适应学习
+            this.recordExecutionOutcome(adapter, result, strategy);
             if (result.success) {
                 const health = this.domainHealth.get(domain);
                 if (health && health.state === 'half-open') {
@@ -306,6 +312,8 @@ class ModelRouter {
                 const s = this.metrics.getStats(a.name);
                 return s && s.successEMA > 0.85;
             });
+            // 计算平均成功率用于渐进恢复判断
+            const avgSuccessRate = this.calculateDomainAverageSuccessRate(domainAdapters);
             if (health.state === 'closed' && isUnstable) {
                 health.state = 'open';
                 health.openedAt = now;
@@ -315,11 +323,28 @@ class ModelRouter {
                 health.state = 'half-open';
                 console.log(`📡 故障域 [${domain}] 进入半探测模式 (Half-Open)`);
             }
-            else if (health.state === 'half-open' && isStable) {
+            else if (health.state === 'half-open' && (isStable || avgSuccessRate > 0.9)) {
+                // 成功率 > 90% 时立即恢复
                 health.state = 'closed';
-                console.log(`✅ 故障域 [${domain}] EMA 指标已恢复，熔断状态重置 (Closed)`);
+                console.log(`✅ 故障域 [${domain}] EMA 指标已恢复 (成功率: ${(avgSuccessRate * 100).toFixed(0)}%)，熔断状态重置 (Closed)`);
             }
         }
+    }
+    /**
+     * 计算域的平均成功率
+     */
+    calculateDomainAverageSuccessRate(domainAdapters) {
+        let totalRequests = 0;
+        let weightedSuccess = 0;
+        for (const adapter of domainAdapters) {
+            const stats = this.metrics.getStats(adapter.name);
+            if (stats && stats.totalRequests > 0) {
+                const weight = stats.totalRequests;
+                totalRequests += weight;
+                weightedSuccess += stats.successEMA * weight;
+            }
+        }
+        return totalRequests > 0 ? weightedSuccess / totalRequests : 0;
     }
     isAdapterAllowedByCircuitBreaker(adapter) {
         const domain = adapter.failureDomain ?? adapter.provider;
@@ -328,9 +353,57 @@ class ModelRouter {
             return true;
         if (health.state === 'open')
             return false;
-        if (health.state === 'half-open')
-            return Math.random() < 0.1;
+        // 渐进式流量恢复: 基于成功率动态调整流量比例
+        if (health.state === 'half-open') {
+            const passRate = this.calculateHalfOpenPassRate(domain);
+            return Math.random() < passRate;
+        }
         return true;
+    }
+    /**
+     * 计算半开状态的流量通过比例
+     *
+     * 策略: 基于最近的成功率动态调整
+     * - 成功率 < 30%: 0% 流量 (继续熔断)
+     * - 成功率 30-50%: 10% 流量
+     * - 成功率 50-70%: 30% 流量
+     * - 成功率 70-90%: 50% 流量
+     * - 成功率 > 90%: 100% 流量 (恢复到 closed)
+     */
+    calculateHalfOpenPassRate(domain) {
+        const domainAdapters = this.getAdapters().filter(a => (a.failureDomain ?? a.provider) === domain);
+        if (domainAdapters.length === 0)
+            return 0;
+        // 计算该域的加权平均成功率
+        let totalRequests = 0;
+        let weightedSuccess = 0;
+        for (const adapter of domainAdapters) {
+            const stats = this.metrics.getStats(adapter.name);
+            if (stats && stats.totalRequests > 0) {
+                const weight = stats.totalRequests;
+                totalRequests += weight;
+                weightedSuccess += stats.successEMA * weight;
+            }
+        }
+        if (totalRequests === 0)
+            return 0.1; // 默认 10% 探测流量
+        const avgSuccessRate = weightedSuccess / totalRequests;
+        // 根据成功率计算通过比例
+        if (avgSuccessRate < 0.3) {
+            return 0; // 成功率太低，继续熔断
+        }
+        else if (avgSuccessRate < 0.5) {
+            return 0.1; // 10% 流量
+        }
+        else if (avgSuccessRate < 0.7) {
+            return 0.3; // 30% 流量
+        }
+        else if (avgSuccessRate < 0.9) {
+            return 0.5; // 50% 流量
+        }
+        else {
+            return 1.0; // 完全恢复，下次会自动切换到 closed 状态
+        }
     }
     calculateUCB1(stats, totalRuns) {
         if (!stats || stats.totalRequests === 0)
@@ -353,6 +426,65 @@ class ModelRouter {
             latencyEMA: 1000,
             costEMA: 3,
         };
+    }
+    /**
+     * 应用自适应权重到所有策略
+     */
+    applyLearnedWeights() {
+        const strategies = [
+            types_1.RoutingStrategy.AUTO,
+            types_1.RoutingStrategy.FASTEST_FIRST,
+            types_1.RoutingStrategy.CHEAPEST_FIRST,
+            types_1.RoutingStrategy.BEST_QUALITY
+        ];
+        for (const strategy of strategies) {
+            const policyName = this.getPolicyName(strategy);
+            const policy = this.policies.get(policyName);
+            if (policy instanceof DslPolicy_1.DslPolicy) {
+                const weights = this.adaptiveWeights.getWeights(strategy);
+                policy.overrideWeights(weights);
+            }
+        }
+    }
+    /**
+     * 根据策略获取对应的策略名称
+     */
+    getPolicyName(strategy) {
+        switch (strategy) {
+            case types_1.RoutingStrategy.FASTEST_FIRST: return 'latency-critical';
+            case types_1.RoutingStrategy.CHEAPEST_FIRST: return 'cost-saving';
+            case types_1.RoutingStrategy.BEST_QUALITY: return 'quality-first';
+            default: return 'balanced';
+        }
+    }
+    /**
+     * 记录执行结果用于自适应学习
+     */
+    recordExecutionOutcome(adapter, result, strategy) {
+        const outcome = {
+            success: result.success,
+            executionTime: result.executionTime,
+            costLevel: adapter.capabilities.costLevel,
+            timestamp: Date.now(),
+            strategy,
+            modelName: adapter.name
+        };
+        this.adaptiveWeights.recordOutcome(outcome);
+        // 每次记录后重新应用权重
+        this.applyLearnedWeights();
+    }
+    /**
+     * 获取自适应权重统计
+     */
+    getAdaptiveWeightsStats() {
+        return this.adaptiveWeights.getStats();
+    }
+    /**
+     * 重置自适应权重
+     */
+    resetAdaptiveWeights(strategy) {
+        this.adaptiveWeights.reset(strategy);
+        this.applyLearnedWeights();
     }
 }
 exports.ModelRouter = ModelRouter;

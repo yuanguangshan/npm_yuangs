@@ -90,17 +90,17 @@ export class MultiMetricSupervisor extends ModelSupervisor {
     const nextHitCounts = { ...(ctx.triggerHitCounts || {}) };
 
     if (!this.isEnabled()) {
-      return { action: this.noop('Supervisor disabled'), contextPatch: {} };
+      return { action: this.createNoopAction('Supervisor disabled'), contextPatch: {} };
     }
 
     // 冷却期检查
     if (ctx.cooldownUntil && ctx.now < ctx.cooldownUntil) {
-      return { action: this.noop('Cooldown active'), contextPatch: {} };
+      return { action: this.createNoopAction('Cooldown active'), contextPatch: {} };
     }
 
     // 计算所有策略的得分
     const candidateStrategies = [
-      RoutingStrategy.BALANCED,
+      RoutingStrategy.AUTO,
       RoutingStrategy.FASTEST_FIRST,
       RoutingStrategy.CHEAPEST_FIRST,
       RoutingStrategy.BEST_QUALITY
@@ -138,7 +138,7 @@ export class MultiMetricSupervisor extends ModelSupervisor {
 
     // 差异不显著，保持当前策略
     return {
-      action: this.noop(`Current strategy optimal (score: ${currentScore.score.toFixed(3)})`),
+      action: this.createNoopAction(`Current strategy optimal (score: ${currentScore.score.toFixed(3)})`),
       contextPatch: { triggerHitCounts: nextHitCounts }
     };
   }
@@ -243,7 +243,7 @@ export class MultiMetricSupervisor extends ModelSupervisor {
         return 0.5;
       case RoutingStrategy.BEST_QUALITY:
         return 0.3;
-      case RoutingStrategy.BALANCED:
+      case RoutingStrategy.AUTO:
         return 0.7;
       default:
         return 0.5;
@@ -345,7 +345,7 @@ export class MultiMetricSupervisor extends ModelSupervisor {
     }
   }
 
-  private noop(reason: string): SupervisorAction {
+  private createNoopAction(reason: string): SupervisorAction {
     return {
       type: ActionType.NOOP,
       reason

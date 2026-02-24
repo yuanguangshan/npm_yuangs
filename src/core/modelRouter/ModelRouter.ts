@@ -483,7 +483,7 @@ export class ModelRouter {
    */
   private applyLearnedWeights(): void {
     const strategies = [
-      RoutingStrategy.BALANCED,
+      RoutingStrategy.AUTO,
       RoutingStrategy.FASTEST_FIRST,
       RoutingStrategy.CHEAPEST_FIRST,
       RoutingStrategy.BEST_QUALITY

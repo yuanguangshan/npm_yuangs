@@ -43,14 +43,18 @@ const executor_1 = require("./executor");
 const contextManager_1 = require("./contextManager");
 const client_1 = require("../ai/client");
 const modelRouterIntegration_1 = require("./modelRouterIntegration");
+const PlanCache_1 = require("./PlanCache");
 class DualAgentRuntime {
     context;
     executionId;
     steps = [];
     currentIndex = 0;
-    constructor(initialContext) {
+    planCache;
+    constructor(initialContext, planCache) {
         this.context = new contextManager_1.ContextManager(initialContext);
         this.executionId = (0, crypto_1.randomUUID)();
+        // 默认创建新的缓存实例，避免全局单例导致的测试隔离问题
+        this.planCache = planCache || new PlanCache_1.PlanCache();
     }
     async run(userInput, onChunk, model) {
         const needsPlanner = await this.shouldUsePlanner(userInput);
@@ -140,44 +144,47 @@ class DualAgentRuntime {
     async callPlanner(input, model) {
         const config = (0, client_1.getUserConfig)();
         const finalModel = model || config.defaultModel || 'Assistant';
-        const prompt = this.buildPlannerPrompt(input);
-        const messages = [{ role: 'user', content: prompt }];
-        try {
-            let response;
-            if (model) {
-                console.log(chalk_1.default.gray(`[Planner] Using specified model: ${model}`));
-                response = await (0, client_1.askAI)(prompt, model);
+        // 使用计划缓存
+        return this.planCache.getOrGenerate(input, async () => {
+            const prompt = this.buildPlannerPrompt(input);
+            const messages = [{ role: 'user', content: prompt }];
+            try {
+                let response;
+                if (model) {
+                    console.log(chalk_1.default.gray(`[Planner] Using specified model: ${model}`));
+                    response = await (0, client_1.askAI)(prompt, model);
+                }
+                else {
+                    console.log(chalk_1.default.gray(`[Planner] Choosing best model for planning...`));
+                    const routerResult = await (0, modelRouterIntegration_1.callLLMWithRouter)(messages, 'command', {
+                        taskType: 'analysis', // Planning is primarily analysis
+                        routingStrategy: 'best_quality' // We want high quality plans
+                    });
+                    response = routerResult.rawText || await (0, client_1.askAI)(prompt, finalModel);
+                }
+                const jsonMatch = response.match(/```json\n([\s\S]*?)\n```/);
+                if (jsonMatch) {
+                    return JSON.parse(jsonMatch[1]);
+                }
+                const braceMatch = response.match(/\{[\s\S]*\}/);
+                if (braceMatch) {
+                    return JSON.parse(braceMatch[0]);
+                }
+                return {
+                    plan: 'No plan generated',
+                    steps: [],
+                    estimated_time: 'Unknown'
+                };
             }
-            else {
-                console.log(chalk_1.default.gray(`[Planner] Choosing best model for planning...`));
-                const routerResult = await (0, modelRouterIntegration_1.callLLMWithRouter)(messages, 'command', {
-                    taskType: 'analysis', // Planning is primarily analysis
-                    routingStrategy: 'best_quality' // We want high quality plans
-                });
-                response = routerResult.rawText || await (0, client_1.askAI)(prompt, finalModel);
+            catch (error) {
+                console.error(chalk_1.default.red(`Planner error: ${error}`));
+                return {
+                    plan: 'Plan generation failed',
+                    steps: [],
+                    estimated_time: 'Unknown'
+                };
             }
-            const jsonMatch = response.match(/```json\n([\s\S]*?)\n```/);
-            if (jsonMatch) {
-                return JSON.parse(jsonMatch[1]);
-            }
-            const braceMatch = response.match(/\{[\s\S]*\}/);
-            if (braceMatch) {
-                return JSON.parse(braceMatch[0]);
-            }
-            return {
-                plan: 'No plan generated',
-                steps: [],
-                estimated_time: 'Unknown'
-            };
-        }
-        catch (error) {
-            console.error(chalk_1.default.red(`Planner error: ${error}`));
-            return {
-                plan: 'Plan generation failed',
-                steps: [],
-                estimated_time: 'Unknown'
-            };
-        }
+        });
     }
     buildPlannerPrompt(input) {
         const context = this.getContextSummary();
@@ -307,6 +314,24 @@ ${context ? `Context:\n${context}\n` : ''}
             steps: this.steps,
             currentIndex: this.currentIndex
         };
+    }
+    /**
+     * 获取计划缓存统计
+     */
+    getPlanCacheStats() {
+        return this.planCache.getStats();
+    }
+    /**
+     * 清理计划缓存
+     */
+    clearPlanCache() {
+        this.planCache.clear();
+    }
+    /**
+     * 清理过期的计划缓存
+     */
+    cleanupPlanCache() {
+        return this.planCache.cleanup();
     }
 }
 exports.DualAgentRuntime = DualAgentRuntime;

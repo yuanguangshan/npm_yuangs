@@ -398,7 +398,7 @@ function calculateExtensionScore(path: string, query: string): number {
  */
 export function calculateImportance(item: ContextItem): number {
   const cfg = IMPORTANCE_CONFIG;
-  let score = cfg.BASE_SCORE;
+  let score: number = cfg.BASE_SCORE;
 
   const path = item.path.toLowerCase();
 

@@ -42,19 +42,34 @@ const core_1 = require("./governance/core");
 const ledger_1 = require("./governance/ledger");
 const bridge_1 = require("./governance/bridge");
 const riskDisclosure_1 = require("./riskDisclosure");
+const riskScoring_1 = require("./governance/riskScoring");
 const js_yaml_1 = __importDefault(require("js-yaml"));
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 class GovernanceService {
     static rules = [];
     static ledger = new ledger_1.RiskLedger();
+    static riskModel = riskScoring_1.defaultRiskScoringModel;
     static initialized = false;
+    static currentUserId;
     static async init() {
         if (this.initialized)
             return;
         this.loadPolicy();
         await bridge_1.WasmGovernanceBridge.init();
         this.initialized = true;
+    }
+    /**
+     * 设置当前用户 ID（用于信任度评估）
+     */
+    static setUserId(userId) {
+        this.currentUserId = userId;
+    }
+    /**
+     * 获取风险评分模型（用于信任度更新等操作）
+     */
+    static getRiskModel() {
+        return this.riskModel;
     }
     static loadPolicy() {
         try {
@@ -80,19 +95,41 @@ class GovernanceService {
     }
     static async adjudicate(action) {
         await this.init();
+        // 0. 风险评分量化 (新增)
+        const riskAssessment = this.riskModel.assessRisk(action, this.currentUserId);
+        // 如果建议是自动允许且风险低，快速通过
+        if (riskAssessment.suggestedAction === 'auto-allow' && riskAssessment.level === 'low') {
+            this.ledger.record(action.type);
+            return {
+                status: 'approved',
+                by: 'policy',
+                timestamp: Date.now(),
+                riskScore: riskAssessment.score
+            };
+        }
+        // 如果建议是直接拒绝且风险极高，直接拒绝
+        if (riskAssessment.suggestedAction === 'deny' && riskAssessment.level === 'critical') {
+            return {
+                status: 'rejected',
+                by: 'policy',
+                reason: `风险评分过高 (${riskAssessment.score}/100): ${this.getPrimaryRiskReason(riskAssessment)}`,
+                timestamp: Date.now(),
+                riskScore: riskAssessment.score
+            };
+        }
         // 1. WASM 物理层核验
         const wasmResult = bridge_1.WasmGovernanceBridge.evaluate(action, this.rules, this.ledger.getSnapshot());
         if (wasmResult.effect === 'deny') {
-            return { status: 'rejected', by: 'policy', reason: wasmResult.reason || 'WASM Denied', timestamp: Date.now() };
+            return { status: 'rejected', by: 'policy', reason: wasmResult.reason || 'WASM Denied', timestamp: Date.now(), riskScore: riskAssessment.score };
         }
         // 2. 逻辑层核验
         const logicResult = (0, core_1.evaluateProposal)(action, this.rules, this.ledger.getSnapshot());
         if (logicResult.effect === 'deny') {
-            return { status: 'rejected', by: 'policy', reason: logicResult.reason || 'Policy Denied', timestamp: Date.now() };
+            return { status: 'rejected', by: 'policy', reason: logicResult.reason || 'Policy Denied', timestamp: Date.now(), riskScore: riskAssessment.score };
         }
         if (logicResult.effect === 'allow') {
             this.ledger.record(action.type);
-            return { status: 'approved', by: 'policy', timestamp: Date.now() };
+            return { status: 'approved', by: 'policy', timestamp: Date.now(), riskScore: riskAssessment.score };
         }
         // 3. 人工干预兜底
         console.log(chalk_1.default.yellow(`\n⚠️  Governance: Explicit approval required for ${action.type}`));
@@ -101,6 +138,21 @@ class GovernanceService {
         }
         else if (action.type === 'tool_call') {
             console.log(chalk_1.default.bold.green('🛠️  Tool: ') + chalk_1.default.cyan(`${action.payload.tool_name}(${JSON.stringify(action.payload.parameters)})`));
+        }
+        // 显示量化风险评分
+        console.log(chalk_1.default.bold(`\n📊 Risk Assessment: ${riskAssessment.score}/100 (${riskAssessment.level.toUpperCase()})`));
+        console.log(chalk_1.default.gray(`   Confidence: ${(riskAssessment.confidence * 100).toFixed(0)}% | User Trust: ${(riskAssessment.userTrust * 100).toFixed(0)}%`));
+        // 显示主要风险因子
+        const topFactors = riskAssessment.factors
+            .filter(f => f.score > 0.1)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 3);
+        if (topFactors.length > 0) {
+            console.log(chalk_1.default.bold('\n   Key Risk Factors:'));
+            for (const factor of topFactors) {
+                const bar = '█'.repeat(Math.floor(factor.score * 20));
+                console.log(`   ${chalk_1.default.dim('•')} ${factor.name.padEnd(20)} ${chalk_1.default.yellow(bar)} ${chalk_1.default.white((factor.score * 100).toFixed(0)) + '%'} - ${factor.reason}`);
+            }
         }
         // Generate and display risk disclosure
         const riskFactors = (0, riskDisclosure_1.extractRiskFactorsFromThought)(action.reasoning || '');
@@ -115,11 +167,40 @@ class GovernanceService {
         const ok = await confirm(`Do you want to proceed with this action?`);
         if (ok) {
             this.ledger.record(action.type);
-            return { status: 'approved', by: 'human', timestamp: Date.now() };
+            // 成功执行后增加用户信任度
+            if (this.currentUserId) {
+                this.riskModel.updateUserTrust(this.currentUserId, 'success', 0.05);
+            }
+            return { status: 'approved', by: 'human', timestamp: Date.now(), riskScore: riskAssessment.score };
         }
         else {
-            return { status: 'rejected', by: 'human', reason: 'User declined execution', timestamp: Date.now() };
+            // 用户拒绝，降低信任度
+            if (this.currentUserId) {
+                this.riskModel.updateUserTrust(this.currentUserId, 'failure', 0.02);
+            }
+            return { status: 'rejected', by: 'human', reason: 'User declined execution', timestamp: Date.now(), riskScore: riskAssessment.score };
         }
+    }
+    /**
+     * 获取主要风险原因（用于拒绝消息）
+     */
+    static getPrimaryRiskReason(assessment) {
+        const topFactor = assessment.factors
+            .filter(f => f.score > 0.2)
+            .sort((a, b) => b.score - a.score)[0];
+        return topFactor ? topFactor.reason : 'High overall risk';
+    }
+    /**
+     * 获取用户信任度统计
+     */
+    static getUserTrustStats() {
+        return this.riskModel.getTrustStats();
+    }
+    /**
+     * 重置用户信任度
+     */
+    static resetUserTrust(userId) {
+        this.riskModel.resetUserTrust(userId);
     }
 }
 exports.GovernanceService = GovernanceService;
