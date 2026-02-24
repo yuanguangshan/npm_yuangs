@@ -66,6 +66,7 @@ class AgentRuntime {
         let lastError;
         let shouldComplete = false; // 标记是否应该完成
         let lastToolCall = null; // 跟踪上次工具调用及重复次数
+        let writeModeFileRead = null; // 跟踪 Write Mode 下已读取的文件
         // 构建初始动态上下文
         const initialDynamicContext = await (0, dynamicPrompt_1.buildDynamicContext)();
         if (userInput) {
@@ -268,6 +269,15 @@ class AgentRuntime {
                 // 检查是否应该阻止执行（防止重复错误）
                 if (action.type === 'tool_call') {
                     const toolName = action.payload.tool_name;
+                    // Write Mode 阻止重复 read_file 调用
+                    if (writeModeFileRead && toolName === 'read_file') {
+                        const filePath = action.payload.parameters.path;
+                        if (filePath === writeModeFileRead) {
+                            console.log(chalk_1.default.red(`[BLOCKED] 🚫 文件 ${filePath} 已经读取过！请立即调用 write_file 工具进行修改，不要重复读取！`));
+                            this.context.addMessage("system", `ERROR: 文件 ${filePath} 已经在之前读取过了。你必须立即调用 write_file 工具写入修改后的内容。格式：{ "action_type": "tool_call", "tool_name": "write_file", "parameters": { "path": "${filePath}", "content": "修改后的完整文件内容" } }`);
+                            continue;
+                        }
+                    }
                     const blockCheck = errorTracker_1.ErrorTracker.shouldBlockExecution(toolName, action.payload.parameters);
                     if (blockCheck.blocked) {
                         console.log(chalk_1.default.red(`[BLOCKED] 🚫 ${blockCheck.reason}`));
@@ -286,7 +296,9 @@ class AgentRuntime {
                 if (result.success) {
                     // 成功时清除错误状态
                     lastError = undefined;
-                    this.context.addToolResult(action.type, result.output);
+                    // 使用实际工具名称而不是 action.type，这样 LLM 知道调用了哪个工具
+                    const actualToolName = action.payload?.tool_name || action.type;
+                    this.context.addToolResult(actualToolName, result.output);
                     const preview = result.output.length > 300
                         ? result.output.substring(0, 300) + '...'
                         : result.output;
@@ -330,6 +342,8 @@ class AgentRuntime {
                             console.log(chalk_1.default.gray('[Auto-Complete] 文件写入成功，自动完成任务'));
                             console.log(chalk_1.default.green(`✓ 已创建文件: ${action.payload.parameters.path}\n`));
                             this.context.addMessage("assistant", `已成功创建文件 ${action.payload.parameters.path}`);
+                            // 清除 Write Mode 标记，因为写入已完成
+                            writeModeFileRead = null;
                             if (agentRenderer) {
                                 agentRenderer.buffer = '';
                                 agentRenderer.quietMode = true;
@@ -340,10 +354,13 @@ class AgentRuntime {
                         // 只读工具处理
                         const readOnlyTools = ['read_file', 'list_files', 'read_file_lines', 'read_file_lines_from_end', 'file_info', 'git_status', 'git_log', 'git_diff', 'list_directory_tree', 'search_in_files', 'search_symbol', 'continue_reading', 'analyze_dependencies'];
                         if (readOnlyTools.includes(toolName)) {
-                            // 检测用户意图：如果要求"分析"、"解释"等，则不自动完成
+                            // 检测用户意图：
+                            // 1. 如果要求"分析"、"解释"等，则不自动完成（继续分析）
+                            // 2. 如果涉及写入操作（替换、修改、添加等），则不自动完成（继续执行写入）
                             // 使用更精确的匹配，避免文件名中的关键词（如 git_reviews.md 中的 review）误触发
                             const requiresAnalysis = /^(.*?)(帮我|请)?(分析|解释|说明|总结)|\b(review|explain)\s+(this|the|it)\b/i.test(userInput);
-                            if (!requiresAnalysis) {
+                            const requiresWrite = /替换|replace|修改|modify|添加|append|插入|insert|删除|delete|移除|remove|更新|update|改成|改成|改为/i.test(userInput);
+                            if (!requiresAnalysis && !requiresWrite) {
                                 // 简单读取请求，直接返回结果
                                 console.log(chalk_1.default.gray('[Auto-Complete] 只读工具执行成功，自动完成任务'));
                                 console.log(chalk_1.default.cyan(`\n📄 ${toolName} 结果：\n`));
@@ -355,6 +372,14 @@ class AgentRuntime {
                                     agentRenderer.finish();
                                 }
                                 break;
+                            }
+                            else if (requiresWrite) {
+                                // 写入请求，继续循环让 AI 执行写入操作
+                                console.log(chalk_1.default.gray('[Write Mode] 文件已读取，继续执行写入操作...'));
+                                // 标记此文件已在 Write Mode 下读取，防止重复读取
+                                writeModeFileRead = action.payload.parameters.path;
+                                // 添加系统消息明确指导 AI 下一步操作
+                                this.context.addMessage('system', `文件 ${action.payload.parameters.path} 已成功读取。请根据用户要求修改内容后，调用 write_file 工具写入文件。不要重复调用 read_file！`);
                             }
                             else {
                                 // 分析请求，继续循环让 AI 分析内容
@@ -390,7 +415,8 @@ class AgentRuntime {
                 else {
                     // 失败时记录错误，尝试自动修复
                     lastError = result.error;
-                    this.context.addToolResult(action.type, `Error: ${result.error}`);
+                    const actualToolName = action.payload?.tool_name || action.type;
+                    this.context.addToolResult(actualToolName, `Error: ${result.error}`);
                     console.log(chalk_1.default.red(`[ERROR] ${result.error}`));
                     // 记录到错误追踪器
                     if (action.type === 'tool_call') {
