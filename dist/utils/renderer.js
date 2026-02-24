@@ -371,6 +371,49 @@ class StreamMarkdownRenderer extends MarkdownRenderer {
         }
     }
     /**
+     * 从 JSON 格式的响应中提取实际内容
+     * 处理格式：{"action_type": "answer", "content": "...", "is_done": true}
+     */
+    extractContentFromJSON(text) {
+        try {
+            // 尝试解析 JSON（支持普通 JSON 和 markdown 代码块中的 JSON）
+            let jsonText = text.trim();
+            // 移除 markdown 代码块标记（```json 和 ```）
+            const codeBlockMatch = jsonText.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+            if (codeBlockMatch) {
+                jsonText = codeBlockMatch[1];
+            }
+            // 尝试提取最外层的 JSON 对象
+            const objectMatch = jsonText.match(/\{[\s\S]*\}/);
+            if (objectMatch) {
+                jsonText = objectMatch[0];
+            }
+            const parsed = JSON.parse(jsonText);
+            // 如果是 AI Agent 响应格式，提取 content 字段
+            if (parsed.action_type === 'answer' && parsed.content) {
+                return parsed.content;
+            }
+            // 如果有 content 字段，返回它
+            if (parsed.content) {
+                return parsed.content;
+            }
+            // 如果有 final_answer 字段，返回它
+            if (parsed.final_answer) {
+                return parsed.final_answer;
+            }
+            // 如果有 text 字段，返回它
+            if (parsed.text) {
+                return parsed.text;
+            }
+            // 否则返回原始文本
+            return text;
+        }
+        catch (e) {
+            // JSON 解析失败，返回原始文本
+            return text;
+        }
+    }
+    /**
      * 流结束，渲染完整 Markdown
      *
      * 使用 md.parse() 解析 Tokens，直接映射为 ANSI
@@ -379,7 +422,9 @@ class StreamMarkdownRenderer extends MarkdownRenderer {
         if (this.spinner && this.spinner.isSpinning) {
             this.spinner.stop();
         }
-        const rendered = this.render(this.buffer);
+        // 尝试从 JSON 中提取实际内容
+        const contentToRender = this.extractContentFromJSON(this.buffer);
+        const rendered = this.render(contentToRender);
         if (this.quietMode) {
             if (this.buffer.trim()) {
                 process.stdout.write(this.prefix + rendered + '\n');

@@ -11,10 +11,10 @@ export declare class AIError extends Error {
 export { supportsStructuredOutput };
 export declare const AgentActionSchema: z.ZodObject<{
     action_type: z.ZodEnum<{
+        answer: "answer";
         tool_call: "tool_call";
         code_diff: "code_diff";
         shell_cmd: "shell_cmd";
-        answer: "answer";
     }>;
     tool_name: z.ZodOptional<z.ZodString>;
     parameters: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodAny>>;

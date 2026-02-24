@@ -58,6 +58,11 @@ export declare class StreamMarkdownRenderer extends MarkdownRenderer {
      */
     onChunk(chunk: string): void;
     /**
+     * 从 JSON 格式的响应中提取实际内容
+     * 处理格式：{"action_type": "answer", "content": "...", "is_done": true}
+     */
+    private extractContentFromJSON;
+    /**
      * 流结束，渲染完整 Markdown
      *
      * 使用 md.parse() 解析 Tokens，直接映射为 ANSI
