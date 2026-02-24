@@ -67,6 +67,7 @@ class AgentRuntime {
         let shouldComplete = false; // 标记是否应该完成
         let lastToolCall = null; // 跟踪上次工具调用及重复次数
         let writeModeFileRead = null; // 跟踪 Write Mode 下已读取的文件
+        let writeModeFileContent = null; // 缓存 Write Mode 下已读取的文件内容
         // 构建初始动态上下文
         const initialDynamicContext = await (0, dynamicPrompt_1.buildDynamicContext)();
         if (userInput) {
@@ -267,32 +268,51 @@ class AgentRuntime {
                 }
                 // === 执行前错误检查 ===
                 // 检查是否应该阻止执行（防止重复错误）
+                let cachedResult = null;
                 if (action.type === 'tool_call') {
                     const toolName = action.payload.tool_name;
-                    // Write Mode 阻止重复 read_file 调用
+                    // Write Mode 阻止重复 read_file 调用，但返回缓存的内容
                     if (writeModeFileRead && toolName === 'read_file') {
                         const filePath = action.payload.parameters.path;
-                        if (filePath === writeModeFileRead) {
-                            console.log(chalk_1.default.red(`[BLOCKED] 🚫 文件 ${filePath} 已经读取过！请立即调用 write_file 工具进行修改，不要重复读取！`));
-                            this.context.addMessage("system", `ERROR: 文件 ${filePath} 已经在之前读取过了。你必须立即调用 write_file 工具写入修改后的内容。格式：{ "action_type": "tool_call", "tool_name": "write_file", "parameters": { "path": "${filePath}", "content": "修改后的完整文件内容" } }`);
+                        if (filePath === writeModeFileRead && writeModeFileContent) {
+                            console.log(chalk_1.default.yellow(`[CACHED] 📋 文件 ${filePath} 内容已缓存，直接返回（避免重复读取）`));
+                            // 使用缓存的结果，跳过实际执行
+                            cachedResult = {
+                                success: true,
+                                output: writeModeFileContent,
+                                artifacts: [filePath]
+                            };
+                        }
+                    }
+                    if (!cachedResult) {
+                        const blockCheck = errorTracker_1.ErrorTracker.shouldBlockExecution(toolName, action.payload.parameters);
+                        if (blockCheck.blocked) {
+                            console.log(chalk_1.default.red(`[BLOCKED] 🚫 ${blockCheck.reason}`));
+                            // 显示错误历史
+                            if (blockCheck.existingError) {
+                                console.log(chalk_1.default.yellow(`[Error History] 此错误已发生 ${blockCheck.existingError.attemptCount} 次`));
+                                console.log(chalk_1.default.gray(`上次错误: ${blockCheck.existingError.errorMessage}`));
+                            }
+                            this.context.addMessage("system", `BLOCKED: ${blockCheck.reason}. 建议尝试不同的方法。`);
                             continue;
                         }
                     }
-                    const blockCheck = errorTracker_1.ErrorTracker.shouldBlockExecution(toolName, action.payload.parameters);
-                    if (blockCheck.blocked) {
-                        console.log(chalk_1.default.red(`[BLOCKED] 🚫 ${blockCheck.reason}`));
-                        // 显示错误历史
-                        if (blockCheck.existingError) {
-                            console.log(chalk_1.default.yellow(`[Error History] 此错误已发生 ${blockCheck.existingError.attemptCount} 次`));
-                            console.log(chalk_1.default.gray(`上次错误: ${blockCheck.existingError.errorMessage}`));
-                        }
-                        this.context.addMessage("system", `BLOCKED: ${blockCheck.reason}. 建议尝试不同的方法。`);
-                        continue;
-                    }
                 }
                 // === 执行 ===
-                console.log(chalk_1.default.yellow(`[EXECUTING] ⚙️ ${action.type}...`));
-                const result = await executor_1.ToolExecutor.execute(action);
+                let result;
+                if (cachedResult) {
+                    result = cachedResult;
+                    // 添加到上下文
+                    this.context.addToolResult('read_file', result.output);
+                    const preview = result.output.length > 300
+                        ? result.output.substring(0, 300) + '...'
+                        : result.output;
+                    console.log(chalk_1.default.green(`[SUCCESS] Result (cached):\n${preview}`));
+                }
+                else {
+                    console.log(chalk_1.default.yellow(`[EXECUTING] ⚙️ ${action.type}...`));
+                    result = await executor_1.ToolExecutor.execute(action);
+                }
                 if (result.success) {
                     // 成功时清除错误状态
                     lastError = undefined;
@@ -344,6 +364,7 @@ class AgentRuntime {
                             this.context.addMessage("assistant", `已成功创建文件 ${action.payload.parameters.path}`);
                             // 清除 Write Mode 标记，因为写入已完成
                             writeModeFileRead = null;
+                            writeModeFileContent = null;
                             if (agentRenderer) {
                                 agentRenderer.buffer = '';
                                 agentRenderer.quietMode = true;
@@ -378,6 +399,8 @@ class AgentRuntime {
                                 console.log(chalk_1.default.gray('[Write Mode] 文件已读取，继续执行写入操作...'));
                                 // 标记此文件已在 Write Mode 下读取，防止重复读取
                                 writeModeFileRead = action.payload.parameters.path;
+                                // 缓存文件内容，避免重复读取
+                                writeModeFileContent = result.output;
                                 // 添加系统消息明确指导 AI 下一步操作
                                 this.context.addMessage('system', `文件 ${action.payload.parameters.path} 已成功读取。请根据用户要求修改内容后，调用 write_file 工具写入文件。不要重复调用 read_file！`);
                             }
