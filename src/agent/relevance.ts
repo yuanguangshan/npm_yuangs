@@ -1,8 +1,109 @@
+/**
+ * 上下文项接口
+ * 用于表示单个上下文项，包含路径、内容、元数据等信息
+ */
 export interface ContextItem {
+  /** 文件路径或标识符 */
   path: string;
+  /** 原始内容 */
   content?: string;
+  /** 内容摘要 */
   summary?: string;
+
+  // 时间衰减相关字段
+  /** 最后访问时间戳 */
+  lastUsedAt?: number;
+  /** 添加时间戳 */
+  addedAt?: number;
+  /** 访问次数计数 */
+  accessCount?: number;
+  /** 自定义衰减率（越大衰减越快） */
+  decayRate?: number;
+
+  // 重要性评分
+  /** 重要性分数 (0-1) */
+  importance?: number;
+
+  // 其他可选字段
+  /** 唯一标识符 */
+  id?: string;
+  /** 上下文来源类型 */
+  source?: 'file' | 'directory' | 'memory' | 'antipattern';
+  /** 上下文状态 */
+  status?: 'active' | 'reference' | 'memory' | 'stale' | 'expired';
+  /** 是否置顶（置顶项目不会衰减） */
+  pinned?: boolean;
+  /** 标签列表 */
+  tags?: string[];
 }
+
+/**
+ * 重要性评分配置常量
+ * 用于 calculateImportance 函数
+ */
+export const IMPORTANCE_CONFIG = {
+  // 基础分数
+  BASE_SCORE: 0.5,
+
+  // 路径重要性权重
+  CORE_PATH_BOOST: 0.2,           // 核心目录加分
+  SOURCE_PATH_BOOST: 0.1,         // 源码目录加分
+  TEST_FILE_PENALTY: 0.15,        // 测试文件减分
+  CONFIG_FILE_BOOST: 0.05,        // 配置文件加分
+  DOC_FILE_PENALTY: 0.1,          // 文档文件减分
+
+  // 内容质量权重
+  MIN_CONTENT_LENGTH: 50,         // 最小内容长度阈值
+  SHORT_CONTENT_PENALTY: 0.2,     // 短内容减分
+  LONG_CONTENT_THRESHOLD: 1000,   // 长内容阈值
+  LONG_CONTENT_BOOST: 0.15,       // 长内容加分
+  MEDIUM_CONTENT_THRESHOLD: 500,  // 中等内容阈值
+  MEDIUM_CONTENT_BOOST: 0.1,      // 中等内容加分
+
+  // 访问频率权重
+  HIGH_ACCESS_COUNT: 10,          // 高访问次数阈值
+  HIGH_ACCESS_BOOST: 0.15,        // 高访问加分
+  MEDIUM_ACCESS_COUNT: 5,         // 中访问次数阈值
+  MEDIUM_ACCESS_BOOST: 0.1,       // 中访问加分
+  LOW_ACCESS_COUNT: 2,            // 低访问次数阈值
+  LOW_ACCESS_BOOST: 0.05,         // 低访问加分
+
+  // 状态权重
+  STALE_STATUS_PENALTY: 0.2,      // 过期状态减分
+
+  // 特殊标记
+  PINNED_MIN_SCORE: 0.9,          // 置顶项目最低分数
+  IMPORTANT_TAG_BOOST: 0.15,      // 重要标签加分
+
+  // 重要标签列表
+  IMPORTANT_TAGS: ['critical', 'core', 'essential', 'important'] as string[],
+
+  // 核心目录列表
+  CORE_PATHS: ['src/core', 'lib/core', 'kernel', 'engine', 'runtime'],
+  // 源码目录列表
+  SOURCE_PATHS: ['src/', 'lib/', 'handlers/', 'services/', 'utils/'],
+
+  // 分数范围
+  MIN_SCORE: 0,
+  MAX_SCORE: 1,
+} as const;
+
+/**
+ * 时间衰减配置常量
+ * 用于 calculateRecencyScore 函数
+ */
+export const RECENCY_CONFIG = {
+  // 默认半衰期（天）
+  DEFAULT_HALF_LIFE_DAYS: 30,
+  // 访问频率加成因子
+  FREQUENCY_BOOST_FACTOR: 0.1,
+  // 最大频率加成倍数
+  MAX_FREQUENCY_BOOST_MULTIPLIER: 2,
+  // 默认时间衰减分数（无时间戳时）
+  DEFAULT_DECAY_SCORE: 0.5,
+  // 置顶项目分数
+  PINNED_SCORE: 1.0,
+} as const;
 
 export interface RankedContextItem extends ContextItem {
   relevance: number;
@@ -15,6 +116,53 @@ export interface RelevanceConfig {
   extensionWeight: number;
   recencyWeight: number;
 }
+
+/**
+ * 查询意图类型
+ * 不同意图会影响相关性计算的权重分配
+ */
+export type QueryIntent = 'debug' | 'refactor' | 'feature' | 'docs' | 'general';
+
+/**
+ * 预定义的意图相关权重配置
+ */
+export const INTENT_WEIGHTS: Record<QueryIntent, Partial<RelevanceConfig>> = {
+  // 调试时：关键词匹配最重要，路径次之
+  debug: {
+    keywordsWeight: 0.5,
+    pathWeight: 0.2,
+    extensionWeight: 0.15,
+    recencyWeight: 0.15
+  },
+  // 重构时：路径结构最重要，关键词次之
+  refactor: {
+    keywordsWeight: 0.2,
+    pathWeight: 0.5,
+    extensionWeight: 0.2,
+    recencyWeight: 0.1
+  },
+  // 新功能开发：均衡配置，略偏关键词
+  feature: {
+    keywordsWeight: 0.35,
+    pathWeight: 0.35,
+    extensionWeight: 0.2,
+    recencyWeight: 0.1
+  },
+  // 文档查询：路径和扩展名更重要
+  docs: {
+    keywordsWeight: 0.25,
+    pathWeight: 0.35,
+    extensionWeight: 0.3,
+    recencyWeight: 0.1
+  },
+  // 通用查询：默认权重
+  general: {
+    keywordsWeight: 0.4,
+    pathWeight: 0.3,
+    extensionWeight: 0.2,
+    recencyWeight: 0.1
+  }
+};
 
 const DEFAULT_CONFIG: RelevanceConfig = {
   keywordsWeight: 0.4,
@@ -46,6 +194,137 @@ function extractKeywords(query: string): string[] {
   }
 
   return Array.from(keywords);
+}
+
+/**
+ * 带权重的意图关键词配置
+ * 权重范围：1-5，5 表示最强指示
+ */
+interface IntentKeyword {
+  keyword: string;
+  weight: number;
+}
+
+/**
+ * 意图检测配置
+ *
+ * 局限性说明：
+ * 1. 基于简单关键词匹配，对于复杂或模糊的查询可能误判
+ * 2. 不支持上下文感知，无法理解对话历史中的意图变化
+ * 3. 否定词检测仅基于简单模式，可能无法处理复杂否定结构
+ * 4. 对于未来改进方向，可以考虑使用 NLP 模型或机器学习分类器
+ */
+const INTENT_KEYWORDS: Record<QueryIntent, IntentKeyword[]> = {
+  debug: [
+    { keyword: 'debug', weight: 5 },
+    { keyword: 'error', weight: 4 },
+    { keyword: 'fix', weight: 3 },
+    { keyword: 'bug', weight: 5 },
+    { keyword: 'issue', weight: 4 },
+    { keyword: 'crash', weight: 5 },
+    { keyword: 'exception', weight: 4 },
+    { keyword: 'fail', weight: 3 },
+    { keyword: 'broken', weight: 4 },
+    { keyword: '调试', weight: 5 },
+    { keyword: '错误', weight: 4 },
+    { keyword: '修复', weight: 3 },
+    { keyword: '问题', weight: 3 },
+    { keyword: '崩溃', weight: 5 },
+  ],
+  refactor: [
+    { keyword: 'refactor', weight: 5 },
+    { keyword: 'restructure', weight: 4 },
+    { keyword: 'reorganize', weight: 4 },
+    { keyword: 'clean', weight: 3 },
+    { keyword: 'optimize', weight: 4 },
+    { keyword: '重构', weight: 5 },
+    { keyword: '重组', weight: 4 },
+    { keyword: '优化', weight: 4 },
+    { keyword: '清理', weight: 3 },
+  ],
+  feature: [
+    { keyword: 'add', weight: 3 },
+    { keyword: 'create', weight: 4 },
+    { keyword: 'implement', weight: 5 },
+    { keyword: 'build', weight: 4 },
+    { keyword: 'new', weight: 3 },
+    { keyword: 'feature', weight: 5 },
+    { keyword: '添加', weight: 3 },
+    { keyword: '创建', weight: 4 },
+    { keyword: '实现', weight: 5 },
+    { keyword: '构建', weight: 4 },
+    { keyword: '开发', weight: 4 },
+  ],
+  docs: [
+    { keyword: 'doc', weight: 4 },
+    { keyword: 'readme', weight: 5 },
+    { keyword: 'explain', weight: 4 },
+    { keyword: 'understand', weight: 4 },
+    { keyword: 'what', weight: 2 },
+    { keyword: 'how', weight: 3 },
+    { keyword: '文档', weight: 4 },
+    { keyword: '说明', weight: 4 },
+    { keyword: '解释', weight: 4 },
+    { keyword: '理解', weight: 4 },
+  ],
+  general: []
+};
+
+/**
+ * 否定词模式列表
+ * 如果查询中包含这些模式与某个意图关键词的组合，则不识别为该意图
+ */
+const NEGATION_PATTERNS = [
+  'don\'t debug',
+  'dont debug',
+  'no debug',
+  'not debug',
+  '不要调试',
+  '别调试',
+  'no refactor',
+  'not refactor',
+  'not adding',
+];
+
+/**
+ * 检测查询意图
+ * 基于查询中的关键词推断用户意图
+ *
+ * @param query 用户查询字符串
+ * @returns 检测到的意图类型
+ */
+export function detectQueryIntent(query: string): QueryIntent {
+  const queryLower = query.toLowerCase();
+
+  // 首先检查否定模式
+  for (const pattern of NEGATION_PATTERNS) {
+    if (queryLower.includes(pattern)) {
+      // 如果包含否定模式，返回 general
+      return 'general';
+    }
+  }
+
+  let maxScore = 0;
+  let detectedIntent: QueryIntent = 'general';
+
+  // 计算每个意图的加权分数
+  for (const [intent, keywords] of Object.entries(INTENT_KEYWORDS)) {
+    if (keywords.length === 0) continue;
+
+    let score = 0;
+    for (const { keyword, weight } of keywords) {
+      if (queryLower.includes(keyword)) {
+        score += weight;
+      }
+    }
+
+    if (score > maxScore) {
+      maxScore = score;
+      detectedIntent = intent as QueryIntent;
+    }
+  }
+
+  return detectedIntent;
 }
 
 function calculateKeywordMatchScore(
@@ -112,8 +391,133 @@ function calculateExtensionScore(path: string, query: string): number {
   return 0;
 }
 
+/**
+ * 计算上下文项的重要性分数
+ * 基于路径重要性、内容质量、访问频率等因素
+ * 返回值范围：0-1，1 表示最重要
+ */
+export function calculateImportance(item: ContextItem): number {
+  const cfg = IMPORTANCE_CONFIG;
+  let score = cfg.BASE_SCORE;
+
+  const path = item.path.toLowerCase();
+
+  // ===== 路径重要性分析 =====
+
+  // 核心目录加分
+  if (cfg.CORE_PATHS.some(cp => path.includes(cp))) score += cfg.CORE_PATH_BOOST;
+
+  // 重要源码目录加分
+  if (cfg.SOURCE_PATHS.some(sp => path.includes(sp))) score += cfg.SOURCE_PATH_BOOST;
+
+  // 测试文件减分
+  if (path.includes('test') || path.includes('spec') || path.includes('__tests__')) {
+    score -= cfg.TEST_FILE_PENALTY;
+  }
+
+  // 配置文件加分
+  if (path.includes('config') || path.endsWith('.json') || path.endsWith('.yaml')) {
+    score += cfg.CONFIG_FILE_BOOST;
+  }
+
+  // 文档文件减分
+  if (path.endsWith('.md') || path.includes('docs')) {
+    score -= cfg.DOC_FILE_PENALTY;
+  }
+
+  // ===== 内容质量分析 =====
+
+  const contentLength = (item.content || item.summary || '').length;
+
+  // 内容太短可能是低价值
+  if (contentLength < cfg.MIN_CONTENT_LENGTH) {
+    score -= cfg.SHORT_CONTENT_PENALTY;
+  } else if (contentLength > cfg.LONG_CONTENT_THRESHOLD) {
+    // 内容丰富加分
+    score += cfg.LONG_CONTENT_BOOST;
+  } else if (contentLength > cfg.MEDIUM_CONTENT_THRESHOLD) {
+    score += cfg.MEDIUM_CONTENT_BOOST;
+  }
+
+  // ===== 访问频率分析 =====
+
+  const accessCount = item.accessCount || 1;
+
+  // 高频访问加分
+  if (accessCount > cfg.HIGH_ACCESS_COUNT) {
+    score += cfg.HIGH_ACCESS_BOOST;
+  } else if (accessCount > cfg.MEDIUM_ACCESS_COUNT) {
+    score += cfg.MEDIUM_ACCESS_BOOST;
+  } else if (accessCount > cfg.LOW_ACCESS_COUNT) {
+    score += cfg.LOW_ACCESS_BOOST;
+  }
+
+  // ===== 状态分析 =====
+
+  // stale 状态减分
+  if (item.status === 'stale' || item.status === 'expired') {
+    score -= cfg.STALE_STATUS_PENALTY;
+  }
+
+  // ===== 特殊标记 =====
+
+  // pinned 的项目高重要性
+  if (item.pinned) {
+    score = Math.max(score, cfg.PINNED_MIN_SCORE);
+  }
+
+  // 重要标签加分
+  if (item.tags) {
+    if (item.tags.some(tag => cfg.IMPORTANT_TAGS.includes(tag))) {
+      score += cfg.IMPORTANT_TAG_BOOST;
+    }
+  }
+
+  // 确保分数在 0-1 范围内
+  return Math.max(cfg.MIN_SCORE, Math.min(cfg.MAX_SCORE, score));
+}
+
+/**
+ * 计算时间衰减分数
+ * 基于最后访问时间、添加时间和访问频率
+ * 使用指数衰减模型：score = e^(-days/halfLife)
+ */
 function calculateRecencyScore(item: ContextItem): number {
-  return 0.5;
+  const cfg = RECENCY_CONFIG;
+  const now = Date.now();
+
+  // 如果没有时间戳，返回中等分数
+  if (!item.lastUsedAt && !item.addedAt) {
+    return cfg.DEFAULT_DECAY_SCORE;
+  }
+
+  // 使用 lastUsedAt 作为主要时间戳，如果没有则使用 addedAt
+  const lastAccess = item.lastUsedAt || item.addedAt || now;
+  const daysSinceAccess = (now - lastAccess) / (1000 * 60 * 60 * 24);
+
+  // 获取自定义半衰期
+  // decayRate 越大，衰减越快（半衰期越短）
+  const halfLifeDays = item.decayRate
+    ? cfg.DEFAULT_HALF_LIFE_DAYS / item.decayRate
+    : cfg.DEFAULT_HALF_LIFE_DAYS;
+
+  // 指数衰减：越久远权重越低
+  const decayFactor = Math.exp(-daysSinceAccess / halfLifeDays);
+
+  // 访问频率加成：常访问的衰减慢
+  // 每次访问增加配置的加成因子，最多达到最大倍数
+  const accessCount = item.accessCount || 1;
+  const frequencyBoost = Math.min(
+    1 + (accessCount - 1) * cfg.FREQUENCY_BOOST_FACTOR,
+    cfg.MAX_FREQUENCY_BOOST_MULTIPLIER
+  );
+
+  // pinned 的项目不衰减
+  if (item.pinned) {
+    return cfg.PINNED_SCORE;
+  }
+
+  return Math.min(decayFactor * frequencyBoost, 1);
 }
 
 export function rankByRelevance(
