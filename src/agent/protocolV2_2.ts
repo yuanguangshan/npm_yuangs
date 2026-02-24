@@ -78,11 +78,19 @@ export function buildV2_3ProtocolPrompt(config: ProtocolV2_3Config): string {
 
 2. **大文件处理**: 对于大文件，优先使用 \`read_file_lines\` 而非 \`read_file\`
 
-3. **Git 操作**: 系统提供了专用的 Git 工具（git_status, git_diff, git_log），优先使用这些而非 shell_cmd
+3. **读取倒数行**: 如果用户要求"读取倒数N行"或"读取最后N行"：
+   - **错误做法**: 直接调用 read_file_lines({start_line: -N}) - 这会失败
+   - **正确做法**:
+     a. 先用 \`shell_cmd\` 执行 \`wc -l 文件名\` 获取总行数
+     b. 计算：start_line = 总行数 - N + 1
+     c. 调用 \`read_file_lines\` 使用计算出的 start_line
+   - 例如：读取倒数10行（假设文件100行）：start_line = 100 - 10 + 1 = 91
 
-4. **代码搜索**: 使用 \`search_symbol\` 搜索代码定义，使用 \`search_in_files\` 搜索文本内容
+4. **Git 操作**: 系统提供了专用的 Git 工具（git_status, git_diff, git_log），优先使用这些而非 shell_cmd
 
-5. **目录结构**: 使用 \`list_directory_tree\` 生成项目的树形结构视图
+5. **代码搜索**: 使用 \`search_symbol\` 搜索代码定义，使用 \`search_in_files\` 搜索文本内容
+
+6. **目录结构**: 使用 \`list_directory_tree\` 生成项目的树形结构视图
 
 注意: 优先使用专用工具而非 shell_cmd 进行文件操作，工具更可靠且有更好的错误处理。
 

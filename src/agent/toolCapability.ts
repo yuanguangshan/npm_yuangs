@@ -90,11 +90,11 @@ export const TOOL_CAPABILITY_MAP: Record<string, ToolMetadata> = {
   read_file_lines: {
     name: 'read_file_lines',
     category: ToolCategory.FILE_IO,
-    description: '读取文件的指定行范围，用于处理大文件',
+    description: '读取文件的指定行范围，用于处理大文件。注意：如果要读取倒数N行，需要先用 file_info 或 shell_cmd (wc -l) 获取总行数，然后计算 start_line = 总行数 - N + 1',
     minCapability: CapabilityLevel.TEXT,
     parameters: [
       { name: 'path', type: 'string', description: '文件路径', required: true },
-      { name: 'start_line', type: 'number', description: '起始行号（从1开始）', required: true },
+      { name: 'start_line', type: 'number', description: '起始行号（从1开始，不是0）。如果要读取倒数第N行，需要计算：总行数 - N + 1', required: true },
       { name: 'end_line', type: 'number', description: '结束行号（包含），可选，默认到文件末尾', required: false },
       { name: 'encoding', type: 'string', description: '文件编码，默认 utf-8', required: false, default: 'utf-8' }
     ],
@@ -106,9 +106,9 @@ export const TOOL_CAPABILITY_MAP: Record<string, ToolMetadata> = {
         expectedResult: '文件第1-50行的内容'
       },
       {
-        description: '读取文件第100到150行',
-        parameters: { path: 'src/agent/executor.ts', start_line: 100, end_line: 150 },
-        expectedResult: '文件第100-150行的内容'
+        description: '读取文件倒数10行（假设文件有100行）：start_line = 100 - 10 + 1 = 91',
+        parameters: { path: 'src/agent/executor.ts', start_line: 91, end_line: 100 },
+        expectedResult: '文件第91-100行（倒数10行）'
       }
     ],
     riskLevel: 'low',

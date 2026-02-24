@@ -338,7 +338,7 @@ class AgentRuntime {
                             break;
                         }
                         // 只读工具处理
-                        const readOnlyTools = ['read_file', 'list_files'];
+                        const readOnlyTools = ['read_file', 'list_files', 'read_file_lines', 'file_info', 'git_status', 'git_log', 'git_diff', 'list_directory_tree', 'search_in_files', 'search_symbol'];
                         if (readOnlyTools.includes(toolName)) {
                             // 检测用户意图：如果要求"分析"、"解释"等，则不自动完成
                             const requiresAnalysis = /分析|解释|说明|总结|review|explain/i.test(userInput);
