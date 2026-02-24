@@ -198,6 +198,8 @@ class ToolExecutor {
                 return await this.toolReadFile(payload.parameters);
             case 'read_file_lines':
                 return await this.toolReadFileLines(payload.parameters);
+            case 'read_file_lines_from_end':
+                return await this.toolReadFileLinesFromEnd(payload.parameters);
             case 'write_file':
                 return await this.toolWriteFile(payload.parameters);
             case 'append_file':
@@ -381,6 +383,49 @@ class ToolExecutor {
                     success: false,
                     error: `起始行号 ${startLine} 超出文件范围（文件共 ${lines.length} 行）`,
                     output: ''
+                };
+            }
+            const selectedLines = lines.slice(startIndex, endIndex);
+            const result = selectedLines
+                .map((line, idx) => `${startIndex + idx + 1}: ${line}`)
+                .join('\n');
+            return {
+                success: true,
+                output: result,
+                artifacts: [filePath]
+            };
+        }
+        catch (error) {
+            return {
+                success: false,
+                error: error.message,
+                output: ''
+            };
+        }
+    }
+    /**
+     * 从文件末尾读取指定行数（倒数行）
+     * 例如：count=5 表示读取最后5行，count=5, start_offset=2 表示读取倒数第2到5行
+     */
+    static async toolReadFileLinesFromEnd(params) {
+        const filePath = params.path;
+        const count = params.count || 10; // 要读取的行数
+        const startOffset = params.start_offset || 0; // 从倒数第几行开始（0表示从最后一行开始）
+        const encoding = params.encoding || 'utf-8';
+        try {
+            const content = await promises_1.default.readFile(filePath, encoding);
+            const lines = String(content).split('\n');
+            const totalLines = lines.length;
+            // 计算实际行号
+            // startOffset=0 表示从最后一行开始，所以是倒数第 count 行
+            // startOffset=2 表示从倒数第 count+2 行开始
+            const startIndex = Math.max(0, totalLines - count - startOffset);
+            const endIndex = totalLines;
+            if (totalLines === 0) {
+                return {
+                    success: true,
+                    output: '(空文件)',
+                    artifacts: [filePath]
                 };
             }
             const selectedLines = lines.slice(startIndex, endIndex);

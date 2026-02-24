@@ -52,6 +52,11 @@ export declare class ToolExecutor {
      */
     private static toolReadFileLines;
     /**
+     * 从文件末尾读取指定行数（倒数行）
+     * 例如：count=5 表示读取最后5行，count=5, start_offset=2 表示读取倒数第2到5行
+     */
+    private static toolReadFileLinesFromEnd;
+    /**
      * 向文件末尾追加内容
      */
     private static toolAppendFile;

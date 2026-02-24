@@ -116,6 +116,40 @@ export const TOOL_CAPABILITY_MAP: Record<string, ToolMetadata> = {
     maxRetries: 3
   },
 
+  read_file_lines_from_end: {
+    name: 'read_file_lines_from_end',
+    category: ToolCategory.FILE_IO,
+    description: '从文件末尾读取指定行数（倒数行）。这是读取倒数N行的直接工具，无需计算行号。例如：读取倒数第5行到第10行，使用 count=10, start_offset=4',
+    minCapability: CapabilityLevel.TEXT,
+    parameters: [
+      { name: 'path', type: 'string', description: '文件路径', required: true },
+      { name: 'count', type: 'number', description: '要读取的行数，默认 10', required: false, default: 10 },
+      { name: 'start_offset', type: 'number', description: '从倒数第几行开始（0表示从最后一行开始）。例如：读取倒数第5行到第10行，使用 count=10, start_offset=4（从倒数第10行开始，共读取10行）', required: false, default: 0 },
+      { name: 'encoding', type: 'string', description: '文件编码，默认 utf-8', required: false, default: 'utf-8' }
+    ],
+    returns: '从文件末尾开始的内容，带行号',
+    examples: [
+      {
+        description: '读取文件最后10行',
+        parameters: { path: 'verify.sh', count: 10 },
+        expectedResult: 'verify.sh 的最后10行'
+      },
+      {
+        description: '读取文件倒数第5行到第10行（从倒数第10行开始，读取10行）',
+        parameters: { path: 'verify.sh', count: 10, start_offset: 4 },
+        expectedResult: 'verify.sh 的倒数第5行到第10行'
+      },
+      {
+        description: '读取文件最后5行',
+        parameters: { path: 'verify.sh', count: 5, start_offset: 0 },
+        expectedResult: 'verify.sh 的最后5行'
+      }
+    ],
+    riskLevel: 'low',
+    retryable: true,
+    maxRetries: 3
+  },
+
   write_file: {
     name: 'write_file',
     category: ToolCategory.FILE_IO,
