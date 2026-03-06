@@ -250,6 +250,11 @@ export class AutoWorkflow {
     previousFeedback?: string
   ): Promise<{ code: string; success: boolean; error?: string }> {
     try {
+      // 构建目标文件信息
+      const targetFilesInfo = task.targetFiles && task.targetFiles.length > 0
+        ? `[目标文件]\n以下是需要修改的文件，请确保你的代码直接修改这些文件：\n${task.targetFiles.map(f => `- ${f}`).join('\n')}\n\n`
+        : '';
+
       const response = await runLLM({
         prompt: {
           system: `你是一个全方位的交付专家。请遵循 [SYSTEM PROTOCOL V2.3] (Ref: src/agent/how.md)。
@@ -257,11 +262,16 @@ export class AutoWorkflow {
 2. 如果当前任务涉及文档（如 .md, .yaml, .html 等文件），请扮演**资深内容专家或历史学者**，确保叙事优美、逻辑严密、事实准确。
 
 **核心协议：THINK → ACT → OBSERVE**
-你必须按此协议进行输出，确保每一步都有明确的意图、行动和观察。`,
+你必须按此协议进行输出，确保每一步都有明确的意图、行动和观察。
+
+**重要**：如果指定了目标文件，请使用以下格式输出代码：
+\`\`\`filepath:相对路径
+代码内容
+\`\`\``,
           messages: [
             {
               role: 'user',
-              content: `[项目上下文]\n${context}\n\n[当前任务]\n${task.description}\n\n${previousFeedback ? `[审查反馈 - 请修复以下问题]\n${previousFeedback}\n\n` : ''}请根据以上信息开始任务。`
+              content: `${targetFilesInfo}[项目上下文]\n${context}\n\n[当前任务]\n${task.description}\n\n${previousFeedback ? `[审查反馈 - 请修复以下问题]\n${previousFeedback}\n\n` : ''}请根据以上信息开始任务。`
             }
         ]
        },

@@ -12,6 +12,7 @@ export interface TaskStatus {
     backupId?: string;
     dependsOn?: number[];
     priority?: 'high' | 'medium' | 'low';
+    targetFiles?: string[];  // 目标文件列表
 }
 
 export interface TodoMetadata {
@@ -25,6 +26,8 @@ const METADATA_PREFIX = '>';
 const TASK_REGEX = /^[\s]*-\s*\[([x\s])\]\s*(.+?)(?:\s*<!--\s*(.+?)\s*-->)?$/;
 const DEPENDENCY_REGEX = /\[depends:\s*(.+?)\]/i;
 const PRIORITY_REGEX = /\[priority:\s*(high|medium|low)\]/i;
+const FILE_CHANGE_REGEX = /^[\s]*-\s*\[.\]\s*(?:修改|新增|删除|重命名)\s+`?([^\s`,\[]+)`?/i;
+const FILE_CHANGE_SECTION = /^##\s*\[文件变更\]/i;
 
 /**
  * 解析 todo.md 文件
@@ -72,7 +75,26 @@ export async function parseTodoFile(filePath: string): Promise<{
     // 解析任务
     const tasks: TaskStatus[] = [];
     const mainContent = lines.slice(contentStartIndex).join('\n');
-    
+
+    // 解析 [文件变更] 部分，提取目标文件列表
+    const targetFiles: string[] = [];
+    let inFileChangeSection = false;
+    for (const line of lines.slice(contentStartIndex)) {
+        if (FILE_CHANGE_SECTION.test(line.trim())) {
+            inFileChangeSection = true;
+            continue;
+        }
+        if (inFileChangeSection && line.trim().startsWith('## ')) {
+            inFileChangeSection = false;  // 进入下一个 section，退出文件变更区
+        }
+        if (inFileChangeSection) {
+            const fileMatch = line.match(FILE_CHANGE_REGEX);
+            if (fileMatch) {
+                targetFiles.push(fileMatch[1].trim());
+            }
+        }
+    }
+
     let taskIndex = 0;
     for (const line of lines.slice(contentStartIndex)) {
         const match = line.match(TASK_REGEX);
@@ -118,7 +140,14 @@ export async function parseTodoFile(filePath: string): Promise<{
             tasks.push(task);
         }
     }
-    
+
+    // 将目标文件关联到所有任务（如果文件变更区有内容）
+    if (targetFiles.length > 0) {
+        for (const task of tasks) {
+            task.targetFiles = targetFiles;
+        }
+    }
+
     return { metadata, tasks, rawContent: content };
 }
 

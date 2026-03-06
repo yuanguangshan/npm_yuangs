@@ -9,6 +9,7 @@ export interface TaskStatus {
     backupId?: string;
     dependsOn?: number[];
     priority?: 'high' | 'medium' | 'low';
+    targetFiles?: string[];
 }
 export interface TodoMetadata {
     generatedAt?: string;
