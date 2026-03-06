@@ -120,6 +120,19 @@ export function parseGeneratedCode(llmOutput: string): GeneratedCode {
         }
     }
 
+    // 格式 7: ```filepath:相对路径\n代码\n```（单行 filepath 格式）
+    const pattern7 = /```filepath:([^\s\n]+)\s*\n([\s\S]*?)\n```/gi;
+    while ((match = pattern7.exec(llmOutput)) !== null) {
+        const filePath = match[1].trim();
+        if (!files.some(f => f.path === filePath)) {
+            files.push({
+                path: filePath,
+                content: match[2].trim(),
+                action: 'create'
+            });
+        }
+    }
+
     return {
         files,
         rawOutput: llmOutput

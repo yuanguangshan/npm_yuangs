@@ -26,7 +26,7 @@ const METADATA_PREFIX = '>';
 const TASK_REGEX = /^[\s]*-\s*\[([x\s])\]\s*(.+?)(?:\s*<!--\s*(.+?)\s*-->)?$/;
 const DEPENDENCY_REGEX = /\[depends:\s*(.+?)\]/i;
 const PRIORITY_REGEX = /\[priority:\s*(high|medium|low)\]/i;
-const FILE_CHANGE_REGEX = /^[\s]*-\s*\[.\]\s*(?:修改|新增|删除|重命名)\s+`?([^\s`,\[]+)`?/i;
+const FILE_CHANGE_REGEX = /^[\s]*-\s*\[.\]\s*(?:修改|新增|删除|重命名)(?:文件)?[：:]?\s*`?([^\s`,\[]+)`?/i;
 const FILE_CHANGE_SECTION = /^##\s*\[文件变更\]/i;
 
 /**
