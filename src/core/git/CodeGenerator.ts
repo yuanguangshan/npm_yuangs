@@ -16,6 +16,19 @@ export interface GeneratedCode {
 }
 
 /**
+ * 写入选项
+ */
+export interface WriteOptions {
+    dryRun?: boolean;           // 只预览不实际写入
+    maxFileSize?: number;       // 最大文件大小限制（字节）
+    warnOnOverwrite?: boolean;  // 覆盖前警告
+}
+
+// 默认配置
+const DEFAULT_MAX_FILE_SIZE = 1024 * 1024; // 1MB
+const DEFAULT_MAX_AGE_DAYS = 30; // 备份保留30天
+
+/**
  * 备份信息
  */
 export interface BackupInfo {
@@ -144,10 +157,12 @@ export function parseGeneratedCode(llmOutput: string): GeneratedCode {
  */
 export async function writeGeneratedCode(
     generated: GeneratedCode,
-    baseDir: string = process.cwd()
+    baseDir: string = process.cwd(),
+    options: WriteOptions = {}
 ): Promise<{ written: string[]; skipped: string[] }> {
     const written: string[] = [];
     const skipped: string[] = [];
+    const { dryRun = false, maxFileSize = DEFAULT_MAX_FILE_SIZE, warnOnOverwrite = true } = options;
 
     // 解析基础目录的绝对路径
     const resolvedBaseDir = path.resolve(baseDir);
@@ -163,6 +178,25 @@ export async function writeGeneratedCode(
             if (!resolvedPath.startsWith(resolvedBaseDir)) {
                 console.warn(chalk.yellow(`  ⚠ 跳过不安全路径: ${file.path} (越出项目目录)`));
                 skipped.push(file.path);
+                continue;
+            }
+
+            // 文件大小检查
+            if (file.content.length > maxFileSize) {
+                console.warn(chalk.yellow(`  ⚠ 跳过超大文件: ${file.path} (${(file.content.length / 1024).toFixed(1)}KB > ${(maxFileSize / 1024).toFixed(1)}KB)`));
+                skipped.push(file.path);
+                continue;
+            }
+
+            // 文件存在性警告
+            const fileExists = fs.existsSync(fullPath);
+            if (warnOnOverwrite && fileExists) {
+                console.log(chalk.cyan(`  ℹ 文件已存在，将被覆盖: ${file.path}`));
+            }
+
+            if (dryRun) {
+                console.log(chalk.blue(`  [DRY-RUN] 将${fileExists ? '修改' : '创建'}: ${file.path}`));
+                written.push(file.path);
                 continue;
             }
 
@@ -278,33 +312,55 @@ export async function restoreFromBackup(
  */
 export async function cleanOldBackups(
     keepCount: number = 5,
-    baseDir: string = process.cwd()
-): Promise<void> {
+    baseDir: string = process.cwd(),
+    maxAgeDays: number = DEFAULT_MAX_AGE_DAYS
+): Promise<{ deleted: number; kept: number }> {
     const backupsDir = path.join(baseDir, '.yuangs', 'backups');
-    
+
     if (!fs.existsSync(backupsDir)) {
-        return;
+        return { deleted: 0, kept: 0 };
     }
-    
+
     const entries = await fs.promises.readdir(backupsDir, { withFileTypes: true });
     const backups = entries
         .filter(entry => entry.isDirectory())
         .map(async entry => {
             const manifestPath = path.join(backupsDir, entry.name, 'manifest.json');
-            const manifest = JSON.parse(
-                await fs.promises.readFile(manifestPath, 'utf8')
-            ) as BackupInfo;
-            return { id: entry.name, timestamp: manifest.timestamp };
+            try {
+                const manifest = JSON.parse(
+                    await fs.promises.readFile(manifestPath, 'utf8')
+                ) as BackupInfo;
+                return { id: entry.name, timestamp: manifest.timestamp };
+            } catch {
+                return null;
+            }
         });
-    
-    const backupInfos = await Promise.all(backups);
-    backupInfos.sort((a, b) => 
-        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+
+    const backupInfos = (await Promise.all(backups)).filter(Boolean) as Array<{ id: string; timestamp: string }>;
+
+    // 按时间排序
+    backupInfos.sort((a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
-    
-    const toDelete = backupInfos.slice(0, -keepCount);
-    for (const backup of toDelete) {
-        const backupPath = path.join(backupsDir, backup.id);
-        await fs.promises.rm(backupPath, { recursive: true, force: true });
+
+    const now = Date.now();
+    const maxAgeMs = maxAgeDays * 24 * 60 * 60 * 1000;
+    let deleted = 0;
+    let kept = 0;
+
+    for (let i = 0; i < backupInfos.length; i++) {
+        const backup = backupInfos[i];
+        const backupAge = now - new Date(backup.timestamp).getTime();
+        const shouldDelete = i >= keepCount || backupAge > maxAgeMs;
+
+        if (shouldDelete) {
+            const backupPath = path.join(backupsDir, backup.id);
+            await fs.promises.rm(backupPath, { recursive: true, force: true });
+            deleted++;
+        } else {
+            kept++;
+        }
     }
+
+    return { deleted, kept };
 }

@@ -6,7 +6,14 @@ import ora from 'ora';
 export interface ReadFilesContentOptions {
     showProgress?: boolean;
     concurrency?: number;
+    maxFileSize?: number;      // 最大文件大小（字节），超过则跳过
+    maxContentLength?: number; // 内容最大长度（字符），超过则截断
+    encoding?: BufferEncoding; // 文件编码
 }
+
+// 默认配置
+const DEFAULT_MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const DEFAULT_MAX_CONTENT_LENGTH = 5000; // 5000字符
 
 export function parseFilePathsFromLsOutput(output: string): string[] {
     const lines = output.trim().split('\n');
@@ -28,7 +35,13 @@ export async function readFilesContent(
     filePaths: string[],
     options: ReadFilesContentOptions = {}
 ): Promise<Map<string, string>> {
-    const { showProgress = true, concurrency = 5 } = options;
+    const {
+        showProgress = true,
+        concurrency = 5,
+        maxFileSize = DEFAULT_MAX_FILE_SIZE,
+        maxContentLength = DEFAULT_MAX_CONTENT_LENGTH,
+        encoding = 'utf-8'
+    } = options;
     const contentMap = new Map<string, string>();
 
     if (filePaths.length === 0) {
@@ -48,13 +61,26 @@ export async function readFilesContent(
             limit(async () => {
                 try {
                     const fullPath = path.resolve(filePath);
-                    if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
-                        const content = await fs.promises.readFile(fullPath, 'utf-8');
-                        return { filePath, content };
+                    if (!fs.existsSync(fullPath)) {
+                        return null;
                     }
-                    return null;
+
+                    const stats = fs.statSync(fullPath);
+                    if (!stats.isFile()) {
+                        return null;
+                    }
+
+                    // 文件大小检查
+                    if (stats.size > maxFileSize) {
+                        console.error(`文件过大，跳过: ${filePath} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`);
+                        return null;
+                    }
+
+                    const content = await fs.promises.readFile(fullPath, encoding);
+                    return { filePath, content };
                 } catch (error) {
-                    console.error(`无法读取文件: ${filePath}`);
+                    const errorMsg = error instanceof Error ? error.message : '未知错误';
+                    console.error(`无法读取文件: ${filePath} - ${errorMsg}`);
                     return null;
                 }
             })
@@ -108,7 +134,8 @@ export function buildPromptWithFileContent(
     originalOutput: string,
     filePaths: string[],
     contentMap: Map<string, string>,
-    question?: string
+    question?: string,
+    maxContentLength: number = DEFAULT_MAX_CONTENT_LENGTH
 ): string {
     let prompt = '';
 
@@ -122,9 +149,8 @@ export function buildPromptWithFileContent(
         for (const [filePath, content] of contentMap) {
             prompt += `### ${filePath}\n`;
             prompt += '```\n';
-            const maxChars = 5000;
-            const truncated = content.length > maxChars
-                ? content.substring(0, maxChars) + '\n... (内容过长已截断)'
+            const truncated = content.length > maxContentLength
+                ? content.substring(0, maxContentLength) + '\n... (内容过长已截断)'
                 : content;
             prompt += truncated;
             prompt += '\n```\n\n';

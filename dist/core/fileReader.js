@@ -11,6 +11,9 @@ const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const p_limit_1 = __importDefault(require("p-limit"));
 const ora_1 = __importDefault(require("ora"));
+// 默认配置
+const DEFAULT_MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const DEFAULT_MAX_CONTENT_LENGTH = 5000; // 5000字符
 function parseFilePathsFromLsOutput(output) {
     const lines = output.trim().split('\n');
     const filePaths = [];
@@ -24,7 +27,7 @@ function parseFilePathsFromLsOutput(output) {
     return filePaths;
 }
 async function readFilesContent(filePaths, options = {}) {
-    const { showProgress = true, concurrency = 5 } = options;
+    const { showProgress = true, concurrency = 5, maxFileSize = DEFAULT_MAX_FILE_SIZE, maxContentLength = DEFAULT_MAX_CONTENT_LENGTH, encoding = 'utf-8' } = options;
     const contentMap = new Map();
     if (filePaths.length === 0) {
         return contentMap;
@@ -39,14 +42,24 @@ async function readFilesContent(filePaths, options = {}) {
         const readTasks = filePaths.map(filePath => limit(async () => {
             try {
                 const fullPath = path_1.default.resolve(filePath);
-                if (fs_1.default.existsSync(fullPath) && fs_1.default.statSync(fullPath).isFile()) {
-                    const content = await fs_1.default.promises.readFile(fullPath, 'utf-8');
-                    return { filePath, content };
+                if (!fs_1.default.existsSync(fullPath)) {
+                    return null;
                 }
-                return null;
+                const stats = fs_1.default.statSync(fullPath);
+                if (!stats.isFile()) {
+                    return null;
+                }
+                // 文件大小检查
+                if (stats.size > maxFileSize) {
+                    console.error(`文件过大，跳过: ${filePath} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`);
+                    return null;
+                }
+                const content = await fs_1.default.promises.readFile(fullPath, encoding);
+                return { filePath, content };
             }
             catch (error) {
-                console.error(`无法读取文件: ${filePath}`);
+                const errorMsg = error instanceof Error ? error.message : '未知错误';
+                console.error(`无法读取文件: ${filePath} - ${errorMsg}`);
                 return null;
             }
         }));
@@ -89,7 +102,7 @@ function readFilesContentSync(filePaths) {
     }
     return contentMap;
 }
-function buildPromptWithFileContent(originalOutput, filePaths, contentMap, question) {
+function buildPromptWithFileContent(originalOutput, filePaths, contentMap, question, maxContentLength = DEFAULT_MAX_CONTENT_LENGTH) {
     let prompt = '';
     prompt += '## 文件列表\n';
     prompt += '```\n';
@@ -100,9 +113,8 @@ function buildPromptWithFileContent(originalOutput, filePaths, contentMap, quest
         for (const [filePath, content] of contentMap) {
             prompt += `### ${filePath}\n`;
             prompt += '```\n';
-            const maxChars = 5000;
-            const truncated = content.length > maxChars
-                ? content.substring(0, maxChars) + '\n... (内容过长已截断)'
+            const truncated = content.length > maxContentLength
+                ? content.substring(0, maxContentLength) + '\n... (内容过长已截断)'
                 : content;
             prompt += truncated;
             prompt += '\n```\n\n';

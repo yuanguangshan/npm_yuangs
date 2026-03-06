@@ -37,7 +37,18 @@ export async function parseTodoFile(filePath: string): Promise<{
     tasks: TaskStatus[];
     rawContent: string;
 }> {
-    const content = await fs.promises.readFile(filePath, 'utf8');
+    let content: string;
+    try {
+        content = await fs.promises.readFile(filePath, 'utf8');
+    } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : '未知错误';
+        throw new Error(`无法读取 todo 文件: ${filePath} - ${errorMsg}`);
+    }
+
+    if (!content.trim()) {
+        throw new Error(`todo 文件为空: ${filePath}`);
+    }
+
     const lines = content.split('\n');
     
     // 解析元数据
@@ -159,31 +170,49 @@ export async function updateTaskStatus(
     taskIndex: number,
     updates: Partial<TaskStatus>
 ): Promise<void> {
-    const content = await fs.promises.readFile(filePath, 'utf8');
+    let content: string;
+    try {
+        content = await fs.promises.readFile(filePath, 'utf8');
+    } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : '未知错误';
+        throw new Error(`无法读取 todo 文件进行更新: ${filePath} - ${errorMsg}`);
+    }
+
     const lines = content.split('\n');
-    
+
     let currentTaskIndex = 0;
+    let found = false;
     for (let i = 0; i < lines.length; i++) {
         const match = lines[i].match(TASK_REGEX);
         if (match && currentTaskIndex === taskIndex) {
             const [, checkbox, description] = match;
-            
+
             // 构建新的注释
             const comments: string[] = [];
             if (updates.execStatus) comments.push(`exec:${updates.execStatus}`);
             if (updates.reviewScore !== undefined) comments.push(`review:${updates.reviewScore}`);
             if (updates.attempts !== undefined) comments.push(`attempts:${updates.attempts}`);
-            
+
             const newCheckbox = updates.completed ? 'x' : ' ';
             const commentStr = comments.length > 0 ? ` <!-- ${comments.join(', ')} -->` : '';
-            
+
             lines[i] = `- [${newCheckbox}] ${description}${commentStr}`;
+            found = true;
             break;
         }
         if (match) currentTaskIndex++;
     }
-    
-    await fs.promises.writeFile(filePath, lines.join('\n'), 'utf8');
+
+    if (!found) {
+        throw new Error(`找不到任务索引 ${taskIndex}，文件中共有 ${currentTaskIndex} 个任务`);
+    }
+
+    try {
+        await fs.promises.writeFile(filePath, lines.join('\n'), 'utf8');
+    } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : '未知错误';
+        throw new Error(`无法写入 todo 文件: ${filePath} - ${errorMsg}`);
+    }
 }
 
 /**

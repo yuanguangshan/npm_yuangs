@@ -10,6 +10,14 @@ export interface GeneratedCode {
     rawOutput: string;
 }
 /**
+ * 写入选项
+ */
+export interface WriteOptions {
+    dryRun?: boolean;
+    maxFileSize?: number;
+    warnOnOverwrite?: boolean;
+}
+/**
  * 备份信息
  */
 export interface BackupInfo {
@@ -24,7 +32,7 @@ export declare function parseGeneratedCode(llmOutput: string): GeneratedCode;
 /**
  * 将生成的代码写入文件系统
  */
-export declare function writeGeneratedCode(generated: GeneratedCode, baseDir?: string): Promise<{
+export declare function writeGeneratedCode(generated: GeneratedCode, baseDir?: string, options?: WriteOptions): Promise<{
     written: string[];
     skipped: string[];
 }>;
@@ -46,4 +54,7 @@ export declare function restoreFromBackup(backupId: string, baseDir?: string): P
 /**
  * 清理旧备份
  */
-export declare function cleanOldBackups(keepCount?: number, baseDir?: string): Promise<void>;
+export declare function cleanOldBackups(keepCount?: number, baseDir?: string, maxAgeDays?: number): Promise<{
+    deleted: number;
+    kept: number;
+}>;

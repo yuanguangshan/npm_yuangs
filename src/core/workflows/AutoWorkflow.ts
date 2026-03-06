@@ -9,7 +9,8 @@ import {
   parseGeneratedCode,
   writeGeneratedCode,
   saveRawOutput,
-  backupFiles
+  backupFiles,
+  WriteOptions
 } from '../git/CodeGenerator';
 import { CommitMessageGenerator } from '../git/CommitMessageGenerator';
 import {
@@ -193,11 +194,20 @@ export class AutoWorkflow {
               progress.backupIds.push(backupId);
             }
           } catch (e: unknown) {
-            // Continue without backup
+            console.warn(chalk.yellow(`⚠️  备份失败: ${e instanceof Error ? e.message : '未知错误'}`));
           }
 
-          const { written } = await writeGeneratedCode(generated);
+          const writeOptions: WriteOptions = {
+            dryRun: input.saveOnly,
+            warnOnOverwrite: true
+          };
+          const { written, skipped } = await writeGeneratedCode(generated, process.cwd(), writeOptions);
           progress.filesModified.push(...written);
+
+          if (skipped.length > 0) {
+            console.warn(chalk.yellow(`⚠️  跳过 ${skipped.length} 个文件: ${skipped.join(', ')}`));
+          }
+
           await updateTaskStatus(todoPath, task.index, { backupId });
         }
       }

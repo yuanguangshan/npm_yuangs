@@ -21,7 +21,17 @@ const FILE_CHANGE_SECTION = /^##\s*\[文件变更\]/i;
  * 解析 todo.md 文件
  */
 async function parseTodoFile(filePath) {
-    const content = await fs_1.default.promises.readFile(filePath, 'utf8');
+    let content;
+    try {
+        content = await fs_1.default.promises.readFile(filePath, 'utf8');
+    }
+    catch (error) {
+        const errorMsg = error instanceof Error ? error.message : '未知错误';
+        throw new Error(`无法读取 todo 文件: ${filePath} - ${errorMsg}`);
+    }
+    if (!content.trim()) {
+        throw new Error(`todo 文件为空: ${filePath}`);
+    }
     const lines = content.split('\n');
     // 解析元数据
     const metadata = {};
@@ -132,9 +142,17 @@ async function parseTodoFile(filePath) {
  * 更新任务状态
  */
 async function updateTaskStatus(filePath, taskIndex, updates) {
-    const content = await fs_1.default.promises.readFile(filePath, 'utf8');
+    let content;
+    try {
+        content = await fs_1.default.promises.readFile(filePath, 'utf8');
+    }
+    catch (error) {
+        const errorMsg = error instanceof Error ? error.message : '未知错误';
+        throw new Error(`无法读取 todo 文件进行更新: ${filePath} - ${errorMsg}`);
+    }
     const lines = content.split('\n');
     let currentTaskIndex = 0;
+    let found = false;
     for (let i = 0; i < lines.length; i++) {
         const match = lines[i].match(TASK_REGEX);
         if (match && currentTaskIndex === taskIndex) {
@@ -150,12 +168,22 @@ async function updateTaskStatus(filePath, taskIndex, updates) {
             const newCheckbox = updates.completed ? 'x' : ' ';
             const commentStr = comments.length > 0 ? ` <!-- ${comments.join(', ')} -->` : '';
             lines[i] = `- [${newCheckbox}] ${description}${commentStr}`;
+            found = true;
             break;
         }
         if (match)
             currentTaskIndex++;
     }
-    await fs_1.default.promises.writeFile(filePath, lines.join('\n'), 'utf8');
+    if (!found) {
+        throw new Error(`找不到任务索引 ${taskIndex}，文件中共有 ${currentTaskIndex} 个任务`);
+    }
+    try {
+        await fs_1.default.promises.writeFile(filePath, lines.join('\n'), 'utf8');
+    }
+    catch (error) {
+        const errorMsg = error instanceof Error ? error.message : '未知错误';
+        throw new Error(`无法写入 todo 文件: ${filePath} - ${errorMsg}`);
+    }
 }
 /**
  * 更新元数据
