@@ -148,21 +148,32 @@ export async function writeGeneratedCode(
 ): Promise<{ written: string[]; skipped: string[] }> {
     const written: string[] = [];
     const skipped: string[] = [];
-    
+
+    // 解析基础目录的绝对路径
+    const resolvedBaseDir = path.resolve(baseDir);
+
     for (const file of generated.files) {
         try {
-            const fullPath = path.isAbsolute(file.path) 
-                ? file.path 
+            const fullPath = path.isAbsolute(file.path)
+                ? file.path
                 : path.join(baseDir, file.path);
-            
+
+            // 路径安全检查：确保目标路径在 baseDir 内
+            const resolvedPath = path.resolve(fullPath);
+            if (!resolvedPath.startsWith(resolvedBaseDir)) {
+                console.warn(chalk.yellow(`  ⚠ 跳过不安全路径: ${file.path} (越出项目目录)`));
+                skipped.push(file.path);
+                continue;
+            }
+
             // 确保目录存在
             const dir = path.dirname(fullPath);
             await fs.promises.mkdir(dir, { recursive: true });
-            
+
             // 写入文件
             await fs.promises.writeFile(fullPath, file.content, 'utf8');
             written.push(file.path);
-            
+
             console.log(chalk.green(`  ✓ ${file.action === 'create' ? '创建' : '修改'}: ${file.path}`));
         } catch (e: unknown) {
             const errorMsg = e instanceof Error ? e.message : '未知错误';
@@ -170,7 +181,7 @@ export async function writeGeneratedCode(
             skipped.push(file.path);
         }
     }
-    
+
     return { written, skipped };
 }
 

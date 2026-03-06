@@ -118,11 +118,20 @@ function parseGeneratedCode(llmOutput) {
 async function writeGeneratedCode(generated, baseDir = process.cwd()) {
     const written = [];
     const skipped = [];
+    // 解析基础目录的绝对路径
+    const resolvedBaseDir = path_1.default.resolve(baseDir);
     for (const file of generated.files) {
         try {
             const fullPath = path_1.default.isAbsolute(file.path)
                 ? file.path
                 : path_1.default.join(baseDir, file.path);
+            // 路径安全检查：确保目标路径在 baseDir 内
+            const resolvedPath = path_1.default.resolve(fullPath);
+            if (!resolvedPath.startsWith(resolvedBaseDir)) {
+                console.warn(chalk_1.default.yellow(`  ⚠ 跳过不安全路径: ${file.path} (越出项目目录)`));
+                skipped.push(file.path);
+                continue;
+            }
             // 确保目录存在
             const dir = path_1.default.dirname(fullPath);
             await fs_1.default.promises.mkdir(dir, { recursive: true });
