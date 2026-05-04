@@ -10,45 +10,31 @@ const promises_1 = __importDefault(require("fs/promises"));
 const path_1 = __importDefault(require("path"));
 const toolCapability_1 = require("./toolCapability");
 const CapabilityLevel_1 = require("../core/capability/CapabilityLevel");
+const commandSemantics_1 = require("./commandSemantics");
+const toolResultStorage_1 = require("./toolResultStorage");
 const execAsync = (0, util_1.promisify)(child_process_1.exec);
 /**
  * 增强的工具执行器
  * 支持丰富的原子工具操作
  * 集成能力感知的工具调用
+ * 集成命令语义分析和路径安全验证
  */
 class ToolExecutor {
     static MAX_OUTPUT_LENGTH = 2000; // Maximum output length in characters
     static READ_POSITIONS = new Map(); // 记录文件读取位置用于 continue_reading
     static currentCapabilityLevel = CapabilityLevel_1.CapabilityLevel.STRUCTURAL; // 当前模型的能力等级（可配置）
+    static allowedCwd = process.cwd(); // 允许的工作目录
     /**
-     * 危险命令模式列表，AI 生成的命令中包含这些模式时应拦截
+     * 设置允许的工作目录
      */
-    static DANGEROUS_PATTERNS = [
-        /\brm\s+(-rf?|--recursive\s+--force)\s+\/\s*$/, // rm -rf /
-        /\brm\s+-rf?\s+\/\b/, // rm -rf /...
-        /\bdd\s+if=\/dev\/zero/, // dd if=/dev/zero
-        /\bmkfs\b/, // 格式化文件系统
-        />\s*\/dev\/sda/, // 直接写磁盘设备
-        />\s*\/dev\/vda/,
-        />\s*\/dev\/nvme/,
-        /:\(\)\{\s*:\|:\s*&\s*\}\s*;/, // fork bomb
-        /\bwget\s+.*\s*\|\s*(sh|bash)\b/i, // wget | sh (远程脚本执行)
-        /\bcurl\s+.*\s*\|\s*(sh|bash)\b/i, // curl | sh
-        /\bchmod\s+777\s+\/\b/, // chmod 777 /
-        /\bchown\s+-R\s+.*\s+\/\b/, // chown -R ... /
-        /\bsudo\s+rm\s+-rf\s+\/\b/, // sudo rm -rf /
-    ];
+    static setAllowedCwd(cwd) {
+        this.allowedCwd = cwd;
+    }
     /**
-     * 检查命令是否包含危险模式
+     * 使用命令语义分析检查命令安全性
      */
-    static isDangerousCommand(command) {
-        const trimmed = command.trim();
-        for (const pattern of this.DANGEROUS_PATTERNS) {
-            if (pattern.test(trimmed)) {
-                return { safe: false, reason: `命令匹配危险模式: ${pattern.source}` };
-            }
-        }
-        return { safe: true };
+    static analyzeCommandSafety(command) {
+        return (0, commandSemantics_1.analyzeCommand)(command, this.allowedCwd);
     }
     /**
      * 设置当前能力等级
@@ -353,12 +339,12 @@ class ToolExecutor {
         return files;
     }
     static async executeShell(command) {
-        // 安全检查：拦截明显危险的命令
-        const safetyCheck = this.isDangerousCommand(command);
-        if (!safetyCheck.safe) {
+        // 语义分析：拦截危险命令
+        const analysis = this.analyzeCommandSafety(command);
+        if (analysis.category === 'DANGEROUS') {
             return {
                 success: false,
-                error: `安全拦截: ${safetyCheck.reason}`,
+                error: analysis.description,
                 output: ''
             };
         }
@@ -367,11 +353,17 @@ class ToolExecutor {
                 maxBuffer: 10 * 1024 * 1024,
                 cwd: process.cwd()
             });
-            const output = stdout || stderr || '';
+            let output = stdout || stderr || '';
+            // 大结果持久化到磁盘
+            const baseCmd = command.split(/\s+/)[0];
+            const persisted = await (0, toolResultStorage_1.persistToolResult)(output, baseCmd);
+            if (persisted) {
+                output = `${persisted.preview}\n\n[⚠️ 输出已截断，完整结果已保存到 ${persisted.filepath}（${(0, toolResultStorage_1.formatFileSize)(persisted.originalSize)}）]`;
+            }
             return {
                 success: true,
                 output,
-                artifacts: []
+                artifacts: persisted ? [persisted.filepath] : []
             };
         }
         catch (error) {

@@ -4,19 +4,21 @@ import { CapabilityLevel } from '../core/capability/CapabilityLevel';
  * 增强的工具执行器
  * 支持丰富的原子工具操作
  * 集成能力感知的工具调用
+ * 集成命令语义分析和路径安全验证
  */
 export declare class ToolExecutor {
     private static readonly MAX_OUTPUT_LENGTH;
     private static readonly READ_POSITIONS;
     private static currentCapabilityLevel;
+    private static allowedCwd;
     /**
-     * 危险命令模式列表，AI 生成的命令中包含这些模式时应拦截
+     * 设置允许的工作目录
      */
-    private static readonly DANGEROUS_PATTERNS;
+    static setAllowedCwd(cwd: string): void;
     /**
-     * 检查命令是否包含危险模式
+     * 使用命令语义分析检查命令安全性
      */
-    private static isDangerousCommand;
+    private static analyzeCommandSafety;
     /**
      * 设置当前能力等级
      */

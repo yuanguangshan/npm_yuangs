@@ -162,10 +162,16 @@ export class AgentRuntime {
   private async buildPrompt(userInput: string, lastError: string | undefined): Promise<{ prompt: string; userInput: string }> {
     const dynamicContext = await buildDynamicContext(lastError);
     const basePrompt = GovernanceService.getPolicyManual();
-    return {
-      prompt: injectDynamicContext(basePrompt, dynamicContext),
-      userInput
-    };
+    let prompt = injectDynamicContext(basePrompt, dynamicContext);
+
+    // 尝试匹配技能，注入技能 prompt
+    const { matchSkill, generateSkillPrompt } = await import('./promptSkills');
+    const skill = matchSkill(userInput);
+    if (skill) {
+      prompt += `\n\n[SKILL ACTIVE: ${skill.name}]\n${generateSkillPrompt(skill, userInput)}`;
+    }
+
+    return { prompt, userInput };
   }
 
   private async callLLM(

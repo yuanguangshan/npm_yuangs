@@ -147,10 +147,14 @@ class AgentRuntime {
     async buildPrompt(userInput, lastError) {
         const dynamicContext = await (0, dynamicPrompt_1.buildDynamicContext)(lastError);
         const basePrompt = governance_1.GovernanceService.getPolicyManual();
-        return {
-            prompt: (0, dynamicPrompt_1.injectDynamicContext)(basePrompt, dynamicContext),
-            userInput
-        };
+        let prompt = (0, dynamicPrompt_1.injectDynamicContext)(basePrompt, dynamicContext);
+        // 尝试匹配技能，注入技能 prompt
+        const { matchSkill, generateSkillPrompt } = await Promise.resolve().then(() => __importStar(require('./promptSkills')));
+        const skill = matchSkill(userInput);
+        if (skill) {
+            prompt += `\n\n[SKILL ACTIVE: ${skill.name}]\n${generateSkillPrompt(skill, userInput)}`;
+        }
+        return { prompt, userInput };
     }
     async callLLM(enhancedPrompt, userInput, mode, onChunk, model, renderer) {
         const messages = [];
@@ -430,6 +434,19 @@ class AgentRuntime {
                     console.log(chalk_1.default.gray('[Command Mode] 只读工具执行成功，等待 AI 决定下一步'));
                     return lastToolCall;
                 }
+                // REPL/Chat 模式下不自动完成，让 AI 基于工具结果正常回答
+                if (mode === 'chat') {
+                    // 对于简单的只读查询，直接格式化结果返回，避免额外 LLM 调用
+                    const formatted = this.tryFormatToolResult(result.output, userInput);
+                    if (formatted) {
+                        console.log(chalk_1.default.green(`\n${formatted}\n`));
+                        this.context.addMessage("assistant", formatted);
+                        agentRenderer && (() => { agentRenderer.buffer = ''; agentRenderer.quietMode = true; agentRenderer.finish(); })();
+                        return null; // 直接 break
+                    }
+                    this.context.addMessage('system', `请根据以上工具结果，简洁回答用户的问题。`);
+                    return lastToolCall;
+                }
                 if (!requiresAnalysis && !requiresWrite) {
                     console.log(chalk_1.default.gray('[Auto-Complete] 只读工具执行成功，自动完成任务'));
                     console.log(chalk_1.default.cyan(`\n📄 ${toolName} 结果：\n`));
@@ -553,6 +570,43 @@ class AgentRuntime {
                 return true;
         }
         return false;
+    }
+    /**
+     * 尝试直接格式化工具结果，避免额外的 LLM 调用
+     * 适用于简单的只读查询（如 list_files 的结果配合简单问题）
+     */
+    tryFormatToolResult(output, userInput) {
+        // 只对较短的输出直接格式化
+        if (output.length > 5000)
+            return null;
+        // 如果问题需要进一步处理（如找最大/最小文件），不直接格式化
+        if (/(最大|最小|哪个.*最大|哪个.*最小|largest|smallest|biggest)/.test(userInput)) {
+            return null;
+        }
+        // 尝试解析 JSON 数组（如 list_files 的结果）
+        try {
+            const parsed = JSON.parse(output);
+            if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].path) {
+                // 如果用户只问"有几个文件"或"列出文件"，直接格式化
+                const files = parsed.filter((f) => f.type === 'file');
+                const dirs = parsed.filter((f) => f.type === 'directory');
+                const fileNames = files.map((f) => f.path.split('/').pop()).join('、');
+                const dirNames = dirs.map((f) => f.path.split('/').pop()).join('、');
+                let result = `📁 **${files.length}** 个文件`;
+                if (files.length > 0 && files.length <= 30)
+                    result += `：${fileNames}`;
+                result += `\n📂 **${dirs.length}** 个目录`;
+                if (dirs.length > 0 && dirs.length <= 30)
+                    result += `：${dirNames}`;
+                return result;
+            }
+        }
+        catch { /* not JSON */ }
+        // 输出较短且为单行，可能是直接答案
+        if (output.length < 200 && !output.includes('\n')) {
+            return output;
+        }
+        return null;
     }
     async learnFromExecution(userInput, mode, thought) {
         try {

@@ -24,5 +24,10 @@ export declare class AgentRuntime {
      * 用于防止 AI 在已经获取答案后继续无意义地查询
      */
     private isSemanticComplete;
+    /**
+     * 尝试直接格式化工具结果，避免额外的 LLM 调用
+     * 适用于简单的只读查询（如 list_files 的结果配合简单问题）
+     */
+    private tryFormatToolResult;
     private learnFromExecution;
 }

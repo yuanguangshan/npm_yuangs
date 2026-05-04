@@ -2,10 +2,13 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs/promises';
 import path from 'path';
+import os from 'os';
 import { ProposedAction, ToolExecutionResult } from './state';
 import { TOOL_CAPABILITY_MAP, canExecuteTool, getToolCapabilityRequirement } from './toolCapability';
 import { CapabilityLevel } from '../core/capability/CapabilityLevel';
 import { ErrorTracker } from './errorTracker';
+import { analyzeCommand, type CommandAnalysis } from './commandSemantics';
+import { persistToolResult, formatFileSize } from './toolResultStorage';
 
 const execAsync = promisify(exec);
 
@@ -13,44 +16,26 @@ const execAsync = promisify(exec);
  * 增强的工具执行器
  * 支持丰富的原子工具操作
  * 集成能力感知的工具调用
+ * 集成命令语义分析和路径安全验证
  */
 export class ToolExecutor {
   private static readonly MAX_OUTPUT_LENGTH = 2000; // Maximum output length in characters
   private static readonly READ_POSITIONS = new Map<string, number>(); // 记录文件读取位置用于 continue_reading
   private static currentCapabilityLevel = CapabilityLevel.STRUCTURAL; // 当前模型的能力等级（可配置）
+  private static allowedCwd: string = process.cwd(); // 允许的工作目录
 
   /**
-   * 危险命令模式列表，AI 生成的命令中包含这些模式时应拦截
+   * 设置允许的工作目录
    */
-  private static readonly DANGEROUS_PATTERNS: RegExp[] = [
-    /\brm\s+(-rf?|--recursive\s+--force)\s+\/\s*$/, // rm -rf /
-    /\brm\s+-rf?\s+\/\b/, // rm -rf /...
-    /\bdd\s+if=\/dev\/zero/, // dd if=/dev/zero
-    /\bmkfs\b/, // 格式化文件系统
-    />\s*\/dev\/sda/, // 直接写磁盘设备
-    />\s*\/dev\/vda/,
-    />\s*\/dev\/nvme/,
-    /:\(\)\{\s*:\|:\s*&\s*\}\s*;/, // fork bomb
-    /\bwget\s+.*\s*\|\s*(sh|bash)\b/i, // wget | sh (远程脚本执行)
-    /\bcurl\s+.*\s*\|\s*(sh|bash)\b/i, // curl | sh
-    /\bchmod\s+777\s+\/\b/, // chmod 777 /
-    /\bchown\s+-R\s+.*\s+\/\b/, // chown -R ... /
-    /\bsudo\s+rm\s+-rf\s+\/\b/, // sudo rm -rf /
-  ];
+  static setAllowedCwd(cwd: string): void {
+    this.allowedCwd = cwd;
+  }
 
   /**
-   * 检查命令是否包含危险模式
+   * 使用命令语义分析检查命令安全性
    */
-  private static isDangerousCommand(command: string): { safe: boolean; reason?: string } {
-    const trimmed = command.trim();
-
-    for (const pattern of this.DANGEROUS_PATTERNS) {
-      if (pattern.test(trimmed)) {
-        return { safe: false, reason: `命令匹配危险模式: ${pattern.source}` };
-      }
-    }
-
-    return { safe: true };
+  private static analyzeCommandSafety(command: string): CommandAnalysis {
+    return analyzeCommand(command, this.allowedCwd);
   }
 
   /**
@@ -400,12 +385,12 @@ export class ToolExecutor {
   }
 
   private static async executeShell(command: string): Promise<ToolExecutionResult> {
-    // 安全检查：拦截明显危险的命令
-    const safetyCheck = this.isDangerousCommand(command);
-    if (!safetyCheck.safe) {
+    // 语义分析：拦截危险命令
+    const analysis = this.analyzeCommandSafety(command);
+    if (analysis.category === 'DANGEROUS') {
       return {
         success: false,
-        error: `安全拦截: ${safetyCheck.reason}`,
+        error: analysis.description,
         output: ''
       };
     }
@@ -416,12 +401,19 @@ export class ToolExecutor {
         cwd: process.cwd()
       });
 
-      const output = stdout || stderr || '';
-      
+      let output = stdout || stderr || '';
+
+      // 大结果持久化到磁盘
+      const baseCmd = command.split(/\s+/)[0];
+      const persisted = await persistToolResult(output, baseCmd);
+      if (persisted) {
+        output = `${persisted.preview}\n\n[⚠️ 输出已截断，完整结果已保存到 ${persisted.filepath}（${formatFileSize(persisted.originalSize)}）]`;
+      }
+
       return {
         success: true,
         output,
-        artifacts: []
+        artifacts: persisted ? [persisted.filepath] : []
       };
     } catch (error: any) {
       return {
