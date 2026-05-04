@@ -113,9 +113,12 @@ class AgentRuntime {
             // === Step 6: Record KG Edge ===
             await this.recordKnowledgeGraphEdge(thought, action);
             // === Step 7: Pre-execution Checks ===
-            const cachedResult = await this.checkExecutionBlock(action, writeModeState);
-            if (cachedResult === 'blocked')
+            const cachedResult = await this.checkExecutionBlock(action, writeModeState, lastToolCall);
+            if (cachedResult === 'blocked' || cachedResult === 'force_break') {
+                if (cachedResult === 'force_break')
+                    break;
                 continue;
+            }
             // === Step 8: Execute ===
             const result = cachedResult && typeof cachedResult === 'object'
                 ? cachedResult
@@ -294,10 +297,32 @@ class AgentRuntime {
             }
         }
     }
-    async checkExecutionBlock(action, writeModeState) {
+    async checkExecutionBlock(action, writeModeState, lastToolCall) {
         if (action.type !== 'tool_call')
             return null;
         const toolName = action.payload.tool_name;
+        // 重复调用检测：在预执行阶段拦截，防止相同的工具被连续调用两次
+        const params = toolName === 'shell_cmd'
+            ? { command: (action.payload?.command || action.payload?.parameters?.command || '') }
+            : (action.payload?.parameters || action.payload);
+        if (lastToolCall) {
+            const isExactDuplicate = lastToolCall.tool === toolName &&
+                JSON.stringify(lastToolCall.params) === JSON.stringify(params);
+            if (isExactDuplicate) {
+                lastToolCall.blockCount = (lastToolCall.blockCount || 0) + 1;
+                if (lastToolCall.blockCount >= 2) {
+                    console.log(chalk_1.default.red(`[Force Break] 🛑 相同工具调用已被拦截 ${lastToolCall.blockCount} 次，强制结束`));
+                    // 返回已有的结果
+                    if (lastToolCall.lastOutput) {
+                        console.log(chalk_1.default.cyan(`\n✓ 结果: ${lastToolCall.lastOutput.slice(0, 300)}\n`));
+                    }
+                    return 'force_break';
+                }
+                console.log(chalk_1.default.yellow(`[Duplicate Pre-Block] 🚫 相同的工具调用已执行过，拦截重复调用: ${toolName}`));
+                this.context.addMessage('system', `你已经刚刚调用过 ${toolName}，结果没有变化。你已经有足够的数据，请使用 'answer' 类型返回结果给用户，不要再调用 ${toolName}。`);
+                return 'blocked';
+            }
+        }
         // Write Mode cache
         if (writeModeState && toolName === 'read_file') {
             const filePath = action.payload.parameters.path;
@@ -328,7 +353,8 @@ class AgentRuntime {
         const preview = result.output.length > 300 ? result.output.substring(0, 300) + '...' : result.output;
         console.log(chalk_1.default.green(`[SUCCESS] Result:\n${preview}`));
         // Stabilization detection: 检查输出是否稳定（排除错误输出）
-        const normalizedOutput = result.output?.trim()?.split('\n').filter(Boolean)[0] || '';
+        // 关键：比较完整输出的前N个字符，而非仅第一行
+        const normalizedOutput = result.output?.trim() || '';
         const isErrorMessage = /invalid option|unknown|error|failed|no such|cannot|usage:|not found/i.test(normalizedOutput);
         if (!isErrorMessage) {
             // 方案3: 语义完成检测 — 输出已经是直接答案（适用于首轮查询，必须在 prevOutput 检测之前）
@@ -344,20 +370,19 @@ class AgentRuntime {
             if (result.output.includes('[⚠️ OUTPUT TRUNCATED]') && normalizedOutput.length > 0) {
                 this.context.addMessage('system', `输出已截断，但已包含足够的数据。请直接使用 answer 类型向用户呈现你看到的结果，不要再运行更多命令。`);
             }
-            // 方案1: 连续两次输出完全相同
-            const prevOutput = lastToolCall?.lastOutput;
-            const isOutputStable = prevOutput && normalizedOutput && prevOutput === normalizedOutput;
-            // 方案2: 最近2次输出包含相同的文件/路径名（即使命令不同）
-            const extractPath = (line) => {
-                const parts = line.trim().split(/\s+/);
-                return parts.length > 1 ? parts[parts.length - 1] : '';
-            };
-            const currentPath = extractPath(normalizedOutput);
-            const prevPath = prevOutput ? extractPath(prevOutput) : '';
-            const isOutputStableByName = currentPath && prevPath && currentPath === prevPath;
-            if (isOutputStable || isOutputStableByName) {
+            // 方案1: 比较完整输出前500字符是否完全相同
+            const compareLen = 500;
+            const prevOutput = lastToolCall?.lastOutput || '';
+            const currPrefix = normalizedOutput.substring(0, compareLen);
+            const prevPrefix = prevOutput.substring(0, compareLen);
+            const isOutputStable = prevOutput && normalizedOutput && currPrefix === prevPrefix;
+            // 方案2: 比较输出长度接近且内容高度相似（适用于有少量随机性输出的场景）
+            const isOutputNearlyStable = prevOutput && normalizedOutput
+                && Math.abs(prevOutput.length - normalizedOutput.length) < 20
+                && currPrefix.slice(0, 100) === prevPrefix.slice(0, 100);
+            if (isOutputStable || isOutputNearlyStable) {
                 console.log(chalk_1.default.yellow('[Stabilization] 输出结果已稳定，自动完成'));
-                console.log(chalk_1.default.cyan(`\n✓ 结果: ${normalizedOutput}\n`));
+                console.log(chalk_1.default.cyan(`\n✓ 结果: ${normalizedOutput.slice(0, 200)}\n`));
                 this.context.addMessage("assistant", result.output);
                 agentRenderer && (() => { agentRenderer.buffer = ''; agentRenderer.quietMode = true; agentRenderer.finish(); })();
                 return null; // signal break
@@ -390,7 +415,7 @@ class AgentRuntime {
                     errorMsg += `\n注意：当前系统可能是 macOS（BSD 工具链），不支持 Linux 特定的命令选项。请使用 macOS 兼容的命令。`;
                     this.context.addMessage('system', errorMsg);
                     // 重置重复计数让新命令不被当作重复
-                    lastToolCall = { tool: 'reset', params: {}, count: 0, lastOutput: '', outputHistory: [] };
+                    lastToolCall = { tool: 'reset', params: {}, count: 0, lastOutput: '', outputHistory: [], blockCount: 0 };
                     return lastToolCall;
                 }
                 console.log(chalk_1.default.gray(`[Repeat Error] 重复失败 (${count + 1}/2)，请换方案...`));
@@ -402,6 +427,7 @@ class AgentRuntime {
                 return null; // signal break
             }
             else {
+                // 不应该走到这里，因为预执行阶段已经拦截了重复调用
                 console.log(chalk_1.default.gray(`[Repeat Detection] 重复调用 (${count + 1}/2)，继续...`));
             }
             lastToolCall.count = count;
@@ -413,7 +439,7 @@ class AgentRuntime {
             }
         }
         else {
-            lastToolCall = { ...currentToolCall, count: 0, lastOutput: normalizedOutput, outputHistory };
+            lastToolCall = { ...currentToolCall, count: 0, lastOutput: normalizedOutput, outputHistory, blockCount: 0 };
         }
         // Auto-complete logic for specific tool types
         if (action.type === 'tool_call') {
@@ -444,7 +470,17 @@ class AgentRuntime {
                         agentRenderer && (() => { agentRenderer.buffer = ''; agentRenderer.quietMode = true; agentRenderer.finish(); })();
                         return null; // 直接 break
                     }
-                    this.context.addMessage('system', `请根据以上工具结果，简洁回答用户的问题。`);
+                    // 对于文件读取类工具，结果已包含数据，直接展示给用户，不依赖 AI 再次调用
+                    if (['read_file', 'read_file_lines', 'read_file_lines_from_end', 'search_in_files', 'file_info'].includes(toolName)) {
+                        console.log(chalk_1.default.gray(`[Chat Auto-Show] 工具结果已获取，直接展示给用户`));
+                        const displayOutput = result.output.length > 1000 ? result.output.slice(0, 1000) + '\n...(内容已截断)' : result.output;
+                        console.log(chalk_1.default.green(`\n${displayOutput}\n`));
+                        this.context.addMessage("assistant", displayOutput);
+                        agentRenderer && (() => { agentRenderer.buffer = ''; agentRenderer.quietMode = true; agentRenderer.finish(); })();
+                        return null; // 直接 break
+                    }
+                    // 其他只读工具：强提示 AI 必须使用 answer
+                    this.context.addMessage('system', `工具结果已获取。请使用 'answer' 类型将数据返回给用户，不要再调用 ${toolName}。`);
                     return lastToolCall;
                 }
                 if (!requiresAnalysis && !requiresWrite) {
@@ -532,11 +568,12 @@ class AgentRuntime {
      */
     isSemanticComplete(output, userInput) {
         const trimmed = output.trim();
-        // 输出必须是短的（直接答案通常很短）
-        if (trimmed.length > 100 || trimmed.length === 0)
+        // 输出不能太长
+        if (trimmed.length > 300 || trimmed.length === 0)
             return false;
-        // 输出不能包含多行
-        if (trimmed.includes('\n'))
+        // 不能包含太多行（排除大段输出）
+        const lineCount = trimmed.split('\n').length;
+        if (lineCount > 15)
             return false;
         const q = userInput.toLowerCase();
         // 1. 问"大小/多少字节" → 输出是纯数字 或 带单位的短文本（如 "4.0K"、"288K"、"1.5MB"）
@@ -553,9 +590,12 @@ class AgentRuntime {
         // 2. 问"几个/多少个/数量/count" → 输出是纯数字
         if (/(几个|多少个|数量|count|how many)/.test(q) && /^\d+$/.test(trimmed))
             return true;
-        // 3. 问"最大/最小的文件" → 输出是 "数字 路径" 格式（如 "0 ./foo.txt"）
-        if (/(最大|最小|largest|smallest).*文件/.test(q) && /^\d+\s+\.\//.test(trimmed))
-            return true;
+        // 3. 问"最大/最小的文件" → 输出包含 "数字 路径" 格式的行
+        if (/(最大|最小|largest|smallest).*文件/.test(q)) {
+            // 匹配至少一行 "数字 路径" 格式
+            if (/^\d+\s+\.\//m.test(trimmed))
+                return true;
+        }
         // 4. 问"最新/最早"的文件 → 输出是单个文件名或带信息的短行
         if (/(最新|最旧|最近|最早|newest|latest|oldest)/.test(q) && trimmed.split(/\s+/).length <= 5 && trimmed.length < 80)
             return true;
@@ -587,7 +627,6 @@ class AgentRuntime {
         try {
             const parsed = JSON.parse(output);
             if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].path) {
-                // 如果用户只问"有几个文件"或"列出文件"，直接格式化
                 const files = parsed.filter((f) => f.type === 'file');
                 const dirs = parsed.filter((f) => f.type === 'directory');
                 const fileNames = files.map((f) => f.path.split('/').pop()).join('、');
@@ -607,6 +646,12 @@ class AgentRuntime {
             return output;
         }
         return null;
+    }
+    /**
+     * 判断用户是否需要文件比较（找最大/最小文件等）
+     */
+    requiresFileComparison(userInput) {
+        return /(最大|最小|哪个.*最大|哪个.*最小|largest|smallest|biggest|哪个文件).*文件/.test(userInput);
     }
     async learnFromExecution(userInput, mode, thought) {
         try {

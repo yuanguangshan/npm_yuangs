@@ -29,5 +29,9 @@ export declare class AgentRuntime {
      * 适用于简单的只读查询（如 list_files 的结果配合简单问题）
      */
     private tryFormatToolResult;
+    /**
+     * 判断用户是否需要文件比较（找最大/最小文件等）
+     */
+    private requiresFileComparison;
     private learnFromExecution;
 }
