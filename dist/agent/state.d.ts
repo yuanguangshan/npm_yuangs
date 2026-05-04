@@ -1,9 +1,39 @@
 export type AgentState = 'IDLE' | 'THINKING' | 'PROPOSING' | 'GOVERNING' | 'EXECUTING' | 'OBSERVING' | 'EVALUATING' | 'TERMINAL';
 export type RiskLevel = 'low' | 'medium' | 'high';
+export interface ToolCallPayload {
+    tool_name: string;
+    parameters: Record<string, unknown>;
+    risk_level?: RiskLevel;
+}
+export interface ShellCmdPayload {
+    command: string;
+    risk_level?: RiskLevel;
+}
+export interface AnswerPayload {
+    content?: string;
+    text?: string;
+    risk_level?: RiskLevel;
+}
+/** 联合载荷类型，兼容所有访问模式 */
+export type ProposedActionPayload = ToolCallPayload | ShellCmdPayload | AnswerPayload | Record<string, unknown>;
+export interface ParsedPlan {
+    acknowledged_observation?: string;
+    goal?: string;
+}
+export interface LLMPlan {
+    goal?: string;
+    command?: string;
+    parameters?: Record<string, unknown>;
+    risk_level?: RiskLevel;
+}
+/** 类型守卫辅助 */
+export declare function isToolCallPayload(payload: ProposedActionPayload): payload is ToolCallPayload;
+export declare function isShellCmdPayload(payload: ProposedActionPayload): payload is ShellCmdPayload;
+export declare function isAnswerPayload(payload: ProposedActionPayload): payload is AnswerPayload;
 export interface ProposedAction {
     id: string;
     type: 'tool_call' | 'code_diff' | 'shell_cmd' | 'answer';
-    payload: any;
+    payload: ProposedActionPayload;
     riskLevel: RiskLevel;
     reasoning: string;
 }
@@ -39,10 +69,10 @@ export type EvaluationOutcome = {
 };
 export interface AgentThought {
     raw: string;
-    parsedPlan: any;
+    parsedPlan?: ParsedPlan;
     isDone: boolean;
     type?: 'tool_call' | 'code_diff' | 'shell_cmd' | 'answer';
-    payload?: any;
+    payload?: ProposedActionPayload;
     reasoning?: string;
     modelName?: string;
     usedRouter?: boolean;

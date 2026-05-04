@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.diffExecution = diffExecution;
 exports.formatReplayDiff = formatReplayDiff;
-const skills_1 = require("../agent/skills");
+const skillTypes_1 = require("./skillTypes");
 function diffExecution(original, current) {
     return {
         decisionDiff: diffDecision(original, current),
@@ -89,7 +89,7 @@ function diffSkills(original, current) {
         const origSkill = origSkillMap.get(skill.name);
         if (!origSkill) {
             // Added
-            const score = (0, skills_1.computeSkillScore)(skill, now);
+            const score = (0, skillTypes_1.computeSkillScore)(skill, now);
             const totalUses = skill.successCount + skill.failureCount;
             const successRate = totalUses === 0 ? 0.5 : skill.successCount / totalUses;
             added.push({
@@ -103,8 +103,8 @@ function diffSkills(original, current) {
         }
         else {
             // Check if changed
-            const origScore = (0, skills_1.computeSkillScore)(origSkill, now);
-            const currScore = (0, skills_1.computeSkillScore)(skill, now);
+            const origScore = (0, skillTypes_1.computeSkillScore)(origSkill, now);
+            const currScore = (0, skillTypes_1.computeSkillScore)(skill, now);
             const origTotalUses = origSkill.successCount + origSkill.failureCount;
             const currTotalUses = skill.successCount + skill.failureCount;
             const origSuccessRate = origTotalUses === 0 ? 0.5 : origSkill.successCount / origTotalUses;
@@ -126,7 +126,7 @@ function diffSkills(original, current) {
     // Find removed skills
     for (const skill of origSkills) {
         if (!currSkillMap.has(skill.name)) {
-            const score = (0, skills_1.computeSkillScore)(skill, now);
+            const score = (0, skillTypes_1.computeSkillScore)(skill, now);
             const totalUses = skill.successCount + skill.failureCount;
             const successRate = totalUses === 0 ? 0.5 : skill.successCount / totalUses;
             removed.push({

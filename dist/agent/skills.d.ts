@@ -1,20 +1,7 @@
-export interface Skill {
-    id: string;
-    name: string;
-    description: string;
-    whenToUse: string;
-    planTemplate: any;
-    successCount: number;
-    failureCount: number;
-    confidence: number;
-    lastUsed: number;
-    createdAt: number;
-    enabled: boolean;
-}
-/**
- * 计算技能分 (0 ~ 1)
- */
-export declare function computeSkillScore(skill: Skill, now?: number): number;
+import type { Skill } from '../core/skillTypes';
+import { computeSkillScore } from '../core/skillTypes';
+export type { Skill };
+export { computeSkillScore };
 /**
  * 更新技能状态 (执行后调用)
  */
@@ -32,3 +19,11 @@ export declare function getRelevantSkills(input: string, limit?: number): Skill[
  */
 export declare function reapColdSkills(): void;
 export declare function getAllSkills(): Skill[];
+/**
+ * 启用技能
+ */
+export declare function enableSkill(name: string): boolean;
+/**
+ * 禁用技能
+ */
+export declare function disableSkill(name: string): boolean;

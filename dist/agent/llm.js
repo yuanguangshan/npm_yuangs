@@ -10,11 +10,8 @@ const chalk_1 = __importDefault(require("chalk"));
 const client_1 = require("../ai/client");
 const axios_1 = __importDefault(require("axios"));
 const validation_1 = require("../core/validation");
-const fs_1 = __importDefault(require("fs"));
-const path_1 = __importDefault(require("path"));
-const os_1 = __importDefault(require("os"));
-const validation_2 = require("../core/validation");
 const zod_1 = require("zod");
+const ConfigService_1 = require("../core/ConfigService");
 const errorHandling_1 = require("./errorHandling");
 const modelRouterIntegration_1 = require("./modelRouterIntegration");
 /**
@@ -31,7 +28,6 @@ class AIError extends Error {
     }
 }
 exports.AIError = AIError;
-const CONFIG_FILE = path_1.default.join(os_1.default.homedir(), '.yuangs.json');
 exports.AgentActionSchema = zod_1.z.object({
     action_type: zod_1.z.enum(['tool_call', 'shell_cmd', 'answer', 'code_diff']),
     tool_name: zod_1.z.string().optional(),
@@ -64,14 +60,12 @@ function supportsStructuredOutput(model) {
     return STRUCTURED_OUTPUT_MODELS.some(supported => modelName.includes(supported.toLowerCase()));
 }
 function getUserConfig() {
-    if (fs_1.default.existsSync(CONFIG_FILE)) {
-        try {
-            const content = fs_1.default.readFileSync(CONFIG_FILE, 'utf8');
-            return JSON.parse(content);
-        }
-        catch (e) { }
-    }
-    return {};
+    const svc = (0, ConfigService_1.getConfigService)();
+    return {
+        aiProxyUrl: svc.getAiProxyUrl(),
+        defaultModel: svc.getDefaultModel(),
+        accountType: svc.getAccountType(),
+    };
 }
 async function runLLM({ prompt, model, stream, onChunk, bypassRouter }) {
     const start = Date.now();
@@ -120,18 +114,18 @@ async function runLLM({ prompt, model, stream, onChunk, bypassRouter }) {
     }
     // Non-streaming mode with optional schema
     const config = getUserConfig();
-    const url = config.aiProxyUrl || validation_1.DEFAULT_AI_PROXY_URL;
+    const url = config.aiProxyUrl;
     const headers = {
         'Content-Type': 'application/json',
         'X-Client-ID': 'npm_yuangs',
         'Origin': 'https://cli.want.biz',
         'Referer': 'https://cli.want.biz/',
-        'account': config.accountType || validation_1.DEFAULT_ACCOUNT_TYPE,
+        'account': config.accountType,
         'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1',
         'Accept': 'application/json'
     };
     // Native Structured Output: Check if model supports it and we're in Agent mode
-    const modelUsed = model || config.defaultModel || validation_1.DEFAULT_MODEL;
+    const modelUsed = model || config.defaultModel;
     const useStructuredOutput = supportsStructuredOutput(modelUsed) && !stream;
     let responseData = {
         model: modelUsed,
@@ -202,7 +196,7 @@ async function runLLM({ prompt, model, stream, onChunk, bypassRouter }) {
         }
         let parsed = undefined;
         if (prompt.outputSchema) {
-            const parseResult = (0, validation_2.safeParseJSON)(rawText, prompt.outputSchema, {});
+            const parseResult = (0, validation_1.safeParseJSON)(rawText, prompt.outputSchema, {});
             if (parseResult.success) {
                 parsed = parseResult.data;
             }

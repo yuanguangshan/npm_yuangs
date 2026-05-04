@@ -43,6 +43,7 @@ const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
 const os_1 = __importDefault(require("os"));
 const commander_1 = require("commander");
+const ConfigService_1 = require("./core/ConfigService");
 const handleAIChat_1 = require("./commands/handleAIChat");
 const capabilityCommands_1 = require("./commands/capabilityCommands");
 const completion_1 = require("./core/completion");
@@ -68,6 +69,8 @@ if (majorVersion < 18) {
 }
 const packageJson = JSON.parse(fs_1.default.readFileSync(path_1.default.join(__dirname, '../package.json'), 'utf8'));
 const version = packageJson.version;
+// Initialize unified config service (fire-and-forget, config loads async)
+(0, ConfigService_1.getConfigService)().init().catch(() => { });
 const program = new commander_1.Command();
 program
     .name('yuangs')

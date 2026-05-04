@@ -1,55 +1,22 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.computeSkillScore = computeSkillScore;
+exports.computeSkillScore = void 0;
 exports.updateSkillStatus = updateSkillStatus;
 exports.learnSkillFromRecord = learnSkillFromRecord;
 exports.getRelevantSkills = getRelevantSkills;
 exports.reapColdSkills = reapColdSkills;
 exports.getAllSkills = getAllSkills;
-const fs_1 = __importDefault(require("fs"));
-const path_1 = __importDefault(require("path"));
-const os_1 = __importDefault(require("os"));
-const chalk_1 = __importDefault(require("chalk"));
-const SKILLS_FILE = path_1.default.join(os_1.default.homedir(), '.yuangs_skills.json');
-let skillLibrary = [];
-// === Persistence Logic ===
-function loadSkills() {
-    if (fs_1.default.existsSync(SKILLS_FILE)) {
-        try {
-            const data = fs_1.default.readFileSync(SKILLS_FILE, 'utf-8');
-            skillLibrary = JSON.parse(data);
-        }
-        catch (e) {
-            console.error(chalk_1.default.yellow(`Failed to load skills from ${SKILLS_FILE}, starting empty.`));
-            skillLibrary = [];
-        }
-    }
-}
-function saveSkills() {
-    try {
-        fs_1.default.writeFileSync(SKILLS_FILE, JSON.stringify(skillLibrary, null, 2));
-    }
-    catch (e) {
-        console.error(chalk_1.default.red(`Failed to save skills to ${SKILLS_FILE}`));
-    }
-}
-// Initialize on load
-loadSkills();
-// === Existing Logic with Save Hooks ===
-/**
- * 计算技能分 (0 ~ 1)
- */
-function computeSkillScore(skill, now = Date.now()) {
-    const totalUses = skill.successCount + skill.failureCount;
-    const successRate = totalUses === 0 ? 0.5 : skill.successCount / totalUses;
-    // 时间衰减 (Freshness): 半衰期约 14 天
-    const idleDays = (now - skill.lastUsed) / (1000 * 60 * 60 * 24);
-    const freshness = Math.exp(-idleDays / 14);
-    // 综合得分: 45% 成功率 + 35% 新鲜度 + 20% 置信度
-    return (0.45 * successRate) + (0.35 * freshness) + (0.20 * skill.confidence);
+exports.enableSkill = enableSkill;
+exports.disableSkill = disableSkill;
+const skillTypes_1 = require("../core/skillTypes");
+Object.defineProperty(exports, "computeSkillScore", { enumerable: true, get: function () { return skillTypes_1.computeSkillScore; } });
+const storage_1 = require("../utils/storage");
+const skillsStorage = storage_1.FileStorage.forYuangs('skills.json');
+// 初始化加载
+let skillLibrary = skillsStorage.read() || [];
+/** 持久化技能到磁盘 */
+function persistSkills() {
+    skillsStorage.write(skillLibrary);
 }
 /**
  * 更新技能状态 (执行后调用)
@@ -69,7 +36,7 @@ function updateSkillStatus(skillId, success) {
         // 失败惩罚: 惩罚力度大于奖励，防止系统“自嗨”
         skill.confidence = Math.max(0, skill.confidence - 0.1);
     }
-    saveSkills(); // Persist changes
+    persistSkills();
 }
 /**
  * 自动学习新技能
@@ -109,7 +76,7 @@ function learnSkillFromRecord(record, success = true) {
     });
     // 每学习一次，尝试清理一次“冷”技能
     reapColdSkills();
-    saveSkills(); // Persist changes
+    persistSkills();
 }
 /**
  * 筛选并排序技能 (用于注入 Prompt)
@@ -118,11 +85,11 @@ function getRelevantSkills(input, limit = 3) {
     const now = Date.now();
     return skillLibrary
         // 1. 基础筛选: 剔除评分过低的技能 (硬淘汰阈值 0.3)
-        .filter(s => computeSkillScore(s, now) >= 0.3)
+        .filter(s => (0, skillTypes_1.computeSkillScore)(s, now) >= 0.3)
         // 2. 过滤已禁用的技能
         .filter(s => s.enabled !== false)
         // 3. 排序: 按综合分排序
-        .sort((a, b) => computeSkillScore(b, now) - computeSkillScore(a, now))
+        .sort((a, b) => (0, skillTypes_1.computeSkillScore)(b, now) - (0, skillTypes_1.computeSkillScore)(a, now))
         // 4. 取上限
         .slice(0, limit);
 }
@@ -133,7 +100,7 @@ function reapColdSkills() {
     const now = Date.now();
     const initialCount = skillLibrary.length;
     skillLibrary = skillLibrary.filter(skill => {
-        const score = computeSkillScore(skill, now);
+        const score = (0, skillTypes_1.computeSkillScore)(skill, now);
         const idleDays = (now - skill.lastUsed) / (1000 * 60 * 60 * 24);
         // 满足以下任一条件则淘汰:
         // 1. 得分极低且长期不用
@@ -147,14 +114,40 @@ function reapColdSkills() {
     // 强制保持容量
     if (skillLibrary.length > 100) {
         // 如果还超标，移除得分最低的那个
-        skillLibrary.sort((a, b) => computeSkillScore(a, now) - computeSkillScore(b, now));
+        skillLibrary.sort((a, b) => (0, skillTypes_1.computeSkillScore)(a, now) - (0, skillTypes_1.computeSkillScore)(b, now));
         skillLibrary.shift();
     }
     if (skillLibrary.length !== initialCount) {
-        saveSkills(); // Persist if changes happened
+        persistSkills(); // Persist if changes happened
     }
 }
 function getAllSkills() {
     return [...skillLibrary];
+}
+/**
+ * 启用技能
+ */
+function enableSkill(name) {
+    const skill = skillLibrary.find(s => s.name === name || s.id === name);
+    if (!skill)
+        return false;
+    if (skill.enabled)
+        return true;
+    skill.enabled = true;
+    persistSkills();
+    return true;
+}
+/**
+ * 禁用技能
+ */
+function disableSkill(name) {
+    const skill = skillLibrary.find(s => s.name === name || s.id === name);
+    if (!skill)
+        return false;
+    if (!skill.enabled)
+        return true;
+    skill.enabled = false;
+    persistSkills();
+    return true;
 }
 //# sourceMappingURL=skills.js.map

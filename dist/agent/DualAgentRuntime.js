@@ -44,6 +44,8 @@ const contextManager_1 = require("./contextManager");
 const client_1 = require("../ai/client");
 const modelRouterIntegration_1 = require("./modelRouterIntegration");
 const PlanCache_1 = require("./PlanCache");
+const Logger_1 = require("../utils/Logger");
+const log = Logger_1.logger.child('DualAgentRuntime');
 class DualAgentRuntime {
     context;
     executionId;
@@ -151,11 +153,11 @@ class DualAgentRuntime {
             try {
                 let response;
                 if (model) {
-                    console.log(chalk_1.default.gray(`[Planner] Using specified model: ${model}`));
+                    log.debug('Planner using specified model', { model });
                     response = await (0, client_1.askAI)(prompt, model);
                 }
                 else {
-                    console.log(chalk_1.default.gray(`[Planner] Choosing best model for planning...`));
+                    log.debug('Planner choosing model via router');
                     const routerResult = await (0, modelRouterIntegration_1.callLLMWithRouter)(messages, 'command', {
                         taskType: 'analysis', // Planning is primarily analysis
                         routingStrategy: 'best_quality' // We want high quality plans
@@ -177,7 +179,7 @@ class DualAgentRuntime {
                 };
             }
             catch (error) {
-                console.error(chalk_1.default.red(`Planner error: ${error}`));
+                log.error('Planner error', { error: String(error) });
                 return {
                     plan: 'Plan generation failed',
                     steps: [],
@@ -268,7 +270,7 @@ ${context ? `Context:\n${context}\n` : ''}
                 }
             }
             catch (error) {
-                console.warn(chalk_1.default.yellow(`[Skill Learning] Failed: ${error}`));
+                log.warn('Skill learning failed', { error: String(error) });
             }
         }
         else {
@@ -282,7 +284,7 @@ ${context ? `Context:\n${context}\n` : ''}
                 }
             }
             catch (error) {
-                console.warn(chalk_1.default.yellow(`[Skill Learning] Failed to update status: ${error}`));
+                log.warn('Skill status update failed', { error: String(error) });
             }
         }
         return {

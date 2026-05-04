@@ -63,11 +63,12 @@ class AuditTimeline {
         }
         if (turn.executionResult) {
             if (turn.proposedAction?.type === 'tool_call') {
+                const toolPayload = turn.proposedAction.payload;
                 this.record({
                     type: 'tool_executed',
                     data: {
-                        toolName: turn.proposedAction.payload?.tool_name,
-                        toolParams: turn.proposedAction.payload?.parameters,
+                        toolName: toolPayload.tool_name,
+                        toolParams: toolPayload.parameters,
                         success: turn.executionResult.success
                     }
                 });
@@ -110,8 +111,9 @@ class AuditTimeline {
         };
         for (const turn of turns) {
             if (turn.proposedAction?.type === 'tool_call') {
-                const toolName = turn.proposedAction.payload?.tool_name;
-                const params = turn.proposedAction.payload?.parameters;
+                const toolPayload = turn.proposedAction.payload;
+                const toolName = toolPayload.tool_name;
+                const params = toolPayload.parameters;
                 switch (toolName) {
                     case 'read_file':
                         if (params?.path && turn.executionResult?.success) {
@@ -132,7 +134,7 @@ class AuditTimeline {
             }
             if (turn.proposedAction?.type === 'shell_cmd' && turn.executionResult) {
                 effects.commandsExecuted.push({
-                    command: turn.proposedAction.payload?.command,
+                    command: turn.proposedAction.payload.command,
                     success: turn.executionResult.success
                 });
             }

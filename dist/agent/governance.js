@@ -137,7 +137,8 @@ class GovernanceService {
             console.log(chalk_1.default.bold.green('💻 Proposed Command: ') + chalk_1.default.yellow(action.payload.command));
         }
         else if (action.type === 'tool_call') {
-            console.log(chalk_1.default.bold.green('🛠️  Tool: ') + chalk_1.default.cyan(`${action.payload.tool_name}(${JSON.stringify(action.payload.parameters)})`));
+            const toolPayload = action.payload;
+            console.log(chalk_1.default.bold.green('🛠️  Tool: ') + chalk_1.default.cyan(`${toolPayload.tool_name}(${JSON.stringify(toolPayload.parameters)})`));
         }
         // 显示量化风险评分
         console.log(chalk_1.default.bold(`\n📊 Risk Assessment: ${riskAssessment.score}/100 (${riskAssessment.level.toUpperCase()})`));

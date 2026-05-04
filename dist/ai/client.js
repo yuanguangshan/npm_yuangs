@@ -3,26 +3,29 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.getUserConfig = getUserConfig;
 exports.addToConversationHistory = addToConversationHistory;
 exports.clearConversationHistory = clearConversationHistory;
 exports.getConversationHistory = getConversationHistory;
-exports.getUserConfig = getUserConfig;
 exports.askAI = askAI;
 exports.callAI_Stream = callAI_Stream;
 const axios_1 = __importDefault(require("axios"));
-const fs_1 = __importDefault(require("fs"));
-const path_1 = __importDefault(require("path"));
-const os_1 = __importDefault(require("os"));
-const validation_1 = require("../core/validation");
+const ConfigService_1 = require("../core/ConfigService");
 const db_1 = require("../core/db");
-const CONFIG_FILE = path_1.default.join(os_1.default.homedir(), '.yuangs.json');
+function getUserConfig() {
+    const svc = (0, ConfigService_1.getConfigService)();
+    return {
+        aiProxyUrl: svc.getAiProxyUrl(),
+        defaultModel: svc.getDefaultModel(),
+        accountType: svc.getAccountType(),
+    };
+}
 let conversationHistory = (0, db_1.getRecentMessagesFromDB)(20);
 function addToConversationHistory(role, content) {
     conversationHistory.push({ role, content });
     if (conversationHistory.length > 20) {
         conversationHistory = conversationHistory.slice(-20);
     }
-    // Deep persist
     (0, db_1.appendMessageToDB)(role, content);
 }
 function clearConversationHistory() {
@@ -32,30 +35,20 @@ function clearConversationHistory() {
 function getConversationHistory() {
     return conversationHistory;
 }
-function getUserConfig() {
-    if (fs_1.default.existsSync(CONFIG_FILE)) {
-        try {
-            const content = fs_1.default.readFileSync(CONFIG_FILE, 'utf8');
-            return JSON.parse(content);
-        }
-        catch (e) { }
-    }
-    return {};
-}
 async function askAI(prompt, model) {
     const config = getUserConfig();
-    const url = config.aiProxyUrl || validation_1.DEFAULT_AI_PROXY_URL;
+    const url = config.aiProxyUrl;
     const headers = {
         'Content-Type': 'application/json',
         'X-Client-ID': 'npm_yuangs',
         'Origin': 'https://cli.want.biz',
         'Referer': 'https://cli.want.biz/',
-        'account': config.accountType || validation_1.DEFAULT_ACCOUNT_TYPE,
+        'account': config.accountType,
         'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1',
         'Accept': 'application/json'
     };
     const data = {
-        model: model || config.defaultModel || validation_1.DEFAULT_MODEL,
+        model: model || config.defaultModel,
         messages: [{ role: 'user', content: prompt }],
         stream: false
     };
@@ -88,12 +81,12 @@ async function askAI(prompt, model) {
 }
 async function callAI_Stream(messages, model, onChunk) {
     const config = getUserConfig();
-    const url = config.aiProxyUrl || validation_1.DEFAULT_AI_PROXY_URL;
+    const url = config.aiProxyUrl;
     const response = await (0, axios_1.default)({
         method: 'post',
         url: url,
         data: {
-            model: model || config.defaultModel || validation_1.DEFAULT_MODEL,
+            model: model || config.defaultModel,
             messages: messages,
             stream: true
         },
@@ -103,7 +96,7 @@ async function callAI_Stream(messages, model, onChunk) {
             'X-Client-ID': 'npm_yuangs',
             'Origin': 'https://cli.want.biz',
             'Referer': 'https://cli.want.biz/',
-            'account': config.accountType || validation_1.DEFAULT_ACCOUNT_TYPE,
+            'account': config.accountType,
             'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1',
             'Accept': 'application/json'
         }

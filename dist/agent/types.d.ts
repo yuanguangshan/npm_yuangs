@@ -1,4 +1,6 @@
 import type { AIRequestMessage } from '../core/validation';
+import type { LLMPlan } from './state';
+import type { z } from 'zod';
 export type AgentMode = 'chat' | 'command' | 'command+exec';
 export type ObservationKind = 'tool_result' | 'system_note' | 'manual_input' | 'error' | 'none';
 export interface AgentInput {
@@ -32,12 +34,12 @@ export interface AgentIntent {
 export interface AgentPrompt {
     system?: string;
     messages: AIRequestMessage[];
-    outputSchema?: any;
+    outputSchema?: z.ZodSchema;
 }
 export interface LLMResult {
     rawText: string;
-    parsed?: any;
-    plan?: any;
+    parsed?: unknown;
+    plan?: LLMPlan;
     latencyMs: number;
     tokens?: {
         prompt: number;

@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.explainExecution = explainExecution;
-const skills_1 = require("../agent/skills");
+const skillTypes_1 = require("./skillTypes");
 /**
  * Explain Output Spec v1
  * - Stable, human-readable, diff-friendly
@@ -55,7 +55,7 @@ function explainExecution(record) {
         const scored = skills
             .map(skill => ({
             skill,
-            score: (0, skills_1.computeSkillScore)(skill, now),
+            score: (0, skillTypes_1.computeSkillScore)(skill, now),
         }))
             .sort((a, b) => b.score - a.score);
         for (const { skill, score } of scored) {

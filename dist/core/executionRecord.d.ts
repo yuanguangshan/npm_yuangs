@@ -1,7 +1,7 @@
 import { MergedConfig } from './configMerge';
 import { ModelCapabilities, CapabilityMatchExplanation } from './modelMatcher';
 import { CapabilityRequirement } from './modelMatcher';
-import { Skill } from '../agent/skills';
+import { Skill } from './skillTypes';
 export interface ExecutionMeta {
     commandName: string;
     timestamp: string;
