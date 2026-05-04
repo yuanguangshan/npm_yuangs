@@ -358,6 +358,7 @@ export class StreamMarkdownRenderer extends MarkdownRenderer {
   private quietMode: boolean;
   private autoFinish: boolean;
   private onChunkCallback: ((chunk: string) => void) | null;
+  private finished: boolean = false;
 
   constructor(prefix: string = chalk.bold.blue('🤖 AI：'), spinner?: Ora, options?: RendererOptions | boolean) {
     super(); 
@@ -465,6 +466,9 @@ export class StreamMarkdownRenderer extends MarkdownRenderer {
    * 使用 md.parse() 解析 Tokens，直接映射为 ANSI
    */
   public finish(): string {
+    if (this.finished) return this.buffer;
+    this.finished = true;
+
     if (this.spinner && this.spinner.isSpinning) {
       this.spinner.stop();
     }

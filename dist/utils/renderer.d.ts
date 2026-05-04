@@ -47,6 +47,7 @@ export declare class StreamMarkdownRenderer extends MarkdownRenderer {
     private quietMode;
     private autoFinish;
     private onChunkCallback;
+    private finished;
     constructor(prefix?: string, spinner?: Ora, options?: RendererOptions | boolean);
     /**
      * 处理流式 chunk

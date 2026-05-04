@@ -327,6 +327,7 @@ class StreamMarkdownRenderer extends MarkdownRenderer {
     quietMode;
     autoFinish;
     onChunkCallback;
+    finished = false;
     constructor(prefix = chalk_1.default.bold.blue('🤖 AI：'), spinner, options) {
         super();
         this.prefix = prefix;
@@ -419,6 +420,9 @@ class StreamMarkdownRenderer extends MarkdownRenderer {
      * 使用 md.parse() 解析 Tokens，直接映射为 ANSI
      */
     finish() {
+        if (this.finished)
+            return this.buffer;
+        this.finished = true;
         if (this.spinner && this.spinner.isSpinning) {
             this.spinner.stop();
         }
