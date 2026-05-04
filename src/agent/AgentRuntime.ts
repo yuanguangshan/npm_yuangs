@@ -659,25 +659,30 @@ export class AgentRuntime {
 
   /**
    * 尝试直接格式化工具结果，避免额外的 LLM 调用
-   * 适用于简单的只读查询（如 list_files、read_file 等）
+   * 适用于简单的只读查询（如 list_files 的结果配合简单问题）
    */
   private tryFormatToolResult(output: string, userInput: string): string | null {
-    // 只对较短的输出直接格式化（避免格式化大量数据）
+    // 只对较短的输出直接格式化
     if (output.length > 5000) return null;
+
+    // 如果问题需要进一步处理（如找最大/最小文件），不直接格式化
+    if (/(最大|最小|哪个.*最大|哪个.*最小|largest|smallest|biggest)/.test(userInput)) {
+      return null;
+    }
 
     // 尝试解析 JSON 数组（如 list_files 的结果）
     try {
       const parsed = JSON.parse(output);
       if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].path) {
-        // list_files 结果
+        // 如果用户只问"有几个文件"或"列出文件"，直接格式化
         const files = parsed.filter((f: any) => f.type === 'file');
         const dirs = parsed.filter((f: any) => f.type === 'directory');
         const fileNames = files.map((f: any) => f.path.split('/').pop()).join('、');
         const dirNames = dirs.map((f: any) => f.path.split('/').pop()).join('、');
         let result = `📁 **${files.length}** 个文件`;
-        if (files.length > 0) result += `：${fileNames}`;
+        if (files.length > 0 && files.length <= 30) result += `：${fileNames}`;
         result += `\n📂 **${dirs.length}** 个目录`;
-        if (dirs.length > 0) result += `：${dirNames}`;
+        if (dirs.length > 0 && dirs.length <= 30) result += `：${dirNames}`;
         return result;
       }
     } catch { /* not JSON */ }
