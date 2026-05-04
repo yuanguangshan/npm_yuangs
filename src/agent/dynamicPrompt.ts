@@ -1,5 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import * as os from 'os';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
@@ -23,6 +24,7 @@ export interface DynamicContext {
   techStack?: string[];
   lastError?: string;
   errorRecovery?: string;
+  osContext?: string;
 }
 
 /**
@@ -176,6 +178,41 @@ export function generateErrorRecovery(lastError: string): string {
 }
 
 /**
+ * 检测当前操作系统
+ */
+export function detectOS(): string {
+  const platform = process.platform;
+  const release = os.release();
+
+  if (platform === 'darwin') {
+    return `
+[SYSTEM OS] macOS (Darwin ${release}) - BSD 工具链
+- 当前系统是 macOS，使用 BSD 风格的命令行工具
+- GNU 工具的部分选项不可用（如 \`du -b\`、\`ls --color=auto\`、\`sed -i\` 不加扩展名等）
+- 使用 \`du\` 时不要用 \`-b\` 参数（macOS 不支持），用 \`du -k\` 或 \`stat -f %z 文件名\` 获取文件大小
+- 使用 \`stat -f "%z %N" 文件名\` 获取文件大小（不要用 GNU 的 \`stat -c\`）
+- \`sed -i\` 需要跟空字符串参数：\`sed -i '' 's/old/new/g' 文件名\`
+- 安装 GNU 工具可以用 \`brew install coreutils\`（前缀为 g，如 \`gdu\`、\`gsed\`）
+- 网络工具：使用 \`curl\` 而非 \`wget\`（默认不安装 wget）
+`;
+  } else if (platform === 'linux') {
+    return `
+[SYSTEM OS] Linux - GNU 工具链
+- 当前系统是 Linux，使用 GNU 风格的命令行工具
+- 支持 GNU coreutils 的完整功能（如 \`du -b\`、\`stat -c\`、\`sed -i\` 等）
+`;
+  } else if (platform === 'win32') {
+    return `
+[SYSTEM OS] Windows
+- 当前系统是 Windows
+- 如果是 WSL，可以使用 Linux 命令
+- 如果是 PowerShell，使用 Windows 风格的命令
+`;
+  }
+  return '';
+}
+
+/**
  * 构建动态上下文
  */
 export async function buildDynamicContext(
@@ -183,6 +220,12 @@ export async function buildDynamicContext(
   includeTechStack: boolean = true
 ): Promise<DynamicContext> {
   const context: DynamicContext = {};
+
+  // 检测操作系统（每次都必须注入）
+  const osCtx = detectOS();
+  if (osCtx) {
+    context.osContext = osCtx;
+  }
 
   // 检测Git上下文
   const gitContext = await detectGitContext();
@@ -215,6 +258,11 @@ export function injectDynamicContext(
   context: DynamicContext
 ): string {
   let prompt = basePrompt;
+
+  // 注入操作系统信息（最重要，放在最前面）
+  if (context.osContext) {
+    prompt += `\n${context.osContext}`;
+  }
 
   // 注入Git上下文
   if (context.gitContext) {

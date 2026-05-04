@@ -7,6 +7,7 @@ export interface DynamicContext {
     techStack?: string[];
     lastError?: string;
     errorRecovery?: string;
+    osContext?: string;
 }
 /**
  * 检测Git上下文（增强版，支持子目录检测）
@@ -24,6 +25,10 @@ export declare function generateTechStackGuidance(stacks: string[]): string;
  * 生成错误恢复指导
  */
 export declare function generateErrorRecovery(lastError: string): string;
+/**
+ * 检测当前操作系统
+ */
+export declare function detectOS(): string;
 /**
  * 构建动态上下文
  */

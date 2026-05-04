@@ -43,7 +43,6 @@ const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
 const os_1 = __importDefault(require("os"));
 const commander_1 = require("commander");
-const handleAICommand_1 = require("./commands/handleAICommand");
 const handleAIChat_1 = require("./commands/handleAIChat");
 const capabilityCommands_1 = require("./commands/capabilityCommands");
 const completion_1 = require("./core/completion");
@@ -96,11 +95,11 @@ function parseOptionsFromArgs(args) {
 }
 function getModelFromShortcuts(args) {
     if (args.includes('-p'))
-        return 'Assistant';
+        return 'Pro'; // 高质量模型
     if (args.includes('-f'))
-        return 'Assistant';
+        return 'Flash'; // 快速响应模型
     if (args.includes('-l'))
-        return 'Assistant';
+        return 'Lite'; // 轻量/低成本模型
     return undefined;
 }
 function getArgValue(args, flags) {
@@ -143,11 +142,11 @@ program
     }
     let model = options.model;
     if (options.p)
-        model = 'Assistant';
+        model = 'Pro';
     if (options.f)
-        model = 'Assistant';
+        model = 'Flash';
     if (options.l)
-        model = 'Assistant';
+        model = 'Lite';
     const { PreferencesManager } = await Promise.resolve().then(() => __importStar(require('./agent/preferences')));
     if (options.contextStrategy) {
         const validStrategies = ['smart', 'minimal', 'full'];
@@ -625,7 +624,11 @@ async function main() {
             }
             let model = options.model;
             if (options.exec) {
-                await (0, handleAICommand_1.handleAICommand)(question, { execute: false, model, verbose: options.withContent });
+                // 统一使用 AgentRuntime 执行命令模式，与 `yuangs ai -e` 保持一致
+                const { AgentRuntime } = await Promise.resolve().then(() => __importStar(require('./agent')));
+                console.log(chalk_1.default.magenta('--- RUNNING WITH AGENT ENGINE (COMMAND MODE) ---'));
+                const runtime = new AgentRuntime(await Promise.resolve().then(() => __importStar(require('./ai/client'))).then(m => m.getConversationHistory()));
+                await runtime.run(question || '', 'command', undefined, model);
             }
             else {
                 await (0, handleAIChat_1.handleAIChat)(question || null, model);

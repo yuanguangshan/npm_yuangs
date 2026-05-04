@@ -251,13 +251,37 @@ async function handleAIChat(initialQuestion, model) {
     const processInteraction = async (question) => {
         const spinner = (0, ora_1.default)(chalk_1.default.cyan('AI 正在思考...')).start();
         const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
-        await runtime.run(question, 'chat', (chunk) => {
-            renderer.onChunk(chunk);
-        }, model, renderer);
-        const fullResponse = renderer.finish();
-        lastAIOutput = fullResponse;
-        (0, client_1.addToConversationHistory)('user', question);
-        (0, client_1.addToConversationHistory)('assistant', fullResponse || '');
+        // 带重试的执行
+        const maxRetries = 2;
+        let attempt = 0;
+        while (attempt <= maxRetries) {
+            try {
+                await runtime.run(question, 'chat', (chunk) => {
+                    renderer.onChunk(chunk);
+                }, model, renderer);
+                const fullResponse = renderer.finish();
+                lastAIOutput = fullResponse;
+                (0, client_1.addToConversationHistory)('user', question);
+                (0, client_1.addToConversationHistory)('assistant', fullResponse || '');
+                return; // 成功则直接返回
+            }
+            catch (error) {
+                attempt++;
+                if (attempt > maxRetries) {
+                    renderer.finish();
+                    const msg = error instanceof Error ? error.message : String(error);
+                    console.log(chalk_1.default.red(`\n❌ AI 响应失败（已重试 ${maxRetries} 次）: ${msg}`));
+                    console.log(chalk_1.default.yellow('💡 请稍后重试，或检查网络/模型配置'));
+                    return;
+                }
+                // 短暂等待后重试
+                const delay = 1000 * attempt; // 指数退避: 1s, 2s
+                console.log(chalk_1.default.yellow(`\n⚠️ AI 响应异常，${delay / 1000}s 后重试 (${attempt}/${maxRetries})...`));
+                await new Promise(resolve => setTimeout(resolve, delay));
+                // 重置 renderer 状态以便重试
+                spinner.start();
+            }
+        }
     };
     if (initialQuestion) {
         // 先检查是否为特殊语法

@@ -262,14 +262,37 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
         const spinner = ora(chalk.cyan('AI 正在思考...')).start();
         const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
 
-        await runtime.run(question, 'chat' as any, (chunk) => {
-            renderer.onChunk(chunk);
-        }, model, renderer);
+        // 带重试的执行
+        const maxRetries = 2;
+        let attempt = 0;
+        while (attempt <= maxRetries) {
+            try {
+                await runtime.run(question, 'chat' as any, (chunk) => {
+                    renderer.onChunk(chunk);
+                }, model, renderer);
 
-        const fullResponse = renderer.finish();
-        lastAIOutput = fullResponse;
-        addToConversationHistory('user', question);
-        addToConversationHistory('assistant', fullResponse || '');
+                const fullResponse = renderer.finish();
+                lastAIOutput = fullResponse;
+                addToConversationHistory('user', question);
+                addToConversationHistory('assistant', fullResponse || '');
+                return; // 成功则直接返回
+            } catch (error: unknown) {
+                attempt++;
+                if (attempt > maxRetries) {
+                    renderer.finish();
+                    const msg = error instanceof Error ? error.message : String(error);
+                    console.log(chalk.red(`\n❌ AI 响应失败（已重试 ${maxRetries} 次）: ${msg}`));
+                    console.log(chalk.yellow('💡 请稍后重试，或检查网络/模型配置'));
+                    return;
+                }
+                // 短暂等待后重试
+                const delay = 1000 * attempt; // 指数退避: 1s, 2s
+                console.log(chalk.yellow(`\n⚠️ AI 响应异常，${delay / 1000}s 后重试 (${attempt}/${maxRetries})...`));
+                await new Promise(resolve => setTimeout(resolve, delay));
+                // 重置 renderer 状态以便重试
+                spinner.start();
+            }
+        }
     };
 
     if (initialQuestion) {

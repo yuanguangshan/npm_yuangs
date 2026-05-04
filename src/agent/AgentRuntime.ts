@@ -11,21 +11,39 @@ import { LLMAdapter } from "./llmAdapter";
 import { AIError } from "./llm";
 import { GovernanceService } from "./governance";
 import { ToolExecutor } from "./executor";
-import { ContextManager } from "./contextManager";
 import { SmartContextManager } from "./smartContextManager";
 import { evaluateProposal } from "./governance/core";
-import { ProposedAction } from "./state";
+import { ProposedAction, AgentThought } from "./state";
 import { ErrorTracker } from "./errorTracker";
 import {
   buildDynamicContext,
   injectDynamicContext,
-  DynamicContext
 } from "./dynamicPrompt";
 import { StreamMarkdownRenderer } from '../utils/renderer';
+
+interface ToolCallRecord {
+  tool: string;
+  params: any;
+  count: number;
+  lastOutput?: string;
+  outputHistory: string[];
+}
+
+interface WriteModeState {
+  filePath: string;
+  content: string;
+}
 
 export class AgentRuntime {
   private context: SmartContextManager;
   private executionId: string;
+  private readonly maxTurns = 10;
+
+  private readonly readOnlyTools = [
+    'read_file', 'list_files', 'read_file_lines', 'read_file_lines_from_end',
+    'file_info', 'git_status', 'git_log', 'git_diff', 'list_directory_tree',
+    'search_in_files', 'search_symbol', 'continue_reading', 'analyze_dependencies'
+  ];
 
   constructor(initialContext: any) {
     this.context = new SmartContextManager(initialContext);
@@ -40,582 +58,620 @@ export class AgentRuntime {
     renderer?: StreamMarkdownRenderer
   ) {
     let turnCount = 0;
-    const maxTurns = 10;
     let lastError: string | undefined;
-    let shouldComplete = false; // 标记是否应该完成
-    let lastToolCall: { tool: string; params: any; count: number } | null = null; // 跟踪上次工具调用及重复次数
-    let writeModeFileRead: string | null = null; // 跟踪 Write Mode 下已读取的文件
-    let writeModeFileContent: string | null = null; // 缓存 Write Mode 下已读取的文件内容
-
-    // 构建初始动态上下文
-    const initialDynamicContext = await buildDynamicContext();
+    let lastToolCall: ToolCallRecord | null = null;
+    let writeModeState: WriteModeState | null = null;
 
     if (userInput) {
       this.context.addMessage("user", userInput);
     }
 
-    while (turnCount < maxTurns) {
-      // 检查是否应该完成（上一轮只读工具成功）
-      if (shouldComplete) {
-        console.log(chalk.gray('[Task Complete] 任务已完成'));
-        break;
-      }
-
+    while (turnCount < this.maxTurns) {
       const currentTurn = ++turnCount;
       if (currentTurn > 1) {
         console.log(chalk.blue(`\n--- Turn ${currentTurn} ---`));
       }
 
-      // Use smart context manager to get relevance-ranked context
-      const enhancedContext = await this.context.getEnhancedContext({
-        query: userInput,
-        minRelevance: 0.3,
-        maxTokens: 8000,
-        enableSmartSummary: true
-      });
+      const { agentRenderer, agentOnChunk } = this.prepareRenderer(renderer, onChunk);
+      const { prompt: enhancedPrompt, userInput: query } = await this.buildPrompt(userInput, lastError);
 
-      const messages: any[] = [];
-
-      // Add context overview as system message
-      if (enhancedContext.summary) {
-        messages.push({
-          role: 'system',
-          content: enhancedContext.summary
-        });
-      }
-
-      // Add ranked context files
-      for (const item of enhancedContext.rankedItems) {
-        messages.push({
-          role: 'user',
-          content: `@${item.path} (相关度: ${(item.relevance * 100).toFixed(0)}%)\n${item.summary || item.content || ''}`
-        });
-      }
-
-      // Add user input
-      if (userInput) {
-        messages.push({
-          role: 'user',
-          content: userInput
-        });
-      }
-
-      // Build dynamic context (if previous step had error)
-      const dynamicContext = await buildDynamicContext(lastError);
-
-      // 构建基础prompt（包括治理策略）
-      const basePrompt = GovernanceService.getPolicyManual();
-
-      // 注入动态上下文
-      const enhancedPrompt = injectDynamicContext(basePrompt, dynamicContext);
-
-      // Create renderer if not provided but onChunk is available
-      let agentRenderer = renderer;
-      let agentOnChunk = onChunk;
-
-      if (!agentRenderer && agentOnChunk) {
-        agentRenderer = new StreamMarkdownRenderer(
-          chalk.bgHex('#3b82f6').white.bold(' 🤖 Agent ') + ' ',
-          undefined,
-          { autoFinish: false }
-        );
-        agentOnChunk = agentRenderer.startChunking();
-      }
-
-      let thought;
-      try {
-        thought = await LLMAdapter.think(
-          messages,
-          mode as any,
-          agentOnChunk,
-          model,
-          enhancedPrompt,
-          this.context,
-        );
-
-        if (!thought.raw || thought.raw.trim() === '') {
-          console.log(chalk.red('\n⚠️ AI 返回了空响应，请检查网络连接或模型配置。'));
-          break;
-        }
-      } catch (error: unknown) {
-        let errorMessage = '未知内部错误';
-        let statusCode = 0;
-
-        if (error instanceof AIError) {
-          errorMessage = error.message;
-          statusCode = error.statusCode;
-        } else if (error instanceof Error) {
-          errorMessage = error.message;
-          statusCode = (error as any).statusCode || 0;
-        } else if (typeof error === 'string') {
-          errorMessage = error;
-        }
-
-        const statusInfo = statusCode ? ` (状态码: ${statusCode})` : '';
-        console.log(chalk.red(`\n❌ AI 思考过程发生错误: ${errorMessage}${statusInfo}`));
-        
-        this.context.addMessage("system", `思考过程中发生错误${statusInfo}: ${errorMessage}`);
-        
-        if (statusCode === 401 || statusCode === 403 || errorMessage.includes('401') || errorMessage.includes('403')) {
-          console.log(chalk.yellow('💡 检测到权限或授权错误，请检查 API 配置。'));
-          break;
-        }
-        
-        if (statusCode === 429) {
-          console.log(chalk.yellow('💡 API 调用频率过高，请稍后再试。'));
-        }
-
-        break;
-      }
-
-      try {
-        const action: ProposedAction = {
-          id: randomUUID(),
-          type: (thought.type as any) || "answer",
-          payload: thought.payload || { text: thought.raw },
-          riskLevel: "low",
-          reasoning: thought.reasoning || "",
-        };
-
-        if (action.reasoning && !onChunk) {
-          console.log(chalk.gray(`\n🤔 Reasoning: ${action.reasoning}`));
-        }
-
-        if (thought.usedRouter) {
-          console.log(chalk.gray(`[Router] 🤖 Model: ${thought.modelName}`));
-        }
-
-        // 如果 LLM 认为已经完成或者当前的动作就是回答
-        if (thought.isDone || action.type === "answer") {
-          const result = await ToolExecutor.execute(action as any);
-          // ... rest of the logic
-
-        // 如果没有 renderer，使用内部创建的
-        if (!renderer && agentRenderer) {
-          // Stream final answer through internal renderer
-          for (let i = 0; i < result.output.length; i += 10) {
-            const chunk = result.output.slice(i, i + 10);
-            agentRenderer.onChunk(chunk);
-          }
-          agentRenderer.finish();
-        } else if (!renderer) {
-          // Fallback to marked if no renderer
-          const rendered = marked.parse(result.output);
-          console.log(chalk.green(`\n🤖 AI：\n`) + rendered);
-        }
-        // 如果外部传入了 renderer，由外部调用 finish()
-
-        this.context.addMessage("assistant", result.output);
-
-        // Learn from successful chat
-        try {
-          const { createExecutionRecord } = await import('../core/executionRecord');
-          const { inferCapabilityRequirement } = await import('../core/capabilityInference');
-          const { saveExecutionRecord } = await import('../core/executionStore');
-
-          const record = createExecutionRecord(
-            'agent-chat',
-            { required: [], preferred: [] } as any,
-            {
-              aiProxyUrl: { value: '', source: 'built-in' },
-              defaultModel: { value: '', source: 'built-in' },
-              accountType: { value: 'free', source: 'built-in' }
-            } as any,
-            { selected: null, candidates: [], fallbackOccurred: false },
-            { success: true },
-            undefined,
-            userInput,
-            'chat'
-          );
-
-          (record as any).llmResult = { plan: thought.parsedPlan };
-          (record as any).input = { rawInput: userInput };
-
-          const savedRecordId = saveExecutionRecord(record);
-          const { loadExecutionRecord } = await import('../core/executionStore');
-          const savedRecord = loadExecutionRecord(savedRecordId);
-
-          if (savedRecord) {
-            const { learnSkillFromRecord } = await import('./skills');
-            learnSkillFromRecord(savedRecord, true);
-          }
-        } catch (error) {
-          console.warn(chalk.yellow(`[Skill Learning] Failed: ${error}`));
-        }
-
-        break;
-      }
-
-      // === 强制 ACK 校验（Causal Lock） ===
-      const lastObs = this.context.getLastAckableObservation();
-      const ackText = thought.parsedPlan?.acknowledged_observation;
-
-      if (lastObs && ackText && ackText !== 'NONE') {
-        const actualContent = lastObs.content.trim();
-        const ackedContent = ackText.trim();
-
-        if (actualContent !== ackedContent) {
-          console.log(
-            chalk.red(`[CAUSAL BREAK] ❌ ACK mismatch!`),
-          );
-          console.log(chalk.red(`  Expected: ${actualContent.substring(0, 100)}...`));
-          console.log(chalk.red(`  Received: ${ackedContent.substring(0, 100)}...`));
-          this.context.addMessage(
-            "system",
-            `CAUSAL BREAK: ACK does not match physical Observation. Cannot proceed without acknowledging reality.`,
-          );
-          continue;
-        }
-
-        console.log(chalk.green(`[CAUSAL LOCK] ✅ ACK verified`));
-      }
-
-      // === 预检 (Pre-flight) ===
-      const preCheck = evaluateProposal(
-        action,
-        GovernanceService.getRules(),
-        GovernanceService.getLedgerSnapshot(),
+      // === Step 1: LLM Thinking ===
+      const thought = await this.callLLM(
+        enhancedPrompt, query, mode, agentOnChunk, model, agentRenderer
       );
-      if (preCheck.effect === "deny") {
-        console.log(
-          chalk.red(`[PRE-FLIGHT] 🛡️ Policy Blocked: ${preCheck.reason}`),
-        );
-        this.context.addMessage(
-          "system",
-          `POLICY DENIED: ${preCheck.reason}. Find a different way.`,
-        );
-        continue;
+      if (!thought) break; // error or empty
+
+      // === Step 2: Build Action ===
+      const action = this.buildAction(thought);
+
+      if (action.reasoning && !onChunk) {
+        console.log(chalk.gray(`\n🤔 Reasoning: ${action.reasoning}`));
+      }
+      if (thought.usedRouter) {
+        console.log(chalk.gray(`[Router] 🤖 Model: ${thought.modelName}`));
       }
 
-      // === 正式治理 (WASM + 人工/自动) ===
-      const decision = await GovernanceService.adjudicate(action);
-      if (decision.status === "rejected") {
-        console.log(chalk.red(`[GOVERNANCE] ❌ Rejected: ${decision.reason}`));
-        this.context.addMessage(
-          "system",
-          `Rejected by Governance: ${decision.reason}`,
-        );
-        continue;
-      }
-
-      // === 记录因果边到 KG ===
-      if (lastObs && lastObs.metadata?.obsId && ackText && ackText !== 'NONE') {
-        try {
-          const { recordEdge } = await import('../engine/agent/knowledgeGraph');
-          recordEdge({
-            from: lastObs.metadata.obsId,
-            to: action.id,
-            type: 'ACKNOWLEDGED_BY' as any,
-            metadata: {
-              verified: true,
-              timestamp: Date.now()
-            }
-          });
-          console.log(chalk.gray(`[KG] ⚓ Causal edge recorded`));
-        } catch (error: any) {
-          console.warn(chalk.yellow(`[KG] Warning: Failed to record causal edge: ${error.message}`));
+      // === Step 3: Handle answer type ===
+      if (thought.isDone || action.type === "answer") {
+        // Command 模式下 AI 返回 answer：引导其使用工具
+        if (mode === "command") {
+          const content = action.payload.content || action.payload.text || '';
+          this.context.addMessage('system', `在命令执行模式下，请直接使用工具执行命令，不要回复对话。请使用 list_directory_tree 查看文件列表，然后用 shell_cmd 执行命令来查找最大文件。任务: "${userInput}"`);
+          continue; // 不 break，让 AI 重试使用工具
         }
+        await this.handleAnswer(action, thought, userInput, mode, renderer, agentRenderer);
+        break;
       }
 
-      // === 执行前错误检查 ===
-      // 检查是否应该阻止执行（防止重复错误）
-      let cachedResult: any = null;
-      if (action.type === 'tool_call') {
-        const toolName = action.payload.tool_name;
+      // === Step 4: Causal ACK Check ===
+      if (!this.verifyAckCausality(thought)) continue;
 
-        // Write Mode 阻止重复 read_file 调用，但返回缓存的内容
-        if (writeModeFileRead && toolName === 'read_file') {
-          const filePath = action.payload.parameters.path;
-          if (filePath === writeModeFileRead && writeModeFileContent) {
-            console.log(chalk.yellow(`[CACHED] 📋 文件 ${filePath} 内容已缓存，直接返回（避免重复读取）`));
-            // 使用缓存的结果，跳过实际执行
-            cachedResult = {
-              success: true,
-              output: writeModeFileContent,
-              artifacts: [filePath]
-            };
-          }
-        }
+      // === Step 5: Governance ===
+      if (!await this.passGovernance(action)) continue;
 
-        if (!cachedResult) {
-          const blockCheck = ErrorTracker.shouldBlockExecution(
-            toolName,
-            action.payload.parameters
-          );
+      // === Step 6: Record KG Edge ===
+      await this.recordKnowledgeGraphEdge(thought, action);
 
-          if (blockCheck.blocked) {
-            console.log(chalk.red(`[BLOCKED] 🚫 ${blockCheck.reason}`));
+      // === Step 7: Pre-execution Checks ===
+      const cachedResult = await this.checkExecutionBlock(action, writeModeState);
+      if (cachedResult === 'blocked') continue;
 
-            // 显示错误历史
-            if (blockCheck.existingError) {
-              console.log(chalk.yellow(`[Error History] 此错误已发生 ${blockCheck.existingError.attemptCount} 次`));
-              console.log(chalk.gray(`上次错误: ${blockCheck.existingError.errorMessage}`));
-            }
-
-            this.context.addMessage(
-              "system",
-              `BLOCKED: ${blockCheck.reason}. 建议尝试不同的方法。`
-            );
-            continue;
-          }
-        }
-      }
-
-      // === 执行 ===
-      let result: any;
-      if (cachedResult) {
-        result = cachedResult;
-        // 添加到上下文
-        this.context.addToolResult('read_file', result.output);
-        const preview = result.output.length > 300
-          ? result.output.substring(0, 300) + '...'
-          : result.output;
-        console.log(chalk.green(`[SUCCESS] Result (cached):\n${preview}`));
-      } else {
-        console.log(chalk.yellow(`[EXECUTING] ⚙️ ${action.type}...`));
-        result = await ToolExecutor.execute(action as any);
-      }
+      // === Step 8: Execute ===
+      const result = cachedResult && typeof cachedResult === 'object'
+        ? cachedResult
+        : await this.executeAction(action, writeModeState);
 
       if (result.success) {
-        // 成功时清除错误状态
         lastError = undefined;
-        // 使用实际工具名称而不是 action.type，这样 LLM 知道调用了哪个工具
-        const actualToolName = action.payload?.tool_name || action.type;
-        this.context.addToolResult(actualToolName, result.output);
-        const preview = result.output.length > 300
-          ? result.output.substring(0, 300) + '...'
-          : result.output;
-        console.log(chalk.green(`[SUCCESS] Result:\n${preview}`));
-
-        // 通用重复检测：所有工具
-        const currentToolCall = { tool: action.payload.tool_name || action.type, params: action.payload.parameters || action.payload };
-
-        // 检查是否重复，并允许一定次数的重复（给 AI 时间完成多步骤任务）
-        let duplicateCount = 0;
-        const isDuplicate = lastToolCall &&
-          lastToolCall.tool === currentToolCall.tool &&
-          JSON.stringify(lastToolCall.params) === JSON.stringify(currentToolCall.params);
-
-        if (isDuplicate) {
-          duplicateCount = (lastToolCall as any).count || 0;
-
-          // 允许最多 2 次重复调用（给 AI 时间完成任务）
-          if (duplicateCount >= 2) {
-            console.log(chalk.yellow('[Duplicate Detection] 达到重复限制，强制完成'));
-            console.log(chalk.cyan(`\n✓ ${action.payload.tool_name || action.type} 已完成\n`));
-
-            if (agentRenderer) {
-              (agentRenderer as any).buffer = '';
-              (agentRenderer as any).quietMode = true;
-              agentRenderer.finish();
-            }
-
-            break;
-          } else {
-            console.log(chalk.gray(`[Repeat Detection] 重复调用 (${duplicateCount + 1}/2)，继续...`));
-          }
-        }
-
-        // 更新上次工具调用记录（包含计数）
-        if (isDuplicate && lastToolCall) {
-          (lastToolCall as any).count = duplicateCount + 1;
-        } else {
-          lastToolCall = { ...currentToolCall, count: 0 };
-        }
-
-        // 智能完成：根据工具类型和用户意图决定是否自动完成
-        if (action.type === 'tool_call') {
-          const toolName = action.payload.tool_name;
-
-          // 写入文件成功后自动完成
-          if (toolName === 'write_file') {
-            console.log(chalk.gray('[Auto-Complete] 文件写入成功，自动完成任务'));
-            console.log(chalk.green(`✓ 已创建文件: ${action.payload.parameters.path}\n`));
-
-            this.context.addMessage("assistant", `已成功创建文件 ${action.payload.parameters.path}`);
-            // 清除 Write Mode 标记，因为写入已完成
-            writeModeFileRead = null;
-            writeModeFileContent = null;
-
-            if (agentRenderer) {
-              (agentRenderer as any).buffer = '';
-              (agentRenderer as any).quietMode = true;
-              agentRenderer.finish();
-            }
-
-            break;
-          }
-
-          // 只读工具处理
-          const readOnlyTools = ['read_file', 'list_files', 'read_file_lines', 'read_file_lines_from_end', 'file_info', 'git_status', 'git_log', 'git_diff', 'list_directory_tree', 'search_in_files', 'search_symbol', 'continue_reading', 'analyze_dependencies'];
-          if (readOnlyTools.includes(toolName)) {
-            // 检测用户意图：
-            // 1. 如果要求"分析"、"解释"等，则不自动完成（继续分析）
-            // 2. 如果涉及写入操作（替换、修改、添加等），则不自动完成（继续执行写入）
-            // 使用更精确的匹配，避免文件名中的关键词（如 git_reviews.md 中的 review）误触发
-            const requiresAnalysis = /^(.*?)(帮我|请)?(分析|解释|说明|总结)|\b(review|explain)\s+(this|the|it)\b/i.test(userInput);
-            const requiresWrite = /替换|replace|修改|modify|添加|append|插入|insert|删除|delete|移除|remove|更新|update|改成|改成|改为/i.test(userInput);
-
-            if (!requiresAnalysis && !requiresWrite) {
-              // 简单读取请求，直接返回结果
-              console.log(chalk.gray('[Auto-Complete] 只读工具执行成功，自动完成任务'));
-              console.log(chalk.cyan(`\n📄 ${toolName} 结果：\n`));
-              console.log(result.output);
-
-              this.context.addMessage("assistant", `已成功执行 ${toolName}，结果：\n${result.output}`);
-
-              if (agentRenderer) {
-                (agentRenderer as any).buffer = '';
-                (agentRenderer as any).quietMode = true;
-                agentRenderer.finish();
-              }
-
-              break;
-            } else if (requiresWrite) {
-              // 写入请求，继续循环让 AI 执行写入操作
-              console.log(chalk.gray('[Write Mode] 文件已读取，继续执行写入操作...'));
-              // 标记此文件已在 Write Mode 下读取，防止重复读取
-              writeModeFileRead = action.payload.parameters.path;
-              // 缓存文件内容，避免重复读取
-              writeModeFileContent = result.output;
-              // 添加系统消息明确指导 AI 下一步操作
-              this.context.addMessage('system', `文件 ${action.payload.parameters.path} 已成功读取。请根据用户要求修改内容后，调用 write_file 工具写入文件。不要重复调用 read_file！`);
-            } else {
-              // 分析请求，继续循环让 AI 分析内容
-              console.log(chalk.gray('[Analysis Mode] 文件已读取，继续分析...'));
-            }
-          }
-        }
-
-        // Learn from this successful execution
-        try {
-          const { createExecutionRecord } = await import('../core/executionRecord');
-          const { inferCapabilityRequirement } = await import('../core/capabilityInference');
-          const { saveExecutionRecord } = await import('../core/executionStore');
-
-          const record = createExecutionRecord(
-            `agent-${mode}`,
-            { required: [], preferred: [] } as any,
-            {
-              aiProxyUrl: { value: '', source: 'built-in' },
-              defaultModel: { value: '', source: 'built-in' },
-              accountType: { value: 'free', source: 'built-in' }
-            } as any,
-            { selected: null, candidates: [], fallbackOccurred: false },
-            { success: true },
-            undefined,
-            userInput,
-            mode
-          );
-
-          // Attach thought/plan data for skill learning
-          (record as any).llmResult = { plan: thought.parsedPlan };
-          (record as any).input = { rawInput: userInput };
-
-          const savedRecordId = saveExecutionRecord(record);
-          const { loadExecutionRecord } = await import('../core/executionStore');
-          const savedRecord = loadExecutionRecord(savedRecordId);
-
-          if (savedRecord) {
-            const { learnSkillFromRecord } = await import('./skills');
-            learnSkillFromRecord(savedRecord, true);
-          }
-        } catch (error) {
-          console.warn(chalk.yellow(`[Skill Learning] Failed: ${error}`));
-        }
+        lastToolCall = this.handleSuccessfulExecution(
+          result, action, lastToolCall, userInput, writeModeState,
+          mode, thought, agentRenderer
+        );
+        if (lastToolCall === null) break; // null signals break (stabilization or duplicate)
       } else {
-        // 失败时记录错误，尝试自动修复
-        lastError = result.error;
-        const actualToolName = action.payload?.tool_name || action.type;
-        this.context.addToolResult(actualToolName, `Error: ${result.error}`);
-        console.log(chalk.red(`[ERROR] ${result.error}`));
-
-        // 记录到错误追踪器
-        if (action.type === 'tool_call') {
-          ErrorTracker.recordError(
-            action.payload.tool_name,
-            action.payload.parameters,
-            result.error || 'Unknown error',
-            { mode, model: thought.modelName, userInput }
-          );
-        } else if (action.type === 'shell_cmd') {
-          ErrorTracker.recordError(
-            'shell_cmd',
-            { command: action.payload.command },
-            result.error || 'Unknown error',
-            { mode, model: thought.modelName, userInput }
-          );
-        }
-
-        // 尝试自动修复（仅针对 shell_cmd 失败）
-        if (action.type === 'shell_cmd' && result.error) {
-          console.log(chalk.yellow('[AutoFix] 尝试自动修复命令...'));
-
-          try {
-            const { autoFixCommand } = await import('../core/autofix');
-            const { getOSProfile } = await import('../core/os');
-            const os = getOSProfile();
-
-            const fixPlan = await autoFixCommand(
-              action.payload.command,
-              result.error || result.output || '',
-              os,
-              thought.modelName
-            );
-
-            if (fixPlan && fixPlan.command) {
-              console.log(chalk.cyan(`[AutoFix] 建议修复命令: ${fixPlan.command}`));
-              console.log(chalk.gray(`[AutoFix] 说明: ${fixPlan.plan || '无'}`));
-
-              // 将修复建议添加到上下文
-              this.context.addMessage('system', `自动修复建议：${fixPlan.command}\n原因：${fixPlan.plan || '无'}`);
-
-              // 如果修复方案风险低，直接执行
-              if (fixPlan.risk === 'low') {
-                console.log(chalk.yellow('[AutoFix] 修复方案风险低，自动执行...'));
-
-                const fixedAction: ProposedAction = {
-                  id: randomUUID(),
-                  type: 'shell_cmd',
-                  payload: { command: fixPlan.command },
-                  riskLevel: 'low',
-                  reasoning: `AutoFix from failed command: ${action.payload.command}`
-                };
-
-                const fixedResult = await ToolExecutor.execute(fixedAction as any);
-                if (fixedResult.success) {
-                  console.log(chalk.green('[AutoFix] 修复成功！'));
-                  lastError = undefined;
-                  this.context.addToolResult('shell_cmd', fixedResult.output);
-                  continue;
-                } else {
-                  console.log(chalk.red('[AutoFix] 修复失败，继续原始错误处理'));
-                }
-              }
-            } else {
-              console.log(chalk.gray('[AutoFix] 无法生成修复建议'));
-            }
-          } catch (fixError: any) {
-            console.warn(chalk.yellow(`[AutoFix] 修复过程出错: ${fixError.message}`));
-          }
-        }
-      }
-      } catch (error: unknown) {
-        let errorMessage = '未知执行错误';
-        if (error instanceof Error) {
-          errorMessage = error.message;
-        } else if (typeof error === 'string') {
-          errorMessage = error;
-        }
-
-        console.log(chalk.red(`\n❌ 任务执行失败 [Action: ${thought?.type}]: ${errorMessage}`));
-        this.context.addMessage("system", `执行引擎错误 [Action: ${thought?.type}]: ${errorMessage}`);
-        break;
+        lastError = await this.handleFailedExecution(
+          result, action, mode, thought, userInput
+        );
       }
     }
 
-    if (turnCount >= maxTurns) {
-      console.log(chalk.red(`\n⚠️ Max turns (${maxTurns}) reached.`));
+    if (turnCount >= this.maxTurns) {
+      console.log(chalk.red(`\n⚠️ Max turns (${this.maxTurns}) reached.`));
+    }
+  }
+
+  // === Private Helper Methods ===
+
+  private prepareRenderer(
+    renderer: StreamMarkdownRenderer | undefined,
+    onChunk: ((chunk: string) => void) | undefined
+  ): { agentRenderer: StreamMarkdownRenderer | undefined; agentOnChunk: ((chunk: string) => void) | undefined } {
+    let agentRenderer = renderer;
+    let agentOnChunk = onChunk;
+    if (!agentRenderer && agentOnChunk) {
+      agentRenderer = new StreamMarkdownRenderer(
+        chalk.bgHex('#3b82f6').white.bold(' 🤖 Agent ') + ' ',
+        undefined,
+        { autoFinish: false }
+      );
+      agentOnChunk = agentRenderer.startChunking();
+    }
+    return { agentRenderer, agentOnChunk };
+  }
+
+  private async buildPrompt(userInput: string, lastError: string | undefined): Promise<{ prompt: string; userInput: string }> {
+    const dynamicContext = await buildDynamicContext(lastError);
+    const basePrompt = GovernanceService.getPolicyManual();
+    return {
+      prompt: injectDynamicContext(basePrompt, dynamicContext),
+      userInput
+    };
+  }
+
+  private async callLLM(
+    enhancedPrompt: string,
+    userInput: string,
+    mode: string,
+    onChunk: ((chunk: string) => void) | undefined,
+    model: string | undefined,
+    renderer: StreamMarkdownRenderer | undefined
+  ): Promise<AgentThought | null> {
+    const messages: any[] = [];
+    const enhancedContext = await this.context.getEnhancedContext({
+      query: userInput || enhancedPrompt,
+      minRelevance: 0.3,
+      maxTokens: 8000,
+      enableSmartSummary: true
+    });
+
+    if (enhancedContext.summary) {
+      messages.push({ role: 'system', content: enhancedContext.summary });
+    }
+    for (const item of enhancedContext.rankedItems) {
+      messages.push({
+        role: 'user',
+        content: `@${item.path} (相关度: ${(item.relevance * 100).toFixed(0)}%)\n${item.summary || item.content || ''}`
+      });
+    }
+    // 关键：确保用户输入被包含为最后一条消息
+    if (userInput) {
+      messages.push({ role: 'user', content: userInput });
+    } else {
+      messages.push({ role: 'user', content: enhancedPrompt });
+    }
+
+    try {
+      const thought = await LLMAdapter.think(messages, mode as any, onChunk, model, enhancedPrompt, this.context);
+      if (!thought.raw || thought.raw.trim() === '') {
+        console.log(chalk.red('\n⚠️ AI 返回了空响应，请检查网络连接或模型配置。'));
+        return null;
+      }
+      return thought;
+    } catch (error: unknown) {
+      this.handleLLMError(error);
+      return null;
+    }
+  }
+
+  private handleLLMError(error: unknown): void {
+    let errorMessage = '未知内部错误';
+    let statusCode = 0;
+
+    if (error instanceof AIError) {
+      errorMessage = error.message;
+      statusCode = error.statusCode;
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+      statusCode = (error as any).statusCode || 0;
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    }
+
+    const statusInfo = statusCode ? ` (状态码: ${statusCode})` : '';
+    console.log(chalk.red(`\n❌ AI 思考过程发生错误: ${errorMessage}${statusInfo}`));
+
+    const isTransient = statusCode === 429 || statusCode >= 500
+      || errorMessage.includes('timeout') || errorMessage.includes('network') || errorMessage.includes('ETIMEDOUT');
+
+    if (isTransient) {
+      console.log(chalk.yellow('⚠️ 检测到瞬时错误，自动跳过此轮'));
+      this.context.addMessage("system", `AI 调用失败${statusInfo}，请稍后重试`);
+      return;
+    }
+
+    this.context.addMessage("system", `思考过程中发生错误${statusInfo}: ${errorMessage}`);
+
+    if (statusCode === 401 || statusCode === 403 || errorMessage.includes('401') || errorMessage.includes('403')) {
+      console.log(chalk.yellow('💡 检测到权限或授权错误，请检查 API 配置。'));
+    }
+  }
+
+  private buildAction(thought: AgentThought): ProposedAction {
+    return {
+      id: randomUUID(),
+      type: (thought.type as any) || "answer",
+      payload: thought.payload || { text: thought.raw },
+      riskLevel: "low",
+      reasoning: thought.reasoning || "",
+    };
+  }
+
+  private async handleAnswer(
+    action: ProposedAction,
+    thought: AgentThought,
+    userInput: string,
+    mode: string,
+    externalRenderer: StreamMarkdownRenderer | undefined,
+    agentRenderer: StreamMarkdownRenderer | undefined
+  ): Promise<void> {
+    const result = await ToolExecutor.execute(action as any);
+
+    if (!externalRenderer && agentRenderer) {
+      for (let i = 0; i < result.output.length; i += 10) {
+        agentRenderer.onChunk(result.output.slice(i, i + 10));
+      }
+      agentRenderer.finish();
+    } else if (!externalRenderer) {
+      const rendered = marked.parse(result.output);
+      console.log(chalk.green(`\n🤖 AI：\n`) + rendered);
+    }
+
+    this.context.addMessage("assistant", result.output);
+    await this.learnFromExecution(userInput, mode, thought);
+  }
+
+  private verifyAckCausality(thought: AgentThought): boolean {
+    const lastObs = this.context.getLastAckableObservation();
+    const ackText = thought.parsedPlan?.acknowledged_observation;
+
+    if (lastObs && ackText && ackText !== 'NONE') {
+      if (lastObs.content.trim() !== ackText.trim()) {
+        console.log(chalk.red(`[CAUSAL BREAK] ❌ ACK mismatch!`));
+        console.log(chalk.red(`  Expected: ${lastObs.content.trim().substring(0, 100)}...`));
+        console.log(chalk.red(`  Received: ${ackText.trim().substring(0, 100)}...`));
+        this.context.addMessage(
+          "system",
+          `CAUSAL BREAK: ACK does not match physical Observation. Cannot proceed without acknowledging reality.`
+        );
+        return false;
+      }
+      console.log(chalk.green(`[CAUSAL LOCK] ✅ ACK verified`));
+    }
+    return true;
+  }
+
+  private async passGovernance(action: ProposedAction): Promise<boolean> {
+    const preCheck = evaluateProposal(action, GovernanceService.getRules(), GovernanceService.getLedgerSnapshot());
+    if (preCheck.effect === "deny") {
+      console.log(chalk.red(`[PRE-FLIGHT] 🛡️ Policy Blocked: ${preCheck.reason}`));
+      this.context.addMessage("system", `POLICY DENIED: ${preCheck.reason}. Find a different way.`);
+      return false;
+    }
+
+    const decision = await GovernanceService.adjudicate(action);
+    if (decision.status === "rejected") {
+      console.log(chalk.red(`[GOVERNANCE] ❌ Rejected: ${decision.reason}`));
+      this.context.addMessage("system", `Rejected by Governance: ${decision.reason}`);
+      return false;
+    }
+    return true;
+  }
+
+  private async recordKnowledgeGraphEdge(thought: AgentThought, action: ProposedAction): Promise<void> {
+    const lastObs = this.context.getLastAckableObservation();
+    const ackText = thought.parsedPlan?.acknowledged_observation;
+
+    if (lastObs && lastObs.metadata?.obsId && ackText && ackText !== 'NONE') {
+      try {
+        const { recordEdge } = await import('../engine/agent/knowledgeGraph');
+        recordEdge({
+          from: lastObs.metadata.obsId,
+          to: action.id,
+          type: 'ACKNOWLEDGED_BY' as any,
+          metadata: { verified: true, timestamp: Date.now() }
+        });
+        console.log(chalk.gray(`[KG] ⚓ Causal edge recorded`));
+      } catch (error: any) {
+        console.warn(chalk.yellow(`[KG] Warning: Failed to record causal edge: ${error.message}`));
+      }
+    }
+  }
+
+  private async checkExecutionBlock(
+    action: ProposedAction,
+    writeModeState: WriteModeState | null
+  ): Promise<'blocked' | { success: true; output: string; artifacts: string[] } | null> {
+    if (action.type !== 'tool_call') return null;
+
+    const toolName = action.payload.tool_name;
+
+    // Write Mode cache
+    if (writeModeState && toolName === 'read_file') {
+      const filePath = action.payload.parameters.path;
+      if (filePath === writeModeState.filePath && writeModeState.content) {
+        console.log(chalk.yellow(`[CACHED] 📋 文件 ${filePath} 内容已缓存，直接返回`));
+        return { success: true, output: writeModeState.content, artifacts: [filePath] };
+      }
+    }
+
+    const blockCheck = ErrorTracker.shouldBlockExecution(toolName, action.payload.parameters);
+    if (blockCheck.blocked) {
+      console.log(chalk.red(`[BLOCKED] 🚫 ${blockCheck.reason}`));
+      if (blockCheck.existingError) {
+        console.log(chalk.yellow(`[Error History] 此错误已发生 ${blockCheck.existingError.attemptCount} 次`));
+        console.log(chalk.gray(`上次错误: ${blockCheck.existingError.errorMessage}`));
+      }
+      this.context.addMessage("system", `BLOCKED: ${blockCheck.reason}. 建议尝试不同的方法。`);
+      return 'blocked';
+    }
+
+    return null;
+  }
+
+  private async executeAction(action: ProposedAction, _writeModeState: WriteModeState | null): Promise<any> {
+    console.log(chalk.yellow(`[EXECUTING] ⚙️ ${action.type}...`));
+    return await ToolExecutor.execute(action as any);
+  }
+
+  private handleSuccessfulExecution(
+    result: any,
+    action: ProposedAction,
+    lastToolCall: ToolCallRecord | null,
+    userInput: string,
+    writeModeState: WriteModeState | null,
+    mode: string,
+    thought: AgentThought,
+    agentRenderer: StreamMarkdownRenderer | undefined
+  ): ToolCallRecord | null {
+    const actualToolName = action.payload?.tool_name || action.type;
+    this.context.addToolResult(actualToolName, result.output);
+
+    const preview = result.output.length > 300 ? result.output.substring(0, 300) + '...' : result.output;
+    console.log(chalk.green(`[SUCCESS] Result:\n${preview}`));
+
+    // Stabilization detection: 检查输出是否稳定（排除错误输出）
+    const normalizedOutput = result.output?.trim()?.split('\n').filter(Boolean)[0] || '';
+    const isErrorMessage = /invalid option|unknown|error|failed|no such|cannot|usage:|not found/i.test(normalizedOutput);
+
+    if (!isErrorMessage) {
+      // 方案3: 语义完成检测 — 输出已经是直接答案（适用于首轮查询，必须在 prevOutput 检测之前）
+      // 只有当完整输出都很短时才触发，避免在截断的多行输出上误触发
+      if (result.output.length < 100 && this.isSemanticComplete(normalizedOutput, userInput)) {
+        console.log(chalk.yellow('[Semantic Complete] 输出已经是直接答案，自动完成'));
+        console.log(chalk.cyan(`\n✓ 结果: ${normalizedOutput}\n`));
+        this.context.addMessage("assistant", result.output);
+        agentRenderer && (() => { (agentRenderer as any).buffer = ''; (agentRenderer as any).quietMode = true; agentRenderer.finish(); })();
+        return null; // signal break
+      }
+
+      // 方案4: 截断输出检测 — 结果被截断但已包含数据，引导 AI 完成
+      if (result.output.includes('[⚠️ OUTPUT TRUNCATED]') && normalizedOutput.length > 0) {
+        this.context.addMessage('system', `输出已截断，但已包含足够的数据。请直接使用 answer 类型向用户呈现你看到的结果，不要再运行更多命令。`);
+      }
+
+      // 方案1: 连续两次输出完全相同
+      const prevOutput = lastToolCall?.lastOutput;
+      const isOutputStable = prevOutput && normalizedOutput && prevOutput === normalizedOutput;
+
+      // 方案2: 最近2次输出包含相同的文件/路径名（即使命令不同）
+      const extractPath = (line: string) => {
+        const parts = line.trim().split(/\s+/);
+        return parts.length > 1 ? parts[parts.length - 1] : '';
+      };
+      const currentPath = extractPath(normalizedOutput);
+      const prevPath = prevOutput ? extractPath(prevOutput) : '';
+      const isOutputStableByName = currentPath && prevPath && currentPath === prevPath;
+
+      if (isOutputStable || isOutputStableByName) {
+        console.log(chalk.yellow('[Stabilization] 输出结果已稳定，自动完成'));
+        console.log(chalk.cyan(`\n✓ 结果: ${normalizedOutput}\n`));
+        this.context.addMessage("assistant", result.output);
+        agentRenderer && (() => { (agentRenderer as any).buffer = ''; (agentRenderer as any).quietMode = true; agentRenderer.finish(); })();
+        return null; // signal break
+      }
+    }
+
+    // Duplicate detection: 区分 tool_call 和 shell_cmd
+    const actualTool = action.payload?.tool_name || action.type;
+    const params = action.payload?.tool_name === 'shell_cmd' || action.type === 'shell_cmd'
+      ? { command: (action.payload?.command || action.payload?.parameters?.command || '') }
+      : (action.payload?.parameters || action.payload);
+
+    const currentToolCall = { tool: actualTool, params };
+    const isDuplicate = lastToolCall &&
+      lastToolCall.tool === currentToolCall.tool &&
+      JSON.stringify(lastToolCall.params) === JSON.stringify(currentToolCall.params);
+
+    // Build output history for stabilization detection
+    const outputHistory = [...((lastToolCall as any)?.outputHistory || []), normalizedOutput].slice(-3);
+
+    if (isDuplicate && lastToolCall) {
+      const count = lastToolCall.count + 1;
+
+      // 如果是错误输出，提示 AI 换方案
+      if (isErrorMessage) {
+        if (count >= 2) {
+          const failedCmd = actualTool === 'shell_cmd'
+            ? (lastToolCall.params?.command || '')
+            : '';
+          console.log(chalk.yellow('[Duplicate Error] 相同命令重复失败 2 次，自动终止该路径'));
+          let errorMsg = `命令执行失败，且已重复尝试 2 次。请换一种完全不同的方法来完成用户任务: "${userInput}"。`;
+          if (failedCmd) {
+            errorMsg += `\n⚠️ 命令 "${failedCmd}" 在当前系统不可用，已被列入本次对话黑名单，不要再使用此命令。`;
+          }
+          errorMsg += `\n注意：当前系统可能是 macOS（BSD 工具链），不支持 Linux 特定的命令选项。请使用 macOS 兼容的命令。`;
+          this.context.addMessage('system', errorMsg);
+          // 重置重复计数让新命令不被当作重复
+          lastToolCall = { tool: 'reset', params: {}, count: 0, lastOutput: '', outputHistory: [] };
+          return lastToolCall;
+        }
+        console.log(chalk.gray(`[Repeat Error] 重复失败 (${count + 1}/2)，请换方案...`));
+      } else if (count >= 2) {
+        console.log(chalk.yellow('[Duplicate Detection] 达到重复限制，强制完成'));
+        console.log(chalk.cyan(`\n✓ ${action.payload?.tool_name || action.type} 已完成\n`));
+        agentRenderer && (() => { (agentRenderer as any).buffer = ''; (agentRenderer as any).quietMode = true; agentRenderer.finish(); })();
+        return null; // signal break
+      } else {
+        console.log(chalk.gray(`[Repeat Detection] 重复调用 (${count + 1}/2)，继续...`));
+      }
+      lastToolCall.count = count;
+      lastToolCall.lastOutput = normalizedOutput;
+      (lastToolCall as any).outputHistory = outputHistory;
+
+      if (!isErrorMessage) {
+        // 告诉 AI 结果已重复，应该返回答案而不是继续调用工具
+        this.context.addMessage('system', `同样的操作已经重复执行了 ${count} 次，结果没有变化。请停止继续调用工具，使用 answer 类型返回最终结果给用户。输出: "${result.output.slice(0, 200)}"`);
+      }
+    } else {
+      lastToolCall = { ...currentToolCall, count: 0, lastOutput: normalizedOutput, outputHistory };
+    }
+
+    // Auto-complete logic for specific tool types
+    if (action.type === 'tool_call') {
+      const toolName = action.payload.tool_name;
+
+      if (toolName === 'write_file') {
+        console.log(chalk.gray('[Auto-Complete] 文件写入成功，自动完成任务'));
+        console.log(chalk.green(`✓ 已创建文件: ${action.payload.parameters.path}\n`));
+        this.context.addMessage("assistant", `已成功创建文件 ${action.payload.parameters.path}`);
+        agentRenderer && (() => { (agentRenderer as any).buffer = ''; (agentRenderer as any).quietMode = true; agentRenderer.finish(); })();
+        (result as any).shouldBreak = true;
+        return lastToolCall;
+      }
+
+      if (this.readOnlyTools.includes(toolName)) {
+        const requiresAnalysis = /^(.*?)(帮我|请)?(分析|解释|说明|总结)|\b(review|explain)\s+(this|the|it)\b/i.test(userInput);
+        const requiresWrite = /替换|replace|修改|modify|添加|append|插入|insert|删除|delete|移除|remove|更新|update|改成|改成|改为/i.test(userInput);
+
+        // Command 模式下不自动完成，让 AI 自行决定后续操作
+        if (mode === 'command') {
+          console.log(chalk.gray('[Command Mode] 只读工具执行成功，等待 AI 决定下一步'));
+          return lastToolCall;
+        }
+
+        if (!requiresAnalysis && !requiresWrite) {
+          console.log(chalk.gray('[Auto-Complete] 只读工具执行成功，自动完成任务'));
+          console.log(chalk.cyan(`\n📄 ${toolName} 结果：\n`));
+          console.log(result.output);
+          this.context.addMessage("assistant", `已成功执行 ${toolName}，结果：\n${result.output}`);
+          agentRenderer && (() => { (agentRenderer as any).buffer = ''; (agentRenderer as any).quietMode = true; agentRenderer.finish(); })();
+          (result as any).shouldBreak = true;
+          return lastToolCall;
+        } else if (requiresWrite) {
+          console.log(chalk.gray('[Write Mode] 文件已读取，继续执行写入操作...'));
+          if (writeModeState) {
+            writeModeState.filePath = action.payload.parameters.path;
+            writeModeState.content = result.output;
+          }
+          this.context.addMessage('system', `文件 ${action.payload.parameters.path} 已成功读取。请根据用户要求修改内容后，调用 write_file 工具写入文件。不要重复调用 read_file！`);
+        } else {
+          console.log(chalk.gray('[Analysis Mode] 文件已读取，继续分析...'));
+        }
+      }
+    }
+
+    // Learn from this execution
+    this.learnFromExecution(userInput, mode, thought).catch(() => {});
+
+    return lastToolCall;
+  }
+
+  private async handleFailedExecution(
+    result: any,
+    action: ProposedAction,
+    mode: string,
+    thought: AgentThought,
+    userInput: string
+  ): Promise<string> {
+    const actualToolName = action.payload?.tool_name || action.type;
+    this.context.addToolResult(actualToolName, `Error: ${result.error}`);
+    console.log(chalk.red(`[ERROR] ${result.error}`));
+
+    // Record to error tracker
+    if (action.type === 'tool_call') {
+      ErrorTracker.recordError(action.payload.tool_name, action.payload.parameters, result.error || 'Unknown error', { mode, model: thought.modelName, userInput });
+    } else if (action.type === 'shell_cmd') {
+      ErrorTracker.recordError('shell_cmd', { command: action.payload.command }, result.error || 'Unknown error', { mode, model: thought.modelName, userInput });
+    }
+
+    // Auto-fix for shell_cmd failures
+    if (action.type === 'shell_cmd' && result.error) {
+      console.log(chalk.yellow('[AutoFix] 尝试自动修复命令...'));
+      try {
+        const { autoFixCommand } = await import('../core/autofix');
+        const { getOSProfile } = await import('../core/os');
+        const os = getOSProfile();
+
+        const fixPlan = await autoFixCommand(action.payload.command, result.error || result.output || '', os, thought.modelName);
+        if (fixPlan && fixPlan.command) {
+          console.log(chalk.cyan(`[AutoFix] 建议修复命令: ${fixPlan.command}`));
+          console.log(chalk.gray(`[AutoFix] 说明: ${fixPlan.plan || '无'}`));
+          this.context.addMessage('system', `自动修复建议：${fixPlan.command}\n原因：${fixPlan.plan || '无'}`);
+
+          if (fixPlan.risk === 'low') {
+            console.log(chalk.yellow('[AutoFix] 修复方案风险低，自动执行...'));
+            const fixedAction: ProposedAction = {
+              id: randomUUID(),
+              type: 'shell_cmd',
+              payload: { command: fixPlan.command },
+              riskLevel: 'low',
+              reasoning: `AutoFix from failed command: ${action.payload.command}`
+            };
+            const fixedResult = await ToolExecutor.execute(fixedAction as any);
+            if (fixedResult.success) {
+              console.log(chalk.green('[AutoFix] 修复成功！'));
+              this.context.addToolResult('shell_cmd', fixedResult.output);
+              return ''; // clear error
+            } else {
+              console.log(chalk.red('[AutoFix] 修复失败，继续原始错误处理'));
+            }
+          }
+        } else {
+          console.log(chalk.gray('[AutoFix] 无法生成修复建议'));
+        }
+      } catch (fixError: any) {
+        console.warn(chalk.yellow(`[AutoFix] 修复过程出错: ${fixError.message}`));
+      }
+    }
+
+    return result.error;
+  }
+
+  /**
+   * 语义完成检测：输出是否已经是直接答案
+   * 用于防止 AI 在已经获取答案后继续无意义地查询
+   */
+  private isSemanticComplete(output: string, userInput: string): boolean {
+    const trimmed = output.trim();
+
+    // 输出必须是短的（直接答案通常很短）
+    if (trimmed.length > 100 || trimmed.length === 0) return false;
+
+    // 输出不能包含多行
+    if (trimmed.includes('\n')) return false;
+
+    const q = userInput.toLowerCase();
+
+    // 1. 问"大小/多少字节" → 输出是纯数字 或 带单位的短文本（如 "4.0K"、"288K"、"1.5MB"）
+    if (/(大小|多少字节|多大|size|bytes?)/.test(q)) {
+      if (/^\d+(\.\d+)?$/.test(trimmed)) return true;
+      // 人类可读格式：数字+单位，可能带前后空格和路径
+      if (/^[\d.]+\s*[KMGT]?B?$/i.test(trimmed)) return true;
+      // 带路径的格式：如 "4.0K    ./package.json"
+      if (/^[\d.]+\s*[KMGT]?B?\s+\S+/i.test(trimmed)) return true;
+    }
+
+    // 2. 问"几个/多少个/数量/count" → 输出是纯数字
+    if (/(几个|多少个|数量|count|how many)/.test(q) && /^\d+$/.test(trimmed)) return true;
+
+    // 3. 问"最大/最小的文件" → 输出是 "数字 路径" 格式（如 "0 ./foo.txt"）
+    if (/(最大|最小|largest|smallest).*文件/.test(q) && /^\d+\s+\.\//.test(trimmed)) return true;
+
+    // 4. 问"最新/最早"的文件 → 输出是单个文件名或带信息的短行
+    if (/(最新|最旧|最近|最早|newest|latest|oldest)/.test(q) && trimmed.split(/\s+/).length <= 5 && trimmed.length < 80) return true;
+
+    // 5. 问"行数" → 输出是纯数字
+    if (/(行数|多少行|line.?count|多少 line)/.test(q) && /^\d+$/.test(trimmed)) return true;
+
+    // 6. 通用：输出是短小的、看起来像答案的内容（单行，< 50 字符，不是命令输出）
+    // 排除：以 - 开头（ls -l 风格）、包含多个空格的长行
+    if (trimmed.length < 50 && !trimmed.startsWith('-') && trimmed.split(/\s+/).length <= 4) {
+      // 包含数字或路径，看起来像答案
+      if (/\d+|\.\//.test(trimmed)) return true;
+    }
+
+    return false;
+  }
+
+  private async learnFromExecution(userInput: string, mode: string, thought: AgentThought): Promise<void> {
+    try {
+      const { createExecutionRecord } = await import('../core/executionRecord');
+      const { saveExecutionRecord } = await import('../core/executionStore');
+
+      const record = createExecutionRecord(
+        `agent-${mode}`,
+        { required: [], preferred: [] } as any,
+        { aiProxyUrl: { value: '', source: 'built-in' }, defaultModel: { value: '', source: 'built-in' }, accountType: { value: 'free', source: 'built-in' } } as any,
+        { selected: null, candidates: [], fallbackOccurred: false },
+        { success: true },
+        undefined,
+        userInput,
+        mode
+      );
+
+      (record as any).llmResult = { plan: thought.parsedPlan };
+      (record as any).input = { rawInput: userInput };
+
+      const savedRecordId = saveExecutionRecord(record);
+      const { loadExecutionRecord } = await import('../core/executionStore');
+      const savedRecord = loadExecutionRecord(savedRecordId);
+
+      if (savedRecord) {
+        const { learnSkillFromRecord } = await import('./skills');
+        learnSkillFromRecord(savedRecord, true);
+      }
+    } catch (error) {
+      console.warn(chalk.yellow(`[Skill Learning] Failed: ${error}`));
     }
   }
 }

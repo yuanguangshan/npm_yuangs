@@ -5,7 +5,6 @@ import path from 'path';
 import fs from 'fs';
 import os from 'os';
 import { Command } from 'commander';
-import { handleAICommand } from './commands/handleAICommand';
 import { handleAIChat } from './commands/handleAIChat';
 import { registerCapabilityCommands } from './commands/capabilityCommands';
 import { getAllCommands, getCommandSubcommands, getCommandDescription, installBashCompletion, installZshCompletion, complete, setProgramInstance } from './core/completion';
@@ -68,9 +67,9 @@ function parseOptionsFromArgs(args: string[]): {
 }
 
 function getModelFromShortcuts(args: string[]): string | undefined {
-    if (args.includes('-p')) return 'Assistant';
-    if (args.includes('-f')) return 'Assistant';
-    if (args.includes('-l')) return 'Assistant';
+    if (args.includes('-p')) return 'Pro';       // 高质量模型
+    if (args.includes('-f')) return 'Flash';     // 快速响应模型
+    if (args.includes('-l')) return 'Lite';      // 轻量/低成本模型
     return undefined;
 }
 
@@ -115,9 +114,9 @@ program
         }
 
         let model = options.model;
-        if (options.p) model = 'Assistant';
-        if (options.f) model = 'Assistant';
-        if (options.l) model = 'Assistant';
+        if (options.p) model = 'Pro';
+        if (options.f) model = 'Flash';
+        if (options.l) model = 'Lite';
 
         const { PreferencesManager } = await import('./agent/preferences');
 
@@ -618,7 +617,11 @@ async function main() {
 
             let model = options.model;
             if (options.exec) {
-                await handleAICommand(question, { execute: false, model, verbose: options.withContent });
+                // 统一使用 AgentRuntime 执行命令模式，与 `yuangs ai -e` 保持一致
+                const { AgentRuntime } = await import('./agent');
+                console.log(chalk.magenta('--- RUNNING WITH AGENT ENGINE (COMMAND MODE) ---'));
+                const runtime = new AgentRuntime(await import('./ai/client').then(m => m.getConversationHistory()));
+                await runtime.run(question || '', 'command', undefined, model);
             } else {
                 await handleAIChat(question || null, model);
             }

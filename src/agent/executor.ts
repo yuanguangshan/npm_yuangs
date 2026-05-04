@@ -20,6 +20,40 @@ export class ToolExecutor {
   private static currentCapabilityLevel = CapabilityLevel.STRUCTURAL; // 当前模型的能力等级（可配置）
 
   /**
+   * 危险命令模式列表，AI 生成的命令中包含这些模式时应拦截
+   */
+  private static readonly DANGEROUS_PATTERNS: RegExp[] = [
+    /\brm\s+(-rf?|--recursive\s+--force)\s+\/\s*$/, // rm -rf /
+    /\brm\s+-rf?\s+\/\b/, // rm -rf /...
+    /\bdd\s+if=\/dev\/zero/, // dd if=/dev/zero
+    /\bmkfs\b/, // 格式化文件系统
+    />\s*\/dev\/sda/, // 直接写磁盘设备
+    />\s*\/dev\/vda/,
+    />\s*\/dev\/nvme/,
+    /:\(\)\{\s*:\|:\s*&\s*\}\s*;/, // fork bomb
+    /\bwget\s+.*\s*\|\s*(sh|bash)\b/i, // wget | sh (远程脚本执行)
+    /\bcurl\s+.*\s*\|\s*(sh|bash)\b/i, // curl | sh
+    /\bchmod\s+777\s+\/\b/, // chmod 777 /
+    /\bchown\s+-R\s+.*\s+\/\b/, // chown -R ... /
+    /\bsudo\s+rm\s+-rf\s+\/\b/, // sudo rm -rf /
+  ];
+
+  /**
+   * 检查命令是否包含危险模式
+   */
+  private static isDangerousCommand(command: string): { safe: boolean; reason?: string } {
+    const trimmed = command.trim();
+
+    for (const pattern of this.DANGEROUS_PATTERNS) {
+      if (pattern.test(trimmed)) {
+        return { safe: false, reason: `命令匹配危险模式: ${pattern.source}` };
+      }
+    }
+
+    return { safe: true };
+  }
+
+  /**
    * 设置当前能力等级
    */
   static setCapabilityLevel(level: CapabilityLevel): void {
@@ -264,6 +298,10 @@ export class ToolExecutor {
         return await this.toolFileInfo(payload.parameters);
 
       // ===== 已弃用/未实现 =====
+      case 'shell_cmd':
+        // 兼容 AI 将 shell_cmd 作为 tool_call 发送的情况
+        return await this.executeShell(payload.parameters?.command || payload.command || '');
+
       case 'web_search':
         return {
           success: false,
@@ -362,6 +400,16 @@ export class ToolExecutor {
   }
 
   private static async executeShell(command: string): Promise<ToolExecutionResult> {
+    // 安全检查：拦截明显危险的命令
+    const safetyCheck = this.isDangerousCommand(command);
+    if (!safetyCheck.safe) {
+      return {
+        success: false,
+        error: `安全拦截: ${safetyCheck.reason}`,
+        output: ''
+      };
+    }
+
     try {
       const { stdout, stderr } = await execAsync(command, {
         maxBuffer: 10 * 1024 * 1024,

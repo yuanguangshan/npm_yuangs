@@ -10,6 +10,14 @@ export declare class ToolExecutor {
     private static readonly READ_POSITIONS;
     private static currentCapabilityLevel;
     /**
+     * 危险命令模式列表，AI 生成的命令中包含这些模式时应拦截
+     */
+    private static readonly DANGEROUS_PATTERNS;
+    /**
+     * 检查命令是否包含危险模式
+     */
+    private static isDangerousCommand;
+    /**
      * 设置当前能力等级
      */
     static setCapabilityLevel(level: CapabilityLevel): void;
