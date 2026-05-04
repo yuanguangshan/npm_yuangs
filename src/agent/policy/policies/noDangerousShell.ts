@@ -1,5 +1,5 @@
 import { Policy, PolicyContext, PolicyResult } from '../types';
-import { RiskLevel } from '../../state';
+import { ShellCmdPayload } from '../../state';
 
 export class NoDangerousShellPolicy implements Policy {
   name = 'no-dangerous-shell';
@@ -9,7 +9,7 @@ export class NoDangerousShellPolicy implements Policy {
     const { action } = context;
 
     if (action.type === 'shell_cmd') {
-      const command = action.payload?.command || '';
+      const command = (action.payload as unknown as ShellCmdPayload).command || '';
       
       const dangerousPatterns = [
         { pattern: /rm\s+-rf\s+\//, name: 'rm -rf /', risk: 'high' },

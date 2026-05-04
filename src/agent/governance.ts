@@ -6,6 +6,7 @@ import { WasmGovernanceBridge } from './governance/bridge';
 import { generateRiskDisclosure, formatRiskDisclosureCLI, extractRiskFactorsFromThought, RiskFactors } from './riskDisclosure';
 import { RiskScoringModel, RiskAssessment, defaultRiskScoringModel } from './governance/riskScoring';
 import jsyaml from 'js-yaml';
+import { confirm } from '../utils/confirm';
 import fs from 'fs';
 import path from 'path';
 
@@ -145,7 +146,6 @@ export class GovernanceService {
     const disclosure = generateRiskDisclosure(riskFactors);
     console.log(formatRiskDisclosureCLI(disclosure));
 
-    const { confirm } = await import('../utils/confirm');
     const ok = await confirm(`Do you want to proceed with this action?`);
 
     if (ok) {

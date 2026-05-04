@@ -11,6 +11,9 @@ import { askAI, getUserConfig } from '../ai/client';
 import { callLLMWithRouter } from './modelRouterIntegration';
 import { PlanCache } from './PlanCache';
 import { logger } from '../utils/Logger';
+import { createExecutionRecord } from '../core/executionRecord';
+import { saveExecutionRecord, loadExecutionRecord } from '../core/executionStore';
+import { learnSkillFromRecord, getAllSkills, updateSkillStatus } from './skills';
 
 const log = logger.child('DualAgentRuntime');
 
@@ -270,9 +273,6 @@ ${context ? `Context:\n${context}\n` : ''}
       this.context.addToolResult(step.type, result.output);
 
       try {
-        const { createExecutionRecord } = await import('../core/executionRecord');
-        const { saveExecutionRecord } = await import('../core/executionStore');
-
         const record = createExecutionRecord(
           `agent-planner-${step.type}`,
           { required: [], preferred: [] } as any,
@@ -292,11 +292,9 @@ ${context ? `Context:\n${context}\n` : ''}
         (record as any).input = { rawInput: originalInput };
 
         const savedRecordId = saveExecutionRecord(record);
-        const { loadExecutionRecord } = await import('../core/executionStore');
         const savedRecord = loadExecutionRecord(savedRecordId);
 
         if (savedRecord) {
-          const { learnSkillFromRecord } = await import('./skills');
           learnSkillFromRecord(savedRecord, true);
         }
       } catch (error) {
@@ -306,7 +304,6 @@ ${context ? `Context:\n${context}\n` : ''}
       this.context.addToolResult(step.type, `Error: ${result.error}`);
 
       try {
-        const { getAllSkills, updateSkillStatus } = await import('./skills');
         const skills = getAllSkills();
         const existingSkill = skills.find(s => s.name === step.description);
 

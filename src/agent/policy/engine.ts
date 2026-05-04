@@ -1,5 +1,5 @@
 import { Policy, PolicyContext, PolicyResult } from './types';
-import { RiskLevel } from '../state';
+import { RiskLevel, ProposedAction } from '../state';
 
 export class PolicyEngine {
   private policies: Map<string, Policy> = new Map();
@@ -20,7 +20,7 @@ export class PolicyEngine {
 
     for (const [name, policy] of this.policies) {
       const result = await policy.evaluate(context);
-      
+
       if (!result.allowed) {
         return {
           allowed: false,
@@ -39,12 +39,12 @@ export class PolicyEngine {
     return finalResult;
   }
 
-  evaluateRisk(action: { type: string; payload: any }): RiskLevel {
+  evaluateRisk(action: ProposedAction): RiskLevel {
     const { type, payload } = action;
 
     if (type === 'tool_call') {
-      const toolName = payload.tool_name;
-      
+      const toolName = (payload as any).tool_name;
+
       const lowRiskTools = ['read_file', 'list_files', 'web_search'];
       if (lowRiskTools.includes(toolName)) {
         return 'low';
@@ -52,7 +52,7 @@ export class PolicyEngine {
 
       const mediumRiskTools = ['write_file', 'shell'];
       if (mediumRiskTools.includes(toolName)) {
-        const cmd = payload.parameters?.command || payload.command || '';
+        const cmd = (payload as any).parameters?.command || (payload as any).command || '';
         if (this.containsDangerousCommand(cmd)) {
           return 'high';
         }
@@ -63,7 +63,7 @@ export class PolicyEngine {
     }
 
     if (type === 'shell_cmd') {
-      const cmd = payload.command || '';
+      const cmd = (payload as any).command || '';
       if (this.containsDangerousCommand(cmd)) {
         return 'high';
       }

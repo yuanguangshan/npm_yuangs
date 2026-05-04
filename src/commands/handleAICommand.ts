@@ -8,6 +8,7 @@ import { assessRisk } from '../core/risk';
 import { autoFixCommand } from '../core/autofix';
 import { confirm } from '../utils/confirm';
 import { saveHistory } from '../utils/history';
+import { listExecutionRecords, saveExecutionRecord } from '../core/executionStore';
 import { safeParseJSON, AICommandPlan, AIFixPlan } from '../core/validation';
 import { getMacros, runMacro } from '../core/macros';
 import { CapabilitySystem } from '../core/capabilitySystem';
@@ -243,7 +244,6 @@ ${result.stderr}
                     'command'
                 );
 
-                const { listExecutionRecords, saveExecutionRecord } = await import('../core/executionStore');
                 const records = listExecutionRecords(1);
                 if (records.length > 0) {
                     const lastRecord = records[0];

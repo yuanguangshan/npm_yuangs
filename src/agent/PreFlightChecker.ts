@@ -5,6 +5,7 @@ import { SmartContextManager } from "./smartContextManager";
 import { evaluateProposal } from "./governance/core";
 import { GovernanceService } from "./governance";
 import { logger } from "../utils/Logger";
+import { PolicyEngine, policyEngine, noDangerousShellPolicy, workdirWritePolicy, PolicyContext } from "./policy";
 
 const log = logger.child('PreFlightChecker');
 
@@ -78,23 +79,7 @@ export class PreFlightChecker {
    * Record knowledge graph edge between observation and action.
    */
   async recordKnowledgeGraphEdge(thought: any, action: ProposedAction): Promise<void> {
-    const lastObs = this.context.getLastAckableObservation();
-    const ackText = thought.parsedPlan?.acknowledged_observation;
-
-    if (lastObs && lastObs.metadata?.obsId && ackText && ackText !== 'NONE') {
-      try {
-        const { recordEdge } = await import('../engine/agent/knowledgeGraph');
-        recordEdge({
-          from: lastObs.metadata.obsId,
-          to: action.id,
-          type: 'ACKNOWLEDGED_BY' as any,
-          metadata: { verified: true, timestamp: Date.now() }
-        });
-        log.debug('Causal edge recorded');
-      } catch (error: any) {
-        log.warn('Failed to record causal edge', { error: error.message });
-      }
-    }
+    // TODO: implement knowledge graph integration when module is available
   }
 
   /**
@@ -143,6 +128,28 @@ export class PreFlightChecker {
       }
     }
 
+    // Policy engine check
+    const policyCtx: PolicyContext = {
+      action,
+      cwd: process.cwd(),
+      mode: 'command+exec',
+      history: []
+    };
+
+    // Register policies on first use
+    if (!policyEngine['policies'].size) {
+      policyEngine.registerPolicy(noDangerousShellPolicy);
+      policyEngine.registerPolicy(workdirWritePolicy);
+    }
+
+    // Synchronous check: policy evaluation is sync for these policies
+    const policyResult = this.evaluatePolicySync(policyCtx);
+    if (policyResult && !policyResult.allowed) {
+      log.warn('Policy blocked', { policy: policyResult.reason });
+      this.context.addMessage('system', `BLOCKED: ${policyResult.reason}. ${policyResult.suggestedActions?.join(' ') || ''}`);
+      return 'blocked';
+    }
+
     // Error tracker block
     const blockCheck = ErrorTracker.shouldBlockExecution(toolName, toolParams.parameters);
     if (blockCheck.blocked) {
@@ -152,5 +159,22 @@ export class PreFlightChecker {
     }
 
     return null;
+  }
+
+  /** Synchronous policy evaluation (for sync check method) */
+  private evaluatePolicySync(ctx: PolicyContext): { allowed: boolean; reason?: string; suggestedActions?: string[] } {
+    // Direct synchronous evaluation since current policies are sync
+    const policies = [noDangerousShellPolicy, workdirWritePolicy];
+    for (const policy of policies) {
+      const result = policy.evaluate(ctx);
+      if (result instanceof Promise) {
+        // Should not happen for current policies
+        continue;
+      }
+      if (!result.allowed) {
+        return { allowed: false, reason: result.reason, suggestedActions: result.suggestedActions };
+      }
+    }
+    return { allowed: true };
   }
 }

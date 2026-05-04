@@ -5,6 +5,8 @@ import { GovernanceService } from "./governance";
 import { SmartContextManager } from "./smartContextManager";
 import { AgentThought } from "./state";
 import { StreamMarkdownRenderer } from '../utils/renderer';
+import { buildDynamicContext, injectDynamicContext } from "./dynamicPrompt";
+import { matchSkill, generateSkillPrompt } from './promptSkills';
 
 /**
  * Handles all LLM interaction: prompt building, calling, and error recovery.
@@ -16,12 +18,10 @@ export class LLMCaller {
    * Build the final prompt with dynamic context and skill injection.
    */
   async buildPrompt(userInput: string, lastError: string | undefined): Promise<string> {
-    const { buildDynamicContext, injectDynamicContext } = await import("./dynamicPrompt");
     const dynamicContext = await buildDynamicContext(lastError);
     const basePrompt = GovernanceService.getPolicyManual();
     let prompt = injectDynamicContext(basePrompt, dynamicContext);
 
-    const { matchSkill, generateSkillPrompt } = await import('./promptSkills');
     const skill = matchSkill(userInput);
     if (skill) {
       prompt += `\n\n[SKILL ACTIVE: ${skill.name}]\n${generateSkillPrompt(skill, userInput)}`;

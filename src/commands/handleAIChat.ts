@@ -255,7 +255,7 @@ async function handleDirectoryReference(input: string): Promise<string> {
 
 export async function handleAIChat(initialQuestion: string | null, model?: string) {
     // 初始化 AgentRuntime (v2.0 引擎)
-    const { AgentRuntime } = await import('../agent');
+    const { AgentRuntime } = await import('../agent/AgentRuntime');
     const runtime = new AgentRuntime(getConversationHistory());
 
     const processInteraction = async (question: string) => {
