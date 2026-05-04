@@ -509,10 +509,17 @@ export class AgentRuntime {
           return lastToolCall;
         }
 
-        // REPL/Chat 模式下不自动完成，让 AI 基于工具结果组织回答
+        // REPL/Chat 模式下不自动完成，让 AI 基于工具结果正常回答
         if (mode === 'chat') {
-          console.log(chalk.gray('[Chat Mode] 只读工具执行成功，AI 将基于结果回答'));
-          this.context.addMessage('system', `工具结果已获取。请根据用户的问题 "${userInput}" 给出简洁的中文回答。`);
+          // 对于简单的只读查询，直接格式化结果返回，避免额外 LLM 调用
+          const formatted = this.tryFormatToolResult(result.output, userInput);
+          if (formatted) {
+            console.log(chalk.green(`\n${formatted}\n`));
+            this.context.addMessage("assistant", formatted);
+            agentRenderer && (() => { (agentRenderer as any).buffer = ''; (agentRenderer as any).quietMode = true; agentRenderer.finish(); })();
+            return null; // 直接 break
+          }
+          this.context.addMessage('system', `请根据以上工具结果，简洁回答用户的问题。`);
           return lastToolCall;
         }
 
@@ -648,6 +655,39 @@ export class AgentRuntime {
     }
 
     return false;
+  }
+
+  /**
+   * 尝试直接格式化工具结果，避免额外的 LLM 调用
+   * 适用于简单的只读查询（如 list_files、read_file 等）
+   */
+  private tryFormatToolResult(output: string, userInput: string): string | null {
+    // 只对较短的输出直接格式化（避免格式化大量数据）
+    if (output.length > 5000) return null;
+
+    // 尝试解析 JSON 数组（如 list_files 的结果）
+    try {
+      const parsed = JSON.parse(output);
+      if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].path) {
+        // list_files 结果
+        const files = parsed.filter((f: any) => f.type === 'file');
+        const dirs = parsed.filter((f: any) => f.type === 'directory');
+        const fileNames = files.map((f: any) => f.path.split('/').pop()).join('、');
+        const dirNames = dirs.map((f: any) => f.path.split('/').pop()).join('、');
+        let result = `📁 **${files.length}** 个文件`;
+        if (files.length > 0) result += `：${fileNames}`;
+        result += `\n📂 **${dirs.length}** 个目录`;
+        if (dirs.length > 0) result += `：${dirNames}`;
+        return result;
+      }
+    } catch { /* not JSON */ }
+
+    // 输出较短且为单行，可能是直接答案
+    if (output.length < 200 && !output.includes('\n')) {
+      return output;
+    }
+
+    return null;
   }
 
   private async learnFromExecution(userInput: string, mode: string, thought: AgentThought): Promise<void> {
