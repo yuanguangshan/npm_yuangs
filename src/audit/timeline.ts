@@ -1,4 +1,4 @@
-import type { ExecutionTurn } from '../agent/state';
+import type { ExecutionTurn, ToolCallPayload, ShellCmdPayload } from '../agent/state';
 
 export type AuditEventType =
   | 'macro_started'
@@ -137,11 +137,12 @@ export class AuditTimeline {
 
     if (turn.executionResult) {
       if (turn.proposedAction?.type === 'tool_call') {
+        const toolPayload = turn.proposedAction.payload as unknown as ToolCallPayload;
         this.record({
           type: 'tool_executed',
           data: {
-            toolName: turn.proposedAction.payload?.tool_name,
-            toolParams: turn.proposedAction.payload?.parameters,
+            toolName: toolPayload.tool_name,
+            toolParams: toolPayload.parameters,
             success: turn.executionResult.success
           }
         });
@@ -190,25 +191,26 @@ export class AuditTimeline {
 
     for (const turn of turns) {
       if (turn.proposedAction?.type === 'tool_call') {
-        const toolName = turn.proposedAction.payload?.tool_name;
-        const params = turn.proposedAction.payload?.parameters;
+        const toolPayload = turn.proposedAction.payload as unknown as ToolCallPayload;
+        const toolName = toolPayload.tool_name;
+        const params = toolPayload.parameters as Record<string, unknown>;
 
         switch (toolName) {
           case 'read_file':
             if (params?.path && turn.executionResult?.success) {
-              effects.filesRead.push(params.path);
+              effects.filesRead.push(params.path as string);
             }
             break;
 
           case 'write_file':
             if (params?.path && turn.executionResult?.success) {
-              effects.filesWritten.push(params.path);
+              effects.filesWritten.push(params.path as string);
             }
             break;
 
           case 'list_files':
             if (params?.path && turn.executionResult?.success) {
-              effects.filesModified.push(params.path);
+              effects.filesModified.push(params.path as string);
             }
             break;
         }
@@ -216,7 +218,7 @@ export class AuditTimeline {
 
       if (turn.proposedAction?.type === 'shell_cmd' && turn.executionResult) {
         effects.commandsExecuted.push({
-          command: turn.proposedAction.payload?.command,
+          command: (turn.proposedAction.payload as unknown as ShellCmdPayload).command,
           success: turn.executionResult.success
         });
       }

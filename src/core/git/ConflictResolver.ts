@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { GitService } from './GitService';
-import { runLLM, AIError } from '../../agent/llm';
+import { runLLM } from '../../agent/llm';
 import { DEFAULT_AI_MODEL } from './constants';
 
 export interface ConflictResolutionResult {

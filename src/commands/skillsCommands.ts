@@ -1,31 +1,6 @@
 import chalk from 'chalk';
 import { Command } from 'commander';
-import { getAllSkills, computeSkillScore, Skill } from '../agent/skills';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
-
-const SKILLS_FILE = path.join(os.homedir(), '.yuangs_skills.json');
-
-function loadSkills() {
-    if (fs.existsSync(SKILLS_FILE)) {
-        try {
-            const data = fs.readFileSync(SKILLS_FILE, 'utf-8');
-            return JSON.parse(data);
-        } catch (e) {
-            return [];
-        }
-    }
-    return [];
-}
-
-function saveSkills(skills: any[]) {
-    try {
-        fs.writeFileSync(SKILLS_FILE, JSON.stringify(skills, null, 2));
-    } catch (e) {
-        console.error(chalk.red(`Failed to save skills to ${SKILLS_FILE}`));
-    }
-}
+import { getAllSkills, computeSkillScore, enableSkill, disableSkill } from '../agent/skills';
 
 export function registerSkillsCommands(program: Command): void {
     const skillsProgram = program.command('skills').description('Skill management commands');
@@ -84,21 +59,11 @@ export function registerSkillsCommands(program: Command): void {
         .command('disable <name>')
         .description('Disable a skill')
         .action((name) => {
-            const skills = loadSkills() as Skill[];
-            const skillIndex = skills.findIndex(s => s.name === name || s.id === name);
-
-            if (skillIndex === -1) {
+            const ok = disableSkill(name);
+            if (!ok) {
                 console.log(chalk.red(`❌ Skill "${name}" not found\n`));
                 return;
             }
-
-            if (!skills[skillIndex].enabled) {
-                console.log(chalk.yellow(`ℹ️  Skill "${name}" is already disabled\n`));
-                return;
-            }
-
-            skills[skillIndex].enabled = false;
-            saveSkills(skills);
             console.log(chalk.green(`✓ Skill "${name}" has been disabled\n`));
         });
 
@@ -106,21 +71,11 @@ export function registerSkillsCommands(program: Command): void {
         .command('enable <name>')
         .description('Enable a skill')
         .action((name) => {
-            const skills = loadSkills() as Skill[];
-            const skillIndex = skills.findIndex(s => s.name === name || s.id === name);
-
-            if (skillIndex === -1) {
+            const ok = enableSkill(name);
+            if (!ok) {
                 console.log(chalk.red(`❌ Skill "${name}" not found\n`));
                 return;
             }
-
-            if (skills[skillIndex].enabled) {
-                console.log(chalk.yellow(`ℹ️  Skill "${name}" is already enabled\n`));
-                return;
-            }
-
-            skills[skillIndex].enabled = true;
-            saveSkills(skills);
             console.log(chalk.green(`✓ Skill "${name}" has been enabled\n`));
         });
 }

@@ -1,5 +1,5 @@
 import { ExecutionRecord } from './executionRecord';
-import { computeSkillScore, Skill } from '../agent/skills';
+import { computeSkillScore, Skill } from './skillTypes';
 
 /**
  * Explain Output Spec v1

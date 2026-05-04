@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import { ProposedAction, GovernanceDecision } from './state';
+import { ProposedAction, GovernanceDecision, ShellCmdPayload, ToolCallPayload } from './state';
 import { evaluateProposal, PolicyRule, RiskEntry } from './governance/core';
 import { RiskLedger } from './governance/ledger';
 import { WasmGovernanceBridge } from './governance/bridge';
@@ -110,9 +110,10 @@ export class GovernanceService {
     // 3. 人工干预兜底
     console.log(chalk.yellow(`\n⚠️  Governance: Explicit approval required for ${action.type}`));
     if (action.type === 'shell_cmd') {
-      console.log(chalk.bold.green('💻 Proposed Command: ') + chalk.yellow(action.payload.command));
+      console.log(chalk.bold.green('💻 Proposed Command: ') + chalk.yellow((action.payload as unknown as ShellCmdPayload).command));
     } else if (action.type === 'tool_call') {
-      console.log(chalk.bold.green('🛠️  Tool: ') + chalk.cyan(`${action.payload.tool_name}(${JSON.stringify(action.payload.parameters)})`));
+      const toolPayload = action.payload as unknown as ToolCallPayload;
+      console.log(chalk.bold.green('🛠️  Tool: ') + chalk.cyan(`${toolPayload.tool_name}(${JSON.stringify(toolPayload.parameters)})`));
     }
 
     // 显示量化风险评分
@@ -137,9 +138,9 @@ export class GovernanceService {
     const riskFactors: RiskFactors = extractRiskFactorsFromThought(action.reasoning || '');
     riskFactors.commandType = action.type;
     if (action.type === 'shell_cmd') {
-      riskFactors.command = action.payload.command;
+      riskFactors.command = (action.payload as unknown as ShellCmdPayload).command;
     }
-    riskFactors.isDestructive = action.payload.risk_level === 'high';
+    riskFactors.isDestructive = (action.payload as Record<string, unknown>).risk_level === 'high';
 
     const disclosure = generateRiskDisclosure(riskFactors);
     console.log(formatRiskDisclosureCLI(disclosure));

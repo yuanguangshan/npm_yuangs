@@ -1,4 +1,4 @@
-import { ProposedAction } from '../state';
+import { ProposedAction, ToolCallPayload, ShellCmdPayload } from '../state';
 
 /**
  * 风险评分配置
@@ -198,7 +198,8 @@ export class RiskScoringModel {
       score = 0.2;
       reason = 'Shell 命令执行';
     } else if (action.type === 'tool_call') {
-      const toolName = action.payload.tool_name;
+      const toolParams = action.payload as unknown as ToolCallPayload;
+      const toolName = toolParams.tool_name;
 
       if (LOW_RISK_TOOLS.includes(toolName)) {
         score = 0.05;
@@ -231,7 +232,7 @@ export class RiskScoringModel {
     let matchedReason = '无破坏性特征';
 
     if (action.type === 'shell_cmd') {
-      const command = action.payload.command || '';
+      const command = (action.payload as unknown as ShellCmdPayload).command || '';
 
       for (const { pattern, risk, reason } of DESTRUCTIVE_PATTERNS) {
         if (pattern.test(command)) {
@@ -244,7 +245,8 @@ export class RiskScoringModel {
       }
     } else if (action.type === 'tool_call') {
       // 工具调用的破坏性检查
-      if (action.payload.parameters?.destructive) {
+      const toolParams = action.payload as unknown as ToolCallPayload;
+      if ((toolParams.parameters as Record<string, unknown>)?.destructive) {
         maxScore = 0.5;
         matchedReason = '工具标记为破坏性';
       }
@@ -267,13 +269,14 @@ export class RiskScoringModel {
 
     let targetPath = '';
     if (action.type === 'shell_cmd') {
-      targetPath = action.payload.command || '';
+      targetPath = (action.payload as unknown as ShellCmdPayload).command || '';
     } else if (action.type === 'tool_call') {
-      const params = action.payload.parameters;
+      const toolParams = action.payload as unknown as ToolCallPayload;
+      const params = toolParams.parameters as Record<string, unknown>;
       if (params?.path) {
-        targetPath = params.path;
+        targetPath = params.path as string;
       } else if (params?.file) {
-        targetPath = params.file;
+        targetPath = params.file as string;
       }
     }
 
@@ -303,7 +306,7 @@ export class RiskScoringModel {
     let reason = '简单命令';
 
     if (action.type === 'shell_cmd') {
-      const command = action.payload.command || '';
+      const command = (action.payload as unknown as ShellCmdPayload).command || '';
 
       // 管道数量
       const pipeCount = (command.match(/\|/g) || []).length;

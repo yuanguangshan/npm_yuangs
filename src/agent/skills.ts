@@ -2,70 +2,22 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import chalk from 'chalk';
+import type { Skill } from '../core/skillTypes';
+import { computeSkillScore } from '../core/skillTypes';
+import { FileStorage } from '../utils/storage';
 
-export interface Skill {
-    id: string;
-    name: string;
-    description: string;
-    whenToUse: string; // 触发场景描述
-    planTemplate: any;
+// Re-export for backward compatibility
+export type { Skill };
+export { computeSkillScore };
 
-    // 评价指标
-    successCount: number;
-    failureCount: number;
-    confidence: number; // 0 ~ 1, 初始 0.5
+const skillsStorage = FileStorage.forYuangs<Skill[]>('skills.json');
 
-    // 时间戳
-    lastUsed: number;
-    createdAt: number;
+// 初始化加载
+let skillLibrary: Skill[] = skillsStorage.read() || [];
 
-    // 是否启用
-    enabled: boolean;
-}
-
-const SKILLS_FILE = path.join(os.homedir(), '.yuangs_skills.json');
-let skillLibrary: Skill[] = [];
-
-// === Persistence Logic ===
-
-function loadSkills() {
-    if (fs.existsSync(SKILLS_FILE)) {
-        try {
-            const data = fs.readFileSync(SKILLS_FILE, 'utf-8');
-            skillLibrary = JSON.parse(data);
-        } catch (e) {
-            console.error(chalk.yellow(`Failed to load skills from ${SKILLS_FILE}, starting empty.`));
-            skillLibrary = [];
-        }
-    }
-}
-
-function saveSkills() {
-    try {
-        fs.writeFileSync(SKILLS_FILE, JSON.stringify(skillLibrary, null, 2));
-    } catch (e) {
-        console.error(chalk.red(`Failed to save skills to ${SKILLS_FILE}`));
-    }
-}
-
-// Initialize on load
-loadSkills();
-
-// === Existing Logic with Save Hooks ===
-
-/**
- * 计算技能分 (0 ~ 1)
- */
-export function computeSkillScore(skill: Skill, now: number = Date.now()): number {
-    const totalUses = skill.successCount + skill.failureCount;
-    const successRate = totalUses === 0 ? 0.5 : skill.successCount / totalUses;
-
-    // 时间衰减 (Freshness): 半衰期约 14 天
-    const idleDays = (now - skill.lastUsed) / (1000 * 60 * 60 * 24);
-    const freshness = Math.exp(-idleDays / 14);
-
-    // 综合得分: 45% 成功率 + 35% 新鲜度 + 20% 置信度
-    return (0.45 * successRate) + (0.35 * freshness) + (0.20 * skill.confidence);
+/** 持久化技能到磁盘 */
+function persistSkills(): void {
+    skillsStorage.write(skillLibrary);
 }
 
 /**
@@ -86,7 +38,7 @@ export function updateSkillStatus(skillId: string, success: boolean) {
         skill.confidence = Math.max(0, skill.confidence - 0.1);
     }
 
-    saveSkills(); // Persist changes
+    persistSkills();
 }
 
 /**
@@ -131,7 +83,7 @@ export function learnSkillFromRecord(record: any, success: boolean = true) {
     // 每学习一次，尝试清理一次“冷”技能
     reapColdSkills();
 
-    saveSkills(); // Persist changes
+    persistSkills();
 }
 
 /**
@@ -179,10 +131,34 @@ export function reapColdSkills() {
     }
 
     if (skillLibrary.length !== initialCount) {
-        saveSkills(); // Persist if changes happened
+        persistSkills(); // Persist if changes happened
     }
 }
 
 export function getAllSkills(): Skill[] {
     return [...skillLibrary];
+}
+
+/**
+ * 启用技能
+ */
+export function enableSkill(name: string): boolean {
+    const skill = skillLibrary.find(s => s.name === name || s.id === name);
+    if (!skill) return false;
+    if (skill.enabled) return true;
+    skill.enabled = true;
+    persistSkills();
+    return true;
+}
+
+/**
+ * 禁用技能
+ */
+export function disableSkill(name: string): boolean {
+    const skill = skillLibrary.find(s => s.name === name || s.id === name);
+    if (!skill) return false;
+    if (!skill.enabled) return true;
+    skill.enabled = false;
+    persistSkills();
+    return true;
 }

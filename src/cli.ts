@@ -5,6 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import os from 'os';
 import { Command } from 'commander';
+import { getConfigService } from './core/ConfigService';
 import { handleAIChat } from './commands/handleAIChat';
 import { registerCapabilityCommands } from './commands/capabilityCommands';
 import { getAllCommands, getCommandSubcommands, getCommandDescription, installBashCompletion, installZshCompletion, complete, setProgramInstance } from './core/completion';
@@ -32,6 +33,9 @@ if (majorVersion < 18) {
 
 const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf8'));
 const version = packageJson.version;
+
+// Initialize unified config service (fire-and-forget, config loads async)
+getConfigService().init().catch(() => {});
 
 const program = new Command();
 

@@ -11,6 +11,7 @@
  */
 
 import { randomUUID } from 'crypto';
+import { FileStorage } from '../utils/storage';
 
 /**
  * 错误记录接口
@@ -45,12 +46,51 @@ export interface ErrorPattern {
 }
 
 /**
+ * 序列化数据结构
+ */
+interface ErrorTrackerData {
+  errors: ErrorRecord[];
+  patterns: ErrorPattern[];
+}
+
+/**
  * 错误追踪器类
  */
 export class ErrorTracker {
   private static errors: Map<string, ErrorRecord> = new Map();
   private static errorPatterns: Map<string, ErrorPattern> = new Map();
   private static maxHistorySize = 1000;
+  private static storage = FileStorage.forYuangs<ErrorTrackerData>('error-tracker.json');
+  private static initialized = false;
+
+  /**
+   * 懒加载持久化数据
+   */
+  private static ensureInitialized(): void {
+    if (this.initialized) return;
+    this.initialized = true;
+
+    const data = this.storage.read();
+    if (!data) return;
+
+    for (const record of data.errors || []) {
+      this.errors.set(record.id, record);
+    }
+    for (const pattern of data.patterns || []) {
+      this.errorPatterns.set(pattern.pattern, pattern);
+    }
+  }
+
+  /**
+   * 保存到磁盘
+   */
+  private static persist(): void {
+    const data: ErrorTrackerData = {
+      errors: Array.from(this.errors.values()),
+      patterns: Array.from(this.errorPatterns.values()),
+    };
+    this.storage.write(data);
+  }
 
   /**
    * 记录工具执行错误
@@ -61,6 +101,7 @@ export class ErrorTracker {
     errorMessage: string,
     context?: { mode: string; model?: string; userInput?: string }
   ): ErrorRecord {
+    this.ensureInitialized();
     // 生成错误指纹（用于检测重复）
     const fingerprint = this.generateFingerprint(toolName, parameters, errorMessage);
 
@@ -100,6 +141,7 @@ export class ErrorTracker {
 
     // 更新错误模式
     this.updateErrorPatterns(record);
+    this.persist();
 
     return record;
   }
@@ -112,6 +154,7 @@ export class ErrorTracker {
     parameters: any,
     maxRetries: number = 3
   ): { blocked: boolean; reason?: string; existingError?: ErrorRecord } {
+    this.ensureInitialized();
     const existing = this.findSimilarError(toolName, parameters, '');
 
     if (existing) {
@@ -259,6 +302,7 @@ export class ErrorTracker {
         this.errors.delete(id);
       }
     }
+    this.persist();
   }
 
   /**
@@ -270,6 +314,7 @@ export class ErrorTracker {
     errorsByType: Record<string, number>;
     commonPatterns: Array<{ pattern: string; count: string; suggestedFix: string }>;
   } {
+    this.ensureInitialized();
     const errorsByTool: Record<string, number> = {};
     const errorsByType: Record<string, number> = {};
 
@@ -302,6 +347,7 @@ export class ErrorTracker {
   static clear(): void {
     this.errors.clear();
     this.errorPatterns.clear();
+    this.storage.delete();
   }
 
   /**

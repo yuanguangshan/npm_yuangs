@@ -12,10 +12,58 @@ export type AgentState =
 
 export type RiskLevel = 'low' | 'medium' | 'high';
 
+// === 精确载荷类型（消除 any） ===
+
+export interface ToolCallPayload {
+  tool_name: string;
+  parameters: Record<string, unknown>;
+  risk_level?: RiskLevel;
+}
+
+export interface ShellCmdPayload {
+  command: string;
+  risk_level?: RiskLevel;
+}
+
+export interface AnswerPayload {
+  content?: string;
+  text?: string;
+  risk_level?: RiskLevel;
+}
+
+/** 联合载荷类型，兼容所有访问模式 */
+export type ProposedActionPayload = ToolCallPayload | ShellCmdPayload | AnswerPayload | Record<string, unknown>;
+
+export interface ParsedPlan {
+  acknowledged_observation?: string;
+  goal?: string;
+}
+
+export interface LLMPlan {
+  goal?: string;
+  command?: string;
+  parameters?: Record<string, unknown>;
+  risk_level?: RiskLevel;
+}
+
+/** 类型守卫辅助 */
+export function isToolCallPayload(payload: ProposedActionPayload): payload is ToolCallPayload {
+  return 'tool_name' in payload && typeof (payload as any).tool_name === 'string';
+}
+
+export function isShellCmdPayload(payload: ProposedActionPayload): payload is ShellCmdPayload {
+  return 'command' in payload && typeof (payload as any).command === 'string';
+}
+
+export function isAnswerPayload(payload: ProposedActionPayload): payload is AnswerPayload {
+  return ('content' in payload && typeof (payload as any).content === 'string') ||
+         ('text' in payload && typeof (payload as any).text === 'string');
+}
+
 export interface ProposedAction {
   id: string;
   type: 'tool_call' | 'code_diff' | 'shell_cmd' | 'answer';
-  payload: any;
+  payload: ProposedActionPayload;
   riskLevel: RiskLevel;
   reasoning: string;
 }
@@ -40,10 +88,10 @@ export type EvaluationOutcome =
 
 export interface AgentThought {
   raw: string;
-  parsedPlan: any;
+  parsedPlan?: ParsedPlan;
   isDone: boolean;
   type?: 'tool_call' | 'code_diff' | 'shell_cmd' | 'answer';
-  payload?: any;
+  payload?: ProposedActionPayload;
   reasoning?: string;
   modelName?: string;
   usedRouter?: boolean;

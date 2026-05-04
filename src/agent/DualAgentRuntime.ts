@@ -10,6 +10,9 @@ import { ToolExecutionResult } from './state';
 import { askAI, getUserConfig } from '../ai/client';
 import { callLLMWithRouter } from './modelRouterIntegration';
 import { PlanCache } from './PlanCache';
+import { logger } from '../utils/Logger';
+
+const log = logger.child('DualAgentRuntime');
 
 export class DualAgentRuntime {
   private context: ContextManager;
@@ -154,10 +157,10 @@ export class DualAgentRuntime {
         let response: string;
 
         if (model) {
-          console.log(chalk.gray(`[Planner] Using specified model: ${model}`));
+          log.debug('Planner using specified model', { model });
           response = await askAI(prompt, model);
         } else {
-          console.log(chalk.gray(`[Planner] Choosing best model for planning...`));
+          log.debug('Planner choosing model via router');
           const routerResult = await callLLMWithRouter(messages, 'command', {
             taskType: 'analysis' as any, // Planning is primarily analysis
             routingStrategy: 'best_quality' as any // We want high quality plans
@@ -181,7 +184,7 @@ export class DualAgentRuntime {
           estimated_time: 'Unknown'
         };
       } catch (error) {
-        console.error(chalk.red(`Planner error: ${error}`));
+        log.error('Planner error', { error: String(error) });
         return {
           plan: 'Plan generation failed',
           steps: [],
@@ -297,7 +300,7 @@ ${context ? `Context:\n${context}\n` : ''}
           learnSkillFromRecord(savedRecord, true);
         }
       } catch (error) {
-        console.warn(chalk.yellow(`[Skill Learning] Failed: ${error}`));
+        log.warn('Skill learning failed', { error: String(error) });
       }
     } else {
       this.context.addToolResult(step.type, `Error: ${result.error}`);
@@ -311,7 +314,7 @@ ${context ? `Context:\n${context}\n` : ''}
           updateSkillStatus(existingSkill.id, false);
         }
       } catch (error) {
-        console.warn(chalk.yellow(`[Skill Learning] Failed to update status: ${error}`));
+        log.warn('Skill status update failed', { error: String(error) });
       }
     }
 

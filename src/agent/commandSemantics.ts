@@ -78,6 +78,18 @@ const DANGEROUS_PATTERNS: { pattern: RegExp; reason: string }[] = [
   { pattern: /\bchown\s+-R\s+.*\s+\/\b/, reason: '递归更改全局所有权' },
   { pattern: /\bsudo\s+rm\s+-rf\s+\/\b/, reason: 'sudo 删除根目录' },
   { pattern: />\s*\/etc\/(passwd|shadow|sudoers)/, reason: '写入系统认证文件' },
+  // === 绕过变体 ===
+  { pattern: /\brm\s+(-r\s+-f|-f\s+-r|--recursive\s+-f|-r\s+--force|--force\s+-r)\s+\/\s*$/, reason: '删除根目录（参数拆分绕过）' },
+  { pattern: /\benv\s+rm\s+-rf\s+\/\b/, reason: 'env 前缀绕过删除根目录' },
+  { pattern: /\bsudo\s+env\s+rm\s+-rf\s+\/\b/, reason: 'sudo env 前缀绕过删除根目录' },
+  { pattern: /\bbase64\s+(-d|--decode)\s*\|.*\b(sh|bash|zsh)\b/i, reason: 'base64 解码后脚本执行' },
+  { pattern: /\bxargs\s+(rm\s+-rf|dd|mkfs|chmod|chown)\b/i, reason: 'xargs 管道破坏命令' },
+  { pattern: /\bfind\s+\/[^&|;\s]*\s+-exec\s+(rm|dd|mkfs|chmod)\b/i, reason: 'find -exec 系统目录破坏' },
+  { pattern: /`\s*(rm\s+-rf|dd|mkfs)/i, reason: '反引号注入破坏命令' },
+  { pattern: /\$\(.*\b(rm\s+-rf|dd|mkfs)\b.*\)/i, reason: '子命令注入破坏命令' },
+  { pattern: /\bwget\s+-O-.*\|\s*(sh|bash|zsh)\b/i, reason: 'wget 远程脚本执行（变体）' },
+  { pattern: /\bcurl\s+-sL.*\|\s*(sh|bash|zsh)\b/i, reason: 'curl 远程脚本执行（变体）' },
+  { pattern: /\beval\s+.*\b(rm\s+-rf|dd|mkfs|chmod\s+777)\b/i, reason: 'eval 执行破坏命令' },
 ];
 
 // ============================================================================

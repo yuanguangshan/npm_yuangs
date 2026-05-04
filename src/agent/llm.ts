@@ -2,12 +2,10 @@ import { AgentPrompt, LLMResult } from './types';
 import chalk from 'chalk';
 import { callAI_Stream } from '../ai/client';
 import axios from 'axios';
-import { DEFAULT_AI_PROXY_URL, DEFAULT_MODEL, DEFAULT_ACCOUNT_TYPE, type AIRequestMessage } from '../core/validation';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+import { type AIRequestMessage } from '../core/validation';
 import { safeParseJSON } from '../core/validation';
 import { z } from 'zod';
+import { getConfigService } from '../core/ConfigService';
 import { withRetry, RetryConfig } from './errorHandling';
 import { callLLMWithRouter, shouldUseRouter } from './modelRouterIntegration';
 
@@ -24,8 +22,6 @@ export class AIError extends Error {
         this.name = 'AIError';
     }
 }
-
-const CONFIG_FILE = path.join(os.homedir(), '.yuangs.json');
 
 // Agent Action Schema for Native Structured Output
 export { supportsStructuredOutput };
@@ -69,13 +65,12 @@ function supportsStructuredOutput(model: string): boolean {
 }
 
 function getUserConfig(): any {
-    if (fs.existsSync(CONFIG_FILE)) {
-        try {
-            const content = fs.readFileSync(CONFIG_FILE, 'utf8');
-            return JSON.parse(content);
-        } catch (e) { }
-    }
-    return {};
+    const svc = getConfigService();
+    return {
+        aiProxyUrl: svc.getAiProxyUrl(),
+        defaultModel: svc.getDefaultModel(),
+        accountType: svc.getAccountType(),
+    };
 }
 
 export async function runLLM({
@@ -144,20 +139,20 @@ export async function runLLM({
 
     // Non-streaming mode with optional schema
     const config = getUserConfig();
-    const url = config.aiProxyUrl || DEFAULT_AI_PROXY_URL;
+    const url = config.aiProxyUrl;
 
     const headers = {
         'Content-Type': 'application/json',
         'X-Client-ID': 'npm_yuangs',
         'Origin': 'https://cli.want.biz',
         'Referer': 'https://cli.want.biz/',
-        'account': config.accountType || DEFAULT_ACCOUNT_TYPE,
+        'account': config.accountType,
         'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1',
         'Accept': 'application/json'
     };
 
     // Native Structured Output: Check if model supports it and we're in Agent mode
-    const modelUsed = model || config.defaultModel || DEFAULT_MODEL;
+    const modelUsed = model || config.defaultModel;
     const useStructuredOutput = supportsStructuredOutput(modelUsed) && !stream;
 
     let responseData: any = {

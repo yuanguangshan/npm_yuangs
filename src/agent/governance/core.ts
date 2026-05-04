@@ -1,4 +1,4 @@
-import { ProposedAction } from '../state';
+import { ProposedAction, ToolCallPayload } from '../state';
 
 export interface PolicyRule {
     id: string;
@@ -21,7 +21,7 @@ export function evaluateProposal(
 
     // 内置低风险工具自动批准规则
     if (action.type === 'tool_call') {
-        const toolName = action.payload.tool_name;
+        const toolName = (action.payload as unknown as ToolCallPayload).tool_name;
         const lowRiskTools = ['read_file', 'list_files', 'web_search'];
         if (lowRiskTools.includes(toolName)) {
             return { effect: 'allow', reason: `Built-in allow for low-risk tool: ${toolName}` };

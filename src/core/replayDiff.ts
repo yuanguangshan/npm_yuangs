@@ -1,5 +1,5 @@
 import { ExecutionRecord } from './executionRecord';
-import { computeSkillScore } from '../agent/skills';
+import { computeSkillScore } from './skillTypes';
 
 export interface ReplayDiffResult {
   decisionDiff: DecisionDiff;
