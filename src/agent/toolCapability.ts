@@ -515,34 +515,152 @@ export function getToolJSONSchema(toolName: string): object | null {
 
 /**
  * 生成完整的工具定义列表（用于 LLM System Prompt）
+ *
+ * 采用行为指令格式（参考 Claude Code）：
+ * - 告诉 AI 每个工具什么时候该用、什么时候不该用
+ * - 交叉强化：shell_cmd 说"用专用工具"，专用工具说"用我别用 shell_cmd"
+ * - 参数说明保持简洁，由 JSON Schema 承担细节
  */
 export function generateToolDefinitionsPrompt(): string {
-  let prompt = '=== 可用工具定义 (Available Tools) ===\n\n';
-
-  for (const [name, metadata] of Object.entries(TOOL_CAPABILITY_MAP)) {
-    prompt += `## ${name}\n`;
-    prompt += `- **描述**: ${metadata.description}\n`;
-    prompt += `- **能力要求**: ${capabilityLevelToString(metadata.minCapability)}\n`;
-    prompt += `- **风险等级**: ${metadata.riskLevel}\n`;
-    prompt += `- **参数**:\n`;
-
-    for (const param of metadata.parameters) {
-      const required = param.required ? '必需' : '可选';
-      const defaultVal = param.default !== undefined ? ` (默认: ${param.default})` : '';
-      prompt += `  - \`${param.name}\` (${param.type}, ${required})${defaultVal}: ${param.description}\n`;
-    }
-
-    prompt += `- **示例**:\n`;
-    for (const example of metadata.examples) {
-      const paramsStr = JSON.stringify(example.parameters, null, 2);
-      prompt += `  ${example.description}\n`;
-      prompt += `  参数: ${paramsStr}\n`;
-    }
-
-    prompt += '\n';
-  }
-
-  return prompt;
+  return [
+    '=== 工具使用指南 ===',
+    '',
+    '你拥有以下工具。请严格遵守以下规则：',
+    '',
+    '## 核心原则（最重要）',
+    '',
+    '1. **优先使用专用工具**，不要用 shell_cmd 做专用工具能做的事',
+    '2. **不要用 shell_cmd 运行** `find`、`grep`、`cat`、`head`、`tail`、`sed`、`awk`、`echo` —— 除非专用工具无法完成任务',
+    '3. 每次使用工具前，先想想是否有更合适的专用工具',
+    '',
+    '---',
+    '',
+    '## 专用工具（优先使用）',
+    '',
+    '### read_file',
+    '**ALWAYS 使用 read_file 读取文件内容，NEVER 使用 shell_cmd 运行 cat/head/tail。**',
+    '- 参数: `path`（文件路径，必需）',
+    '- 可以读取任何文件，包括图片（会以视觉方式展示）',
+    '- 默认读取前 2000 行，大文件请使用 `start_line` 和 `end_line` 参数分段读取',
+    '- 示例: `{ "tool_name": "read_file", "parameters": { "path": "package.json" } }`',
+    '',
+    '### read_file_lines',
+    '**ALWAYS 使用 read_file_lines 读取文件的指定行范围。**',
+    '- 参数: `path`（文件路径）、`start_line`（起始行号，从1开始）、`end_line`（结束行号，可选）',
+    '- 适用于大文件的局部读取',
+    '- 示例: `{ "tool_name": "read_file_lines", "parameters": { "path": "large.log", "start_line": 100, "end_line": 150 } }`',
+    '',
+    '### read_file_lines_from_end',
+    '**ALWAYS 使用此工具读取文件的倒数 N 行。**',
+    '- 参数: `path`（文件路径）、`count`（要读取的行数，默认10）',
+    '- 比 read_file_lines 更直接，不需要先计算总行数',
+    '- 示例: `{ "tool_name": "read_file_lines_from_end", "parameters": { "path": "app.log", "count": 20 } }`',
+    '',
+    '### continue_reading',
+    '**当 read_file 的输出被截断时，使用 continue_reading 继续读取。**',
+    '- 参数: `path`（文件路径）、`from_position`（从哪个字符位置继续，可选）',
+    '- 系统会在输出被截断时提示你使用此工具',
+    '',
+    '### write_file',
+    '**ALWAYS 使用 write_file 创建或修改文件，NEVER 使用 shell_cmd 运行 echo >/cat <<EOF。**',
+    '- 参数: `path`（文件路径）、`content`（完整文件内容，必需）',
+    '- 会自动创建不存在的父目录',
+    '- 写入时会覆盖原文件，如需保留请先用 read_file 读取',
+    '',
+    '### append_file',
+    '**当只需要向文件末尾追加内容时使用。**',
+    '- 参数: `path`（文件路径）、`content`（要追加的内容）',
+    '- 比 write_file 更安全，不会覆盖原内容',
+    '',
+    '### list_files',
+    '**ALWAYS 使用 list_files 列出目录文件，NEVER 使用 shell_cmd 运行 ls 来列举文件。**',
+    '- 参数: `path`（目录路径，默认当前目录）、`recursive`（是否递归）',
+    '- 返回结构化的 JSON 结果（包含 path 和 type 字段）',
+    '- 示例: `{ "tool_name": "list_files", "parameters": { "path": "src", "recursive": true } }`',
+    '',
+    '### list_directory_tree',
+    '**使用 list_directory_tree 获取项目的树形结构视图。**',
+    '- 参数: `path`（目录路径）、`max_depth`（最大深度，默认3）',
+    '- 自动排除 node_modules、.git 等目录',
+    '- 适合了解项目整体结构',
+    '',
+    '### search_in_files',
+    '**ALWAYS 使用 search_in_files 搜索文件内容，NEVER 使用 shell_cmd 运行 grep/rg。**',
+    '- 参数: `pattern`（搜索模式，支持正则）、`path`（搜索路径）、`file_pattern`（文件名模式如 *.ts）',
+    '- 支持大小写不敏感、上下文行、最大结果限制',
+    '- 示例: `{ "tool_name": "search_in_files", "parameters": { "pattern": "function\\\\s+foo", "file_pattern": "*.ts" } }`',
+    '',
+    '### search_symbol',
+    '**ALWAYS 使用 search_symbol 搜索代码符号（函数、类、接口等），NEVER 使用 shell_cmd 运行 grep 搜索代码定义。**',
+    '- 参数: `symbol`（符号名称，必需）、`symbol_type`（function/class/interface，可选）',
+    '- 基于代码结构分析，比文本搜索更准确',
+    '- 示例: `{ "tool_name": "search_symbol", "parameters": { "symbol": "ToolExecutor", "symbol_type": "class" } }`',
+    '',
+    '### analyze_dependencies',
+    '**分析文件的 import/require 依赖关系。**',
+    '- 参数: `path`（文件路径或目录路径）',
+    '- 自动匹配 ES6 import、CommonJS require、动态 import',
+    '',
+    '### file_info',
+    '**获取文件元信息（大小、修改时间、权限等）。**',
+    '- 参数: `path`（文件路径）',
+    '- macOS 获取文件大小请用 file_info 或 `stat -f %z 路径`，不要用 `du -b`',
+    '',
+    '---',
+    '',
+    '## Shell 命令（备用方案）',
+    '',
+    '### shell_cmd',
+    '**shell_cmd 是备用方案。当专用工具能完成任务时，优先使用专用工具。**',
+    '- 参数: `command`（命令字符串，必需）',
+    '- 以下场景应该使用专用工具而非 shell_cmd：',
+    '  - 读取文件 → 用 read_file（不是 cat/head/tail）',
+    '  - 搜索文件 → 用 search_in_files（不是 grep/rg）',
+    '  - 搜索代码符号 → 用 search_symbol（不是 grep）',
+    '  - 列出文件 → 用 list_files（不是 ls/find）',
+    '  - 写入文件 → 用 write_file（不是 echo >/cat <<EOF）',
+    '  - 编辑文件 → 用 write_file（不是 sed/awk）',
+    '- shell_cmd 适合的场景：',
+    '  - git 操作（git status、git diff、git log 除外，它们有专用工具）',
+    '  - 系统信息查询（uname、whoami 等）',
+    '  - 数据处理管道（jq、awk 分析复杂数据）',
+    '  - 运行测试或构建命令',
+    '- macOS 注意事项：当前系统是 macOS，使用 BSD 工具链',
+    '  - `du -b` 不可用，用 `stat -f %z 路径` 获取文件大小',
+    "  - `sed -i` 需要空字符串参数：`sed -i '' 's/old/new/g' 文件`",
+    '  - `stat -c` 不可用，用 `stat -f`',
+    '- **危险命令**会被安全系统拦截（如 rm -rf /、curl | sh 等）',
+    '',
+    '---',
+    '',
+    '## Git 操作（专用工具）',
+    '',
+    '### git_status',
+    '**ALWAYS 使用 git_status 查看 Git 状态，优先于 shell_cmd 运行 git status。**',
+    '- 参数: `path`（仓库路径，默认当前目录）',
+    '- 返回当前分支和修改文件列表',
+    '',
+    '### git_diff',
+    '**ALWAYS 使用 git_diff 查看代码差异，优先于 shell_cmd 运行 git diff。**',
+    '- 参数: `file`（指定文件，可选）、`cached`（查看暂存区差异）',
+    '- 返回 diff 格式的代码差异',
+    '',
+    '### git_log',
+    '**ALWAYS 使用 git_log 查看提交历史，优先于 shell_cmd 运行 git log。**',
+    '- 参数: `max_count`（显示条数，默认10）、`file`（指定文件，可选）',
+    '',
+    '---',
+    '',
+    '## 任务完成条件',
+    '',
+    '当你获取了用户请求的信息后，必须设置 "is_done": true 并使用 action_type: "answer" 返回结果。',
+    '不要重复调用相同的工具。',
+    '',
+    '例如：用户请求"读取 package.json"，你应该：',
+    '1. 调用 read_file 工具读取文件',
+    '2. 立即设置 is_done: true，action_type: "answer"，返回文件内容',
+    '3. 不要继续循环调用其他工具',
+  ].join('\n');
 }
 
 /**
