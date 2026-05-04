@@ -509,6 +509,13 @@ export class AgentRuntime {
           return lastToolCall;
         }
 
+        // REPL/Chat 模式下不自动完成，让 AI 基于工具结果组织回答
+        if (mode === 'chat') {
+          console.log(chalk.gray('[Chat Mode] 只读工具执行成功，等待 AI 总结'));
+          this.context.addMessage('system', `工具结果已获取。请根据用户的问题 "${userInput}" 给出简洁的中文回答。`);
+          return lastToolCall;
+        }
+
         if (!requiresAnalysis && !requiresWrite) {
           console.log(chalk.gray('[Auto-Complete] 只读工具执行成功，自动完成任务'));
           console.log(chalk.cyan(`\n📄 ${toolName} 结果：\n`));
