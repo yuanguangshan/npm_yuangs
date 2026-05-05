@@ -16,8 +16,7 @@ EXTENDS Naturals, FiniteSets, Sequences
 (*   5. NoDoubleExecute — 同一动作不得重复执行                                 *)
 (******************************************************************************)
 
-CONSTANTS Actions, States, Agents, Rights, CapabilityTokens,
-            CapabilitySubject, CapabilityGrant, GetActualChanges
+CONSTANTS Actions, States, Agents, Rights, CapabilityTokens
 ASSUME Cardinality(Actions) > 0
 ASSUME States = {"DRAFT", "PROPOSED", "APPROVED", "EXECUTED", "OBSERVED", "VERIFIED", "REJECTED"}
 ASSUME Agents /= {}
