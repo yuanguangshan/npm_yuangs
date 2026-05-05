@@ -394,8 +394,8 @@ yuangs router config reset
 
 ## 技术支持
 
-- 📖 完整文档: [docs/MODEL_ROUTER_GUIDE.md](docs/MODEL_ROUTER_GUIDE.md)
-- 💡 示例代码: [examples/router-example.ts](examples/router-example.ts)
+- 📖 完整文档: [MODEL_ROUTER_GUIDE.md](../architecture/archived/MODEL_ROUTER_GUIDE.md)
+- 💡 示例代码: [model-router-example.ts](model-router-example.ts)
 - 🐛 问题反馈: GitHub Issues
 - 💬 讨论: GitHub Discussions
 
