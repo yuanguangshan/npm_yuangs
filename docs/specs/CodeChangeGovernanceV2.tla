@@ -154,8 +154,9 @@ IssueCap(cap, agent, right) ==
 RevokeCap(cap) ==
   /\ cap \in caps
   /\ cap \notin revokedCaps
+  /\ caps' = caps \ {cap}
   /\ revokedCaps' = revokedCaps \cup {cap}
-  /\ UNCHANGED <<actionState, worldState, snapshots, caps, approvedBy,
+  /\ UNCHANGED <<actionState, worldState, snapshots, approvedBy,
                 observations, declaredChanges, execHistory>>
 
 (******************************************************************************)
