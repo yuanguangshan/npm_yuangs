@@ -8,28 +8,41 @@ on:
     types: [created]
 
 jobs:
-  publish:
+  verify-tla:
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: read        # 只读即可
-      id-token: write       # npm provenance 必需
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Java (required for TLC)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Download TLA+ tools
+        run: |
+          curl -fsSL https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar -o tla2tools.jar
+
+      - name: Run TLA+ model check
+        run: |
+          java -jar tla2tools.jar -workers auto docs/specs/CodeChangeGovernanceV2.tla
+
+  publish:
+    needs: verify-tla
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
         with:
           node-version: "18"
           registry-url: "https://registry.npmjs.org/"
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
-        run: npm run build
+      - run: npm ci
+      - run: npm run build
 
       - name: Publish to npm
         run: npm publish --provenance
