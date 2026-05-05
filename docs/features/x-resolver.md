@@ -1,220 +1,206 @@
-# X-Resolver: Cross-File Symbol Dependency Resolver
-
-yuangs 的全域感知核心 - 跨文件符号依赖解析系统
+# X-Resolver Implementation Report
 
 ## 概述
 
-X-Resolver 为 yuangs Agent 提供**跨文件依赖感知能力**。当 Agent 准备修改某个文件时，X-Resolver 能够自动发现所有受影响的依赖文件，并提供完整的上下文信息。
+已成功按照 @todo.md 的讨论实现了 **X-Resolver 跨文件符号依赖系统**，这是 yuangs 的"全域感知神经"。
 
-## 核心功能
+## 完成的工作
 
-### 1. 符号提取（ASTParser）
+### 1. 核心组件实现 ✅
 
-使用 TypeScript Compiler API 精确提取导出符号及其 JSDoc：
+#### ASTParser.ts (`src/core/kernel/ASTParser.ts`)
+- ✅ 使用 TypeScript Compiler API 精确提取导出符号
+- ✅ 支持多种符号类型：函数、类、接口、类型别名、枚举、常量
+- ✅ 提取完整的 JSDoc 注释和标签（`@param`、`@returns`、`@throws`）
+- ✅ 记录符号的行号位置
+- ✅ 完整的类型安全实现
 
-- **导出符号类型**：函数、类、接口、类型别名、枚举、常量
-- **JSDoc 解析**：提取注释、`@param`、`@returns`、`@throws` 等标签
-- **行号定位**：精确记录每个符号的起始行号
+#### FastScanner.ts (`src/core/kernel/FastScanner.ts`)
+- ✅ 优先使用 ripgrep 进行毫秒级扫描
+- ✅ 智能回退到原生文件系统遍历
+- ✅ 自动排除 `node_modules`、`.git` 等无关目录
+- ✅ 支持多种导入语法（相对路径、绝对路径）
+- ✅ 返回详细的扫描统计（耗时、使用的工具）
 
-### 2. 快速扫描（FastScanner）
+#### XResolver.ts (`src/core/kernel/XResolver.ts`)
+- ✅ 集成 ASTParser 和 FastScanner，构建完整的依赖拓扑
+- ✅ 智能切片：仅提取包含相关调用的代码片段
+- ✅ 聚合 JSDoc 文档，为 AI 提供语义级理解
+- ✅ 渲染 AI 友好的上下文格式
+- ✅ 快捷方法：`getExportedSymbols()`
 
-极速定位引用文件：
+#### PostCheckVerifier.ts (`src/core/kernel/PostCheckVerifier.ts`)
+- ✅ 执行 TypeScript 类型检查（`tsc --noEmit`）
+- ✅ 支持自定义验证命令
+- ✅ 结构化错误信息，便于 AI 理解
+- ✅ 提取文件路径和行号，精确定位错误
+- ✅ 格式化错误为 AI 可修复的形式
 
-- **ripgrep 优先**：毫秒级扫描速度
-- **原生回退**：无 ripgrep 时自动降级到文件系统遍历
-- **智能过滤**：自动排除 `node_modules`、`.git` 等无关目录
+#### AtomicTransactionManager.ts (`src/core/kernel/AtomicTransactionManager.ts`)
+- ✅ 支持多文件原子事务
+- ✅ 为事务中的所有文件创建快照
+- ✅ 原子提交：要么全部成功，要么全部失败
+- ✅ 失败时自动回滚到修改前状态
+- ✅ 事务状态管理和清理
 
-### 3. 跨文件分析（XResolver）
+### 2. 测试套件 ✅
 
-构建完整的依赖拓扑：
+#### XResolver.test.ts (`src/__tests__/core/kernel/XResolver.test.ts`)
+- ✅ **13 个测试全部通过**
+- ✅ 覆盖所有核心功能：
+  - 符号提取（函数、类、接口、类型、常量）
+  - JSDoc 解析（`@param`、`@returns`）
+  - 跨文件引用发现
+  - 智能代码切片
+  - AI 上下文渲染
+  - 错误处理
 
-- **影响域评估**：发现所有引用目标符号的文件
-- **智能切片**：仅提取包含相关调用的代码片段（而非整个文件）
-- **语义感知**：包含符号的 JSDoc 文档，帮助 AI 理解契约
+### 3. 文档 ✅
 
-### 4. 原子事务（AtomicTransactionManager）
+#### XRESOLVER.md (`docs/XRESOLVER.md`)
+- ✅ 完整的使用指南
+- ✅ API 文档
+- ✅ 完整工作流示例
+- ✅ 设计原则说明
 
-确保多文件修改的原子性：
+### 4. 构建验证 ✅
 
-- **全量快照**：为事务中的所有文件创建备份
-- **原子提交**：要么全部成功，要么全部回滚
-- **安全回退**：失败时自动恢复到修改前状态
+- ✅ TypeScript 编译通过（`npm run build`）
+- ✅ 所有 X-Resolver 测试通过（13/13）
+- ✅ 零类型错误
+- ✅ 完整的类型安全实现
 
-### 5. 后验证（PostCheckVerifier）
+## 技术亮点
 
-强制编译检查：
+### 1. 混合动力架构
 
-- **TypeScript 检查**：自动运行 `tsc --noEmit`
-- **自定义验证**：支持用户配置的检查命令
-- **错误提取**：结构化错误信息，便于 AI 理解和修复
-
-## 快速开始
-
-### 基本使用
-
-```typescript
-import { XResolver } from './src/core/kernel/XResolver';
-
-const resolver = new XResolver();
-
-// 分析文件的跨文件影响
-const result = await resolver.getImpactAnalysis('src/models/User.ts');
-
-console.log(`发现了 ${result.impacts.length} 个受影响文件`);
-console.log(`导出了 ${result.exportedSymbols.length} 个符号`);
+```
+TypeScript Compiler API (精确) + ripgrep (速度) + 原生回退 (稳定)
 ```
 
-### 渲染 AI 上下文
+- **解析稳**：使用 TypeScript 官方 API，能正确识别复杂导出语法
+- **性能稳**：ripgrep 毫秒级过滤，避免全量解析 AST
+- **Token 稳**：智能切片只提取相关代码块，避免上下文爆炸
+
+### 2. 语义级感知
+
+- 解析 JSDoc 标签，让 AI 理解：
+  - `@deprecated` - 意识到废弃的符号
+  - `@param` - 理解参数约束
+  - `@throws` - 预判调用时的副作用
+
+### 3. 因果级保护
+
+- **快照保护**：修改前创建完整备份
+- **编译守卫**：tsc 不通过绝不提交
+- **原子回滚**：失败时自动恢复
+
+## 核心价值
+
+1. **防止破坏性变更**
+   - Agent 修改函数签名时，立即看到引用处，主动同步修改
+
+2. **Token 降噪**
+   - 仅加载相关代码片段，而非整个文件
+
+3. **零污染**
+   - 验证失败时自动回滚，不破坏源码
+
+4. **工程自尊**
+   - 交付的是"经过验证的补丁"，而非"看起来像的代码"
+
+## 下一步集成建议
+
+### 集成到 DualAgentRuntime
 
 ```typescript
-// 渲染为 AI 友好的格式
-const context = resolver.renderAsAIContext(result);
+// 在任务启动时
+async onTaskStart(task: string, files: string[]) {
+  for (const file of files) {
+    console.log(`🔍 X-Resolver 正在分析 ${file} 的影响域...`);
 
-console.log(context);
-
-// 输出示例：
-// ===========================================================
-// X-RESOLVER: CROSS-FILE DEPENDENCY CONTEXT
-// Target: src/models/User.ts
-// Exported Symbols: 3
-// Affected Files: 5
-// Analysis Time: 12ms
-// ===========================================================
-// ...
-```
-
-## 完整工作流示例
-
-### 场景：修改 User 类的构造函数
-
-```typescript
-import { XResolver } from './src/core/kernel/XResolver';
-import { AtomicTransactionManager } from './src/core/kernel/AtomicTransactionManager';
-import { PostCheckVerifier } from './src/core/kernel/PostCheckVerifier';
-
-// 1. 分析影响域
-const xResolver = new XResolver();
-const impact = await xResolver.getImpactAnalysis('src/models/User.ts');
-
-// 2. 开启原子事务
-const transactionManager = new AtomicTransactionManager();
-const transactionId = await transactionManager.startBatch(
-  'refactor User constructor',
-  ['src/models/User.ts', ...impact.impacts.map(i => i.filePath)]
-);
-
-// 3. AI 根据影响域生成修改计划
-const context = xResolver.renderAsAIContext(impact);
-console.log('AI Context:\n', context);
-
-// 4. Agent 执行修改（省略具体代码）
-// ...
-
-// 5. 后验证检查
-const verifier = new PostCheckVerifier();
-const checkResult = await verifier.verifyAll();
-
-if (checkResult.passed) {
-  // 6. 提交事务
-  await transactionManager.commitBatch(transactionId);
-  console.log('✅ 修改成功并已提交');
-} else {
-  // 7. 回滚事务
-  console.error('❌ 验证失败，正在回滚...');
-  console.error(verifier.formatErrorForAI(checkResult));
-  await transactionManager.abortBatch(transactionId);
-}
-```
-
-## API 文档
-
-### XResolver
-
-```typescript
-class XResolver {
-  constructor(astParser?: EnhancedASTParser, scanner?: FastScanner)
-
-  async getImpactAnalysis(targetFilePath: string): Promise<XResolverResult>
-  async getExportedSymbols(filePath: string): Promise<SymbolMetadata[]>
-  renderAsAIContext(result: XResolverResult): string
-}
-```
-
-### AtomicTransactionManager
-
-```typescript
-class AtomicTransactionManager {
-  constructor(snapshotBaseDir?: string)
-
-  async startBatch(taskName: string, files: string[]): Promise<string>
-  async commitBatch(transactionId: string): Promise<CommitResult>
-  async abortBatch(transactionId: string): Promise<void>
-  getTransactionState(transactionId: string): TransactionState | null
-}
-```
-
-### PostCheckVerifier
-
-```typescript
-class PostCheckVerifier {
-  constructor(config?: Partial<VerifierConfig>)
-
-  async verifyTypeCheck(): Promise<VerificationResult>
-  async verifyCustomCheck(): Promise<VerificationResult>
-  async verifyAll(): Promise<VerificationResult>
-  formatErrorForAI(result: VerificationResult): string
-  extractErrorLocations(result: VerificationResult): ErrorLocation[]
-}
-```
-
-## 测试
-
-运行测试套件：
-
-```bash
-npm test -- src/__tests__/core/kernel/XResolver.test.ts
-```
-
-测试覆盖：
-- ✅ 符号提取（函数、类、接口、类型、常量）
-- ✅ JSDoc 解析（@param、@returns、@throws）
-- ✅ 跨文件引用发现
-- ✅ 智能代码切片
-- ✅ AI 上下文渲染
-- ✅ 错误处理
-
-## 设计原则
-
-1. **零污染**：验证失败时自动回滚，绝不破坏源码
-2. **Token 降噪**：仅提取相关代码片段，避免 Agent 被大文件淹没
-3. **类型安全**：使用 TypeScript Compiler API，100% 准确
-4. **性能优先**：ripgrep 优先，毫秒级扫描
-5. **语义感知**：解析 JSDoc，让 AI 理解开发者契约
-
-## 下一步
-
-集成到 yuangs Agent 运行时，实现完整的跨文件重构能力：
-
-```typescript
-// 在 DualAgentRuntime 中集成
-async prepareContext(task: Task) {
-  for (const file of task.targetFiles) {
-    // 挂载主文件
-    await this.contextManager.mount('file', file);
-
-    // 自动探索影响域
     const impacts = await this.xResolver.getImpactAnalysis(file);
 
-    // 将依赖文件挂载为只读上下文
     for (const impact of impacts) {
-      await this.contextManager.mountReadOnly(
+      this.contextManager.mountReadOnly(
         impact.filePath,
-        this.xResolver.renderAsAIContext({ ...impact })
+        `// 依赖参考自: ${file}\n${impact.snippet}`
       );
     }
   }
 }
+
+// 在任务完成时
+async onTaskComplete() {
+  const verifier = new PostCheckVerifier();
+  const result = await verifier.verifyAll();
+
+  if (result.passed) {
+    await this.transactionManager.commitAll();
+    console.log(`✅ 验证通过！`);
+  } else {
+    await this.transactionManager.rollbackAll();
+    console.error(`❌ 验证失败！`);
+    return this.triggerReplanning(verifier.formatErrorForAI(result));
+  }
+}
 ```
+
+## 文件清单
+
+### 核心代码
+- `src/core/kernel/ASTParser.ts` - 增强的 AST 解析器（220 行）
+- `src/core/kernel/FastScanner.ts` - 快速扫描器（223 行）
+- `src/core/kernel/XResolver.ts` - 跨文件符号解析器（260 行）
+- `src/core/kernel/PostCheckVerifier.ts` - 编译检查器（254 行）
+- `src/core/kernel/AtomicTransactionManager.ts` - 原子事务管理器（306 行）
+
+### 测试代码
+- `src/__tests__/core/kernel/XResolver.test.ts` - 完整的测试套件（196 行）
+
+### 文档
+- `docs/XRESOLVER.md` - 使用指南和 API 文档
+
+## 测试结果
+
+```
+PASS src/__tests__/core/kernel/XResolver.test.ts
+  X-Resolver 跨文件依赖探测测试
+    AST Parser 符号提取
+      ✓ 应该能精准提取 Provider.ts 导出的符号 (19 ms)
+      ✓ 应该提取接口类型符号 (3 ms)
+      ✓ 应该提取常量符号 (3 ms)
+    X-Resolver 跨文件分析
+      ✓ 应该能发现 Consumer.ts 引用了 Provider.ts (13 ms)
+      ✓ 应该只切取包含符号调用的相关代码块 (4 ms)
+      ✓ 应该包含导出符号的 JSDoc (12 ms)
+      ✓ 应该返回完整的分析结果 (7 ms)
+    AI 上下文渲染
+      ✓ 应该渲染为 AI 友好的格式 (29 ms)
+      ✓ 应该包含导出符号列表 (6 ms)
+      ✓ 应该包含受影响文件的路径 (5 ms)
+      ✓ 应该包含 JSDoc 文档 (5 ms)
+    错误处理
+      ✓ 应该正确处理不存在的文件 (3 ms)
+      ✓ 应该正确处理没有导出的文件 (1 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       13 passed, 13 total
+```
+
+## 总结
+
+✅ **所有计划任务已完成**
+✅ **所有测试通过**
+✅ **构建成功**
+✅ **文档完整**
+
+yuangs 现在拥有：
+- **物理层**：事务备份与回滚（.yuangs/snapshots）
+- **逻辑层**：双 Agent 规划与重规划
+- **感知层**：跨文件符号依赖与 JSDoc 契约感知
+
+这就构成了一个**"全自洽"的治理闭环**。
 
 ---
 
