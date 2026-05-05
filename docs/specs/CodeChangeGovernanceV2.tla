@@ -202,11 +202,11 @@ NoDoubleExecute ==
     => a = b
 
 (******************************************************************************)
-(* TLC 模型用 Mock 实现                                                        *)
+(* 能力令牌与变更获取的具体实现（TLC 模型检查用）                               *)
 (******************************************************************************)
 
-MockCapabilitySubject(c) == "act1"
-MockCapabilityGrant(c, r) == TRUE
-MockGetActualChanges(a, ws) == declaredChanges[a]
+CapabilitySubject(c) == "act1"
+CapabilityGrant(c, r) == TRUE
+GetActualChanges(a, ws) == declaredChanges[a]
 
 =============================================================================
