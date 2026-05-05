@@ -16,7 +16,8 @@ EXTENDS Naturals, FiniteSets, Sequences
 (*   5. NoDoubleExecute — 同一动作不得重复执行                                 *)
 (******************************************************************************)
 
-CONSTANTS Actions, States, Agents, Rights, CapabilityTokens
+CONSTANTS Actions, States, Agents, Rights, CapabilityTokens,
+            CapabilitySubject, CapabilityGrant, GetActualChanges
 ASSUME Cardinality(Actions) > 0
 ASSUME States = {"DRAFT", "PROPOSED", "APPROVED", "EXECUTED", "OBSERVED", "VERIFIED", "REJECTED"}
 ASSUME Agents /= {}
@@ -149,22 +150,6 @@ RevokeCap(cap) ==
   /\ revokedCaps' = revokedCaps \cup {cap}
   /\ UNCHANGED <<actionState, worldState, snapshots, caps, approvedBy,
                 observations, declaredChanges, execHistory>>
-
-(******************************************************************************)
-(* 能力令牌占位符                                                              *)
-(******************************************************************************)
-
-CONSTANT CapabilitySubject(_), CapabilityGrant(_, _)
-
-ASSUME \A cap \in CapabilityTokens : CapabilitySubject(cap) \in Actions
-ASSUME \A cap \in CapabilityTokens, r \in Rights : CapabilityGrant(cap, r) \in BOOLEAN
-
-(******************************************************************************)
-(* 外部变更获取占位符                                                          *)
-(******************************************************************************)
-
-CONSTANT GetActualChanges(_, _)
-ASSUME \A a \in Actions, ws \in Seq(STRING) : GetActualChanges(a, ws) \in STRING
 
 (******************************************************************************)
 (* 下一步关系                                                                  *)
