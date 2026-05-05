@@ -16,12 +16,13 @@ EXTENDS Naturals, FiniteSets, Sequences
 (*   5. NoDoubleExecute — 同一动作不得重复执行                                 *)
 (******************************************************************************)
 
-CONSTANTS Actions, States, Agents, Rights, CapabilityTokens
+CONSTANTS Actions, States, Agents, Rights, CapabilityTokens, SnapshotIds
 ASSUME Cardinality(Actions) > 0
 ASSUME States = {"DRAFT", "PROPOSED", "APPROVED", "EXECUTED", "OBSERVED", "VERIFIED", "REJECTED"}
 ASSUME Agents /= {}
 ASSUME Rights /= {}
 ASSUME CapabilityTokens /= {}
+ASSUME SnapshotIds /= {}
 
 (******************************************************************************)
 (* 状态变量                                                                    *)
@@ -46,7 +47,7 @@ None == "None"
 TypeOk ==
   /\ actionState \in [Actions -> States]
   /\ worldState \in Seq(STRING)
-  /\ snapshots \in [STRING -> Seq(STRING)]
+  /\ snapshots \in [SnapshotIds -> Seq(STRING)]
   /\ caps \subseteq CapabilityTokens
   /\ revokedCaps \subseteq CapabilityTokens
   /\ (caps \cap revokedCaps) = {}            \* 令牌不能同时有效和已撤销
@@ -70,7 +71,7 @@ GetActualChanges(a, ws) == declaredChanges[a]
 Init ==
   /\ actionState = [a \in Actions |-> "DRAFT"]
   /\ worldState = << >>
-  /\ snapshots = [s \in {} |-> << >>]
+  /\ snapshots = [s \in SnapshotIds |-> << >>]
   /\ caps = {}
   /\ revokedCaps = {}
   /\ approvedBy = [a \in Actions |-> None]
@@ -102,17 +103,16 @@ Reject(a) ==
   /\ UNCHANGED <<worldState, snapshots, caps, revokedCaps, approvedBy,
                 observations, declaredChanges, execHistory>>
 
-Execute(a, snapshotId) ==
+Execute(a) ==
   /\ actionState[a] = "APPROVED"
   /\ \E c \in (caps \ revokedCaps) :
        /\ CapabilitySubject(c) = a
        /\ CapabilityGrant(c, "execute") = TRUE
-  /\ snapshotId \in DOMAIN snapshots
   /\ worldState' = Append(worldState, declaredChanges[a])
-  /\ snapshots' = [snapshots EXCEPT ![snapshotId \o "_post"] = Append(snapshots[snapshotId], declaredChanges[a])]
   /\ actionState' = [actionState EXCEPT ![a] = "EXECUTED"]
   /\ execHistory' = execHistory \cup {a}
-  /\ UNCHANGED <<caps, revokedCaps, approvedBy, observations, declaredChanges>>
+  /\ UNCHANGED <<worldState, snapshots, caps, revokedCaps, approvedBy,
+                observations, declaredChanges, execHistory>>
 
 Observe(a) ==
   /\ actionState[a] = "EXECUTED"
@@ -135,10 +135,10 @@ VerifyFail(a) ==
   /\ UNCHANGED <<worldState, snapshots, caps, revokedCaps, approvedBy,
                 observations, declaredChanges, execHistory>>
 
-Rollback(a, snapshotId) ==
+Rollback(a) ==
   /\ actionState[a] \in {"EXECUTED", "OBSERVED"}
-  /\ snapshotId \in DOMAIN snapshots
-  /\ worldState' = snapshots[snapshotId]
+  /\ \E s \in SnapshotIds :
+       /\ worldState' = snapshots[s]
   /\ actionState' = [actionState EXCEPT ![a] = "REJECTED"]
   /\ UNCHANGED <<caps, revokedCaps, approvedBy, observations, declaredChanges,
                 execHistory>>
@@ -166,11 +166,11 @@ Next ==
   \/ \E a \in Actions : Propose(a)
   \/ \E a \in Actions, agent \in Agents : Approve(a, agent)
   \/ \E a \in Actions : Reject(a)
-  \/ \E a \in Actions, sid \in STRING : Execute(a, sid)
+  \/ \E a \in Actions : Execute(a)
   \/ \E a \in Actions : Observe(a)
   \/ \E a \in Actions : Verify(a)
   \/ \E a \in Actions : VerifyFail(a)
-  \/ \E a \in Actions, sid \in STRING : Rollback(a, sid)
+  \/ \E a \in Actions : Rollback(a)
   \/ \E cap \in CapabilityTokens, agent \in Agents, r \in Rights, s \in STRING :
        IssueCap(cap, agent, r, s)
   \/ \E cap \in CapabilityTokens : RevokeCap(cap)
