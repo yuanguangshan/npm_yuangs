@@ -84,10 +84,12 @@ Init ==
 (******************************************************************************)
 
 Propose(a) ==
-  /\ actionState[a] = "DRAFT"
+  /\ actionState[a] \in {"DRAFT", "REJECTED"}
   /\ actionState' = [actionState EXCEPT ![a] = "PROPOSED"]
-  /\ UNCHANGED <<worldState, snapshots, caps, revokedCaps, approvedBy,
-                observations, declaredChanges, execHistory>>
+  /\ approvedBy' = [approvedBy EXCEPT ![a] = None]
+  /\ observations' = [observations EXCEPT ![a] = ""]
+  /\ declaredChanges' = [declaredChanges EXCEPT ![a] = ""]
+  /\ UNCHANGED <<worldState, snapshots, caps, revokedCaps, execHistory>>
 
 Approve(a, agent) ==
   /\ actionState[a] = "PROPOSED"
@@ -146,7 +148,6 @@ Rollback(a) ==
 IssueCap(cap, agent, right) ==
   /\ cap \in CapabilityTokens
   /\ cap \notin caps
-  /\ cap \notin revokedCaps
   /\ caps' = caps \cup {cap}
   /\ UNCHANGED <<actionState, worldState, snapshots, revokedCaps, approvedBy,
                 observations, declaredChanges, execHistory>>
