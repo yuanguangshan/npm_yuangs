@@ -1,8 +1,12 @@
-// @ts-nocheck
 import { TokenEstimator } from '../../../src/policy/token/TokenEstimator';
 import { PendingContextItem } from '../../../src/policy/token/types';
 
 jest.mock('fs/promises');
+
+const makeItem = (partial: Omit<PendingContextItem, 'resolve'>): PendingContextItem => ({
+    ...partial,
+    resolve: async () => ({ content: '', byteSize: 0 }),
+});
 
 /**
  * T5: Race condition 测试
@@ -10,16 +14,18 @@ jest.mock('fs/promises');
  */
 describe('TokenEstimator - T5: Race Conditions', () => {
     test('慢速 estimate 不应该阻塞快速 resolve', async () => {
-        const items: PendingContextItem[] = Array(100).fill(null).map((_, i) => ({
-            id: `/test/file${i}.txt`,
-            type: 'file',
-            originalToken: `@/test/file${i}.txt`,
-            samplingStrategy: 'none',
-            estimate: async () => {
-                await new Promise(resolve => setTimeout(resolve, i * 10));
-                return { byteSize: 100 };
-            }
-        }));
+        const items: PendingContextItem[] = Array(100).fill(null).map((_, i) =>
+            makeItem({
+                id: `/test/file${i}.txt`,
+                type: 'file',
+                originalToken: `@/test/file${i}.txt`,
+                samplingStrategy: 'none',
+                estimate: async () => {
+                    await new Promise(resolve => setTimeout(resolve, i * 10));
+                    return { byteSize: 100 };
+                }
+            })
+        );
 
         const startTime = Date.now();
         const result = await TokenEstimator.estimate(items, 50);
@@ -30,7 +36,7 @@ describe('TokenEstimator - T5: Race Conditions', () => {
     });
 
     test('并发限制应该防止 EMFILE 错误', async () => {
-        const largeItem: PendingContextItem = {
+        const largeItem = makeItem({
             id: '/large/file.txt',
             type: 'file',
             originalToken: '@/large/file.txt',
@@ -39,7 +45,7 @@ describe('TokenEstimator - T5: Race Conditions', () => {
                 await new Promise(resolve => setTimeout(resolve, 50));
                 return { byteSize: 1024 * 1024 };
             }
-        };
+        });
 
         const items = Array(100).fill(largeItem);
 

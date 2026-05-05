@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { DefaultTokenPolicy } from '../../../src/policy/token/DefaultTokenPolicy';
 import { ModelSpec } from '../../../src/policy/token/types';
 

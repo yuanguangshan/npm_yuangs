@@ -5,6 +5,7 @@ import { GitService } from './GitService';
 import { ContextMeta, ContextMetaBuilder, toAuditLog } from '../context/ContextMeta';
 import { EnhancedASTParser } from '../kernel/ASTParser';
 import pLimit from 'p-limit';
+import { SessionCache } from '../../utils/SessionCache';
 
 /**
  * 收集到的项目上下文接口
@@ -26,6 +27,7 @@ export class ContextGatherer {
     private MAX_TOTAL_CONTEXT_LENGTH = 50000; // 总上限
     private SUMMARY_THRESHOLD = 200; // P2: 改为200行，避免过度摘要
     private astParser: EnhancedASTParser; // Reuse AST parser instance
+    private fileTreeCache = new SessionCache<string>(5 * 60 * 1000); // 5min TTL
 
     constructor(private gitService: GitService) {
         // Initialize AST parser for semantic summarization (created once to avoid performance issues)
@@ -111,6 +113,9 @@ export class ContextGatherer {
      * 获取文件树 (git 管理的文件)
      */
     private async getFileTree(cwd: string): Promise<string> {
+        const cached = this.fileTreeCache.get(cwd);
+        if (cached !== undefined) return cached;
+
         try {
             const { exec } = require('child_process');
             const { promisify } = require('util');
@@ -125,12 +130,18 @@ export class ContextGatherer {
             files = files.filter((f: string) => !noiseExtension.test(f));
             
             if (files.length > 150) {
-                return files.slice(0, 150).join('\n') + `\n... (为了保护 Token 空间，已截断其余 ${files.length - 150} 个文件)`;
+                const result = files.slice(0, 150).join('\n') + `\n... (为了保护 Token 空间，已截断其余 ${files.length - 150} 个文件)`;
+                this.fileTreeCache.set(cwd, result);
+                return result;
             }
-            return files.join('\n');
+            const result = files.join('\n');
+            this.fileTreeCache.set(cwd, result);
+            return result;
         } catch (e: any) {
             console.error(`[ContextGatherer] 无法获取文件树: ${e.message}`);
-            return '无法获取完整文件树';
+            const result = '无法获取完整文件树';
+            this.fileTreeCache.set(cwd, result);
+            return result;
         }
     }
 

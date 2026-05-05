@@ -1,8 +1,12 @@
-// @ts-nocheck
 import { TokenEstimator } from '../../../src/policy/token/TokenEstimator';
 import { PendingContextItem } from '../../../src/policy/token/types';
 
 jest.mock('fs/promises');
+
+const makeItem = (partial: Omit<PendingContextItem, 'resolve'>): PendingContextItem => ({
+    ...partial,
+    resolve: async () => ({ content: '', byteSize: 0 }),
+});
 
 /**
  * T6: Memory pressure 测试
@@ -10,13 +14,13 @@ jest.mock('fs/promises');
  */
 describe('TokenEstimator - T6: Memory Pressure Test', () => {
     test('1MB 文件应估算为 262k tokens', async () => {
-        const item: PendingContextItem = {
+        const item = makeItem({
             id: '/test/1mb.txt',
             type: 'file',
             originalToken: '@/test/1mb.txt',
             samplingStrategy: 'none',
             estimate: async () => ({ byteSize: 1024 * 1024 })
-        };
+        });
 
         const result = await TokenEstimator.estimate([item]);
 
@@ -25,13 +29,15 @@ describe('TokenEstimator - T6: Memory Pressure Test', () => {
     });
 
     test('10MB 目录应估算为 2.6M tokens', async () => {
-        const items: PendingContextItem[] = Array(100).fill({
-            id: '/test/large-dir/file.txt',
-            type: 'file',
-            originalToken: '@/test/large-dir/file.txt',
-            samplingStrategy: 'none',
-            estimate: async () => ({ byteSize: 100 * 1024 })
-        });
+        const items: PendingContextItem[] = Array.from({ length: 100 }, () =>
+            makeItem({
+                id: '/test/large-dir/file.txt',
+                type: 'file',
+                originalToken: '@/test/large-dir/file.txt',
+                samplingStrategy: 'none',
+                estimate: async () => ({ byteSize: 100 * 1024 })
+            })
+        );
 
         const result = await TokenEstimator.estimate(items);
 

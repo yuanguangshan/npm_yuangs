@@ -1,8 +1,10 @@
-// @ts-nocheck
 import { SyntaxHandler } from '../../../src/policy/syntaxHandler';
 import { TokenEstimator } from '../../../src/policy/token/TokenEstimator';
 
-jest.mock('fs/promises');
+jest.mock('fs/promises', () => ({
+    stat: jest.fn(),
+    readdir: jest.fn(),
+}));
 
 /**
  * T7: Directory 估算准确性测试
@@ -10,18 +12,18 @@ jest.mock('fs/promises');
  */
 describe('SyntaxHandler - T7: Directory Estimation Accuracy', () => {
     test('目录估算应该匹配实际文件大小', async () => {
-        jest.spyOn(require('fs/promises'), 'stat')
-            .mockImplementation(async (path: string) => ({
-                size: 500,
-                isFile: () => true
-            }));
+        const mockFs = require('fs/promises');
+        mockFs.stat.mockImplementation(async (_path: string) => ({
+            size: 500,
+            isFile: () => true,
+            isDirectory: () => false,
+        }));
 
-        jest.spyOn(require('fs/promises'), 'readdir')
-            .mockImplementation(async (path: string) => [
-                { name: 'file1.txt', isDirectory: () => false, isFile: () => true },
-                { name: 'file2.txt', isDirectory: () => false, isFile: () => true },
-                { name: 'file3.txt', isDirectory: () => false, isFile: () => true }
-            ]);
+        mockFs.readdir.mockImplementation(async (_path: string) => [
+            { name: 'file1.txt', isDirectory: () => false, isFile: () => true },
+            { name: 'file2.txt', isDirectory: () => false, isFile: () => true },
+            { name: 'file3.txt', isDirectory: () => false, isFile: () => true }
+        ]);
 
 
         const tokens = SyntaxHandler.parse(['#test/dir']);

@@ -1,10 +1,10 @@
-// @ts-nocheck
 import {
   withRetry,
   withAlternatives,
   isRetryableError,
   generateErrorExplanation,
-  createAlternativeStrategy
+  createAlternativeStrategy,
+  type AlternativeStrategy
 } from '../../../src/agent/errorHandling';
 
 describe('errorHandling', () => {
@@ -137,7 +137,7 @@ describe('errorHandling', () => {
   describe('withAlternatives', () => {
     it('should succeed with primary strategy', async () => {
       const primary = jest.fn().mockResolvedValue('primary success');
-      const alternatives = [];
+      const alternatives: AlternativeStrategy<string>[] = [];
 
       const result = await withAlternatives(primary, alternatives);
 

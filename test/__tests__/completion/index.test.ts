@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { CompletionRequest, CompletionItem, CompletionResponse } from '../../../src/core/completion/types';
 
 describe('Completion Types', () => {

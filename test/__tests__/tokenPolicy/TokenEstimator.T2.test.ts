@@ -1,8 +1,14 @@
-// @ts-nocheck
 import { TokenEstimator } from '../../../src/policy/token/TokenEstimator';
 import { PendingContextItem } from '../../../src/policy/token/types';
 
 jest.mock('fs/promises');
+
+const stubResolve = () => ({ resolve: async () => ({ content: '', byteSize: 0 }) });
+
+const makeItem = (partial: Omit<PendingContextItem, 'resolve'>): PendingContextItem => ({
+    ...partial,
+    ...stubResolve(),
+});
 
 /**
  * T2: 并发 estimate + 单项失败
@@ -11,13 +17,13 @@ jest.mock('fs/promises');
 describe('TokenEstimator - T2: Concurrent Estimate with Failures', () => {
     test('单项 ENOENT 错误应转为 warning', async () => {
         const error = new Error('ENOENT: /test/file.txt');
-        const item: PendingContextItem = {
+        const item = makeItem({
             id: '/test/file.txt',
             type: 'file',
             originalToken: '@/test/file.txt',
             samplingStrategy: 'none',
             estimate: async () => { throw error }
-        };
+        });
 
         const result = await TokenEstimator.estimate([item]);
 
@@ -28,15 +34,14 @@ describe('TokenEstimator - T2: Concurrent Estimate with Failures', () => {
     });
 
     test('单项 EACCES 错误应转为 blockingError', async () => {
-        const error = new Error('EACCES: /test/file.txt');
-        error.code = 'EACCES';
-        const item: PendingContextItem = {
+        const error = Object.assign(new Error('EACCES: /test/file.txt'), { code: 'EACCES' });
+        const item = makeItem({
             id: '/test/file.txt',
             type: 'file',
             originalToken: '@/test/file.txt',
             samplingStrategy: 'none',
             estimate: async () => { throw error }
-        };
+        });
 
         const result = await TokenEstimator.estimate([item]);
 
@@ -48,14 +53,14 @@ describe('TokenEstimator - T2: Concurrent Estimate with Failures', () => {
 
     test('多项估算 - 部分成功部分失败', async () => {
         const items: PendingContextItem[] = [
-            {
+            makeItem({
                 id: '/test/file1.txt',
                 type: 'file',
                 originalToken: '@/test/file1.txt',
                 samplingStrategy: 'none',
                 estimate: async () => ({ byteSize: 100 })
-            },
-            {
+            }),
+            makeItem({
                 id: '/test/file2.txt',
                 type: 'file',
                 originalToken: '@/test/file2.txt',
@@ -63,7 +68,7 @@ describe('TokenEstimator - T2: Concurrent Estimate with Failures', () => {
                 estimate: async () => {
                     throw new Error('ENOENT: /test/file2.txt');
                 }
-            }
+            })
         ];
 
         const result = await TokenEstimator.estimate(items);

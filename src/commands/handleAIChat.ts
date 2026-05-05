@@ -22,7 +22,7 @@ import {
 import { runMacro } from '../core/macros';
 import { StreamMarkdownRenderer } from '../utils/renderer';
 import { wouldExpandAsGlob } from '../utils/globDetector';
-import { handleSpecialSyntax } from '../utils/syntaxHandler';
+import { handleSpecialSyntax } from '../utils/syntax';
 const execAsync = promisify(exec);
 
 // 全局变量：存储最后的 AI 输出内容，用于快速插入

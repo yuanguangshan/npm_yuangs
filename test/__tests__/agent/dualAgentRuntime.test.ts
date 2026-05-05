@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { DualAgentRuntime } from '../../../src/agent/DualAgentRuntime';
 
 // Mock dependencies
@@ -110,7 +109,7 @@ describe('DualAgentRuntime', () => {
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
       const { LLMAdapter } = require('../../../src/agent/llmAdapter');
 
-      await runtime.run('ls files', undefined, undefined, 'test-model');
+      await runtime.run('ls files', undefined, 'test-model');
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('🚀 Quick path'));
       expect(LLMAdapter.think).toHaveBeenCalled();
@@ -121,7 +120,7 @@ describe('DualAgentRuntime', () => {
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
       const { LLMAdapter } = require('../../../src/agent/llmAdapter');
 
-      await runtime.run('Do this', undefined, undefined, 'test-model');
+      await runtime.run('Do this', undefined, 'test-model');
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('🚀 Quick path'));
       expect(LLMAdapter.think).toHaveBeenCalled();
@@ -132,7 +131,7 @@ describe('DualAgentRuntime', () => {
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
       const { LLMAdapter } = require('../../../src/agent/llmAdapter');
 
-      await runtime.run('Just show the file list', undefined, undefined, 'test-model');
+      await runtime.run('Just show the file list', undefined, 'test-model');
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('🚀 Quick path'));
       expect(LLMAdapter.think).toHaveBeenCalled();
@@ -149,7 +148,7 @@ describe('DualAgentRuntime', () => {
         '```json\n{\n  "plan": "Test plan",\n  "steps": [],\n  "estimated_time": "1 min"\n}\n```'
       );
 
-      await runtime.run('Refactor the codebase', undefined, undefined, 'test-model');
+      await runtime.run('Refactor the codebase', undefined, 'test-model');
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('📋 Planning task'));
       expect(askAI).toHaveBeenCalled();
@@ -166,7 +165,7 @@ describe('DualAgentRuntime', () => {
         '```json\n{\n  "plan": "Test",\n  "steps": [],\n  "estimated_time": "1 min"\n}\n```'
       );
 
-      await runtime.run('Optimize all the functions', undefined, undefined, 'test-model');
+      await runtime.run('Optimize all the functions', undefined, 'test-model');
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('📋 Planning task'));
       expect(askAI).toHaveBeenCalled();
@@ -181,7 +180,7 @@ describe('DualAgentRuntime', () => {
         '```json\n{\n  "plan": "Test",\n  "steps": [],\n  "estimated_time": "1 min"\n}\n```'
       );
 
-      await runtime.run('Batch process files', undefined, undefined, 'test-model');
+      await runtime.run('Batch process files', undefined, 'test-model');
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('📋 Planning task'));
       expect(askAI).toHaveBeenCalled();
@@ -196,7 +195,7 @@ describe('DualAgentRuntime', () => {
         '```json\n{\n  "plan": "Test",\n  "steps": [],\n  "estimated_time": "1 min"\n}\n```'
       );
 
-      await runtime.run('批量处理文件', undefined, undefined, 'test-model');
+      await runtime.run('批量处理文件', undefined, 'test-model');
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('📋 Planning task'));
       expect(askAI).toHaveBeenCalled();
@@ -209,7 +208,7 @@ describe('DualAgentRuntime', () => {
 
       (getUserConfig as jest.Mock).mockReturnValue({ disablePlanner: true });
 
-      await runtime.run('Refactor the code', undefined, undefined, 'test-model');
+      await runtime.run('Refactor the code', undefined, 'test-model');
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('🚀 Quick path'));
       expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('📋 Planning task'));
@@ -229,7 +228,7 @@ describe('DualAgentRuntime', () => {
         callback('n');
       });
 
-      await runtime.run('Refactor code', undefined, undefined, 'test-model');
+      await runtime.run('Refactor code', undefined, 'test-model');
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Execution cancelled by user'));
       expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('🎉 All tasks completed'));
@@ -274,7 +273,7 @@ describe('DualAgentRuntime', () => {
         artifacts: []
       });
 
-      await runtime.run('Execute two steps', undefined, undefined, 'test-model');
+      await runtime.run('Execute two steps', undefined, 'test-model');
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Plan created with 2 steps'));
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('▶️  Step 1/2'));
@@ -328,7 +327,7 @@ describe('DualAgentRuntime', () => {
           callback('n'); // Stop after second step
         });
 
-      await runtime.run('Execute plan with failure', undefined, undefined, 'test-model');
+      await runtime.run('Execute plan with failure', undefined, 'test-model');
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('❌ Step failed'));
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Step 1/2'));
@@ -368,7 +367,7 @@ describe('DualAgentRuntime', () => {
         artifacts: []
       });
 
-      await runtime.run('Execute single step', undefined, undefined, 'test-model');
+      await runtime.run('Execute single step', undefined, 'test-model');
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('✅ Step completed'));
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('🎉 All tasks completed'));
@@ -382,7 +381,7 @@ describe('DualAgentRuntime', () => {
 
       (askAI as jest.Mock).mockRejectedValue(new Error('API unavailable'));
 
-      await runtime.run('Try to plan', undefined, undefined, 'test-model');
+      await runtime.run('Try to plan', undefined, 'test-model');
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Planner error'));
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Plan generation failed'));
@@ -417,7 +416,7 @@ describe('DualAgentRuntime', () => {
         '```json\n' + JSON.stringify(mockPlan) + '\n```'
       );
 
-      await runtime.run('Execute plan', undefined, undefined, 'test-model');
+      await runtime.run('Execute plan', undefined, 'test-model');
 
       expect(createExecutionRecord).toHaveBeenCalled();
       expect(saveExecutionRecord).toHaveBeenCalled();
@@ -489,7 +488,7 @@ describe('DualAgentRuntime', () => {
           callback('n');
         });
 
-      await runtime.run('Execute with failure', undefined, undefined, 'test-model');
+      await runtime.run('Execute with failure', undefined, 'test-model');
 
       expect(updateSkillStatus).toHaveBeenCalledWith('existing-skill-id', false);
       consoleSpy.mockRestore();
@@ -531,7 +530,7 @@ describe('DualAgentRuntime', () => {
         callback('n');
       });
 
-      await runtime.run('Track state', undefined, undefined, 'test-model');
+      await runtime.run('Track state', undefined, 'test-model');
 
       const state = runtime.getExecutionState();
       expect(state.steps).toHaveLength(1);

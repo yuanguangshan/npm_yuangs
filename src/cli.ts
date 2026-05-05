@@ -12,7 +12,7 @@ import { getAllCommands, getCommandSubcommands, getCommandDescription, installBa
 import { loadAppsConfig, openUrl, DEFAULT_APPS } from './core/apps';
 import { getMacros, saveMacro, runMacro } from './core/macros';
 import { getCommandHistory } from './utils/history';
-import { handleSpecialSyntax } from './utils/syntaxHandler';
+import { handleSpecialSyntax } from './utils/syntax';
 import { registerRegistryCommands } from './commands/registryCommands';
 import { registerExplainCommands } from './commands/explainCommands';
 import { registerReplayCommands } from './commands/replayCommands';

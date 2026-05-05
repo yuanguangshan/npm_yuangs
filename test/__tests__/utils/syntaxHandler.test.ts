@@ -1,4 +1,4 @@
-import { tokenizeWithQuotes, resolveFilePathsAndQuestion } from '../../../src/utils/syntaxHandler';
+import { tokenizeWithQuotes, resolveFilePathsAndQuestion } from '../../../src/utils/syntax/resolver';
 import fs from 'fs';
 import path from 'path';
 import { loadContext } from '../../../src/commands/contextStorage';

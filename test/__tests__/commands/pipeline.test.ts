@@ -1,10 +1,10 @@
 import { processPipelineSegment } from '../../../src/commands/handleAIChat';
-import * as syntaxHandler from '../../../src/utils/syntaxHandler';
+import * as syntaxHandler from '../../../src/utils/syntax';
 import * as shellCompletions from '../../../src/commands/shellCompletions';
 import chalk from 'chalk';
 
 // Mock dependencies
-jest.mock('../../../src/utils/syntaxHandler');
+jest.mock('../../../src/utils/syntax');
 jest.mock('../../../src/commands/shellCompletions');
 jest.mock('chalk', () => ({
     green: jest.fn((s) => s),

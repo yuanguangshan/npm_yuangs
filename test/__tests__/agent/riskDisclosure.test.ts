@@ -1,8 +1,8 @@
-// @ts-nocheck
 import {
   analyzeRiskLevel,
   generateRiskDisclosure,
-  formatRiskDisclosureCLI
+  formatRiskDisclosureCLI,
+  type RiskDisclosure
 } from '../../../src/agent/riskDisclosure';
 
 describe('riskDisclosure', () => {
@@ -471,7 +471,7 @@ describe('riskDisclosure', () => {
     });
 
     it('should format border separator', () => {
-      const disclosure = {
+      const disclosure: RiskDisclosure = {
         riskLevel: { level: 'low', score: 25 },
         factors: {
           commandType: 'file_read',
