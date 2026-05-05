@@ -16,18 +16,17 @@ EXTENDS Naturals, FiniteSets, Sequences
 (*   5. NoDoubleExecute — 同一动作不得重复执行                                 *)
 (******************************************************************************)
 
-CONSTANTS Actions, Agents, Rights, CapabilityTokens,
-            CapabilitySubject, CapabilityGrant, GetActualChanges
+CONSTANTS Actions, States, Agents, Rights, CapabilityTokens
 ASSUME Cardinality(Actions) > 0
+ASSUME States = {"DRAFT", "PROPOSED", "APPROVED", "EXECUTED", "OBSERVED", "VERIFIED", "REJECTED"}
 ASSUME Agents /= {}
 ASSUME Rights /= {}
 ASSUME CapabilityTokens /= {}
 
-States == {"DRAFT", "PROPOSED", "APPROVED", "EXECUTED", "OBSERVED", "VERIFIED", "REJECTED"}
-
 (******************************************************************************)
 (* 状态变量                                                                    *)
 (******************************************************************************)
+
 VARIABLES actionState,      \* 每个动作的当前状态
           worldState,       \* 抽象世界状态
           snapshots,        \* 快照集
@@ -55,6 +54,14 @@ TypeOk ==
   /\ observations \in [Actions -> STRING]
   /\ declaredChanges \in [Actions -> STRING]
   /\ execHistory \subseteq Actions
+
+(******************************************************************************)
+(* 内联的 Mock 算子（替代 CONSTANT 声明）                                     *)
+(******************************************************************************)
+
+CapabilitySubject(c) == "act1"
+CapabilityGrant(c, r) == TRUE
+GetActualChanges(a, ws) == declaredChanges[a]
 
 (******************************************************************************)
 (* 初始化                                                                      *)
@@ -201,13 +208,5 @@ NoDoubleExecute ==
     (actionState[a] \in {"EXECUTED", "OBSERVED", "VERIFIED"} /\
      actionState[b] \in {"EXECUTED", "OBSERVED", "VERIFIED"})
     => a = b
-
-(******************************************************************************)
-(* Mock 实现（供 .cfg 文件 <- 绑定使用）                                        *)
-(******************************************************************************)
-
-MockCapabilitySubject(c) == "act1"
-MockCapabilityGrant(c, r) == TRUE
-MockGetActualChanges(a, ws) == declaredChanges[a]
 
 =============================================================================
