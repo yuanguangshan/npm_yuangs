@@ -11,6 +11,8 @@
 
 > **命令行方式**（用于 CI）：
 > `java -jar tla2tools.jar -workers auto docs/specs/CodeChangeGovernanceV2.tla`
+>
+> 前置要求：JRE/JDK ≥ 11，且项目根目录存在 `tla2tools.jar`。
 
 ## 架构概览
 
@@ -128,3 +130,5 @@ CONSTANTS
 3. 再落笔写 TypeScript。
 
 这样每次代码变更都经过形式化验证的"预审"，将逻辑漏洞扼杀在编码之前。
+
+> **数学不通过，不发版；TLC 报红，不改 TypeScript。**
