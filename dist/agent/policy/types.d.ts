@@ -1,8 +1,10 @@
+import { ProposedAction } from '../state';
+export type AgentMode = 'chat' | 'command' | 'command+exec';
 export interface PolicyContext {
-    action: {
-        type: string;
-        payload: any;
-    };
+    action: ProposedAction;
+    cwd: string;
+    mode: AgentMode;
+    history: ProposedAction[];
     user?: {
         permissions: string[];
     };

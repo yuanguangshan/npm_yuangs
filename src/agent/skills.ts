@@ -1,7 +1,3 @@
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
-import chalk from 'chalk';
 import type { Skill } from '../core/skillTypes';
 import { computeSkillScore } from '../core/skillTypes';
 import { FileStorage } from '../utils/storage';

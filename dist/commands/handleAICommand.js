@@ -47,6 +47,7 @@ const risk_1 = require("../core/risk");
 const autofix_1 = require("../core/autofix");
 const confirm_1 = require("../utils/confirm");
 const history_1 = require("../utils/history");
+const executionStore_1 = require("../core/executionStore");
 const validation_1 = require("../core/validation");
 const macros_1 = require("../core/macros");
 const capabilitySystem_1 = require("../core/capabilitySystem");
@@ -227,12 +228,11 @@ ${result.stderr}
                 : -1;
             if (!isUsingMacro) {
                 capabilitySystem.createAndSaveExecutionRecord('ai-command', requirement, matchResult, commandToExecute, userInput, 'command');
-                const { listExecutionRecords, saveExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionStore')));
-                const records = listExecutionRecords(1);
+                const records = (0, executionStore_1.listExecutionRecords)(1);
                 if (records.length > 0) {
                     const lastRecord = records[0];
                     lastRecord.outcome.reward = reward;
-                    saveExecutionRecord(lastRecord);
+                    (0, executionStore_1.saveExecutionRecord)(lastRecord);
                 }
             }
             // === Execution Result to Context ===

@@ -171,15 +171,17 @@ program
         showContextRelevance: options.showContextRelevance
     };
     if (isPlannerEnabled) {
-        const { DualAgentRuntime } = await Promise.resolve().then(() => __importStar(require('./agent')));
+        const { DualAgentRuntime } = await Promise.resolve().then(() => __importStar(require('./agent/DualAgentRuntime')));
         console.log(chalk_1.default.magenta('--- RUNNING WITH DUAL AGENT ENGINE (PLANNER + EXECUTOR) ---'));
-        const runtime = new DualAgentRuntime(await Promise.resolve().then(() => __importStar(require('./ai/client'))).then(m => m.getConversationHistory()));
+        const { getConversationHistory } = await Promise.resolve().then(() => __importStar(require('./ai/client')));
+        const runtime = new DualAgentRuntime(getConversationHistory());
         await runtime.run(question || '', undefined, model);
     }
     else {
-        const { AgentRuntime } = await Promise.resolve().then(() => __importStar(require('./agent')));
+        const { AgentRuntime } = await Promise.resolve().then(() => __importStar(require('./agent/AgentRuntime')));
         console.log(chalk_1.default.magenta('--- RUNNING WITH NEW AGENT ENGINE ---'));
-        const runtime = new AgentRuntime(await Promise.resolve().then(() => __importStar(require('./ai/client'))).then(m => m.getConversationHistory()));
+        const { getConversationHistory } = await Promise.resolve().then(() => __importStar(require('./ai/client')));
+        const runtime = new AgentRuntime(getConversationHistory());
         await runtime.run(question || '', options.exec ? 'command' : 'chat', undefined, model);
     }
 });
@@ -628,9 +630,10 @@ async function main() {
             let model = options.model;
             if (options.exec) {
                 // 统一使用 AgentRuntime 执行命令模式，与 `yuangs ai -e` 保持一致
-                const { AgentRuntime } = await Promise.resolve().then(() => __importStar(require('./agent')));
+                const { AgentRuntime } = await Promise.resolve().then(() => __importStar(require('./agent/AgentRuntime')));
                 console.log(chalk_1.default.magenta('--- RUNNING WITH AGENT ENGINE (COMMAND MODE) ---'));
-                const runtime = new AgentRuntime(await Promise.resolve().then(() => __importStar(require('./ai/client'))).then(m => m.getConversationHistory()));
+                const { getConversationHistory } = await Promise.resolve().then(() => __importStar(require('./ai/client')));
+                const runtime = new AgentRuntime(getConversationHistory());
                 await runtime.run(question || '', 'command', undefined, model);
             }
             else {

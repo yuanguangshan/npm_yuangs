@@ -7,7 +7,7 @@ class NoDangerousShellPolicy {
     evaluate(context) {
         const { action } = context;
         if (action.type === 'shell_cmd') {
-            const command = action.payload?.command || '';
+            const command = action.payload.command || '';
             const dangerousPatterns = [
                 { pattern: /rm\s+-rf\s+\//, name: 'rm -rf /', risk: 'high' },
                 { pattern: /rm\s+-rf\s+~/, name: 'rm -rf ~', risk: 'high' },

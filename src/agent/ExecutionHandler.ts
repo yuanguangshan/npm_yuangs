@@ -1,7 +1,7 @@
 import chalk from "chalk";
 import * as marked from "marked";
 import TerminalRenderer from "marked-terminal";
-import { ProposedAction, AgentThought, ToolCallPayload, ShellCmdPayload } from "./state";
+import { ProposedAction, AgentThought, ToolCallPayload, ShellCmdPayload, ToolExecutionResult } from "./state";
 import { ToolExecutor } from "./executor";
 import { SmartContextManager } from "./smartContextManager";
 import { StreamMarkdownRenderer } from '../utils/renderer';
@@ -42,7 +42,7 @@ export class ExecutionHandler {
   }
 
   /** Execute an action with automatic backup for write operations. */
-  async execute(action: ProposedAction): Promise<any> {
+  async execute(action: ProposedAction): Promise<ToolExecutionResult> {
     const toolName = this.getToolName(action);
     const params = this.getParams(action);
     const filePath = (params.path || params.file_path) as string | undefined;
@@ -67,7 +67,7 @@ export class ExecutionHandler {
    * Returns updated ToolCallRecord, or null to signal loop break.
    */
   handleSuccess(
-    result: any,
+    result: ToolExecutionResult,
     action: ProposedAction,
     lastToolCall: ToolCallRecord | null,
     userInput: string,
@@ -118,7 +118,7 @@ export class ExecutionHandler {
     // Auto-completion for specific tool types
     const autoComplete = this.completer.check(action, result, userInput, mode, writeModeState, agentRenderer);
     if (autoComplete.shouldBreak) {
-      (result as any).shouldBreak = true;
+      (result as ToolExecutionResult & { shouldBreak?: boolean }).shouldBreak = true;
       return lastToolCall;
     }
     if (autoComplete.shouldReturnNull) {
@@ -133,7 +133,7 @@ export class ExecutionHandler {
 
   /** Handle a failed execution. Returns the error message string. */
   async handleFailure(
-    result: any,
+    result: ToolExecutionResult,
     action: ProposedAction,
     mode: string,
     thought: AgentThought,
@@ -182,7 +182,7 @@ export class ExecutionHandler {
   }
 
   private trackDuplicate(
-    result: any,
+    result: ToolExecutionResult,
     action: ProposedAction,
     lastToolCall: ToolCallRecord | null,
     userInput: string,
@@ -216,7 +216,7 @@ export class ExecutionHandler {
           }
           errorMsg += `\n注意：当前系统可能是 macOS（BSD 工具链），不支持 Linux 特定的命令选项。请使用 macOS 兼容的命令。`;
           this.context.addMessage('system', errorMsg);
-          return { breakEarly: true, newRecord: { tool: 'reset', params: {}, count: 0, lastOutput: '', outputHistory: [], blockCount: 0 }, updatedRecord: lastToolCall };
+          return { breakEarly: true, newRecord: { tool: 'reset', params: {} as Record<string, unknown>, count: 0, lastOutput: '', outputHistory: [], blockCount: 0 }, updatedRecord: lastToolCall };
         }
         log.debug('Repeat error', { count: count + 1 });
       } else if (count >= 2) {

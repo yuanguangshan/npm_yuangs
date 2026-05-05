@@ -17,4 +17,5 @@ Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./types"), exports);
 __exportStar(require("./engine"), exports);
 __exportStar(require("./policies/noDangerousShell"), exports);
+__exportStar(require("./policies/WorkdirWrite"), exports);
 //# sourceMappingURL=index.js.map

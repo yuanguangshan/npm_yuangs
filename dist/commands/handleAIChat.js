@@ -246,7 +246,7 @@ async function handleDirectoryReference(input) {
 }
 async function handleAIChat(initialQuestion, model) {
     // 初始化 AgentRuntime (v2.0 引擎)
-    const { AgentRuntime } = await Promise.resolve().then(() => __importStar(require('../agent')));
+    const { AgentRuntime } = await Promise.resolve().then(() => __importStar(require('../agent/AgentRuntime')));
     const runtime = new AgentRuntime((0, client_1.getConversationHistory)());
     const processInteraction = async (question) => {
         const spinner = (0, ora_1.default)(chalk_1.default.cyan('AI 正在思考...')).start();

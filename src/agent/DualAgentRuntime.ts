@@ -1,7 +1,5 @@
 import chalk from 'chalk';
 import { randomUUID } from 'crypto';
-import { LLMAdapter } from './llmAdapter';
-import { GovernanceService } from './governance';
 import { ToolExecutor } from './executor';
 import { ContextManager } from './contextManager';
 import { ProposedAction } from './state';
@@ -14,6 +12,7 @@ import { logger } from '../utils/Logger';
 import { createExecutionRecord } from '../core/executionRecord';
 import { saveExecutionRecord, loadExecutionRecord } from '../core/executionStore';
 import { learnSkillFromRecord, getAllSkills, updateSkillStatus } from './skills';
+import { AgentRuntime } from './AgentRuntime';
 
 const log = logger.child('DualAgentRuntime');
 
@@ -90,7 +89,7 @@ export class DualAgentRuntime {
   private async runFastPath(userInput: string, onChunk?: (chunk: string) => void, model?: string): Promise<void> {
     console.log(chalk.gray('🚀 Quick path: Direct execution'));
 
-    const runtime = await this.importAgentRuntime();
+    const runtime = new AgentRuntime({});
 
     this.context.addMessage('user', userInput);
     await runtime.run(userInput, 'command', onChunk, model);
@@ -320,12 +319,6 @@ ${context ? `Context:\n${context}\n` : ''}
       output: result.output,
       error: result.error
     };
-  }
-
-  private async importAgentRuntime(): Promise<any> {
-    const module = await import('./AgentRuntime');
-    const AgentRuntime = module.AgentRuntime;
-    return new AgentRuntime({});
   }
 
   private async askUser(question: string): Promise<boolean> {

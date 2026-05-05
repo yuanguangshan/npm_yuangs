@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { ProposedAction, ToolCallPayload, ShellCmdPayload } from './state';
+import { ProposedAction, ToolCallPayload, ShellCmdPayload, ToolExecutionResult } from './state';
 import { ToolExecutor } from './executor';
 import { ErrorTracker } from './errorTracker';
 import { BackupManager, BackupRef } from '../core/git/BackupManager';
@@ -24,7 +24,7 @@ export class ExecutionRecovery {
    * Returns the error message (empty string if auto-fix succeeded).
    */
   async handle(
-    result: { success: boolean; output: string; error?: string },
+    result: ToolExecutionResult,
     action: ProposedAction,
     mode: string,
     thought: { modelName?: string },

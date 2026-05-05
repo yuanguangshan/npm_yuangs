@@ -45,6 +45,9 @@ const client_1 = require("../ai/client");
 const modelRouterIntegration_1 = require("./modelRouterIntegration");
 const PlanCache_1 = require("./PlanCache");
 const Logger_1 = require("../utils/Logger");
+const executionRecord_1 = require("../core/executionRecord");
+const executionStore_1 = require("../core/executionStore");
+const skills_1 = require("./skills");
 const log = Logger_1.logger.child('DualAgentRuntime');
 class DualAgentRuntime {
     context;
@@ -252,21 +255,17 @@ ${context ? `Context:\n${context}\n` : ''}
         if (result.success) {
             this.context.addToolResult(step.type, result.output);
             try {
-                const { createExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionRecord')));
-                const { saveExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionStore')));
-                const record = createExecutionRecord(`agent-planner-${step.type}`, { required: [], preferred: [] }, {
+                const record = (0, executionRecord_1.createExecutionRecord)(`agent-planner-${step.type}`, { required: [], preferred: [] }, {
                     aiProxyUrl: { value: '', source: 'built-in' },
                     defaultModel: { value: '', source: 'built-in' },
                     accountType: { value: 'free', source: 'built-in' }
                 }, { selected: null, candidates: [], fallbackOccurred: false }, { success: true }, step.command || JSON.stringify(step.parameters), this.executionId, 'agent');
                 record.llmResult = { plan: { goal: step.description, command: step.command, parameters: step.parameters, risk_level: step.risk_level } };
                 record.input = { rawInput: originalInput };
-                const savedRecordId = saveExecutionRecord(record);
-                const { loadExecutionRecord } = await Promise.resolve().then(() => __importStar(require('../core/executionStore')));
-                const savedRecord = loadExecutionRecord(savedRecordId);
+                const savedRecordId = (0, executionStore_1.saveExecutionRecord)(record);
+                const savedRecord = (0, executionStore_1.loadExecutionRecord)(savedRecordId);
                 if (savedRecord) {
-                    const { learnSkillFromRecord } = await Promise.resolve().then(() => __importStar(require('./skills')));
-                    learnSkillFromRecord(savedRecord, true);
+                    (0, skills_1.learnSkillFromRecord)(savedRecord, true);
                 }
             }
             catch (error) {
@@ -276,11 +275,10 @@ ${context ? `Context:\n${context}\n` : ''}
         else {
             this.context.addToolResult(step.type, `Error: ${result.error}`);
             try {
-                const { getAllSkills, updateSkillStatus } = await Promise.resolve().then(() => __importStar(require('./skills')));
-                const skills = getAllSkills();
+                const skills = (0, skills_1.getAllSkills)();
                 const existingSkill = skills.find(s => s.name === step.description);
                 if (existingSkill) {
-                    updateSkillStatus(existingSkill.id, false);
+                    (0, skills_1.updateSkillStatus)(existingSkill.id, false);
                 }
             }
             catch (error) {

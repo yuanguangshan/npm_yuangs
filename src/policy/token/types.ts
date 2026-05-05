@@ -1,5 +1,3 @@
-import { AIRequestMessage } from '../../core/validation';
-
 export type SamplingStrategy = "head_tail" | "random" | "none";
 
 export interface ContextEstimate {

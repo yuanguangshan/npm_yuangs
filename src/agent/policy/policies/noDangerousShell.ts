@@ -1,5 +1,6 @@
 import { Policy, PolicyContext, PolicyResult } from '../types';
 import { ShellCmdPayload } from '../../state';
+import { DANGEROUS_SHELL_PATTERNS } from './dangerousShellPatterns';
 
 export class NoDangerousShellPolicy implements Policy {
   name = 'no-dangerous-shell';
@@ -10,20 +11,8 @@ export class NoDangerousShellPolicy implements Policy {
 
     if (action.type === 'shell_cmd') {
       const command = (action.payload as unknown as ShellCmdPayload).command || '';
-      
-      const dangerousPatterns = [
-        { pattern: /rm\s+-rf\s+\//, name: 'rm -rf /', risk: 'high' },
-        { pattern: /rm\s+-rf\s+~/, name: 'rm -rf ~', risk: 'high' },
-        { pattern: />\s*\/dev\/null/, name: 'Redirect to /dev/null', risk: 'medium' },
-        { pattern: /dd\s+if=/, name: 'dd command', risk: 'high' },
-        { pattern: /mkfs/, name: 'mkfs (filesystem creation)', risk: 'high' },
-        { pattern: /format/, name: 'format command', risk: 'high' },
-        { pattern: /sudo\s+rm/, name: 'sudo rm', risk: 'high' },
-        { pattern: /chmod\s+777\s+\/(?!dev)/, name: 'chmod 777 on system', risk: 'high' },
-        { pattern: /:\s*~\(\)/, name: 'fork bomb', risk: 'high' }
-      ];
 
-      for (const { pattern, name, risk } of dangerousPatterns) {
+      for (const { pattern, name, risk } of DANGEROUS_SHELL_PATTERNS) {
         if (pattern.test(command)) {
           return {
             allowed: false,

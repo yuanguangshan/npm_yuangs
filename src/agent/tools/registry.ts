@@ -1,5 +1,4 @@
 import { Tool, ToolParameter } from './types';
-import { CapabilityLevel } from '../../core/capability/CapabilityLevel';
 
 /**
  * Tool registry — manages tool registration and lookup.

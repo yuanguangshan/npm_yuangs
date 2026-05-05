@@ -1,5 +1,6 @@
 import { Policy, PolicyContext, PolicyResult } from './types';
 import { RiskLevel, ProposedAction } from '../state';
+import { DANGEROUS_SHELL_PATTERNS } from './policies/dangerousShellPatterns';
 
 export class PolicyEngine {
   private policies: Map<string, Policy> = new Map();
@@ -74,17 +75,7 @@ export class PolicyEngine {
   }
 
   private containsDangerousCommand(cmd: string): boolean {
-    const dangerousPatterns = [
-      /rm\s+-rf\s+\//,
-      /rm\s+-rf\s+~/,
-      />\s*\/dev\/null/,
-      /dd\s+if=/,
-      /mkfs/,
-      /format/,
-      /sudo\s+rm/
-    ];
-
-    return dangerousPatterns.some(pattern => pattern.test(cmd));
+    return DANGEROUS_SHELL_PATTERNS.some(p => p.pattern.test(cmd));
   }
 }
 
