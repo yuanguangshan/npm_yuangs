@@ -143,7 +143,7 @@ Rollback(a) ==
   /\ UNCHANGED <<caps, revokedCaps, approvedBy, observations, declaredChanges,
                 execHistory>>
 
-IssueCap(cap, agent, right, scope) ==
+IssueCap(cap, agent, right) ==
   /\ cap \in CapabilityTokens
   /\ cap \notin caps
   /\ cap \notin revokedCaps
@@ -171,8 +171,8 @@ Next ==
   \/ \E a \in Actions : Verify(a)
   \/ \E a \in Actions : VerifyFail(a)
   \/ \E a \in Actions : Rollback(a)
-  \/ \E cap \in CapabilityTokens, agent \in Agents, r \in Rights, s \in STRING :
-       IssueCap(cap, agent, r, s)
+  \/ \E cap \in CapabilityTokens, agent \in Agents, r \in Rights :
+       IssueCap(cap, agent, r)
   \/ \E cap \in CapabilityTokens : RevokeCap(cap)
 
 Vars == <<actionState, worldState, snapshots, caps, revokedCaps,
