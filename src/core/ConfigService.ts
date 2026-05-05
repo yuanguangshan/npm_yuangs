@@ -46,6 +46,18 @@ export const mergedConfigSchema = userConfigSchema.merge(projectConfigSchema);
 export type MergedConfig = z.infer<typeof mergedConfigSchema>;
 
 // ---------------------------------------------------------------------------
+// Config source tracking
+// ---------------------------------------------------------------------------
+
+export type ConfigSource = 'built-in' | 'user-global' | 'project' | 'command-override' | 'env';
+
+export interface ConfigFieldSource<T = unknown> {
+  value: T;
+  source: ConfigSource;
+  filePath?: string;
+}
+
+// ---------------------------------------------------------------------------
 // Defaults
 // ---------------------------------------------------------------------------
 
@@ -95,6 +107,7 @@ const PROJECT_CONFIG_FILES = [
 
 export class ConfigService {
   private config: MergedConfig;
+  private sourceMap: Map<string, ConfigFieldSource> = new Map();
   private initialized = false;
 
   constructor(
@@ -112,7 +125,46 @@ export class ConfigService {
     if (this.initialized) return;
 
     const projectConfig = this.loadProjectConfig();
+    const projectConfigPath = this.findProjectConfigFile();
     const userConfig = this.loadUserConfig();
+
+    // Record sources for top-level fields
+    Object.keys(DEFAULT_CONFIG).forEach(key => {
+      this.sourceMap.set(key, {
+        value: (DEFAULT_CONFIG as any)[key],
+        source: 'built-in',
+      });
+    });
+
+    if (userConfig) {
+      Object.keys(userConfig).forEach(key => {
+        this.sourceMap.set(key, {
+          value: (userConfig as any)[key],
+          source: 'user-global',
+          filePath: USER_CONFIG_FILE,
+        });
+      });
+    }
+
+    if (projectConfig && projectConfigPath) {
+      Object.keys(projectConfig).forEach(key => {
+        this.sourceMap.set(key, {
+          value: (projectConfig as any)[key],
+          source: 'project',
+          filePath: projectConfigPath,
+        });
+      });
+    }
+
+    const envConfig = this.loadEnvConfig();
+    if (Object.keys(envConfig).length > 0) {
+      Object.keys(envConfig).forEach(key => {
+        this.sourceMap.set(key, {
+          value: (envConfig as any)[key],
+          source: 'env',
+        });
+      });
+    }
 
     // Merge: defaults < project < user < env < overrides
     this.config = this.deepMerge(
@@ -120,10 +172,16 @@ export class ConfigService {
         this.deepMerge(DEFAULT_CONFIG, projectConfig),
         userConfig
       ),
-      this.loadEnvConfig()
+      envConfig
     );
 
     if (Object.keys(this.overrides).length > 0) {
+      Object.keys(this.overrides).forEach(key => {
+        this.sourceMap.set(key, {
+          value: (this.overrides as any)[key],
+          source: 'command-override',
+        });
+      });
       this.config = this.deepMerge(this.config, this.overrides);
     }
 
@@ -144,10 +202,35 @@ export class ConfigService {
   }
 
   /**
+   * Get source info for a top-level config key.
+   */
+  getSourceInfo<T>(key: string): ConfigFieldSource<T> | undefined {
+    return this.sourceMap.get(key) as ConfigFieldSource<T> | undefined;
+  }
+
+  /**
    * Get the full merged config.
    */
   getAll(): MergedConfig {
     return { ...this.config };
+  }
+
+  /**
+   * Dump config snapshot with source information.
+   */
+  dumpConfigSnapshot(): string {
+    const output: Record<string, any> = {};
+
+    Object.entries(this.config).forEach(([key, value]) => {
+      const sourceInfo = this.sourceMap.get(key);
+      output[key] = {
+        value,
+        source: sourceInfo?.source ?? 'unknown',
+        filePath: sourceInfo?.filePath,
+      };
+    });
+
+    return JSON.stringify(output, null, 2);
   }
 
   /**
@@ -280,11 +363,4 @@ export function getConfigService(): ConfigService {
     _instance = new ConfigService();
   }
   return _instance;
-}
-
-/**
- * Reset the global singleton (useful for testing).
- */
-export function resetConfigService(): void {
-  _instance = null;
 }

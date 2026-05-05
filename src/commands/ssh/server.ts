@@ -6,6 +6,7 @@ import path from 'path';
 import { SSHSession } from '../../ssh/SSHSession';
 import { SSHGovernedExecutor, GovernanceService, ExecDecision } from '../../ssh/GovernedExecutor';
 import { InputBuffer } from '../../ssh/InputBuffer';
+import { checkDangerousCommand } from '../../agent/security/dangerousPatterns';
 
 export async function startWebTerminal(config: any, port: number = 3000) {
     const app = express();
@@ -46,38 +47,32 @@ export async function startWebTerminal(config: any, port: number = 3000) {
                 // 模拟 AI 神经网络分析延迟 (已优化为 20ms 以提升性能)
                 await new Promise(r => setTimeout(r, 20));
 
-                // 2. 简单的危险检测逻辑 (用于演示视觉效果)
-                const dangerousPatterns = [
-                    { regex: /rm\s+-rf\s+\//, reason: '非法的文件系统根目录删除尝试', impact: '系统将彻底崩溃', risk: 'R3' },
-                    { regex: /mkfs/, reason: '格式化磁盘尝试', impact: '磁盘数据将全部丢失', risk: 'R3' },
-                    { regex: /dd\s+if=.*of=\/dev\//, reason: '底层设备写覆盖尝试', impact: '可能破坏引导扇区', risk: 'R3' }
-                ];
+                // 2. 统一危险模式检测
+                const hit = checkDangerousCommand(cmd);
+                if (hit) {
+                    const riskLevel = hit.risk === 'critical' ? 'R3' : 'R2';
+                    const decision: ExecDecision = {
+                        allowed: false,
+                        reason: hit.reason,
+                        riskLevel,
+                        disclosure: {
+                            command: cmd,
+                            impact: hit.reason,
+                            riskLevel,
+                            requiresConfirmation: true
+                        }
+                    };
 
-                for (const p of dangerousPatterns) {
-                    if (p.regex.test(cmd)) {
-                        const decision: ExecDecision = {
-                            allowed: false,
-                            reason: p.reason,
-                            riskLevel: p.risk,
-                            disclosure: {
-                                command: cmd,
-                                impact: p.impact,
-                                riskLevel: p.risk,
-                                requiresConfirmation: true
-                            }
-                        };
+                    // 🚨 发送详细决策给前端预览
+                    socket.emit('governance_decision', decision);
 
-                        // 🚨 发送详细决策给前端预览
-                        socket.emit('governance_decision', decision);
+                    // 🚨 触发全屏视觉警报
+                    socket.emit('governance_alert', {
+                        level: 'critical',
+                        message: 'BLOCK: ' + hit.name
+                    });
 
-                        // 🚨 触发全屏视觉警报
-                        socket.emit('governance_alert', {
-                            level: 'critical',
-                            message: 'BLOCK: ' + p.risk
-                        });
-
-                        return decision;
-                    }
+                    return decision;
                 }
 
                 // 安全命令

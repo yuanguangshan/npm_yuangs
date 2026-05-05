@@ -1,3 +1,4 @@
+import { getConfigService } from './ConfigService';
 import {
   CapabilityRequirement,
   matchModelWithFallback,
@@ -5,22 +6,15 @@ import {
   CapabilityMatchResult,
 } from './modelMatcher';
 import {
-  mergeConfigs,
-  loadConfigAt,
-  dumpConfigSnapshot,
-  getConfigFilePaths,
-  MergedConfig,
-} from './configMerge';
-import {
   createExecutionRecord,
-  ExecutionRecord,
 } from './executionRecord';
 import {
   saveExecutionRecord,
-  loadExecutionRecord,
-  listExecutionRecords,
 } from './executionStore';
 import { replayEngine, ReplayOptions, ReplayResult } from './replayEngine';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
 export class CapabilitySystem {
   private primaryModels: ModelCapabilities[] = [];
@@ -46,31 +40,30 @@ export class CapabilitySystem {
     );
   }
 
-  loadMergedConfig(): MergedConfig {
-    const builtin = {
-      aiProxyUrl: 'https://aiproxy.want.biz/v1/chat/completions',
-      defaultModel: 'Assistant',
-      accountType: 'paid',
-    };
-
-    const filePaths = getConfigFilePaths();
-    const projectConfig = filePaths.project ? loadConfigAt(filePaths.project) : null;
-    const userGlobal = loadConfigAt(filePaths.userGlobal);
-
-    return mergeConfigs(builtin, userGlobal, projectConfig, null);
-  }
-
   loadCustomModels(): ModelCapabilities[] {
-    const filePaths = getConfigFilePaths();
-    const projectConfig = filePaths.project ? loadConfigAt(filePaths.project) : null;
-    const userGlobal = loadConfigAt(filePaths.userGlobal);
+    const userGlobalPath = path.join(os.homedir(), '.yuangs.json');
+    const projectPath = getConfigService().get('projectConfigPath') as string | null;
 
     const customModelsArray = [];
-    if (userGlobal?.models && Array.isArray(userGlobal.models)) {
-      customModelsArray.push(...userGlobal.models as ModelCapabilities[]);
-    }
-    if (projectConfig?.models && Array.isArray(projectConfig.models)) {
-      customModelsArray.push(...projectConfig.models as ModelCapabilities[]);
+
+    // Try loading from user config
+    try {
+      if (fs.existsSync(userGlobalPath)) {
+        const userConfig = JSON.parse(fs.readFileSync(userGlobalPath, 'utf8'));
+        if (userConfig?.models && Array.isArray(userConfig.models)) {
+          customModelsArray.push(...userConfig.models as ModelCapabilities[]);
+        }
+      }
+    } catch { /* ignore */ }
+
+    // Try loading from project config
+    if (projectPath) {
+      try {
+        const projectConfig = JSON.parse(fs.readFileSync(projectPath, 'utf8'));
+        if (projectConfig?.models && Array.isArray(projectConfig.models)) {
+          customModelsArray.push(...projectConfig.models as ModelCapabilities[]);
+        }
+      } catch { /* ignore */ }
     }
 
     return customModelsArray;
@@ -89,7 +82,7 @@ export class CapabilitySystem {
     rawInput?: string,
     mode?: string
   ): string {
-    const config = this.loadMergedConfig();
+    const config = getConfigService().getAll();
     const record = createExecutionRecord(
       commandName,
       requirement,
@@ -110,8 +103,7 @@ export class CapabilitySystem {
   }
 
   explainConfig(): string {
-    const config = this.loadMergedConfig();
-    return dumpConfigSnapshot(config);
+    return getConfigService().dumpConfigSnapshot();
   }
 }
 

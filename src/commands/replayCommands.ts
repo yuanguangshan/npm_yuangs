@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Command } from 'commander';
 import { CapabilitySystem } from '../core/capabilitySystem';
+import { getConfigService } from '../core/ConfigService';
 import { ReplayMode } from '../core/replayEngine';
 import { diffExecution, formatReplayDiff } from '../core/replayDiff';
 import { loadExecutionRecord, listExecutionRecords } from '../core/executionStore';
@@ -66,7 +67,7 @@ export function registerReplayCommands(program: Command): void {
         }
 
         // Create a "current" record with current config
-        const currentConfig = system.loadMergedConfig();
+        const currentConfig = getConfigService().getAll();
         const currentRecord: any = {
           ...record,
           configSnapshot: currentConfig,

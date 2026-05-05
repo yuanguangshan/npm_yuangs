@@ -7,37 +7,29 @@ import { InputBuffer } from '../../ssh/InputBuffer';
 import { SSHGovernedExecutor, GovernanceService, ExecutionContext, ExecDecision } from '../../ssh/GovernedExecutor';
 import { Recorder } from '../../audit/Recorder';
 import { startWebTerminal } from './server';
+import { checkDangerousCommand } from '../../agent/security/dangerousPatterns';
 
 /**
  * 简单的治理服务实现 (MVP)
- * TODO: 接入完整的 GovernanceService
  */
 class SimpleGovernanceService implements GovernanceService {
   async evaluate(ctx: ExecutionContext): Promise<ExecDecision> {
     const cmd = ctx.command.trim();
 
-    // 危险命令黑名单
-    const dangerousPatterns = [
-      /rm\s+-rf\s+\//,           // rm -rf /
-      /dd\s+if=.*of=\/dev\//,    // dd 写入设备
-      /mkfs/,                    // 格式化
-      /:\(\)\{\s*:\|:&\s*\};:/,  // fork bomb
-    ];
-
-    for (const pattern of dangerousPatterns) {
-      if (pattern.test(cmd)) {
-        return {
+    // 使用统一危险模式源
+    const hit = checkDangerousCommand(cmd);
+    if (hit) {
+      return {
           allowed: false,
-          reason: 'Detected potentially destructive command',
-          riskLevel: 'R3',
+          reason: hit.reason,
+          riskLevel: hit.risk === 'critical' ? 'R3' : 'R2',
           disclosure: {
             command: cmd,
-            riskLevel: 'R3',
-            impact: 'This command could cause irreversible system damage',
+            riskLevel: hit.risk === 'critical' ? 'R3' : 'R2',
+            impact: hit.reason,
             requiresConfirmation: true,
           },
         };
-      }
     }
 
     // sudo 命令需要额外检查

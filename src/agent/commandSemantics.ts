@@ -6,10 +6,12 @@
  * - SEARCH: 搜索命令（grep, rg, find, locate 等）
  * - LIST: 列表命令（ls, tree, du 等）
  * - WRITE: 写入命令（echo >>, tee, cp, mv, rm 等）
- * - DANGEROUS: 危险命令（rm -rf /, dd, mkfs, curl|sh 等）
+ * - DANGEROUS: 危险命令（由 src/agent/security/dangerousPatterns.ts 统一定义）
  *
  * 参考：cc/src/tools/BashTool/commandSemantics.ts, bashSecurity.ts, pathValidation.ts
  */
+
+import { DANGEROUS_SHELL_PATTERNS } from './security/dangerousPatterns';
 
 export type CommandCategory = 'READ' | 'SEARCH' | 'LIST' | 'WRITE' | 'DANGEROUS' | 'UNKNOWN';
 
@@ -61,41 +63,6 @@ const WRITE_COMMANDS = new Set([
   'sed', 'awk', // sed -i 会写入
 ]);
 
-// 危险模式（必须拦截）
-const DANGEROUS_PATTERNS: { pattern: RegExp; reason: string }[] = [
-  { pattern: /\brm\s+(-rf?|--recursive\s+--force)\s+\/\s*$/, reason: '删除根目录' },
-  { pattern: /\brm\s+-rf?\s+\/\b/, reason: '递归删除根目录子树' },
-  { pattern: /\bdd\s+if=\/dev\/zero/, reason: '用零填充设备' },
-  { pattern: /\bdd\s+of=\/dev\/[a-z]/, reason: '写入设备' },
-  { pattern: /\bmkfs\b/, reason: '格式化文件系统' },
-  { pattern: />\s*\/dev\/sda/, reason: '直接写磁盘设备' },
-  { pattern: />\s*\/dev\/vda/, reason: '直接写虚拟磁盘' },
-  { pattern: />\s*\/dev\/nvme/, reason: '直接写 NVMe 设备' },
-  { pattern: /:\(\)\{\s*:\|:\s*&\s*\}\s*;/, reason: 'Fork bomb' },
-  { pattern: /\bwget\s+.*\s*\|\s*(sh|bash)\b/i, reason: '远程脚本执行' },
-  { pattern: /\bcurl\s+.*\s*\|\s*(sh|bash)\b/i, reason: '远程脚本执行' },
-  { pattern: /\bchmod\s+777\s+\/\b/, reason: '全局权限开放' },
-  { pattern: /\bchown\s+-R\s+.*\s+\/\b/, reason: '递归更改全局所有权' },
-  { pattern: /\bsudo\s+rm\s+-rf\s+\/\b/, reason: 'sudo 删除根目录' },
-  { pattern: />\s*\/etc\/(passwd|shadow|sudoers)/, reason: '写入系统认证文件' },
-  // === 绕过变体 ===
-  { pattern: /\brm\s+(-r\s+-f|-f\s+-r|--recursive\s+-f|-r\s+--force|--force\s+-r)\s+\/\s*$/, reason: '删除根目录（参数拆分绕过）' },
-  { pattern: /\benv\s+rm\s+-rf\s+\/\b/, reason: 'env 前缀绕过删除根目录' },
-  { pattern: /\bsudo\s+env\s+rm\s+-rf\s+\/\b/, reason: 'sudo env 前缀绕过删除根目录' },
-  { pattern: /\bbase64\s+(-d|--decode)\s*\|.*\b(sh|bash|zsh)\b/i, reason: 'base64 解码后脚本执行' },
-  { pattern: /\bxargs\s+(rm\s+-rf|dd|mkfs|chmod|chown)\b/i, reason: 'xargs 管道破坏命令' },
-  { pattern: /\bfind\s+\/[^&|;\s]*\s+-exec\s+(rm|dd|mkfs|chmod)\b/i, reason: 'find -exec 系统目录破坏' },
-  { pattern: /`\s*(rm\s+-rf|dd|mkfs)/i, reason: '反引号注入破坏命令' },
-  { pattern: /\$\(.*\b(rm\s+-rf|dd|mkfs)\b.*\)/i, reason: '子命令注入破坏命令' },
-  { pattern: /\bwget\s+-O-.*\|\s*(sh|bash|zsh)\b/i, reason: 'wget 远程脚本执行（变体）' },
-  { pattern: /\bcurl\s+-sL.*\|\s*(sh|bash|zsh)\b/i, reason: 'curl 远程脚本执行（变体）' },
-  { pattern: /\beval\s+.*\b(rm\s+-rf|dd|mkfs|chmod\s+777)\b/i, reason: 'eval 执行破坏命令' },
-];
-
-// ============================================================================
-// 核心分析函数
-// ============================================================================
-
 /**
  * 解析命令，提取基础命令名
  * 处理管道、重定向、逻辑运算符
@@ -113,7 +80,7 @@ function extractBaseCommand(command: string): string {
  * 检查命令是否包含危险模式
  */
 function checkDangerous(command: string): { dangerous: boolean; reason?: string } {
-  for (const { pattern, reason } of DANGEROUS_PATTERNS) {
+  for (const { pattern, reason } of DANGEROUS_SHELL_PATTERNS) {
     if (pattern.test(command)) {
       return { dangerous: true, reason };
     }
