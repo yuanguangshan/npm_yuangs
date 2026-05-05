@@ -16,7 +16,7 @@ EXTENDS Naturals, FiniteSets, Sequences
 (*   5. NoDoubleExecute — 同一动作不得重复执行                                 *)
 (******************************************************************************)
 
-CONSTANTS Actions, States, Agents, Rights, CapabilityTokens, SnapshotIds
+CONSTANTS Actions, States, Agents, Rights, CapabilityTokens, SnapshotIds, Scopes
 ASSUME Cardinality(Actions) > 0
 ASSUME States = {"DRAFT", "PROPOSED", "APPROVED", "EXECUTED", "OBSERVED", "VERIFIED", "REJECTED"}
 ASSUME Agents /= {}
@@ -145,9 +145,10 @@ Rollback(a) ==
   /\ UNCHANGED <<caps, revokedCaps, approvedBy, observations, declaredChanges,
                 execHistory>>
 
-IssueCap(cap, agent, right) ==
+IssueCap(cap, agent, right, scope) ==
   /\ cap \in CapabilityTokens
   /\ cap \notin caps
+  /\ cap \notin revokedCaps
   /\ caps' = caps \cup {cap}
   /\ UNCHANGED <<actionState, worldState, snapshots, revokedCaps, approvedBy,
                 observations, declaredChanges, execHistory>>
@@ -173,8 +174,8 @@ Next ==
   \/ \E a \in Actions : Verify(a)
   \/ \E a \in Actions : VerifyFail(a)
   \/ \E a \in Actions : Rollback(a)
-  \/ \E cap \in CapabilityTokens, agent \in Agents, r \in Rights :
-       IssueCap(cap, agent, r)
+  \/ \E cap \in CapabilityTokens, agent \in Agents, r \in Rights, s \in Scopes :
+       IssueCap(cap, agent, r, s)
   \/ \E cap \in CapabilityTokens : RevokeCap(cap)
 
 Vars == <<actionState, worldState, snapshots, caps, revokedCaps,
