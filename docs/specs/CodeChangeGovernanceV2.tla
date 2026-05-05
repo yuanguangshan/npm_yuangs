@@ -16,19 +16,14 @@ EXTENDS Naturals, FiniteSets, Sequences
 (*   5. NoDoubleExecute — 同一动作不得重复执行                                 *)
 (******************************************************************************)
 
-CONSTANTS Actions, States, Agents, Rights, CapabilityTokens
+CONSTANTS Actions, Agents, Rights, CapabilityTokens,
+            CapabilitySubject, CapabilityGrant, GetActualChanges
 ASSUME Cardinality(Actions) > 0
-ASSUME States = {"DRAFT", "PROPOSED", "APPROVED", "EXECUTED", "OBSERVED", "VERIFIED", "REJECTED"}
 ASSUME Agents /= {}
 ASSUME Rights /= {}
 ASSUME CapabilityTokens /= {}
 
-(******************************************************************************)
-(* 能力令牌算子（纯函数，不引用变量）                                           *)
-(******************************************************************************)
-
-CapabilitySubject(c) == "act1"
-CapabilityGrant(c, r) == TRUE
+States == {"DRAFT", "PROPOSED", "APPROVED", "EXECUTED", "OBSERVED", "VERIFIED", "REJECTED"}
 
 (******************************************************************************)
 (* 状态变量                                                                    *)
@@ -44,9 +39,6 @@ VARIABLES actionState,      \* 每个动作的当前状态
           execHistory       \* 执行历史（防止重复执行）
 
 None == "None"
-
-\* GetActualChanges 引用 declaredChanges 变量，必须在 VARIABLES 之后
-GetActualChanges(a, ws) == declaredChanges[a]
 
 (******************************************************************************)
 (* 类型不变量                                                                  *)
@@ -211,7 +203,11 @@ NoDoubleExecute ==
     => a = b
 
 (******************************************************************************)
-(* TLC 模型用 Mock 实现（已移至上方 ASSUME 之后）                               *)
+(* Mock 实现（供 .cfg 文件 <- 绑定使用）                                        *)
 (******************************************************************************)
+
+MockCapabilitySubject(c) == "act1"
+MockCapabilityGrant(c, r) == TRUE
+MockGetActualChanges(a, ws) == declaredChanges[a]
 
 =============================================================================
