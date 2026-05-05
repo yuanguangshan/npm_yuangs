@@ -1,4 +1,6 @@
-import chalk from 'chalk';
+import { logger } from '../../utils/Logger';
+
+const log = logger.child('SyntaxHandler');
 
 /**
  * :exec — 原子执行命令（终端直接输出，不捕获给 AI）
@@ -6,7 +8,7 @@ import chalk from 'chalk';
 export async function handleAtomicExec(
   command: string,
 ): Promise<{ processed: boolean; result: string }> {
-  console.log(chalk.cyan(`\n⚡️ [Atomic Exec] 执行命令: ${command}\n`));
+  log.info(`⚡️ [Atomic Exec] 执行命令: ${command}`);
 
   try {
     const { spawn } = require('child_process');
@@ -25,7 +27,7 @@ export async function handleAtomicExec(
 
     return { processed: true, result: '' };
   } catch (error) {
-    console.error(chalk.red(`执行失败: ${error}`));
+    log.error(`执行失败: ${error}`);
     return { processed: true, result: '' };
   }
 }

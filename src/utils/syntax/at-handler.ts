@@ -10,6 +10,9 @@ import {
 import { ContextBuffer } from '../../commands/contextBuffer';
 import { loadContext, saveContext } from '../../commands/contextStorage';
 import { resolveFilePathsAndQuestion } from './resolver';
+import { logger } from '../../utils/Logger';
+
+const log = logger.child('SyntaxHandler');
 
 const execAsync = promisify(exec);
 const MAX_FILE_TOKENS = 10000;
@@ -294,7 +297,7 @@ async function handleImmediateExec(
 
   try {
     const content = fs.readFileSync(fullPath, 'utf-8');
-    console.log(chalk.gray(`正在执行 ${filePath} 并捕获输出...`));
+    log.info(`正在执行 ${filePath} 并捕获输出...`);
 
     const { stdout, stderr } = await execAsync(
       `chmod +x "${fullPath}" && "${fullPath}"`,
@@ -366,14 +369,14 @@ async function handleFileAndCommand(
       ctx.add({ type: 'file', path: filePath, content });
     });
 
-    console.log(chalk.green(`✓ 已将文件 "${filePath}" 加入上下文`));
-    console.log(chalk.cyan(`⚡️ 正在执行: ${command}\n`));
+    log.info(`✓ 已将文件 "${filePath}" 加入上下文`);
+    log.info(`⚡️ 正在执行: ${command}`);
 
     const { stdout, stderr } = await execAsync(command, {
       cwd: path.dirname(fullPath),
     });
-    if (stdout) console.log(stdout);
-    if (stderr) console.error(chalk.red(stderr));
+    if (stdout) log.info(stdout);
+    if (stderr) log.error(stderr);
 
     return {
       processed: true,
