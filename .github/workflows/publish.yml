@@ -19,6 +19,12 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
+      - name: Cache TLA+ Tools
+        uses: actions/cache@v4
+        with:
+          path: tla2tools.jar
+          key: ${{ runner.os }}-tla2tools-v1.8.0
+
       - name: Download TLA+ tools
         run: |
           curl -fsSL https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar -o tla2tools.jar
