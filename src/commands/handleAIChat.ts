@@ -353,7 +353,7 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
 
     readline.emitKeypressEvents(process.stdin);
 
-    process.stdin.on('keypress', (str, key) => {
+    const onKeypress = (str: string, key: { ctrl: boolean; name: string }) => {
         if (key.ctrl && key.name === 'r') {
             rl.write(null, { ctrl: true, name: 'r' });
         }
@@ -362,12 +362,16 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
             rl.write(lastAIOutput);
             console.log(chalk.gray('\n[已插入最后一条 AI 输出]'));
         }
-    });
+    };
+    process.stdin.on('keypress', onKeypress);
 
     // Helper to wrap rl.question in a Promise
     const ask = (query: string): Promise<string> => {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
+            const onClose = () => reject(new Error('readline closed'));
+            rl.on('close', onClose);
             rl.question(query, (answer) => {
+                rl.removeListener('close', onClose);
                 resolve(answer);
             });
         });
@@ -557,13 +561,12 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
                 continue;
             }
 
-            // Alternative Zero-Mode entry: :ai command
-            if (trimmed === ':ai') {
+            // 通用 AI 调用：抽离 :ai 和空行触发共用的逻辑
+            async function runAI(startMsg: string) {
                 rl.pause();
                 try {
-                    console.log(chalk.cyan('AI 模式启动...\n'));
+                    console.log(chalk.cyan(startMsg));
 
-                    // Use empty context or current context for AI interaction
                     let finalPrompt = contextStore.isEmpty()
                         ? '你好，请开始对话'
                         : contextAssembler.assemble(contextStore, '你好，请基于以上上下文开始对话');
@@ -578,7 +581,6 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
                     const fullResponse = renderer.finish();
                     lastAIOutput = fullResponse;
 
-                    // 同步上下文到全局历史（为了兼容性）
                     addToConversationHistory('user', finalPrompt);
                     addToConversationHistory('assistant', fullResponse);
                 } catch (err: unknown) {
@@ -587,39 +589,15 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
                 } finally {
                     rl.resume();
                 }
+            }
+
+            if (trimmed === ':ai') {
+                await runAI('AI 模式启动...\n');
                 continue;
             }
 
             if (!trimmed) {
-                // Empty line + Enter as alternative to ?? for Zero-Mode
-                rl.pause();
-                try {
-                    console.log(chalk.cyan('AI 模式启动 (空行触发)...\n'));
-
-                    // Use empty context or current context for AI interaction
-                    let finalPrompt = contextStore.isEmpty()
-                        ? '你好，请开始对话'
-                        : contextAssembler.assemble(contextStore, '你好，请基于以上上下文开始对话');
-
-                    const spinner = ora(chalk.cyan('AI 正在思考...')).start();
-                    const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
-
-                    await runtime.run(finalPrompt, 'chat' as any, (chunk) => {
-                        renderer.onChunk(chunk);
-                    }, model, renderer);
-
-                    const fullResponse = renderer.finish();
-                    lastAIOutput = fullResponse;
-
-                    // 同步上下文到全局历史（为了兼容性）
-                    addToConversationHistory('user', finalPrompt);
-                    addToConversationHistory('assistant', fullResponse);
-                } catch (err: unknown) {
-                    const message = err instanceof Error ? err.message : String(err);
-                    console.error(chalk.red(`\n[AI execution error]: ${message}`));
-                } finally {
-                    rl.resume();
-                }
+                await runAI('AI 模式启动 (空行触发)...\n');
                 continue;
             }
 
@@ -734,6 +712,7 @@ ${finalPrompt}
         const message = criticalErr instanceof Error ? criticalErr.message : String(criticalErr);
         console.error(chalk.red(`\n[Critical Loop Error]: ${message}`));
     } finally {
+        process.stdin.removeListener('keypress', onKeypress);
         rl.close();
     }
 }

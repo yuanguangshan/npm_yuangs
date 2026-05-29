@@ -1220,13 +1220,24 @@
             elements.historyLists.forEach(historyList => {
                 const item = document.createElement('div');
                 item.className = 'history-item';
-                item.innerHTML = `
-                    <div class="history-cmd">${dec.command || (elements.scanCmds[0] ? elements.scanCmds[0].innerText : '-')}</div>
-                    <div class="history-meta">
-                        <span style="color: ${dec.allowed ? 'var(--success)' : 'var(--danger)'}">${riskLevel}</span>
-                        <span>${new Date().toLocaleTimeString()}</span>
-                    </div>
-                `;
+                const cmdDiv = document.createElement('div');
+                cmdDiv.className = 'history-cmd';
+                cmdDiv.textContent = dec.command || (elements.scanCmds[0] ? elements.scanCmds[0].innerText : '-');
+
+                const riskSpan = document.createElement('span');
+                riskSpan.style.color = dec.allowed ? 'var(--success)' : 'var(--danger)';
+                riskSpan.textContent = riskLevel;
+
+                const timeSpan = document.createElement('span');
+                timeSpan.textContent = new Date().toLocaleTimeString();
+
+                const metaDiv = document.createElement('div');
+                metaDiv.className = 'history-meta';
+                metaDiv.appendChild(riskSpan);
+                metaDiv.appendChild(timeSpan);
+
+                item.appendChild(cmdDiv);
+                item.appendChild(metaDiv);
                 historyList.prepend(item);
             });
         });
