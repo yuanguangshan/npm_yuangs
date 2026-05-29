@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.registerSkillsCommands = registerSkillsCommands;
 const chalk_1 = __importDefault(require("chalk"));
 const skills_1 = require("../agent/skills");
+const promptSkills_1 = require("../agent/promptSkills");
 function registerSkillsCommands(program) {
     const skillsProgram = program.command('skills').description('Skill management commands');
     skillsProgram
@@ -71,6 +72,38 @@ function registerSkillsCommands(program) {
             return;
         }
         console.log(chalk_1.default.green(`✓ Skill "${name}" has been enabled\n`));
+    });
+    // === Prompt skills (markdown-defined) ===
+    skillsProgram
+        .command('prompt')
+        .description('List markdown-defined prompt skills')
+        .action(() => {
+        const infos = (0, promptSkills_1.getUserSkillInfos)();
+        if (infos.length === 0) {
+            console.log(chalk_1.default.gray('\n📭 No user-defined prompt skills found\n'));
+            console.log(chalk_1.default.gray('  Place .md files in ~/.yuangs/skills/ or .yuangs/skills/\n'));
+            return;
+        }
+        console.log(chalk_1.default.bold.cyan(`\n📦 Prompt Skills (${infos.length})\n`));
+        infos.forEach((info) => {
+            console.log(`  ${chalk_1.default.green('●')} ${chalk_1.default.bold(info.name)}`);
+            console.log(chalk_1.default.gray(`    ${info.description}`));
+            if (info.triggerPatterns.length > 0) {
+                console.log(chalk_1.default.gray(`    Triggers: ${info.triggerPatterns.join(', ')}`));
+            }
+            console.log();
+        });
+    });
+    skillsProgram
+        .command('prompt-reload')
+        .description('Reload prompt skills from disk')
+        .action(() => {
+        const infos = (0, promptSkills_1.loadUserSkills)();
+        console.log(chalk_1.default.green(`✓ Loaded ${infos.length} prompt skill(s) from disk\n`));
+        infos.forEach((info) => {
+            console.log(`  ${chalk_1.default.green('●')} ${chalk_1.default.bold(info.name)}`);
+        });
+        console.log();
     });
 }
 //# sourceMappingURL=skillsCommands.js.map

@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { getAllSkills, computeSkillScore, enableSkill, disableSkill } from '../agent/skills';
+import { getAllPromptSkills, getUserSkillInfos, loadUserSkills } from '../agent/promptSkills';
 
 export function registerSkillsCommands(program: Command): void {
     const skillsProgram = program.command('skills').description('Skill management commands');
@@ -77,5 +78,42 @@ export function registerSkillsCommands(program: Command): void {
                 return;
             }
             console.log(chalk.green(`✓ Skill "${name}" has been enabled\n`));
+        });
+
+    // === Prompt skills (markdown-defined) ===
+    skillsProgram
+        .command('prompt')
+        .description('List markdown-defined prompt skills')
+        .action(() => {
+            const infos = getUserSkillInfos();
+
+            if (infos.length === 0) {
+                console.log(chalk.gray('\n📭 No user-defined prompt skills found\n'));
+                console.log(chalk.gray('  Place .md files in ~/.yuangs/skills/ or .yuangs/skills/\n'));
+                return;
+            }
+
+            console.log(chalk.bold.cyan(`\n📦 Prompt Skills (${infos.length})\n`));
+
+            infos.forEach((info) => {
+                console.log(`  ${chalk.green('●')} ${chalk.bold(info.name)}`);
+                console.log(chalk.gray(`    ${info.description}`));
+                if (info.triggerPatterns.length > 0) {
+                    console.log(chalk.gray(`    Triggers: ${info.triggerPatterns.join(', ')}`));
+                }
+                console.log();
+            });
+        });
+
+    skillsProgram
+        .command('prompt-reload')
+        .description('Reload prompt skills from disk')
+        .action(() => {
+            const infos = loadUserSkills();
+            console.log(chalk.green(`✓ Loaded ${infos.length} prompt skill(s) from disk\n`));
+            infos.forEach((info) => {
+                console.log(`  ${chalk.green('●')} ${chalk.bold(info.name)}`);
+            });
+            console.log();
         });
 }

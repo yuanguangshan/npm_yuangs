@@ -2,12 +2,14 @@
  * Skills 系统 - Prompt 模板模式
  *
  * 可配置的技能模板，动态生成 prompt，支持 allowedTools、model 等配置。
- * 参考：cc/src/skills/bundledSkills.ts
+ * 支持从磁盘加载用户自定义技能（Markdown + YAML frontmatter）。
  *
  * 与现有 skills.ts 的区别：
  * - skills.ts: 基于学习历史自动积累技能
- * - skills.ts (本文件): 预定义的技能模板，即时匹配
+ * - promptSkills.ts: 预定义 + 用户自定义技能模板，即时匹配
  */
+
+import { loadAllUserSkills, type UserSkillFile } from '../core/skillLoader';
 
 export interface SkillConfig {
   name: string;
@@ -26,8 +28,17 @@ export interface SkillConfig {
   enabledInCommandMode?: boolean;
 }
 
-// 内置技能注册表
-const skills: Map<string, SkillConfig> = new Map();
+export interface UserSkillInfo {
+  name: string;
+  description: string;
+  triggerPatterns: string[];
+  loaded: boolean;
+}
+
+// 内置 + 用户技能注册表
+const builtinSkills: Map<string, SkillConfig> = new Map();
+const userSkills: Map<string, SkillConfig> = new Map();
+let userSkillsLoaded = false;
 
 // ============================================================================
 // 内置技能定义
@@ -114,19 +125,93 @@ const troubleshootingSkill: SkillConfig = {
 // 注册与匹配
 // ============================================================================
 
-function registerAllSkills(): void {
+function registerBuiltinSkills(): void {
   for (const skill of [gitSkill, codeAnalysisSkill, fileOpsSkill, troubleshootingSkill]) {
-    skills.set(skill.name, skill);
+    builtinSkills.set(skill.name, skill);
   }
 }
 
 /**
- * 根据用户输入匹配最合适的技能
+ * 将用户文件技能转换为 SkillConfig
+ */
+function userSkillToConfig(skill: UserSkillFile): SkillConfig {
+  return {
+    name: skill.name,
+    description: skill.description,
+    triggers: skill.triggers.map(t => {
+      try {
+        return new RegExp(t, 'i');
+      } catch {
+        // 非法的正则表达式 fallback 为字面量匹配
+        return new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      }
+    }),
+    allowedTools: skill.allowedTools,
+    model: skill.model,
+    maxTurns: skill.maxTurns || 15,
+    systemPrompt: skill.body,
+  };
+}
+
+/**
+ * 从磁盘加载用户自定义技能
+ */
+export function loadUserSkills(): UserSkillInfo[] {
+  userSkills.clear();
+  userSkillsLoaded = true;
+
+  const files = loadAllUserSkills();
+  const info: UserSkillInfo[] = [];
+
+  for (const file of files) {
+    const config = userSkillToConfig(file);
+    userSkills.set(config.name, config);
+    info.push({
+      name: file.name,
+      description: file.description,
+      triggerPatterns: file.triggers,
+      loaded: true,
+    });
+  }
+
+  return info;
+}
+
+/**
+ * 获取所有已加载的用户技能信息
+ */
+export function getUserSkillInfos(): UserSkillInfo[] {
+  if (!userSkillsLoaded) loadUserSkills();
+  const infos: UserSkillInfo[] = [];
+  for (const [, skill] of userSkills) {
+    infos.push({
+      name: skill.name,
+      description: skill.description,
+      triggerPatterns: skill.triggers.map(r => r.source),
+      loaded: true,
+    });
+  }
+  return infos;
+}
+
+/**
+ * 根据用户输入匹配最合适的技能（内置 + 用户自定义）
  */
 export function matchSkill(userInput: string): SkillConfig | null {
-  if (skills.size === 0) registerAllSkills();
+  if (builtinSkills.size === 0) registerBuiltinSkills();
+  if (!userSkillsLoaded) loadUserSkills();
 
-  for (const [, skill] of skills) {
+  // 先匹配用户自定义技能
+  for (const [, skill] of userSkills) {
+    for (const trigger of skill.triggers) {
+      if (trigger.test(userInput)) {
+        return skill;
+      }
+    }
+  }
+
+  // 再匹配内置技能
+  for (const [, skill] of builtinSkills) {
     for (const trigger of skill.triggers) {
       if (trigger.test(userInput)) {
         return skill;
@@ -137,11 +222,12 @@ export function matchSkill(userInput: string): SkillConfig | null {
 }
 
 /**
- * 获取所有已注册的技能
+ * 获取所有已注册的技能（内置 + 用户）
  */
-export function getAllSkills(): SkillConfig[] {
-  if (skills.size === 0) registerAllSkills();
-  return [...skills.values()];
+export function getAllPromptSkills(): SkillConfig[] {
+  if (builtinSkills.size === 0) registerBuiltinSkills();
+  if (!userSkillsLoaded) { loadUserSkills(); }
+  return [...builtinSkills.values(), ...userSkills.values()];
 }
 
 /**
