@@ -1,11 +1,17 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.capabilitySystem = exports.CapabilitySystem = void 0;
+const ConfigService_1 = require("./ConfigService");
 const modelMatcher_1 = require("./modelMatcher");
-const configMerge_1 = require("./configMerge");
 const executionRecord_1 = require("./executionRecord");
 const executionStore_1 = require("./executionStore");
 const replayEngine_1 = require("./replayEngine");
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
+const os_1 = __importDefault(require("os"));
 class CapabilitySystem {
     primaryModels = [];
     fallbackModels = [];
@@ -22,27 +28,29 @@ class CapabilitySystem {
         const primaryModels = [...this.primaryModels, ...this.loadCustomModels()];
         return (0, modelMatcher_1.matchModelWithFallback)(primaryModels, this.fallbackModels, requirement);
     }
-    loadMergedConfig() {
-        const builtin = {
-            aiProxyUrl: 'https://aiproxy.want.biz/v1/chat/completions',
-            defaultModel: 'Assistant',
-            accountType: 'paid',
-        };
-        const filePaths = (0, configMerge_1.getConfigFilePaths)();
-        const projectConfig = filePaths.project ? (0, configMerge_1.loadConfigAt)(filePaths.project) : null;
-        const userGlobal = (0, configMerge_1.loadConfigAt)(filePaths.userGlobal);
-        return (0, configMerge_1.mergeConfigs)(builtin, userGlobal, projectConfig, null);
-    }
     loadCustomModels() {
-        const filePaths = (0, configMerge_1.getConfigFilePaths)();
-        const projectConfig = filePaths.project ? (0, configMerge_1.loadConfigAt)(filePaths.project) : null;
-        const userGlobal = (0, configMerge_1.loadConfigAt)(filePaths.userGlobal);
+        const userGlobalPath = path_1.default.join(os_1.default.homedir(), '.yuangs.json');
+        const projectPath = (0, ConfigService_1.getConfigService)().get('projectConfigPath');
         const customModelsArray = [];
-        if (userGlobal?.models && Array.isArray(userGlobal.models)) {
-            customModelsArray.push(...userGlobal.models);
+        // Try loading from user config
+        try {
+            if (fs_1.default.existsSync(userGlobalPath)) {
+                const userConfig = JSON.parse(fs_1.default.readFileSync(userGlobalPath, 'utf8'));
+                if (userConfig?.models && Array.isArray(userConfig.models)) {
+                    customModelsArray.push(...userConfig.models);
+                }
+            }
         }
-        if (projectConfig?.models && Array.isArray(projectConfig.models)) {
-            customModelsArray.push(...projectConfig.models);
+        catch { /* ignore */ }
+        // Try loading from project config
+        if (projectPath) {
+            try {
+                const projectConfig = JSON.parse(fs_1.default.readFileSync(projectPath, 'utf8'));
+                if (projectConfig?.models && Array.isArray(projectConfig.models)) {
+                    customModelsArray.push(...projectConfig.models);
+                }
+            }
+            catch { /* ignore */ }
         }
         return customModelsArray;
     }
@@ -51,7 +59,7 @@ class CapabilitySystem {
         return [...this.primaryModels, ...this.fallbackModels, ...customModels];
     }
     createAndSaveExecutionRecord(commandName, requirement, matchResult, command, rawInput, mode) {
-        const config = this.loadMergedConfig();
+        const config = (0, ConfigService_1.getConfigService)().getAll();
         const record = (0, executionRecord_1.createExecutionRecord)(commandName, requirement, config, matchResult, { success: matchResult.selected !== null }, command, rawInput, mode);
         const filePath = (0, executionStore_1.saveExecutionRecord)(record);
         return record.id;
@@ -60,8 +68,7 @@ class CapabilitySystem {
         return replayEngine_1.replayEngine.replay(recordId, options);
     }
     explainConfig() {
-        const config = this.loadMergedConfig();
-        return (0, configMerge_1.dumpConfigSnapshot)(config);
+        return (0, ConfigService_1.getConfigService)().dumpConfigSnapshot();
     }
 }
 exports.CapabilitySystem = CapabilitySystem;

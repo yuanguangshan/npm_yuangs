@@ -48,6 +48,7 @@ const Logger_1 = require("../utils/Logger");
 const executionRecord_1 = require("../core/executionRecord");
 const executionStore_1 = require("../core/executionStore");
 const skills_1 = require("./skills");
+const AgentRuntime_1 = require("./AgentRuntime");
 const log = Logger_1.logger.child('DualAgentRuntime');
 class DualAgentRuntime {
     context;
@@ -103,7 +104,7 @@ class DualAgentRuntime {
     }
     async runFastPath(userInput, onChunk, model) {
         console.log(chalk_1.default.gray('🚀 Quick path: Direct execution'));
-        const runtime = await this.importAgentRuntime();
+        const runtime = new AgentRuntime_1.AgentRuntime({});
         this.context.addMessage('user', userInput);
         await runtime.run(userInput, 'command', onChunk, model);
     }
@@ -290,11 +291,6 @@ ${context ? `Context:\n${context}\n` : ''}
             output: result.output,
             error: result.error
         };
-    }
-    async importAgentRuntime() {
-        const module = await Promise.resolve().then(() => __importStar(require('./AgentRuntime')));
-        const AgentRuntime = module.AgentRuntime;
-        return new AgentRuntime({});
     }
     async askUser(question) {
         const readline = await Promise.resolve().then(() => __importStar(require('readline')));

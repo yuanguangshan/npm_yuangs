@@ -42,34 +42,27 @@ const InputBuffer_1 = require("../../ssh/InputBuffer");
 const GovernedExecutor_1 = require("../../ssh/GovernedExecutor");
 const Recorder_1 = require("../../audit/Recorder");
 const server_1 = require("./server");
+const dangerousPatterns_1 = require("../../agent/security/dangerousPatterns");
 /**
  * 简单的治理服务实现 (MVP)
- * TODO: 接入完整的 GovernanceService
  */
 class SimpleGovernanceService {
     async evaluate(ctx) {
         const cmd = ctx.command.trim();
-        // 危险命令黑名单
-        const dangerousPatterns = [
-            /rm\s+-rf\s+\//, // rm -rf /
-            /dd\s+if=.*of=\/dev\//, // dd 写入设备
-            /mkfs/, // 格式化
-            /:\(\)\{\s*:\|:&\s*\};:/, // fork bomb
-        ];
-        for (const pattern of dangerousPatterns) {
-            if (pattern.test(cmd)) {
-                return {
-                    allowed: false,
-                    reason: 'Detected potentially destructive command',
-                    riskLevel: 'R3',
-                    disclosure: {
-                        command: cmd,
-                        riskLevel: 'R3',
-                        impact: 'This command could cause irreversible system damage',
-                        requiresConfirmation: true,
-                    },
-                };
-            }
+        // 使用统一危险模式源
+        const hit = (0, dangerousPatterns_1.checkDangerousCommand)(cmd);
+        if (hit) {
+            return {
+                allowed: false,
+                reason: hit.reason,
+                riskLevel: hit.risk === 'critical' ? 'R3' : 'R2',
+                disclosure: {
+                    command: cmd,
+                    riskLevel: hit.risk === 'critical' ? 'R3' : 'R2',
+                    impact: hit.reason,
+                    requiresConfirmation: true,
+                },
+            };
         }
         // sudo 命令需要额外检查
         if (cmd.startsWith('sudo ')) {

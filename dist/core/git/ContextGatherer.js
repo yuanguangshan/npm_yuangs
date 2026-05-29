@@ -10,6 +10,7 @@ const path_1 = __importDefault(require("path"));
 const ContextMeta_1 = require("../context/ContextMeta");
 const ASTParser_1 = require("../kernel/ASTParser");
 const p_limit_1 = __importDefault(require("p-limit"));
+const SessionCache_1 = require("../../utils/SessionCache");
 /**
  * 项目上下文采集器
  * 负责为 LLM 提供项目现状的真实快照
@@ -20,6 +21,7 @@ class ContextGatherer {
     MAX_TOTAL_CONTEXT_LENGTH = 50000; // 总上限
     SUMMARY_THRESHOLD = 200; // P2: 改为200行，避免过度摘要
     astParser; // Reuse AST parser instance
+    fileTreeCache = new SessionCache_1.SessionCache(5 * 60 * 1000); // 5min TTL
     constructor(gitService) {
         this.gitService = gitService;
         // Initialize AST parser for semantic summarization (created once to avoid performance issues)
@@ -88,6 +90,9 @@ class ContextGatherer {
      * 获取文件树 (git 管理的文件)
      */
     async getFileTree(cwd) {
+        const cached = this.fileTreeCache.get(cwd);
+        if (cached !== undefined)
+            return cached;
         try {
             const { exec } = require('child_process');
             const { promisify } = require('util');
@@ -99,13 +104,19 @@ class ContextGatherer {
             const noiseExtension = /\.(png|jpe?g|gif|svg|ico|pdf|zip|tar|gz|exe|dll|so|bin|pyc|woff2?|ttf|eot)$/i;
             files = files.filter((f) => !noiseExtension.test(f));
             if (files.length > 150) {
-                return files.slice(0, 150).join('\n') + `\n... (为了保护 Token 空间，已截断其余 ${files.length - 150} 个文件)`;
+                const result = files.slice(0, 150).join('\n') + `\n... (为了保护 Token 空间，已截断其余 ${files.length - 150} 个文件)`;
+                this.fileTreeCache.set(cwd, result);
+                return result;
             }
-            return files.join('\n');
+            const result = files.join('\n');
+            this.fileTreeCache.set(cwd, result);
+            return result;
         }
         catch (e) {
             console.error(`[ContextGatherer] 无法获取文件树: ${e.message}`);
-            return '无法获取完整文件树';
+            const result = '无法获取完整文件树';
+            this.fileTreeCache.set(cwd, result);
+            return result;
         }
     }
     /**

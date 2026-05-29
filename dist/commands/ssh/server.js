@@ -11,6 +11,7 @@ const path_1 = __importDefault(require("path"));
 const SSHSession_1 = require("../../ssh/SSHSession");
 const GovernedExecutor_1 = require("../../ssh/GovernedExecutor");
 const InputBuffer_1 = require("../../ssh/InputBuffer");
+const dangerousPatterns_1 = require("../../agent/security/dangerousPatterns");
 async function startWebTerminal(config, port = 3000) {
     const app = (0, express_1.default)();
     const httpServer = (0, http_1.createServer)(app);
@@ -41,34 +42,29 @@ async function startWebTerminal(config, port = 3000) {
                 });
                 // 模拟 AI 神经网络分析延迟 (已优化为 20ms 以提升性能)
                 await new Promise(r => setTimeout(r, 20));
-                // 2. 简单的危险检测逻辑 (用于演示视觉效果)
-                const dangerousPatterns = [
-                    { regex: /rm\s+-rf\s+\//, reason: '非法的文件系统根目录删除尝试', impact: '系统将彻底崩溃', risk: 'R3' },
-                    { regex: /mkfs/, reason: '格式化磁盘尝试', impact: '磁盘数据将全部丢失', risk: 'R3' },
-                    { regex: /dd\s+if=.*of=\/dev\//, reason: '底层设备写覆盖尝试', impact: '可能破坏引导扇区', risk: 'R3' }
-                ];
-                for (const p of dangerousPatterns) {
-                    if (p.regex.test(cmd)) {
-                        const decision = {
-                            allowed: false,
-                            reason: p.reason,
-                            riskLevel: p.risk,
-                            disclosure: {
-                                command: cmd,
-                                impact: p.impact,
-                                riskLevel: p.risk,
-                                requiresConfirmation: true
-                            }
-                        };
-                        // 🚨 发送详细决策给前端预览
-                        socket.emit('governance_decision', decision);
-                        // 🚨 触发全屏视觉警报
-                        socket.emit('governance_alert', {
-                            level: 'critical',
-                            message: 'BLOCK: ' + p.risk
-                        });
-                        return decision;
-                    }
+                // 2. 统一危险模式检测
+                const hit = (0, dangerousPatterns_1.checkDangerousCommand)(cmd);
+                if (hit) {
+                    const riskLevel = hit.risk === 'critical' ? 'R3' : 'R2';
+                    const decision = {
+                        allowed: false,
+                        reason: hit.reason,
+                        riskLevel,
+                        disclosure: {
+                            command: cmd,
+                            impact: hit.reason,
+                            riskLevel,
+                            requiresConfirmation: true
+                        }
+                    };
+                    // 🚨 发送详细决策给前端预览
+                    socket.emit('governance_decision', decision);
+                    // 🚨 触发全屏视觉警报
+                    socket.emit('governance_alert', {
+                        level: 'critical',
+                        message: 'BLOCK: ' + hit.name
+                    });
+                    return decision;
                 }
                 // 安全命令
                 const safeDecision = {

@@ -55,7 +55,7 @@ const shellCompletions_1 = require("./shellCompletions");
 const macros_1 = require("../core/macros");
 const renderer_1 = require("../utils/renderer");
 const globDetector_1 = require("../utils/globDetector");
-const syntaxHandler_1 = require("../utils/syntaxHandler");
+const syntax_1 = require("../utils/syntax");
 const execAsync = (0, util_1.promisify)(child_process_1.exec);
 // 全局变量：存储最后的 AI 输出内容，用于快速插入
 let lastAIOutput = '';
@@ -285,7 +285,7 @@ async function handleAIChat(initialQuestion, model) {
     };
     if (initialQuestion) {
         // 先检查是否为特殊语法
-        const result = await (0, syntaxHandler_1.handleSpecialSyntax)(initialQuestion);
+        const result = await (0, syntax_1.handleSpecialSyntax)(initialQuestion);
         if (result.processed) {
             if (result.result) {
                 if (result.type === 'management') {
@@ -367,7 +367,7 @@ async function handleAIChat(initialQuestion, model) {
             rl.pause();
             let specialResult;
             try {
-                specialResult = await (0, syntaxHandler_1.handleSpecialSyntax)(trimmed);
+                specialResult = await (0, syntax_1.handleSpecialSyntax)(trimmed);
             }
             finally {
                 rl.resume();
@@ -608,6 +608,30 @@ async function handleAIChat(initialQuestion, model) {
                     continue; // Skip processing and go to next input
                 }
             }
+            // 宏名展开：直接输入宏名称时自动执行
+            if (trimmed) {
+                const macros = (0, macros_1.getMacros)();
+                if (macros[trimmed]) {
+                    const macroCmd = macros[trimmed].commands;
+                    console.log(chalk_1.default.cyan(`🔧 展开宏 "${trimmed}" → ${macroCmd}\n`));
+                    rl.pause();
+                    try {
+                        await (0, shellCompletions_1.executeCommand)(macroCmd, (code) => {
+                            if (code !== 0) {
+                                console.log(chalk_1.default.red(`\n[macro exited with code ${code}]\n`));
+                            }
+                        });
+                    }
+                    catch (err) {
+                        const message = err instanceof Error ? err.message : String(err);
+                        console.error(chalk_1.default.red(`\n[Macro Error]: ${message}`));
+                    }
+                    finally {
+                        rl.resume();
+                    }
+                    continue;
+                }
+            }
             const mode = (0, shellCompletions_1.detectMode)(trimmed);
             if (mode === 'command') {
                 rl.pause();
@@ -699,7 +723,7 @@ async function runPipeline(input, rl, runtime, model, contextStore, processInter
  */
 async function processPipelineSegment(segment, upstreamData, isLast, rl, processInteraction) {
     // 1. 尝试处理特殊语法 (@, #, :cat 等)
-    const specialResult = await (0, syntaxHandler_1.handleSpecialSyntax)(segment, upstreamData);
+    const specialResult = await (0, syntax_1.handleSpecialSyntax)(segment, upstreamData);
     if (specialResult.processed) {
         if (isLast) {
             if (specialResult.result) {
@@ -717,10 +741,16 @@ async function processPipelineSegment(segment, upstreamData, isLast, rl, process
         }
         return specialResult.result;
     }
-    // 2. 尝试处理 Shell 命令
-    const mode = (0, shellCompletions_1.detectMode)(segment);
-    if (mode === 'command' || segment.startsWith(':exec ')) {
-        const cmd = segment.startsWith(':exec ') ? segment.slice(6).trim() : segment;
+    // 2. 宏名展开
+    let resolvedSegment = segment;
+    const macros = (0, macros_1.getMacros)();
+    if (macros[segment]) {
+        resolvedSegment = macros[segment].commands;
+    }
+    // 3. 尝试处理 Shell 命令
+    const mode = (0, shellCompletions_1.detectMode)(resolvedSegment);
+    if (mode === 'command' || resolvedSegment.startsWith(':exec ')) {
+        const cmd = resolvedSegment.startsWith(':exec ') ? resolvedSegment.slice(6).trim() : resolvedSegment;
         rl.pause();
         try {
             // 如果是最后一段，直接展示输出；否则捕获输出传给下一环

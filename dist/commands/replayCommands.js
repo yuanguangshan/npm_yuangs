@@ -40,6 +40,7 @@ exports.registerReplayCommands = registerReplayCommands;
 const chalk_1 = __importDefault(require("chalk"));
 const fs = __importStar(require("fs"));
 const capabilitySystem_1 = require("../core/capabilitySystem");
+const ConfigService_1 = require("../core/ConfigService");
 const replayDiff_1 = require("../core/replayDiff");
 const executionStore_1 = require("../core/executionStore");
 const Replayer_1 = require("../audit/Replayer");
@@ -100,7 +101,7 @@ function registerReplayCommands(program) {
                 return;
             }
             // Create a "current" record with current config
-            const currentConfig = system.loadMergedConfig();
+            const currentConfig = (0, ConfigService_1.getConfigService)().getAll();
             const currentRecord = {
                 ...record,
                 configSnapshot: currentConfig,

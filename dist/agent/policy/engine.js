@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.policyEngine = exports.PolicyEngine = void 0;
+const dangerousShellPatterns_1 = require("./policies/dangerousShellPatterns");
 class PolicyEngine {
     policies = new Map();
     registerPolicy(policy) {
@@ -59,16 +60,7 @@ class PolicyEngine {
         return 'low';
     }
     containsDangerousCommand(cmd) {
-        const dangerousPatterns = [
-            /rm\s+-rf\s+\//,
-            /rm\s+-rf\s+~/,
-            />\s*\/dev\/null/,
-            /dd\s+if=/,
-            /mkfs/,
-            /format/,
-            /sudo\s+rm/
-        ];
-        return dangerousPatterns.some(pattern => pattern.test(cmd));
+        return dangerousShellPatterns_1.DANGEROUS_SHELL_PATTERNS.some(p => p.pattern.test(cmd));
     }
 }
 exports.PolicyEngine = PolicyEngine;

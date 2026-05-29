@@ -1,4 +1,4 @@
-import { MergedConfig } from './configMerge';
+import { MergedConfig } from './ConfigService';
 import { ModelCapabilities, CapabilityMatchExplanation } from './modelMatcher';
 import { CapabilityRequirement } from './modelMatcher';
 import { Skill } from './skillTypes';

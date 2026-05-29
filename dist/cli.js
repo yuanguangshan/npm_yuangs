@@ -50,7 +50,7 @@ const completion_1 = require("./core/completion");
 const apps_1 = require("./core/apps");
 const macros_1 = require("./core/macros");
 const history_1 = require("./utils/history");
-const syntaxHandler_1 = require("./utils/syntaxHandler");
+const syntax_1 = require("./utils/syntax");
 const registryCommands_1 = require("./commands/registryCommands");
 const explainCommands_1 = require("./commands/explainCommands");
 const replayCommands_1 = require("./commands/replayCommands");
@@ -514,7 +514,7 @@ async function main() {
                     stdinTrimmed === ':cat' ||
                     stdinTrimmed.startsWith(':cat ');
                 if (isStdinSpecialSyntax) {
-                    const result = await (0, syntaxHandler_1.handleSpecialSyntax)(stdinData, '');
+                    const result = await (0, syntax_1.handleSpecialSyntax)(stdinData, '');
                     if (result.processed) {
                         // 如果特殊语法被处理
                         if (result.result) {
@@ -588,7 +588,7 @@ async function main() {
             if (!stdinData || !isSpecialSyntaxPrefix(stdinData)) {
                 const isQuestionSpecialSyntax = isSpecialSyntaxPrefix(questionTrimmed);
                 if (isQuestionSpecialSyntax) {
-                    const result = await (0, syntaxHandler_1.handleSpecialSyntax)(question, stdinData);
+                    const result = await (0, syntax_1.handleSpecialSyntax)(question, stdinData);
                     if (result.processed) {
                         // 如果特殊语法被处理
                         if (result.result) {
