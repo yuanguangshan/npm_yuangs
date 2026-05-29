@@ -19,7 +19,7 @@ import {
     executeCommand as shellExecuteCommand,
     listPlugins
 } from './shellCompletions';
-import { runMacro } from '../core/macros';
+import { getMacros, runMacro } from '../core/macros';
 import { StreamMarkdownRenderer } from '../utils/renderer';
 import { wouldExpandAsGlob } from '../utils/globDetector';
 import { handleSpecialSyntax } from '../utils/syntax';
@@ -636,6 +636,29 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
                 }
             }
 
+            // 宏名展开：直接输入宏名称时自动执行
+            if (trimmed) {
+                const macros = getMacros();
+                if (macros[trimmed]) {
+                    const macroCmd = macros[trimmed].commands;
+                    console.log(chalk.cyan(`🔧 展开宏 "${trimmed}" → ${macroCmd}\n`));
+                    rl.pause();
+                    try {
+                        await shellExecuteCommand(macroCmd, (code) => {
+                            if (code !== 0) {
+                                console.log(chalk.red(`\n[macro exited with code ${code}]\n`));
+                            }
+                        });
+                    } catch (err: unknown) {
+                        const message = err instanceof Error ? err.message : String(err);
+                        console.error(chalk.red(`\n[Macro Error]: ${message}`));
+                    } finally {
+                        rl.resume();
+                    }
+                    continue;
+                }
+            }
+
             const mode = detectMode(trimmed);
 
             if (mode === 'command') {
@@ -763,10 +786,17 @@ export async function processPipelineSegment(
         return specialResult.result;
     }
 
-    // 2. 尝试处理 Shell 命令
-    const mode = detectMode(segment);
-    if (mode === 'command' || segment.startsWith(':exec ')) {
-        const cmd = segment.startsWith(':exec ') ? segment.slice(6).trim() : segment;
+    // 2. 宏名展开
+    let resolvedSegment = segment;
+    const macros = getMacros();
+    if (macros[segment]) {
+        resolvedSegment = macros[segment].commands;
+    }
+
+    // 3. 尝试处理 Shell 命令
+    const mode = detectMode(resolvedSegment);
+    if (mode === 'command' || resolvedSegment.startsWith(':exec ')) {
+        const cmd = resolvedSegment.startsWith(':exec ') ? resolvedSegment.slice(6).trim() : resolvedSegment;
         rl.pause();
         try {
             // 如果是最后一段，直接展示输出；否则捕获输出传给下一环
