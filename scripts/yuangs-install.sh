@@ -147,6 +147,9 @@ fi
 # Zsh Implementation
 # --------------------------------------------------
 if [[ -n "$ZSH_VERSION" ]]; then
+  # 保存原始 PROMPT（脚本加载时 PROMPT 已被 oh-my-zsh 设置好）
+  typeset -g __YU_ORIGINAL_PROMPT="$PROMPT"
+
   # 1. Capture command before execution
   preexec() {
     local cmd="$1"
@@ -158,21 +161,19 @@ if [[ -n "$ZSH_VERSION" ]]; then
   # 2. Check exit status after execution
   precmd() {
     local exit_code=$?
-
-    # 防止 oh-my-zsh 等异步钩子触发 zle reset-prompt 时清空 PENDING
-    if [[ $__YU_AI_PENDING -eq 1 ]]; then
-      return
-    fi
     
     if [[ $exit_code -ne 0 && "$AI_OFF" -eq 0 && -n "$__YU_LAST_CMD" ]]; then
        # 确保最后执行的不是 yuangs
        if [[ ! "$__YU_LAST_CMD" =~ ^yuangs && ! "$__YU_LAST_CMD" =~ ^ai_ ]]; then
          __YU_AI_PENDING=1
-         echo -e "\033[2m↳ Command failed. Press Enter to ask AI.\033[0m"
+         # 把提示塞进 PROMPT 前缀，zle reset-prompt 后不会丢失
+         PROMPT="%{\$fg_bold[black]%}↳ Command failed. Press Enter to ask AI.%{\$reset_color%}
+$__YU_ORIGINAL_PROMPT"
          return
        fi
     fi
     __YU_AI_PENDING=0
+    PROMPT="$__YU_ORIGINAL_PROMPT"
   }
 
   # 3. Handle Enter key
