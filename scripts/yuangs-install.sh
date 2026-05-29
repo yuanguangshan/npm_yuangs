@@ -158,6 +158,11 @@ if [[ -n "$ZSH_VERSION" ]]; then
   # 2. Check exit status after execution
   precmd() {
     local exit_code=$?
+
+    # 防止 oh-my-zsh 等异步钩子触发 zle reset-prompt 时清空 PENDING
+    if [[ $__YU_AI_PENDING -eq 1 ]]; then
+      return
+    fi
     
     if [[ $exit_code -ne 0 && "$AI_OFF" -eq 0 && -n "$__YU_LAST_CMD" ]]; then
        # 确保最后执行的不是 yuangs
