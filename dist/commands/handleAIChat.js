@@ -48,6 +48,7 @@ const path_1 = __importDefault(require("path"));
 const fileReader_1 = require("../core/fileReader");
 const child_process_1 = require("child_process");
 const util_1 = require("util");
+const os_1 = __importDefault(require("os"));
 const context_1 = require("./context");
 const contextStorage_1 = require("./contextStorage");
 const gitContext_1 = require("./gitContext");
@@ -634,6 +635,20 @@ async function handleAIChat(initialQuestion, model) {
             }
             const mode = (0, shellCompletions_1.detectMode)(trimmed);
             if (mode === 'command') {
+                // 处理 cd 命令：用 process.chdir 改变 Node 进程的 cwd
+                const cdMatch = trimmed.match(/^cd\s+(.+)$/);
+                if (trimmed === 'cd' || cdMatch) {
+                    const target = cdMatch ? cdMatch[1].trim() : os_1.default.homedir();
+                    try {
+                        const oldDir = process.cwd();
+                        process.chdir(target);
+                        console.log(chalk_1.default.green(`📂 ${process.cwd()}`));
+                    }
+                    catch {
+                        console.log(chalk_1.default.red(`cd: ${cdMatch ? cdMatch[1] : ''}: No such directory`));
+                    }
+                    continue;
+                }
                 rl.pause();
                 try {
                     await (0, shellCompletions_1.executeCommand)(trimmed, (code) => {

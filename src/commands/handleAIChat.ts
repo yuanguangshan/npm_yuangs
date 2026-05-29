@@ -8,6 +8,7 @@ import crypto from 'crypto';
 import { buildPromptWithFileContent, readFilesContent } from '../core/fileReader';
 import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
+import os from 'os';
 import { ContextBuffer } from './contextBuffer';
 import { ContextStore, ContextAssembler, ContextItem } from './context';
 import { loadContext, saveContext, clearContextStorage } from './contextStorage';
@@ -662,6 +663,19 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
             const mode = detectMode(trimmed);
 
             if (mode === 'command') {
+                // 处理 cd 命令：用 process.chdir 改变 Node 进程的 cwd
+                const cdMatch = trimmed.match(/^cd\s+(.+)$/);
+                if (trimmed === 'cd' || cdMatch) {
+                    const target = cdMatch ? cdMatch[1].trim() : os.homedir();
+                    try {
+                        const oldDir = process.cwd();
+                        process.chdir(target);
+                        console.log(chalk.green(`📂 ${process.cwd()}`));
+                    } catch {
+                        console.log(chalk.red(`cd: ${cdMatch ? cdMatch[1] : ''}: No such directory`));
+                    }
+                    continue;
+                }
                 rl.pause();
                 try {
                     await shellExecuteCommand(trimmed, (code) => {
