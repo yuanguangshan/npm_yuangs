@@ -271,6 +271,9 @@ export class ConfigService {
       }
 
       const result = projectConfigSchema.safeParse(parsed);
+      if (!result.success) {
+        console.warn(`⚠️  项目配置验证失败: ${result.error.issues.map(i => i.message).join('; ')}`);
+      }
       return result.success ? result.data : {};
     } catch {
       return {};
@@ -284,6 +287,9 @@ export class ConfigService {
       const content = fs.readFileSync(USER_CONFIG_FILE, 'utf8');
       const parsed = JSON.parse(content);
       const result = userConfigSchema.safeParse(parsed);
+      if (!result.success) {
+        console.warn(`⚠️  ~/.yuangs.json 验证失败: ${result.error.issues.map(i => i.message).join('; ')}`);
+      }
       return result.success ? result.data : {};
     } catch {
       return {};

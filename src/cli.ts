@@ -400,26 +400,7 @@ registerSSHCommand(program);
 registerRouterCommands(program);
 registerGitCommands(program);
 
-program
-    .command('help')
-    .description('显示帮助信息')
-    .action(() => {
-        console.log(chalk.bold.cyan('\n🎨 苑广山的个人应用启动器 (Modular TS版)\n'));
-        console.log(chalk.yellow(`当前版本: ${version}`));
-        console.log(chalk.white('使用方法:') + chalk.gray(' yuangs <命令> [参数]\n'));
-        console.log(chalk.bold('命令列表:'));
-        console.log(`  ${chalk.green('ai')} "<问题>"      向 AI 提问`);
-        console.log(`    ${chalk.gray('-e')}              生成并执行 Linux 命令 (OS 感知)`);
-        console.log(`  ${chalk.green('list')}              列出所有应用`);
-        console.log(`  ${chalk.green('history')}           查看命令历史`);
-        console.log(`  ${chalk.green('config')}            管理本地配置 (~/.yuangs.json)`);
-        console.log(`  ${chalk.green('macros')}            查看所有快捷指令`);
-        console.log(`  ${chalk.green('save')} <名称>      保存快捷指令`);
-        console.log(`  ${chalk.green('run')} <名称>        执行快捷指令`);
-        console.log(`  ${chalk.green('registry')}          Macro Registry 管理`);
-        console.log(`  ${chalk.green('diff-edit')}         代码变更治理 (propose/approve/exec/list/status)`);
-        console.log(`  ${chalk.green('help')}              显示帮助信息\n`);
-    });
+
 
 const apps = loadAppsConfig();
 

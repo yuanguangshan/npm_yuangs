@@ -413,26 +413,6 @@ program
 (0, ssh_1.registerSSHCommand)(program);
 (0, routerCommands_1.registerRouterCommands)(program);
 (0, gitCommands_1.registerGitCommands)(program);
-program
-    .command('help')
-    .description('显示帮助信息')
-    .action(() => {
-    console.log(chalk_1.default.bold.cyan('\n🎨 苑广山的个人应用启动器 (Modular TS版)\n'));
-    console.log(chalk_1.default.yellow(`当前版本: ${version}`));
-    console.log(chalk_1.default.white('使用方法:') + chalk_1.default.gray(' yuangs <命令> [参数]\n'));
-    console.log(chalk_1.default.bold('命令列表:'));
-    console.log(`  ${chalk_1.default.green('ai')} "<问题>"      向 AI 提问`);
-    console.log(`    ${chalk_1.default.gray('-e')}              生成并执行 Linux 命令 (OS 感知)`);
-    console.log(`  ${chalk_1.default.green('list')}              列出所有应用`);
-    console.log(`  ${chalk_1.default.green('history')}           查看命令历史`);
-    console.log(`  ${chalk_1.default.green('config')}            管理本地配置 (~/.yuangs.json)`);
-    console.log(`  ${chalk_1.default.green('macros')}            查看所有快捷指令`);
-    console.log(`  ${chalk_1.default.green('save')} <名称>      保存快捷指令`);
-    console.log(`  ${chalk_1.default.green('run')} <名称>        执行快捷指令`);
-    console.log(`  ${chalk_1.default.green('registry')}          Macro Registry 管理`);
-    console.log(`  ${chalk_1.default.green('diff-edit')}         代码变更治理 (propose/approve/exec/list/status)`);
-    console.log(`  ${chalk_1.default.green('help')}              显示帮助信息\n`);
-});
 const apps = (0, apps_1.loadAppsConfig)();
 program
     .command('shici')

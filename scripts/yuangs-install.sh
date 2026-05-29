@@ -149,6 +149,7 @@ fi
 if [[ -n "$ZSH_VERSION" ]]; then
   # 保存原始 PROMPT（脚本加载时 PROMPT 已被 oh-my-zsh 设置好）
   typeset -g __YU_ORIGINAL_PROMPT="$PROMPT"
+  typeset -g __YU_HINT_TIME=0
 
   # 1. Capture command before execution
   preexec() {
@@ -166,6 +167,7 @@ if [[ -n "$ZSH_VERSION" ]]; then
        # 确保最后执行的不是 yuangs
        if [[ ! "$__YU_LAST_CMD" =~ ^yuangs && ! "$__YU_LAST_CMD" =~ ^ai_ ]]; then
          __YU_AI_PENDING=1
+         __YU_HINT_TIME=$EPOCHREALTIME
          # 把提示塞进 PROMPT 前缀，zle reset-prompt 后不会丢失
          PROMPT="%{\$fg_bold[black]%}↳ Command failed. Press Enter to ask AI.%{\$reset_color%}
 $__YU_ORIGINAL_PROMPT"
@@ -197,8 +199,13 @@ $__YU_ORIGINAL_PROMPT"
       return
     fi
 
-    # Empty line Enter -> Explain error
+    # Empty line Enter -> Explain error (1秒防抖)
     if [[ -z "$buffer_content" && $__YU_AI_PENDING -eq 1 ]]; then
+      local now=$EPOCHREALTIME
+      if (( now - __YU_HINT_TIME < 1.0 )); then
+        zle .accept-line
+        return
+      fi
       echo 
       yu_call "解释为什么命令失败了：$__YU_LAST_CMD"
       __YU_AI_PENDING=0
