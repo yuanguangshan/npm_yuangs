@@ -88,7 +88,9 @@ export class StabilizationDetector {
   ): void {
     context.addMessage('assistant', output);
     if (agentRenderer) {
-      (agentRenderer as any).buffer = '';
+      // 将工具结果写入 buffer（而非清空），否则 finish() 在 quietMode 下
+      // 因 buffer 为空而不输出任何内容（工具结果只进了对话历史，终端看不到）。
+      (agentRenderer as any).buffer = output;
       (agentRenderer as any).quietMode = true;
       agentRenderer.finish();
     }
