@@ -3,6 +3,7 @@ import type { AIRequestMessage } from '../core/validation';
 import { ContextManager } from './contextManager';
 export declare class LLMAdapter {
     static think(messages: AIRequestMessage[], mode?: 'chat' | 'command' | 'command+exec', onChunk?: (chunk: string, type?: 'thought' | 'json') => void, model?: string, customSystemPrompt?: string, contextManager?: ContextManager): Promise<AgentThought>;
+    private static VALID_ACTION_TYPES;
     static parseThought(raw: string): AgentThought;
     /**
      * 从 AI 响应中鲁棒地提取 JSON

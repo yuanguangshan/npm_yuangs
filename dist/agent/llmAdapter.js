@@ -10,20 +10,26 @@ const json5_1 = __importDefault(require("json5"));
 const protocolV2_2_1 = require("./protocolV2_2");
 class LLMAdapter {
     static async think(messages, mode = 'chat', onChunk, model, customSystemPrompt, contextManager) {
-        const v2Config = {
-            mode: mode === 'chat' ? 'chat' : 'command',
-            enableStrictOutput: mode !== 'chat',
-            enableReasoningTrace: true
-        };
-        let protocol = (0, protocolV2_2_1.buildV2_3ProtocolPrompt)(v2Config);
-        const outputConstraints = (0, protocolV2_2_1.buildOutputConstraints)();
-        protocol += `\n${outputConstraints}`;
-        if (mode === 'command' || mode === 'command+exec') {
-            protocol += `\n\nCOMMAND MODE ACTIVE:
+        // chat 模式使用轻量 chat prompt（通用助手 + 默认直接回答，不输出 PHASE 标签）；
+        // command/workflow/replanning 模式沿用完整 agent 协议。
+        const protocol = mode === 'chat'
+            ? (0, protocolV2_2_1.buildChatProtocolPrompt)()
+            : (() => {
+                const v2Config = {
+                    mode: 'command',
+                    enableStrictOutput: true,
+                    enableReasoningTrace: true
+                };
+                let p = (0, protocolV2_2_1.buildV2_3ProtocolPrompt)(v2Config);
+                p += `\n${(0, protocolV2_2_1.buildOutputConstraints)()}`;
+                if (mode === 'command' || mode === 'command+exec') {
+                    p += `\n\nCOMMAND MODE ACTIVE:
 - Prioritize "shell_cmd" for any terminal-based task.
 - Minimize "answer" type unless task is purely conversational.
 - Direct execution is expected.`;
-        }
+                }
+                return p;
+            })();
         const prompt = {
             system: customSystemPrompt ? `${protocol}\n\nGOVERNANCE POLICY:\n${customSystemPrompt}` : protocol,
             messages,
@@ -42,63 +48,81 @@ class LLMAdapter {
         thought.usedRouter = result.usedRouter;
         return thought;
     }
+    // 合法 action_type（与 state.ts ProposedAction.type / llm.ts AgentActionSchema 一致）
+    static VALID_ACTION_TYPES = new Set(['tool_call', 'shell_cmd', 'answer', 'code_diff']);
     static parseThought(raw) {
         // CoT V2.3: 提取 PHASE 1: THINK 块或 [THOUGHT] 块
         const thoughtMatch = raw.match(/\[PHASE 1: THINK - 深度推理\]([\s\S]*?)\[PHASE 2/) ||
             raw.match(/\[THOUGHT\]([\s\S]*?)\[\/THOUGHT\]/);
         const thoughtContent = thoughtMatch ? thoughtMatch[1].trim() : '';
         const parsed = this.extractJSON(raw);
-        if (parsed) {
-            // 如果明确标记为 done，或者动作为 answer，则视为任务结束
-            if (parsed.is_done === true || parsed.action_type === 'answer') {
-                return {
-                    raw,
-                    parsedPlan: parsed,
-                    isDone: true,
-                    type: 'answer',
-                    payload: {
-                        content: parsed.final_answer || parsed.content || parsed.text || raw
-                    },
-                    reasoning: thoughtContent
-                };
-            }
-            // 智能推断动作类型：如果 AI 没给 action_type，我们根据字段猜测
-            let inferredType = parsed.action_type;
-            if (!inferredType) {
-                if (parsed.tool_name || parsed.tool)
-                    inferredType = 'tool_call';
-                else if (parsed.command || parsed.cmd)
-                    inferredType = 'shell_cmd';
-                else if (parsed.diff || parsed.patch)
-                    inferredType = 'code_diff';
-                else
-                    inferredType = 'answer';
-            }
+        if (!parsed) {
+            // 解析失败时，回退到将原始内容作为回答
+            return {
+                raw,
+                parsedPlan: {},
+                isDone: true,
+                type: 'answer',
+                payload: { content: raw },
+                reasoning: ''
+            };
+        }
+        // === 校正 action_type ===
+        // 弱模型常见错误：把工具名当 action_type（如 "action_type":"search_in_files"），或给出非法值。
+        // 统一兜底，避免非法 type 把"本应直接回答"拖入工具死循环。
+        const rawActionType = parsed.action_type;
+        const hasTool = !!(parsed.tool_name || parsed.tool);
+        const hasCommand = !!(parsed.command || parsed.cmd);
+        const hasDiff = !!(parsed.diff || parsed.patch);
+        let inferredType;
+        if (typeof rawActionType === 'string' && LLMAdapter.VALID_ACTION_TYPES.has(rawActionType)) {
+            inferredType = rawActionType;
+        }
+        else if (hasTool) {
+            inferredType = 'tool_call';
+        }
+        else if (hasCommand) {
+            inferredType = 'shell_cmd';
+        }
+        else if (hasDiff) {
+            inferredType = 'code_diff';
+        }
+        else {
+            inferredType = 'answer';
+        }
+        // 合法但语义矛盾：声明要调工具/执行命令，却缺少必要字段 → 当作回答，避免执行失败死循环
+        if (inferredType === 'tool_call' && !hasTool)
+            inferredType = 'answer';
+        if (inferredType === 'shell_cmd' && !hasCommand)
+            inferredType = 'answer';
+        // 明确 answer 或 is_done → 任务结束
+        if (parsed.is_done === true || inferredType === 'answer') {
             return {
                 raw,
                 parsedPlan: parsed,
-                isDone: inferredType === 'answer' || parsed.is_done === true,
-                type: inferredType,
+                isDone: true,
+                type: 'answer',
                 payload: {
-                    tool_name: parsed.tool_name || parsed.tool || '',
-                    parameters: parsed.parameters || parsed.params || {},
-                    command: parsed.command || parsed.cmd || '',
-                    diff: parsed.diff || parsed.patch || '',
-                    content: parsed.content || parsed.text || '',
-                    risk_level: parsed.risk_level || 'low',
-                    risk_explanation: parsed.risk_explanation || ''
+                    content: parsed.final_answer || parsed.content || parsed.text || raw
                 },
                 reasoning: thoughtContent
             };
         }
-        // 解析失败时，回退到将原始内容作为回答
         return {
             raw,
-            parsedPlan: {},
-            isDone: true,
-            type: 'answer',
-            payload: { content: raw },
-            reasoning: ''
+            parsedPlan: parsed,
+            isDone: false,
+            type: inferredType,
+            payload: {
+                tool_name: parsed.tool_name || parsed.tool || '',
+                parameters: parsed.parameters || parsed.params || {},
+                command: parsed.command || parsed.cmd || '',
+                diff: parsed.diff || parsed.patch || '',
+                content: parsed.content || parsed.text || '',
+                risk_level: parsed.risk_level || 'low',
+                risk_explanation: parsed.risk_explanation || ''
+            },
+            reasoning: thoughtContent
         };
     }
     /**
