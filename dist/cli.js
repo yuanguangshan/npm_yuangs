@@ -189,11 +189,22 @@ program
             const ora = (await Promise.resolve().then(() => __importStar(require('ora')))).default;
             const spinner = ora(chalk_1.default.cyan('AI 正在思考...')).start();
             const renderer = new StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
+            let fullResponse = '';
             try {
                 await runtime.run(question || '', 'chat', (chunk) => renderer.onChunk(chunk), model, renderer);
+                fullResponse = renderer.finish();
             }
-            finally {
+            catch (err) {
                 renderer.finish();
+                const msg = err instanceof Error ? err.message : String(err);
+                console.log(chalk_1.default.red(`\n❌ AI 响应失败: ${msg}`));
+            }
+            // 持久化到全局对话历史，让后续 yuangs ai 调用能接上（跨调用多轮记忆）。
+            // 仅 TTY 交互终端的一次性提问；管道/脚本走下面的非流式分支，保持无状态、不污染历史。
+            if (fullResponse) {
+                const { addToConversationHistory } = await Promise.resolve().then(() => __importStar(require('./ai/client')));
+                addToConversationHistory('user', question || '');
+                addToConversationHistory('assistant', fullResponse);
             }
         }
         else {
