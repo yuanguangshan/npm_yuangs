@@ -89,6 +89,13 @@ describe('dynamicPrompt', () => {
         expect(stacks).toContain('Docker');
       }
     });
+
+    it('应在 TTL 内缓存结果：重复调用返回同一引用（命中缓存）', async () => {
+      const a = await detectTechStack();
+      const b = await detectTechStack();
+      // 缓存命中 → 同一个数组引用；若每次都重新检测则是两个不同实例
+      expect(a).toBe(b);
+    });
   });
 
   describe('generateTechStackGuidance', () => {

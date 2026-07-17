@@ -7,11 +7,15 @@ import { promisify } from 'util';
 const execAsync = promisify(exec);
 
 /**
- * 缓存检测结果，避免重复IO操作
+ * 缓存检测结果，避免每个 agent 轮次都重复 IO（git 子进程 + 多次 fs.access）。
+ * 原先这里声明了缓存变量却从未被读写——detectGitContext/detectTechStack 每次都重新检测，
+ * 而 buildPrompt 每个 turn 都调用一次，多轮工具流程（最多 10 轮）会重复执行全部检测。
+ * 用 undefined 表示「尚未检测」，与「检测结果为 null/[]」区分。
  */
-let cachedGitContext: string | null = null;
-let cachedTechStack: string[] | null = null;
-let lastCheckTimestamp = 0;
+let cachedGitContext: string | null | undefined;
+let cachedGitContextAt = 0;
+let cachedTechStack: string[] | undefined;
+let cachedTechStackAt = 0;
 const CACHE_TTL = 5000; // 5秒缓存
 
 /**
@@ -31,15 +35,21 @@ export interface DynamicContext {
  * 检测Git上下文（增强版，支持子目录检测）
  */
 export async function detectGitContext(): Promise<string | null> {
+  const now = Date.now();
+  if (cachedGitContext !== undefined && now - cachedGitContextAt < CACHE_TTL) {
+    return cachedGitContext;
+  }
+
+  let result: string | null = null;
   // 使用git命令检测，支持在项目子目录中运行
   try {
     const { stdout } = await execAsync('git rev-parse --is-inside-work-tree', {
       cwd: process.cwd(),
       timeout: 2000
     });
-    
+
     if (stdout.trim() === 'true') {
-      return `
+      result = `
 [GIT CONTEXT]
 当前目录在一个Git仓库中。
 - 优先使用 \`git ls-files\` 列出文件（遵守.gitignore）
@@ -52,7 +62,7 @@ export async function detectGitContext(): Promise<string | null> {
     // git命令失败，回退到文件系统检测
     try {
       await fs.access('.git');
-      return `
+      result = `
 [GIT CONTEXT]
 当前目录是一个Git仓库。
 - 优先使用 \`git ls-files\` 列出文件（遵守.gitignore）
@@ -61,17 +71,24 @@ export async function detectGitContext(): Promise<string | null> {
 - 谨慎操作版本控制文件
 `;
     } catch {
-      return null;
+      result = null;
     }
   }
-  
-  return null;
+
+  cachedGitContext = result;
+  cachedGitContextAt = now;
+  return result;
 }
 
 /**
  * 检测技术栈（使用Promise.all并发检测，提升性能）
  */
 export async function detectTechStack(): Promise<string[]> {
+  const now = Date.now();
+  if (cachedTechStack !== undefined && now - cachedTechStackAt < CACHE_TTL) {
+    return cachedTechStack;
+  }
+
   const filesToCheck = [
     { file: 'package.json', stack: 'Node.js' },
     { file: 'Cargo.toml', stack: 'Rust' },
@@ -97,7 +114,10 @@ export async function detectTechStack(): Promise<string[]> {
   );
 
   // 过滤掉null值并去重
-  return results.filter((stack): stack is string => stack !== null);
+  const stacks = results.filter((stack): stack is string => stack !== null);
+  cachedTechStack = stacks;
+  cachedTechStackAt = now;
+  return stacks;
 }
 
 /**
@@ -227,18 +247,16 @@ export async function buildDynamicContext(
     context.osContext = osCtx;
   }
 
-  // 检测Git上下文
-  const gitContext = await detectGitContext();
+  // 并发检测 Git 上下文与技术栈（两者各自带 5s 缓存，agent 多轮复用，避免每轮重复 IO）
+  const [gitContext, techStack] = await Promise.all([
+    detectGitContext(),
+    includeTechStack ? detectTechStack() : Promise.resolve([] as string[])
+  ]);
   if (gitContext) {
     context.gitContext = gitContext;
   }
-
-  // 检测技术栈
-  if (includeTechStack) {
-    const techStack = await detectTechStack();
-    if (techStack.length > 0) {
-      context.techStack = techStack;
-    }
+  if (includeTechStack && techStack.length > 0) {
+    context.techStack = techStack;
   }
 
   // 错误恢复

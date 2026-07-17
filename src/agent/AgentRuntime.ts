@@ -63,7 +63,10 @@ export class AgentRuntime {
     while (turnCount < this.maxTurns) {
       const currentTurn = ++turnCount;
       if (currentTurn > 1) {
-        console.log(chalk.blue(`\n--- Turn ${currentTurn} ---`));
+        // 轮次标记是调试信息：直接 console.log 会与流式渲染器交错输出，污染终端、
+        // 且不被 finish() 的按行擦除计入，多轮流程里易造成重绘错位。改为 debug 日志
+        // （默认不输出；需要时设 YUANGS_LOG_LEVEL=debug 查看）。
+        log.debug(`--- Turn ${currentTurn} ---`, { turn: currentTurn });
       }
 
       const { agentRenderer, agentOnChunk } = this.prepareRenderer(renderer, onChunk);

@@ -31,6 +31,7 @@ module.exports = {
     moduleNameMapper: {
         '^ora$': '<rootDir>/test/__mocks__/ora.js',
         '^marked$': '<rootDir>/test/__mocks__/marked.js',
-        '^marked-terminal$': '<rootDir>/test/__mocks__/marked-terminal.js'
+        '^marked-terminal$': '<rootDir>/test/__mocks__/marked-terminal.js',
+        '^p-limit$': '<rootDir>/test/__mocks__/p-limit.js'
     },
 };

@@ -6,7 +6,7 @@ export interface MessageMetadata {
 export declare class ContextManager {
     private messages;
     private maxHistorySize;
-    constructor(initialContext?: GovernanceContext);
+    constructor(initialContext?: GovernanceContext | GovernanceContext['history']);
     addMessage(role: string, content: string): void;
     addToolResult(toolName: string, result: string): void;
     addObservation(observation: string, kind?: 'tool_result' | 'system_note' | 'manual_input', originatingActionId?: string): string;

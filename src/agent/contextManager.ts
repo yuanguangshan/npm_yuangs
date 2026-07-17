@@ -10,16 +10,29 @@ export class ContextManager {
   private messages: Array<{ role: string; content: string; timestamp: number; metadata?: MessageMetadata }> = [];
   private maxHistorySize = 50;
 
-  constructor(initialContext?: GovernanceContext) {
-    if (initialContext?.history) {
-      this.messages = initialContext.history.map(msg => ({
+  constructor(initialContext?: GovernanceContext | GovernanceContext['history']) {
+    // 支持两种初始化形态：
+    //  - GovernanceContext 对象：取 .history / .input
+    //  - 直接传入对话历史数组：getConversationHistory() 返回 AIRequestMessage[]
+    // 调用方 new AgentRuntime(getConversationHistory()) / new DualAgentRuntime(...) 传的是数组，
+    // 之前却按 GovernanceContext 取 .history（数组无该字段 → undefined），跨调用历史被丢弃。
+    // 这里识别数组单独处理，修复多轮对话记忆的跨调用加载。
+    if (Array.isArray(initialContext)) {
+      this.messages = initialContext.map(msg => ({
         ...msg,
         timestamp: Date.now()
       }));
-    }
+    } else {
+      if (initialContext?.history) {
+        this.messages = initialContext.history.map(msg => ({
+          ...msg,
+          timestamp: Date.now()
+        }));
+      }
 
-    if (initialContext?.input) {
-      this.addMessage('user', initialContext.input);
+      if (initialContext?.input) {
+        this.addMessage('user', initialContext.input);
+      }
     }
   }
 
