@@ -189,8 +189,10 @@ describe('errorHandling', () => {
     });
 
     it('should accumulate attempts across all strategies', async () => {
-      const primary = jest.fn().mockRejectedValue(new Error('failed'));
-      const alternative = jest.fn().mockRejectedValue(new Error('failed'));
+      // 用可重试的错误（含 'network'）才会真正触发 maxAttempts 次重试；
+      // 否则 withRetry 首次失败即 break，无法验证跨策略累加。
+      const primary = jest.fn().mockRejectedValue(new Error('network failed'));
+      const alternative = jest.fn().mockRejectedValue(new Error('network failed'));
 
       const alternatives = [
         createAlternativeStrategy('alt', 'desc', alternative)

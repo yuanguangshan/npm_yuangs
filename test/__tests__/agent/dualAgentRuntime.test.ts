@@ -63,18 +63,16 @@ jest.mock('../../../src/core/executionRecord', () => ({
   }))
 }));
 
-jest.mock('../../../src/core/executionStore', () => ({
-  saveExecutionRecord: jest.fn(() => 'test-record-id'),
-  loadExecutionRecord: jest.fn(() => ({
-    id: 'test-record-id',
-    meta: {
-      commandName: 'test',
-      mode: 'agent'
-    },
-    llmResult: { plan: { goal: 'Test step' } },
-    input: { rawInput: 'test input' }
-  }))
-}));
+jest.mock('../../../src/core/executionStore', () => {
+  // 让 loadExecutionRecord 回放最近一次 saveExecutionRecord 收到的记录，
+  // 模拟真实的"保存→读取"往返。否则 learnSkillFromRecord 会拿到写死的旧记录
+  //（其 plan.goal 与本次执行的 step 不一致），无法验证学习的是当前执行。
+  let lastSaved: any = null;
+  return {
+    saveExecutionRecord: jest.fn((rec: any) => { lastSaved = rec; return 'test-record-id'; }),
+    loadExecutionRecord: jest.fn(() => lastSaved)
+  };
+});
 
 jest.mock('marked', () => ({
   parse: jest.fn((text: string) => text),
@@ -88,6 +86,12 @@ describe('DualAgentRuntime', () => {
   beforeEach(() => {
     runtime = new DualAgentRuntime({});
     jest.clearAllMocks();
+
+    // 重置 getUserConfig 默认返回值——clearAllMocks 只清调用计数，不清 mockReturnValue 设置的实现。
+    // 否则 "respect planner disabled config" 用例设置的 { disablePlanner: true } 会泄漏到后续用例，
+    // 让后续 planner 用例全部误走 quick path（planner 根本不触发）。
+    const { getUserConfig } = require('../../../src/ai/client');
+    (getUserConfig as jest.Mock).mockReturnValue({});
 
     // Mock readline for askUser
     mockReadlineInterface = require('readline').createInterface();
@@ -145,7 +149,7 @@ describe('DualAgentRuntime', () => {
       const { askAI } = require('../../../src/ai/client');
 
       (askAI as jest.Mock).mockResolvedValue(
-        '```json\n{\n  "plan": "Test plan",\n  "steps": [],\n  "estimated_time": "1 min"\n}\n```'
+        '```json\n{\n  "plan": "Test plan",\n  "steps": [\n    { "id": "step1", "description": "Test step", "type": "shell_cmd", "command": "echo ok", "risk_level": "low", "dependencies": [] }\n  ],\n  "estimated_time": "1 min"\n}\n```'
       );
 
       await runtime.run('Refactor the codebase', undefined, 'test-model');
@@ -153,7 +157,12 @@ describe('DualAgentRuntime', () => {
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('📋 Planning task'));
       expect(askAI).toHaveBeenCalled();
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Plan created'));
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[y] 继续执行'));
+      // 确认提示经 readline.question 发出（mock 的 question 不会把 prompt 回显到 stdout，
+      // 故断言 question mock 被以该 prompt 调用，而非断言 console.log）
+      expect(mockReadlineInterface.question).toHaveBeenCalledWith(
+        expect.stringContaining('Proceed with this plan'),
+        expect.any(Function)
+      );
       consoleSpy.mockRestore();
     });
 
@@ -220,7 +229,7 @@ describe('DualAgentRuntime', () => {
       const { askAI } = require('../../../src/ai/client');
 
       (askAI as jest.Mock).mockResolvedValue(
-        '```json\n{\n  "plan": "Test plan",\n  "steps": [],\n  "estimated_time": "1 min"\n}\n```'
+        '```json\n{\n  "plan": "Test plan",\n  "steps": [\n    { "id": "step1", "description": "Test step", "type": "shell_cmd", "command": "echo ok", "risk_level": "low", "dependencies": [] }\n  ],\n  "estimated_time": "1 min"\n}\n```'
       );
 
       // Setup to return 'n' (user rejects)
@@ -273,7 +282,7 @@ describe('DualAgentRuntime', () => {
         artifacts: []
       });
 
-      await runtime.run('Execute two steps', undefined, 'test-model');
+      await runtime.run('Batch execute two steps', undefined, 'test-model');
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Plan created with 2 steps'));
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('▶️  Step 1/2'));
@@ -327,7 +336,7 @@ describe('DualAgentRuntime', () => {
           callback('n'); // Stop after second step
         });
 
-      await runtime.run('Execute plan with failure', undefined, 'test-model');
+      await runtime.run('Batch execute plan with failure', undefined, 'test-model');
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('❌ Step failed'));
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Step 1/2'));
@@ -367,7 +376,7 @@ describe('DualAgentRuntime', () => {
         artifacts: []
       });
 
-      await runtime.run('Execute single step', undefined, 'test-model');
+      await runtime.run('Batch execute single step', undefined, 'test-model');
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('✅ Step completed'));
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('🎉 All tasks completed'));
@@ -381,7 +390,7 @@ describe('DualAgentRuntime', () => {
 
       (askAI as jest.Mock).mockRejectedValue(new Error('API unavailable'));
 
-      await runtime.run('Try to plan', undefined, 'test-model');
+      await runtime.run('Batch try to plan', undefined, 'test-model');
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Planner error'));
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Plan generation failed'));
@@ -416,7 +425,7 @@ describe('DualAgentRuntime', () => {
         '```json\n' + JSON.stringify(mockPlan) + '\n```'
       );
 
-      await runtime.run('Execute plan', undefined, 'test-model');
+      await runtime.run('Batch execute plan', undefined, 'test-model');
 
       expect(createExecutionRecord).toHaveBeenCalled();
       expect(saveExecutionRecord).toHaveBeenCalled();
@@ -462,6 +471,14 @@ describe('DualAgentRuntime', () => {
           steps: [
             {
               id: 'step1',
+              description: 'Setup step',
+              type: 'shell_cmd',
+              command: 'echo "setup"',
+              risk_level: 'low',
+              dependencies: []
+            },
+            {
+              id: 'step2',
               description: 'Execute echo',
               type: 'shell_cmd',
               command: 'echo "test"',
@@ -488,7 +505,7 @@ describe('DualAgentRuntime', () => {
           callback('n');
         });
 
-      await runtime.run('Execute with failure', undefined, 'test-model');
+      await runtime.run('Batch execute with failure', undefined, 'test-model');
 
       expect(updateSkillStatus).toHaveBeenCalledWith('existing-skill-id', false);
       consoleSpy.mockRestore();
@@ -530,7 +547,7 @@ describe('DualAgentRuntime', () => {
         callback('n');
       });
 
-      await runtime.run('Track state', undefined, 'test-model');
+      await runtime.run('Batch track state', undefined, 'test-model');
 
       const state = runtime.getExecutionState();
       expect(state.steps).toHaveLength(1);

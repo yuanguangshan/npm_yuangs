@@ -154,9 +154,8 @@ export class ExecutionHandler {
     const result = await ToolExecutor.execute(action as any);
 
     if (!externalRenderer && agentRenderer) {
-      for (let i = 0; i < result.output.length; i += 10) {
-        agentRenderer.onChunk(result.output.slice(i, i + 10));
-      }
+      // 答案已是完整文本，无需按 10 字符「假流式」重放（徒增延迟）；一次性写入并渲染即可
+      agentRenderer.onChunk(result.output);
       agentRenderer.finish();
     } else if (!externalRenderer) {
       const rendered = marked.parse(result.output);

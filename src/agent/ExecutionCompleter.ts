@@ -1,6 +1,6 @@
 import { ProposedAction, ToolCallPayload } from './state';
 import { ToolExecutionResult } from './state';
-import { StabilizationDetector } from './ExecutionStabilizer';
+import { StabilizationDetector, truncateToolOutputForChat, wrapAsCodeFence } from './ExecutionStabilizer';
 import { READ_ONLY_TOOLS } from './ExecutionTypes';
 import { StreamMarkdownRenderer } from '../utils/renderer';
 import { logger } from '../utils/Logger';
@@ -75,7 +75,7 @@ export class ExecutionCompleter {
     writeModeState: WriteModeState | null,
     agentRenderer: StreamMarkdownRenderer | undefined
   ): AutoCompleteResult {
-    const requiresWrite = /替换|replace|修改|modify|添加|append|插入|insert|删除|delete|移除|remove|更新|update|改成|改成|改为/i.test(userInput);
+    const requiresWrite = /替换|replace|修改|modify|添加|append|插入|insert|删除|delete|移除|remove|更新|update|改成|改为/i.test(userInput);
 
     if (mode === 'command') {
       log.debug('Command mode: readonly tool, waiting for AI decision');
@@ -90,7 +90,8 @@ export class ExecutionCompleter {
       }
       if (['read_file', 'read_file_lines', 'read_file_lines_from_end', 'search_in_files', 'file_info'].includes(toolName)) {
         log.debug('Chat auto-show: tool result to display', { tool: toolName });
-        const displayOutput = result.output.length > 1000 ? result.output.slice(0, 1000) + '\n...(内容已截断)' : result.output;
+        // 工具结果按整行截断后，包裹为代码块原样展示，避免被 markdown 渲染破坏（代码 # 注释变标题等）
+        const displayOutput = wrapAsCodeFence(truncateToolOutputForChat(result.output));
         this.stabilizer.renderAndFinish(this.context, displayOutput, agentRenderer);
         return { shouldBreak: false, shouldReturnNull: true };
       }

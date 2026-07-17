@@ -414,50 +414,24 @@ export class StreamMarkdownRenderer extends MarkdownRenderer {
    * 处理格式：{"action_type": "answer", "content": "...", "is_done": true}
    */
   private extractContentFromJSON(text: string): string {
+    const trimmed = text.trim();
+    // 仅当整体确实是一个 Agent 动作 JSON 信封（以 { 开头、} 结尾、且含 action_type 字段）
+    // 时才解包 content；否则原样返回。避免把含花括号的普通内容（代码、JSON 配置文件、
+    // markdown 里的 {...} 片段）误判为 Agent 响应而抽走内部字段。
+    // （流式路径已在 runLLM 用 extractStreamableContent 提取过正文，到达此处的一般是
+    // 干净的 markdown 正文或工具原始输出，几乎不再是裸 JSON 信封。）
+    if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) return text;
+    let parsed: any;
     try {
-      // 尝试解析 JSON（支持普通 JSON 和 markdown 代码块中的 JSON）
-      let jsonText = text.trim();
-
-      // 移除 markdown 代码块标记（```json 和 ```）
-      const codeBlockMatch = jsonText.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
-      if (codeBlockMatch) {
-        jsonText = codeBlockMatch[1];
-      }
-
-      // 尝试提取最外层的 JSON 对象
-      const objectMatch = jsonText.match(/\{[\s\S]*\}/);
-      if (objectMatch) {
-        jsonText = objectMatch[0];
-      }
-
-      const parsed = JSON.parse(jsonText);
-
-      // 如果是 AI Agent 响应格式，提取 content 字段
-      if (parsed.action_type === 'answer' && parsed.content) {
-        return parsed.content;
-      }
-
-      // 如果有 content 字段，返回它
-      if (parsed.content) {
-        return parsed.content;
-      }
-
-      // 如果有 final_answer 字段，返回它
-      if (parsed.final_answer) {
-        return parsed.final_answer;
-      }
-
-      // 如果有 text 字段，返回它
-      if (parsed.text) {
-        return parsed.text;
-      }
-
-      // 否则返回原始文本
-      return text;
-    } catch (e) {
-      // JSON 解析失败，返回原始文本
+      parsed = JSON.parse(trimmed);
+    } catch {
       return text;
     }
+    if (!parsed || typeof parsed !== 'object' || !('action_type' in parsed)) return text;
+    if (typeof parsed.content === 'string') return parsed.content;
+    if (typeof parsed.final_answer === 'string') return parsed.final_answer;
+    if (typeof parsed.text === 'string') return parsed.text;
+    return text;
   }
 
   /**
@@ -484,14 +458,22 @@ export class StreamMarkdownRenderer extends MarkdownRenderer {
     } else if (this.buffer.trim()) {
       if (process.stdout.isTTY) {
         const screenWidth = process.stdout.columns || 80;
+        const viewportRows = process.stdout.rows || 24;
         const totalContent = this.prefix + this.buffer;
         const lineCount = this.getVisualLineCount(totalContent, screenWidth);
 
-        process.stdout.write('\r\x1b[K');
-        for (let i = 0; i < lineCount - 1; i++) {
-          process.stdout.write('\x1b[A\x1b[K');
+        if (lineCount <= viewportRows) {
+          // 内容在一屏内：安全擦除已流式输出的原始文本，重写为渲染后的 markdown
+          process.stdout.write('\r\x1b[K');
+          for (let i = 0; i < lineCount - 1; i++) {
+            process.stdout.write('\x1b[A\x1b[K');
+          }
+          process.stdout.write(this.prefix + rendered + '\n');
+        } else {
+          // 内容超出一屏（顶部已滚出视口）：\x1b[A 无法回到滚走的行，强行擦除会残留鬼影。
+          // 此时保留已流式显示的内容，仅换行收尾，避免重复输出与鬼影。
+          process.stdout.write('\n');
         }
-        process.stdout.write(this.prefix + rendered + '\n');
       } else {
         process.stdout.write(this.prefix + rendered + '\n');
       }

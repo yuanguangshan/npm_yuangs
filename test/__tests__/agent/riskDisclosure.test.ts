@@ -318,7 +318,7 @@ describe('riskDisclosure', () => {
   describe('formatRiskDisclosureCLI', () => {
     it('should format low risk disclosure', () => {
       const disclosure = {
-        riskLevel: { level: 'low', score: 25 },
+        riskLevel: { level: 'low' as const, score: 25 },
         factors: {
           commandType: 'file_read',
           isDestructive: false,
@@ -342,7 +342,7 @@ describe('riskDisclosure', () => {
 
     it('should format medium risk disclosure', () => {
       const disclosure = {
-        riskLevel: { level: 'medium', score: 55 },
+        riskLevel: { level: 'medium' as const, score: 55 },
         factors: {
           commandType: 'file_write',
           isDestructive: false,
@@ -365,7 +365,7 @@ describe('riskDisclosure', () => {
 
     it('should format high risk disclosure', () => {
       const disclosure = {
-        riskLevel: { level: 'high', score: 85 },
+        riskLevel: { level: 'high' as const, score: 85 },
         factors: {
           commandType: 'shell_cmd',
           command: 'rm -rf /data',
@@ -396,7 +396,7 @@ describe('riskDisclosure', () => {
 
     it('should list potential issues', () => {
       const disclosure = {
-        riskLevel: { level: 'high', score: 90 },
+        riskLevel: { level: 'high' as const, score: 90 },
         factors: {
           commandType: 'file_delete',
           isDestructive: true,
@@ -422,7 +422,7 @@ describe('riskDisclosure', () => {
 
     it('should list recommended actions', () => {
       const disclosure = {
-        riskLevel: { level: 'high', score: 90 },
+        riskLevel: { level: 'high' as const, score: 90 },
         factors: {
           commandType: 'file_delete',
           isDestructive: true,
@@ -449,7 +449,7 @@ describe('riskDisclosure', () => {
 
     it('should include checkpoint when available', () => {
       const disclosure = {
-        riskLevel: { level: 'high', score: 85 },
+        riskLevel: { level: 'high' as const, score: 85 },
         factors: {
           commandType: 'shell_cmd',
           isDestructive: true,
@@ -472,7 +472,7 @@ describe('riskDisclosure', () => {
 
     it('should format border separator', () => {
       const disclosure: RiskDisclosure = {
-        riskLevel: { level: 'low', score: 25 },
+        riskLevel: { level: 'low' as const, score: 25 },
         factors: {
           commandType: 'file_read',
           isDestructive: false,

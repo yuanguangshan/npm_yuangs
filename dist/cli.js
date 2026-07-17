@@ -179,10 +179,27 @@ program
     }
     else {
         const { AgentRuntime } = await Promise.resolve().then(() => __importStar(require('./agent/AgentRuntime')));
-        console.log(chalk_1.default.magenta('--- RUNNING WITH NEW AGENT ENGINE ---'));
         const { getConversationHistory } = await Promise.resolve().then(() => __importStar(require('./ai/client')));
         const runtime = new AgentRuntime(getConversationHistory());
-        await runtime.run(question || '', options.exec ? 'command' : 'chat', undefined, model);
+        // 单轮 chat：在交互式终端里也走流式渲染（逐字显示回答），与交互模式体验一致；
+        // 管道 / 非 TTY 或 --exec 命令模式保持原样，避免流式的 ANSI 擦行重绘污染管道输出。
+        const useStream = process.stdout.isTTY && !options.exec;
+        if (useStream) {
+            const { StreamMarkdownRenderer } = await Promise.resolve().then(() => __importStar(require('./utils/renderer')));
+            const ora = (await Promise.resolve().then(() => __importStar(require('ora')))).default;
+            const spinner = ora(chalk_1.default.cyan('AI 正在思考...')).start();
+            const renderer = new StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
+            try {
+                await runtime.run(question || '', 'chat', (chunk) => renderer.onChunk(chunk), model, renderer);
+            }
+            finally {
+                renderer.finish();
+            }
+        }
+        else {
+            console.log(chalk_1.default.magenta('--- RUNNING WITH NEW AGENT ENGINE ---'));
+            await runtime.run(question || '', options.exec ? 'command' : 'chat', undefined, model);
+        }
     }
 });
 program

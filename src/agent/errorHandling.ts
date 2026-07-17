@@ -64,7 +64,7 @@ function calculateBackoffDelay(
 /**
  * 判断错误是否可重试
  */
-export function isRetryableError(error: Error, config: RetryConfig): boolean {
+export function isRetryableError(error: Error, config: Pick<RetryConfig, 'retryableErrors'>): boolean {
   // Safely extract error message
   let errorMessage = '';
   if (typeof error.message === 'string') {

@@ -105,3 +105,35 @@ export class StabilizationDetector {
     }
   }
 }
+
+/**
+ * 为 chat 模式的工具结果展示做行级截断。
+ *
+ * 旧实现按 1000 字符硬截（result.output.slice(0, 1000)），对 read_file 这类请求太小
+ * （只能看到约 15 行），且按 UTF-16 码元切片可能切断中文代理对（产生乱码尾字符）。
+ * 改为按整行截断：保留前 maxLines 行，并附带提示告知总行数与已显示行数。
+ *
+ * @param output    工具原始输出
+ * @param maxLines  最多保留的行数；默认按终端高度自适应（约 2 屏，下限 40 行）
+ */
+export function truncateToolOutputForChat(output: string, maxLines?: number): string {
+  const lines = output.split('\n');
+  const limit = maxLines ?? Math.max(40, (process.stdout.rows || 24) * 2);
+  if (lines.length <= limit) return output;
+  return lines.slice(0, limit).join('\n') +
+    `\n\n... (已截断，共 ${lines.length} 行，已显示前 ${limit} 行；可要求继续读取后续内容)`;
+}
+
+/**
+ * 将内容包裹为 markdown 代码块，使其经过 markdown 渲染时原样展示（不被解释为
+ * 标题 / 列表 / 引用等）。用于 chat 模式展示 read_file 等工具结果，避免代码被
+ * markdown 破坏（如 # 注释变标题、缩进变代码块）。
+ *
+ * 自动选择比内容中最长反引号串还长一级的围栏，避免内容里的 ``` 提前截断围栏。
+ */
+export function wrapAsCodeFence(content: string): string {
+  const runs = content.match(/`+/g) || [];
+  const maxRun = runs.reduce((max, r) => Math.max(max, r.length), 0);
+  const fence = '`'.repeat(Math.max(3, maxRun + 1));
+  return `${fence}\n${content}\n${fence}`;
+}

@@ -26,7 +26,7 @@ export interface AlternativeStrategy<T> {
 /**
  * 判断错误是否可重试
  */
-export declare function isRetryableError(error: Error, config: RetryConfig): boolean;
+export declare function isRetryableError(error: Error, config: Pick<RetryConfig, 'retryableErrors'>): boolean;
 /**
  * 自动重试执行器
  */

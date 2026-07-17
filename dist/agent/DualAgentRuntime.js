@@ -112,6 +112,14 @@ class DualAgentRuntime {
         console.log(chalk_1.default.blue('📋 Planning task...'));
         const plan = await this.callPlanner(userInput, model);
         this.steps = plan.steps;
+        // 空计划（例如 planner 出错返回的兜底）：无可执行步骤，直接收尾。
+        // 不要再询问"是否继续执行"——让用户对一个空计划做确认只会造成困惑。
+        if (this.steps.length === 0) {
+            console.log(chalk_1.default.yellow('\n⚠️ 计划无可执行步骤。'));
+            if (plan.plan)
+                console.log(chalk_1.default.gray(plan.plan));
+            return;
+        }
         console.log(chalk_1.default.cyan(`\nPlan created with ${this.steps.length} steps:\n`));
         this.steps.forEach((step, i) => {
             const icon = step.risk_level === 'high' ? '⚠️' : '✅';
@@ -124,6 +132,7 @@ class DualAgentRuntime {
             console.log(chalk_1.default.yellow('Execution cancelled by user.'));
             return;
         }
+        let stopped = false;
         for (let i = 0; i < this.steps.length; i++) {
             this.currentIndex = i;
             const step = this.steps[i];
@@ -134,6 +143,7 @@ class DualAgentRuntime {
                 const shouldContinue = await this.askUser('Step failed. Continue with remaining steps? (y/N): ');
                 if (!shouldContinue) {
                     console.log(chalk_1.default.yellow('Execution stopped by user.'));
+                    stopped = true;
                     break;
                 }
             }
@@ -145,7 +155,10 @@ class DualAgentRuntime {
                 }
             }
         }
-        console.log(chalk_1.default.blue('\n🎉 All tasks completed!'));
+        // 仅当全部步骤正常跑完时才宣告"全部完成"；用户取消或中途停止时不应误报完成。
+        if (!stopped) {
+            console.log(chalk_1.default.blue('\n🎉 All tasks completed!'));
+        }
     }
     async callPlanner(input, model) {
         const config = (0, client_1.getUserConfig)();
@@ -184,6 +197,8 @@ class DualAgentRuntime {
             }
             catch (error) {
                 log.error('Planner error', { error: String(error) });
+                // 同时向用户可见地输出错误（log.error 只进日志，终端默认看不到）
+                console.log(chalk_1.default.red(`❌ Planner error: ${String(error)}`));
                 return {
                     plan: 'Plan generation failed',
                     steps: [],
