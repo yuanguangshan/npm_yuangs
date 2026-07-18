@@ -13,6 +13,7 @@ import { createExecutionRecord } from '../core/executionRecord';
 import { saveExecutionRecord, loadExecutionRecord } from '../core/executionStore';
 import { learnSkillFromRecord, getAllSkills, updateSkillStatus } from './skills';
 import { AgentRuntime } from './AgentRuntime';
+import { StreamMarkdownRenderer } from '../utils/renderer';
 
 const log = logger.child('DualAgentRuntime');
 
@@ -33,12 +34,14 @@ export class DualAgentRuntime {
   async run(
     userInput: string,
     onChunk?: (chunk: string) => void,
-    model?: string
+    model?: string,
+    mode: 'chat' | 'command' = 'chat',
+    renderer?: StreamMarkdownRenderer
   ): Promise<void> {
     const needsPlanner = await this.shouldUsePlanner(userInput);
 
     if (!needsPlanner) {
-      await this.runFastPath(userInput, onChunk, model);
+      await this.runFastPath(userInput, onChunk, model, mode, renderer);
     } else {
       await this.runPlannedPath(userInput, onChunk, model);
     }
@@ -86,13 +89,27 @@ export class DualAgentRuntime {
     return 0.8;
   }
 
-  private async runFastPath(userInput: string, onChunk?: (chunk: string) => void, model?: string): Promise<void> {
+  private async runFastPath(
+    userInput: string,
+    onChunk?: (chunk: string) => void,
+    model?: string,
+    mode: 'chat' | 'command' = 'chat',
+    renderer?: StreamMarkdownRenderer
+  ): Promise<void> {
     console.log(chalk.gray('🚀 Quick path: Direct execution'));
 
-    const runtime = new AgentRuntime({});
-
+    // 先取出已加载的对话历史（构造函数经第 9 轮修复后已加载 getConversationHistory），
+    // 再传给 AgentRuntime——否则 new AgentRuntime({}) 用空上下文，第 8 轮的对话回顾
+    // (buildConversationRecap) 拿不到历史，默认路径（autoConfirm=false → DualAgentRuntime
+    // → runFastPath）多轮记忆全丢。在 addMessage 之前取，避免把当前 userInput 重复带入
+    // （run() 内部会再 addMessage 一次）。
+    const history = this.context.getMessages();
     this.context.addMessage('user', userInput);
-    await runtime.run(userInput, 'command', onChunk, model);
+
+    // 默认用 chat 模式（对话助手，直接回答）；仅当调用方显式要求 command（如 --exec）
+    // 才走命令执行模式——原先硬编码 'command' 会把"解释闭包"这类纯对话问题强制推向工具调用。
+    const runtime = new AgentRuntime(history);
+    await runtime.run(userInput, mode, onChunk, model, renderer);
   }
 
   private async runPlannedPath(userInput: string, onChunk?: (chunk: string) => void, model?: string): Promise<void> {

@@ -62,10 +62,10 @@ class DualAgentRuntime {
         // 默认创建新的缓存实例，避免全局单例导致的测试隔离问题
         this.planCache = planCache || new PlanCache_1.PlanCache();
     }
-    async run(userInput, onChunk, model) {
+    async run(userInput, onChunk, model, mode = 'chat', renderer) {
         const needsPlanner = await this.shouldUsePlanner(userInput);
         if (!needsPlanner) {
-            await this.runFastPath(userInput, onChunk, model);
+            await this.runFastPath(userInput, onChunk, model, mode, renderer);
         }
         else {
             await this.runPlannedPath(userInput, onChunk, model);
@@ -102,11 +102,19 @@ class DualAgentRuntime {
         }
         return 0.8;
     }
-    async runFastPath(userInput, onChunk, model) {
+    async runFastPath(userInput, onChunk, model, mode = 'chat', renderer) {
         console.log(chalk_1.default.gray('🚀 Quick path: Direct execution'));
-        const runtime = new AgentRuntime_1.AgentRuntime({});
+        // 先取出已加载的对话历史（构造函数经第 9 轮修复后已加载 getConversationHistory），
+        // 再传给 AgentRuntime——否则 new AgentRuntime({}) 用空上下文，第 8 轮的对话回顾
+        // (buildConversationRecap) 拿不到历史，默认路径（autoConfirm=false → DualAgentRuntime
+        // → runFastPath）多轮记忆全丢。在 addMessage 之前取，避免把当前 userInput 重复带入
+        // （run() 内部会再 addMessage 一次）。
+        const history = this.context.getMessages();
         this.context.addMessage('user', userInput);
-        await runtime.run(userInput, 'command', onChunk, model);
+        // 默认用 chat 模式（对话助手，直接回答）；仅当调用方显式要求 command（如 --exec）
+        // 才走命令执行模式——原先硬编码 'command' 会把"解释闭包"这类纯对话问题强制推向工具调用。
+        const runtime = new AgentRuntime_1.AgentRuntime(history);
+        await runtime.run(userInput, mode, onChunk, model, renderer);
     }
     async runPlannedPath(userInput, onChunk, model) {
         console.log(chalk_1.default.blue('📋 Planning task...'));

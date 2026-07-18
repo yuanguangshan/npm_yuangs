@@ -175,7 +175,33 @@ program
         console.log(chalk_1.default.magenta('--- RUNNING WITH DUAL AGENT ENGINE (PLANNER + EXECUTOR) ---'));
         const { getConversationHistory } = await Promise.resolve().then(() => __importStar(require('./ai/client')));
         const runtime = new DualAgentRuntime(getConversationHistory());
-        await runtime.run(question || '', undefined, model);
+        // 与 AgentRuntime 路径一致：TTY 下走流式渲染并持久化对话历史（闭合默认路径的跨调用
+        // 多轮记忆）；管道/非 TTY 保持无状态、不污染历史。
+        const useStream = process.stdout.isTTY && !options.exec;
+        if (useStream) {
+            const { StreamMarkdownRenderer } = await Promise.resolve().then(() => __importStar(require('./utils/renderer')));
+            const ora = (await Promise.resolve().then(() => __importStar(require('ora')))).default;
+            const spinner = ora(chalk_1.default.cyan('AI 正在思考...')).start();
+            const renderer = new StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
+            let fullResponse = '';
+            try {
+                await runtime.run(question || '', (chunk) => renderer.onChunk(chunk), model, 'chat', renderer);
+                fullResponse = renderer.finish();
+            }
+            catch (err) {
+                renderer.finish();
+                const msg = err instanceof Error ? err.message : String(err);
+                console.log(chalk_1.default.red(`\n❌ AI 响应失败: ${msg}`));
+            }
+            if (fullResponse) {
+                const { addToConversationHistory } = await Promise.resolve().then(() => __importStar(require('./ai/client')));
+                addToConversationHistory('user', question || '');
+                addToConversationHistory('assistant', fullResponse);
+            }
+        }
+        else {
+            await runtime.run(question || '', undefined, model, options.exec ? 'command' : 'chat');
+        }
     }
     else {
         const { AgentRuntime } = await Promise.resolve().then(() => __importStar(require('./agent/AgentRuntime')));

@@ -1,5 +1,6 @@
 import { TaskStep } from './types';
 import { PlanCache } from './PlanCache';
+import { StreamMarkdownRenderer } from '../utils/renderer';
 export declare class DualAgentRuntime {
     private context;
     private executionId;
@@ -7,7 +8,7 @@ export declare class DualAgentRuntime {
     private currentIndex;
     private planCache;
     constructor(initialContext: any, planCache?: PlanCache);
-    run(userInput: string, onChunk?: (chunk: string) => void, model?: string): Promise<void>;
+    run(userInput: string, onChunk?: (chunk: string) => void, model?: string, mode?: 'chat' | 'command', renderer?: StreamMarkdownRenderer): Promise<void>;
     private shouldUsePlanner;
     private assessComplexity;
     private runFastPath;
