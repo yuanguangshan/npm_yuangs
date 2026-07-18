@@ -78,6 +78,11 @@ export class AgentRuntime {
       );
       if (!thought) break;
 
+      // 模型透明度：把本次实际使用的模型记到 renderer，finish() 页脚会展示。
+      if (thought.modelName) {
+        agentRenderer?.setModelUsed(thought.modelName);
+      }
+
       // === Step 2: Build Action ===
       const action = this.buildAction(thought);
 

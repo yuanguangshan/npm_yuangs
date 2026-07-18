@@ -48,6 +48,7 @@ export declare class StreamMarkdownRenderer extends MarkdownRenderer {
     private autoFinish;
     private onChunkCallback;
     private finished;
+    private modelUsed?;
     constructor(prefix?: string, spinner?: Ora, options?: RendererOptions | boolean);
     /**
      * 处理流式 chunk
@@ -63,6 +64,11 @@ export declare class StreamMarkdownRenderer extends MarkdownRenderer {
      * 处理格式：{"action_type": "answer", "content": "...", "is_done": true}
      */
     private extractContentFromJSON;
+    /**
+     * 记录本次响应实际使用的模型，供 finish() 页脚展示（模型透明度）。
+     * 由 AgentRuntime 在拿到 LLM 结果后设置；多轮流程里多次调用，以最后一次为准（即最终回答的模型）。
+     */
+    setModelUsed(modelName: string): void;
     /**
      * 流结束，渲染完整 Markdown
      *

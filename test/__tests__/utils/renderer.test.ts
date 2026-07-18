@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import { MarkdownRenderer, renderMarkdown } from '../../../src/utils/renderer';
+import { MarkdownRenderer, renderMarkdown, StreamMarkdownRenderer } from '../../../src/utils/renderer';
 
 describe('MarkdownRenderer', () => {
     let renderer: MarkdownRenderer;
@@ -69,5 +69,36 @@ describe('renderMarkdown static function', () => {
         const result = renderMarkdown('**Bold**');
         expect(result).not.toBe('**Bold**');
         expect(result).toContain('Bold');
+    });
+});
+
+describe('StreamMarkdownRenderer model footer', () => {
+    it('setModelUsed 后 finish() 页脚展示模型名', () => {
+        const writes: string[] = [];
+        const spy = jest.spyOn(process.stdout, 'write').mockImplementation((s: any) => { writes.push(String(s)); return true; });
+        try {
+            const r = new StreamMarkdownRenderer('🤖 ');
+            r.onChunk('hello');
+            r.setModelUsed('gemini-2.5-flash');
+            r.finish();
+        } finally {
+            spy.mockRestore();
+        }
+        const out = writes.join('');
+        expect(out).toContain('模型: gemini-2.5-flash');
+        expect(out).toContain('耗时');
+    });
+
+    it('未 setModelUsed 时页脚不含「模型:」', () => {
+        const writes: string[] = [];
+        const spy = jest.spyOn(process.stdout, 'write').mockImplementation((s: any) => { writes.push(String(s)); return true; });
+        try {
+            const r = new StreamMarkdownRenderer('🤖 ');
+            r.onChunk('hi');
+            r.finish();
+        } finally {
+            spy.mockRestore();
+        }
+        expect(writes.join('')).not.toContain('模型:');
     });
 });

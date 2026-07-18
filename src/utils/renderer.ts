@@ -359,6 +359,7 @@ export class StreamMarkdownRenderer extends MarkdownRenderer {
   private autoFinish: boolean;
   private onChunkCallback: ((chunk: string) => void) | null;
   private finished: boolean = false;
+  private modelUsed?: string;
 
   constructor(prefix: string = chalk.bold.blue('🤖 AI：'), spinner?: Ora, options?: RendererOptions | boolean) {
     super(); 
@@ -435,6 +436,14 @@ export class StreamMarkdownRenderer extends MarkdownRenderer {
   }
 
   /**
+   * 记录本次响应实际使用的模型，供 finish() 页脚展示（模型透明度）。
+   * 由 AgentRuntime 在拿到 LLM 结果后设置；多轮流程里多次调用，以最后一次为准（即最终回答的模型）。
+   */
+  public setModelUsed(modelName: string): void {
+    this.modelUsed = modelName;
+  }
+
+  /**
    * 流结束，渲染完整 Markdown
    *
    * 使用 md.parse() 解析 Tokens，直接映射为 ANSI
@@ -481,7 +490,8 @@ export class StreamMarkdownRenderer extends MarkdownRenderer {
 
     const elapsed = (Date.now() - this.startTime) / 1000;
     const separator = '─'.repeat(20);
-    process.stdout.write(`\n${chalk.gray(separator)} (耗时: ${elapsed.toFixed(2)}s) ${separator}\n\n`);
+    const modelInfo = this.modelUsed ? ` · 模型: ${this.modelUsed}` : '';
+    process.stdout.write(`\n${chalk.gray(separator)} (耗时: ${elapsed.toFixed(2)}s${modelInfo}) ${separator}\n\n`);
 
     return this.buffer;
   }
