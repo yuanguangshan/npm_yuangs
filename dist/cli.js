@@ -115,6 +115,32 @@ function getArgValue(args, flags) {
     }
     return undefined;
 }
+/**
+ * 单轮 chat 在 TTY 下的流式渲染 + 对话历史持久化。
+ * AgentRuntime 与 DualAgentRuntime 两条路径共用——差异仅在 run() 调用签名（由 runFn 注入）。
+ * 持久化让后续 yuangs ai 调用能接上前文（跨调用多轮记忆）；管道/非 TTY 不走这里，保持无状态。
+ */
+async function streamAndPersist(question, runFn) {
+    const { StreamMarkdownRenderer } = await Promise.resolve().then(() => __importStar(require('./utils/renderer')));
+    const ora = (await Promise.resolve().then(() => __importStar(require('ora')))).default;
+    const spinner = ora(chalk_1.default.cyan('AI 正在思考...')).start();
+    const renderer = new StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
+    let fullResponse = '';
+    try {
+        await runFn((chunk) => renderer.onChunk(chunk), renderer);
+        fullResponse = renderer.finish();
+    }
+    catch (err) {
+        renderer.finish();
+        const msg = err instanceof Error ? err.message : String(err);
+        console.log(chalk_1.default.red(`\n❌ AI 响应失败: ${msg}`));
+    }
+    if (fullResponse) {
+        const { addToConversationHistory } = await Promise.resolve().then(() => __importStar(require('./ai/client')));
+        addToConversationHistory('user', question);
+        addToConversationHistory('assistant', fullResponse);
+    }
+}
 program
     .command('ai [question...]')
     .description('向 AI 提问')
@@ -175,29 +201,9 @@ program
         console.log(chalk_1.default.magenta('--- RUNNING WITH DUAL AGENT ENGINE (PLANNER + EXECUTOR) ---'));
         const { getConversationHistory } = await Promise.resolve().then(() => __importStar(require('./ai/client')));
         const runtime = new DualAgentRuntime(getConversationHistory());
-        // 与 AgentRuntime 路径一致：TTY 下走流式渲染并持久化对话历史（闭合默认路径的跨调用
-        // 多轮记忆）；管道/非 TTY 保持无状态、不污染历史。
-        const useStream = process.stdout.isTTY && !options.exec;
-        if (useStream) {
-            const { StreamMarkdownRenderer } = await Promise.resolve().then(() => __importStar(require('./utils/renderer')));
-            const ora = (await Promise.resolve().then(() => __importStar(require('ora')))).default;
-            const spinner = ora(chalk_1.default.cyan('AI 正在思考...')).start();
-            const renderer = new StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
-            let fullResponse = '';
-            try {
-                await runtime.run(question || '', (chunk) => renderer.onChunk(chunk), model, 'chat', renderer);
-                fullResponse = renderer.finish();
-            }
-            catch (err) {
-                renderer.finish();
-                const msg = err instanceof Error ? err.message : String(err);
-                console.log(chalk_1.default.red(`\n❌ AI 响应失败: ${msg}`));
-            }
-            if (fullResponse) {
-                const { addToConversationHistory } = await Promise.resolve().then(() => __importStar(require('./ai/client')));
-                addToConversationHistory('user', question || '');
-                addToConversationHistory('assistant', fullResponse);
-            }
+        // TTY 且非 --exec：流式渲染 + 持久化对话历史（跨调用多轮记忆）；否则保持无状态。
+        if (process.stdout.isTTY && !options.exec) {
+            await streamAndPersist(question || '', (onChunk, renderer) => runtime.run(question || '', onChunk, model, 'chat', renderer));
         }
         else {
             await runtime.run(question || '', undefined, model, options.exec ? 'command' : 'chat');
@@ -207,31 +213,10 @@ program
         const { AgentRuntime } = await Promise.resolve().then(() => __importStar(require('./agent/AgentRuntime')));
         const { getConversationHistory } = await Promise.resolve().then(() => __importStar(require('./ai/client')));
         const runtime = new AgentRuntime(getConversationHistory());
-        // 单轮 chat：在交互式终端里也走流式渲染（逐字显示回答），与交互模式体验一致；
-        // 管道 / 非 TTY 或 --exec 命令模式保持原样，避免流式的 ANSI 擦行重绘污染管道输出。
-        const useStream = process.stdout.isTTY && !options.exec;
-        if (useStream) {
-            const { StreamMarkdownRenderer } = await Promise.resolve().then(() => __importStar(require('./utils/renderer')));
-            const ora = (await Promise.resolve().then(() => __importStar(require('ora')))).default;
-            const spinner = ora(chalk_1.default.cyan('AI 正在思考...')).start();
-            const renderer = new StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
-            let fullResponse = '';
-            try {
-                await runtime.run(question || '', 'chat', (chunk) => renderer.onChunk(chunk), model, renderer);
-                fullResponse = renderer.finish();
-            }
-            catch (err) {
-                renderer.finish();
-                const msg = err instanceof Error ? err.message : String(err);
-                console.log(chalk_1.default.red(`\n❌ AI 响应失败: ${msg}`));
-            }
-            // 持久化到全局对话历史，让后续 yuangs ai 调用能接上（跨调用多轮记忆）。
-            // 仅 TTY 交互终端的一次性提问；管道/脚本走下面的非流式分支，保持无状态、不污染历史。
-            if (fullResponse) {
-                const { addToConversationHistory } = await Promise.resolve().then(() => __importStar(require('./ai/client')));
-                addToConversationHistory('user', question || '');
-                addToConversationHistory('assistant', fullResponse);
-            }
+        // TTY 且非 --exec：流式渲染 + 持久化对话历史（跨调用多轮记忆）；否则保持无状态，
+        // 避免 ANSI 擦行重绘污染管道输出。
+        if (process.stdout.isTTY && !options.exec) {
+            await streamAndPersist(question || '', (onChunk, renderer) => runtime.run(question || '', 'chat', onChunk, model, renderer));
         }
         else {
             console.log(chalk_1.default.magenta('--- RUNNING WITH NEW AGENT ENGINE ---'));
