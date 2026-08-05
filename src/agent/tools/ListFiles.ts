@@ -67,9 +67,13 @@ export class ListFiles implements Tool {
 
         return successResult(output);
       } catch (piErr: any) {
-        // pi ls 工具失败，回退到原生 fs.readdir
-        console.log(chalk.yellow(`⚠️ pi ls 工具失败，回退到原生列出: ${piErr.message}`));
-        return await this.fallbackList(targetPath, params);
+        // pi ls 工具失败，回退到原生 fs.readdir（显式提示降级）
+        console.log(chalk.yellow(`⚠️ pi ls 工具不可用，回退到原生列出: ${piErr.message}`));
+        const fbResult = await this.fallbackList(targetPath, params);
+        if (fbResult.success) {
+          return successResult(fbResult.output + '\n\n⚠️ (基础列出模式, 无自动排除)');
+        }
+        return fbResult;
       }
     } catch (error: any) {
       if (error.message?.includes('Access denied')) {

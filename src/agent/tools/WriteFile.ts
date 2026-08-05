@@ -15,6 +15,7 @@ import { ToolExecutionResult } from '../state';
 import { failResult, successResult } from './utils';
 import { resolveAndValidate } from './pathSafety';
 import { getAllowedCwd } from '../workdir';
+import { isGovernanceApproved, clearGovernanceApproved } from '../approval';
 import { BackupManager, previewDiffAndConfirm, getPiTools } from './piAdapter';
 import chalk from 'chalk';
 
@@ -52,12 +53,25 @@ export class WriteFile implements Tool {
       }
 
       // ─── Step 3: diff 预览 + 用户确认 ───
-      if (!skipDiff && !SKIP_CONFIRM) {
+      // 如果 governance 层已审批（require_approval → 运行时已确认），跳过重复 confirm
+      // 但仍显示 diff 预览（透明性）
+      if (!skipDiff && !SKIP_CONFIRM && !isGovernanceApproved()) {
         const { approved, diff } = await previewDiffAndConfirm(safePath, oldContent, newContent);
         if (!approved) {
           console.log(chalk.yellow('⚠️ 用户取消了写入操作'));
           return failResult('用户取消了写入操作');
         }
+      } else if (!skipDiff) {
+        // governance 已审批，仅显示 diff 预览不要求确认
+        try {
+          const { getPiEditDiff } = await import('./piAdapter');
+          const editDiff = await getPiEditDiff();
+          const { diff } = editDiff.generateDiffString(oldContent, newContent, 5);
+          console.log(chalk.cyan('\n📝 文件变更预览 (diff) [governance 已审批]:'));
+          console.log(chalk.gray('─'.repeat(60)));
+          console.log(chalk.gray(diff.slice(0, 500)));
+          console.log(chalk.gray('─'.repeat(60)));
+        } catch { /* diff 预览失败不影响写入 */ }
       }
 
       // ─── Step 4: 备份原始文件 ───
@@ -92,14 +106,14 @@ export class WriteFile implements Tool {
             [safePath]
           );
         } catch (piErr: any) {
-          // pi 工具失败，回退到原生 fs.writeFile
+          // pi 工具失败，回退到原生 fs.writeFile（显式提示降级）
           console.log(chalk.yellow(`⚠️ pi write 工具失败，回退到原生写入: ${piErr.message}`));
           await fs.mkdir(path.dirname(safePath), { recursive: true });
           await fs.writeFile(safePath, newContent, 'utf-8');
 
           BackupManager.clearBackup(safePath);
           const action = isExistingFile ? '覆盖' : '创建';
-          return successResult(`✅ ${action}文件成功: ${safePath}`, [safePath]);
+          return successResult(`✅ ${action}文件成功: ${safePath} (基础模式)`, [safePath]);
         }
       } catch (writeErr: any) {
         // 写入失败，尝试回滚
@@ -115,6 +129,8 @@ export class WriteFile implements Tool {
         return failResult(error.message);
       }
       return failResult(error.message);
+    } finally {
+      clearGovernanceApproved();
     }
   }
 }

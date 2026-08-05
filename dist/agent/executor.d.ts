@@ -24,7 +24,9 @@ export declare class ToolExecutor {
     };
     static getAvailableTools(): string[];
     private static getCapabilityName;
-    static execute(action: ProposedAction): Promise<ToolExecutionResult>;
+    static execute(action: ProposedAction, opts?: {
+        governanceApproved?: boolean;
+    }): Promise<ToolExecutionResult>;
     private static executeAction;
     private static executeTool;
     /**

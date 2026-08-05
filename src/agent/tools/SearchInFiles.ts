@@ -75,9 +75,13 @@ export class SearchInFiles implements Tool {
 
         return successResult(output);
       } catch (piErr: any) {
-        // pi grep 工具失败，回退到简单正则搜索
-        console.log(chalk.yellow(`⚠️ pi grep 工具失败，回退到内置搜索: ${piErr.message}`));
-        return await this.fallbackSearch(params.pattern, searchPath, params);
+        // pi grep 工具失败，回退到简单正则搜索（显式提示降级）
+        console.log(chalk.yellow(`⚠️ pi grep (ripgrep) 不可用，回退到内置正则搜索: ${piErr.message}`));
+        const fbResult = await this.fallbackSearch(params.pattern, searchPath, params);
+        if (fbResult.success) {
+          return successResult(fbResult.output + '\n\n⚠️ (基础搜索模式, 无 ripgrep 加速)');
+        }
+        return fbResult;
       }
     } catch (error: any) {
       if (error.message?.includes('Access denied')) {

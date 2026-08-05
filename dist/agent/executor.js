@@ -5,6 +5,7 @@ const toolCapability_1 = require("./toolCapability");
 const CapabilityLevel_1 = require("../core/capability/CapabilityLevel");
 const commandSemantics_1 = require("./commandSemantics");
 const workdir_1 = require("./workdir");
+const approval_1 = require("./approval");
 const tools_1 = require("./tools");
 // Initialize registry with all built-in tools
 const registry = new tools_1.ToolRegistry();
@@ -82,8 +83,12 @@ class ToolExecutor {
             default: return 'UNKNOWN';
         }
     }
-    static async execute(action) {
+    static async execute(action, opts) {
         const { type, payload } = action;
+        // 标记 governance 已审批，工具内 confirm() 将跳过
+        if (opts?.governanceApproved) {
+            (0, approval_1.setGovernanceApproved)(true);
+        }
         try {
             const result = await this.executeAction(type, payload);
             const truncated = this.maybeTruncate(result);

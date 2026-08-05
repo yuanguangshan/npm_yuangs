@@ -113,6 +113,12 @@ async function loadPiModules(): Promise<void> {
     }
   } catch (err: any) {
     _loadError = err.message || String(err);
+    // 显式警告：增强功能不可用
+    console.log(chalk.yellow(
+      `\n⚠️  pi-coding-agent 增强功能不可用: ${_loadError}\n` +
+      `    原因可能是: 未安装 @earendil-works/pi-coding-agent, 或 Node 版本 < 22.19\n` +
+      `    工具将回退到基础模式 (无 diff 预览/ripgrep/备份回滚)\n`
+    ));
     throw new Error(`pi-coding-agent 加载失败: ${_loadError}`);
   }
 }
@@ -123,6 +129,23 @@ async function loadPiModules(): Promise<void> {
 export async function getPiTools(): Promise<PiToolModule> {
   await loadPiModules();
   return _toolsModule!;
+}
+
+/**
+ * 检查 pi-coding-agent 增强功能是否可用。
+ * 不会触发加载——仅检查当前状态。
+ */
+export function isPiAvailable(): boolean {
+  return _toolsModule !== null && _loadError === null;
+}
+
+/**
+ * 获取 pi 不可用时的降级提示信息。
+ */
+export function getPiDegradedMessage(): string {
+  return _loadError
+    ? `⚠️ pi 增强功能不可用 (${_loadError})，使用基础模式`
+    : '';
 }
 
 /**

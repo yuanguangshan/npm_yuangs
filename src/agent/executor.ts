@@ -3,6 +3,7 @@ import { TOOL_CAPABILITY_MAP, canExecuteTool, getToolCapabilityRequirement } fro
 import { CapabilityLevel } from '../core/capability/CapabilityLevel';
 import { analyzeCommand, type CommandAnalysis } from './commandSemantics';
 import { setAllowedCwd, getAllowedCwd } from './workdir';
+import { setGovernanceApproved } from './approval';
 import {
   ToolRegistry,
   ReadFile, ReadFileLines, ReadFileLinesFromEnd,
@@ -101,8 +102,13 @@ export class ToolExecutor {
     }
   }
 
-  static async execute(action: ProposedAction): Promise<ToolExecutionResult> {
+  static async execute(action: ProposedAction, opts?: { governanceApproved?: boolean }): Promise<ToolExecutionResult> {
     const { type, payload } = action;
+
+    // 标记 governance 已审批，工具内 confirm() 将跳过
+    if (opts?.governanceApproved) {
+      setGovernanceApproved(true);
+    }
 
     try {
       const result = await this.executeAction(type, payload);
