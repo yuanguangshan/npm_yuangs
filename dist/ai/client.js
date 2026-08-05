@@ -55,7 +55,8 @@ async function askAI(prompt, model) {
     try {
         const response = await axios_1.default.post(url, data, { headers });
         const content = response.data?.choices?.[0]?.message?.content;
-        return content || '';
+        // 剥离 opencode 后端注入的 "[opencode] " 前缀
+        return content ? content.replace(/^\[opencode\]\s*/, '') : '';
     }
     catch (error) {
         // Safely extract error message without accessing circular references
@@ -103,6 +104,7 @@ async function callAI_Stream(messages, model, onChunk) {
     });
     return new Promise((resolve, reject) => {
         let buffer = '';
+        let opencodePrefixStripped = false;
         response.data.on('data', (chunk) => {
             buffer += chunk.toString();
             let lines = buffer.split('\n');
@@ -117,9 +119,15 @@ async function callAI_Stream(messages, model, onChunk) {
                     }
                     try {
                         const parsed = JSON.parse(data);
-                        const content = parsed.choices?.[0]?.delta?.content || '';
+                        let content = parsed.choices?.[0]?.delta?.content || '';
                         if (content) {
-                            onChunk(content);
+                            // 剥离首个 chunk 的 "[opencode] " 前缀（opencode 后端注入的噪声）
+                            if (!opencodePrefixStripped) {
+                                content = content.replace(/^\[opencode\]\s*/, '');
+                                opencodePrefixStripped = true;
+                            }
+                            if (content)
+                                onChunk(content);
                         }
                     }
                     catch (e) { }

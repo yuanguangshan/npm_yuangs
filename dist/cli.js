@@ -203,7 +203,11 @@ program
             });
         }
         else {
-            const answer = await askAI(question || '', model);
+            // opencode 后端非流式返回 500，非 TTY 也走流式（累积后输出，避免 ANSI 重绘污染管道）
+            const messages = [...getConversationHistory(), { role: 'user', content: question || '' }];
+            let raw = '';
+            await callAI_Stream(messages, model, (chunk) => { raw += chunk; });
+            const answer = raw.trim();
             if (answer)
                 console.log(answer);
         }

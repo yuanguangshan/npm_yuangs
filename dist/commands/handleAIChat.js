@@ -809,16 +809,24 @@ async function askOnceStream(question, model) {
     try {
         await (0, client_1.callAI_Stream)(messages, model, (chunk) => {
             raw += chunk;
-            const head = raw.trimStart();
+            // 剥离 opencode 后端注入的 "[opencode] " 前缀（累积 replace，跨 chunk 安全）
+            const cleaned = raw.replace(/^\[opencode\]\s*/, '');
+            const head = cleaned.trimStart();
+            // JSON 信封判定：{ / ``` 开头，或协议字段。[opencode] 已剥离，不再用方括号前缀判断——
+            // 否则 "[opencode] 纯文本" 会被误判为 JSON，extractStreamableContent 找不到 "content" 字段
+            // 永远返回 null，导致整段内容不下发（表现为空响应）。
             const isJsonEnvelope = head.startsWith('{')
-                || /^\[[^\]]*\]/.test(head)
+                || head.startsWith('```')
                 || head.includes('"action_type"')
                 || head.includes('"is_done"');
             if (!isJsonEnvelope) {
-                renderer.onChunk(chunk);
+                if (cleaned.length > emitted) {
+                    renderer.onChunk(cleaned.slice(emitted));
+                    emitted = cleaned.length;
+                }
                 return;
             }
-            const content = (0, llm_1.extractStreamableContent)(raw);
+            const content = (0, llm_1.extractStreamableContent)(cleaned);
             if (content === null)
                 return;
             if (content.length > emitted) {
@@ -826,6 +834,22 @@ async function askOnceStream(question, model) {
                 emitted = content.length;
             }
         });
+        // 流式空响应降级：模型偶发流式返回空 content（HTTP 200/finish=stop 但 delta 全空，
+        // 表现为 raw 累积为空）。非流式 askAI 通常正常——同 LLMCaller 的兜底
+        // （agent 路径已有，direct 路径补齐），避免 -d 模式偶发"不回复"。
+        if (!raw.trim()) {
+            try {
+                const singlePrompt = messages.map(m => `[${m.role}] ${m.content}`).join('\n\n');
+                const fallback = await (0, client_1.askAI)(singlePrompt, model);
+                if (fallback && fallback.trim()) {
+                    console.log(chalk_1.default.gray(' ↺ 流式响应为空，已自动降级非流式重试'));
+                    renderer.onChunk(fallback);
+                }
+            }
+            catch {
+                // 降级也失败则保持空
+            }
+        }
         const fullResponse = renderer.finish();
         lastAIOutput = fullResponse;
         (0, client_1.addToConversationHistory)('user', question);
