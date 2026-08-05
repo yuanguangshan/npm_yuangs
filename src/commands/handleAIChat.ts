@@ -680,14 +680,18 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
                 ? trimmed
                 : contextAssembler.assemble(contextStore, trimmed);
 
-            const gitContext = await getGitContext();
-
-            if (gitContext) {
-                finalPrompt = `
+            // 按需注入 git diff：只在问题可能涉及代码/改动时带上，简单问答不注入，
+            // 避免每轮把几千字符的 diff 塞进 user message（仓库一有改动就会触发）。
+            // 模型需要时仍可主动调用 git_status / git_diff 工具查看。
+            if (/改动|修改|变更|diff|代码|文件|git|提交|commit|bug|修复|fix|重构|review|审查|报错|错误|error/i.test(trimmed)) {
+                const gitContext = await getGitContext();
+                if (gitContext) {
+                    finalPrompt = `
 ${gitContext}
 
 ${finalPrompt}
 `;
+                }
             }
 
             try {
