@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import { LLMAdapter } from "./llmAdapter";
+import { askAI } from "../ai/client";
 import { AIError } from "./llm";
 import { GovernanceService } from "./governance";
 import { SmartContextManager } from "./smartContextManager";
@@ -76,6 +77,23 @@ export class LLMCaller {
     try {
       const thought = await LLMAdapter.think(messages, mode as any, onChunk, model, enhancedPrompt, this.context);
       if (!thought.raw || thought.raw.trim() === '') {
+        // 流式路径偶发返回空正文（HTTP 200、finish_reason=stop，但 delta.content 全程为空）。
+        // 非流式路径读取 message.content 通常正常，故降级用 askAI 重试一次兜底，
+        // 避免模型偶发空输出直接变成"空响应"（runLLM 的 router 分支对空 rawText 不兜底，
+        // 且本方法原先 return null 不会触发上层 processInteraction 的重试机制）。
+        try {
+          const singlePrompt = messages.map(m => `[${m.role}] ${m.content}`).join('\n\n');
+          const fallback = await askAI(singlePrompt, model);
+          if (fallback && fallback.trim()) {
+            console.log(chalk.gray(' ↺ 流式响应为空，已自动降级非流式重试'));
+            // 降级内容直接推给渲染器：交互式流式下 externalRenderer 已存在，
+            // handleAnswer 不会再展示，故不会重复输出。
+            onChunk?.(fallback);
+            return LLMAdapter.parseThought(fallback);
+          }
+        } catch {
+          // 降级也失败，落到下方的空响应提示
+        }
         console.log(chalk.red('\n⚠️ AI 返回了空响应，请检查网络连接或模型配置。'));
         return null;
       }

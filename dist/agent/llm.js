@@ -142,7 +142,15 @@ async function runLLM({ prompt, model, stream, onChunk, bypassRouter }) {
         ? (chunk) => {
             streamRaw += chunk;
             const head = streamRaw.trimStart();
-            if (!head.startsWith('{') && !head.startsWith('```')) {
+            // JSON 信封判定：{ / ``` 开头，或带方括号前缀（如 aiproxy opencode 后端注入的 "[opencode] "），
+            // 或已出现协议字段。仅当确定非 JSON 时才纯文本直通——否则前缀会让 JSON 误走直通，
+            // 把原始 JSON 打到终端。
+            const isJsonEnvelope = head.startsWith('{')
+                || head.startsWith('```')
+                || /^\[[^\]]*\]/.test(head)
+                || head.includes('"action_type"')
+                || head.includes('"is_done"');
+            if (!isJsonEnvelope) {
                 onChunk?.(chunk, 'thought');
                 return;
             }
