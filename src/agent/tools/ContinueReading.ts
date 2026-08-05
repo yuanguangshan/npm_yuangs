@@ -3,7 +3,7 @@ import { Tool, ToolParameter } from './types';
 import { ToolExecutionResult } from '../state';
 import { failResult, successResult, getReadPosition, setReadPosition, clearReadPosition, getMaxOutputLength } from './utils';
 import { resolveAndValidate } from './pathSafety';
-import { ToolExecutor } from '../executor';
+import { getAllowedCwd } from '../workdir';
 
 export class ContinueReading implements Tool {
   name = 'continue_reading';
@@ -16,7 +16,7 @@ export class ContinueReading implements Tool {
 
   async execute(params: Record<string, any>): Promise<ToolExecutionResult> {
     try {
-      const safePath = await resolveAndValidate(params.path, ToolExecutor.getAllowedCwd());
+      const safePath = await resolveAndValidate(params.path, getAllowedCwd());
       let startPos = params.from_position;
 
       if (startPos === undefined) {

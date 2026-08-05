@@ -29,3 +29,6 @@ export { GitDiff } from './GitDiff';
 export { GitLog } from './GitLog';
 export { ShellCmd } from './ShellCmd';
 export { CodeDiff } from './CodeDiff';
+
+// pi-coding-agent 适配层
+export { BackupManager, previewDiffAndConfirm, getPiTools, getPiEditDiff, adaptPiTool } from './piAdapter';

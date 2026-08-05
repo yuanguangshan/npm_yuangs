@@ -4,7 +4,7 @@ import { Tool, ToolParameter } from './types';
 import { ToolExecutionResult } from '../state';
 import { failResult, successResult } from './utils';
 import { resolveAndValidate } from './pathSafety';
-import { ToolExecutor } from '../executor';
+import { getAllowedCwd } from '../workdir';
 
 export class ListDirectoryTree implements Tool {
   name = 'list_directory_tree';
@@ -23,7 +23,7 @@ export class ListDirectoryTree implements Tool {
     const excludePatterns = params.exclude_patterns || ['node_modules', '.git', 'dist', 'build'];
 
     try {
-      const safeDir = await resolveAndValidate(dirPath, ToolExecutor.getAllowedCwd());
+      const safeDir = await resolveAndValidate(dirPath, getAllowedCwd());
       const tree = await this.buildTree(safeDir, maxDepth, includeFiles, excludePatterns, 0);
       return successResult(tree);
     } catch (error: any) {

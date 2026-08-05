@@ -3,7 +3,7 @@ import { Tool, ToolParameter } from './types';
 import { ToolExecutionResult } from '../state';
 import { failResult, successResult } from './utils';
 import { resolveAndValidate } from './pathSafety';
-import { ToolExecutor } from '../executor';
+import { getAllowedCwd } from '../workdir';
 
 export class ReadFileLinesFromEnd implements Tool {
   name = 'read_file_lines_from_end';
@@ -17,7 +17,7 @@ export class ReadFileLinesFromEnd implements Tool {
 
   async execute(params: Record<string, any>): Promise<ToolExecutionResult> {
     try {
-      const safePath = await resolveAndValidate(params.path, ToolExecutor.getAllowedCwd());
+      const safePath = await resolveAndValidate(params.path, getAllowedCwd());
       const content = await fs.readFile(safePath, params.encoding || 'utf-8');
       const lines = String(content).split('\n');
       const totalLines = lines.length;

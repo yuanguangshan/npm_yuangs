@@ -2,6 +2,7 @@ import { ProposedAction, ToolExecutionResult } from './state';
 import { TOOL_CAPABILITY_MAP, canExecuteTool, getToolCapabilityRequirement } from './toolCapability';
 import { CapabilityLevel } from '../core/capability/CapabilityLevel';
 import { analyzeCommand, type CommandAnalysis } from './commandSemantics';
+import { setAllowedCwd, getAllowedCwd } from './workdir';
 import {
   ToolRegistry,
   ReadFile, ReadFileLines, ReadFileLinesFromEnd,
@@ -42,7 +43,6 @@ registry.registerAll([
 export class ToolExecutor {
   private static readonly MAX_OUTPUT_LENGTH = 2000;
   private static currentCapabilityLevel = CapabilityLevel.STRUCTURAL;
-  private static allowedCwd: string = process.cwd();
 
   /**
    * Expose the registry for external registration of custom tools.
@@ -52,15 +52,15 @@ export class ToolExecutor {
   }
 
   static setAllowedCwd(cwd: string): void {
-    this.allowedCwd = cwd;
+    setAllowedCwd(cwd);
   }
 
   static getAllowedCwd(): string {
-    return this.allowedCwd;
+    return getAllowedCwd();
   }
 
   private static analyzeCommandSafety(command: string): CommandAnalysis {
-    return analyzeCommand(command, this.allowedCwd);
+    return analyzeCommand(command, getAllowedCwd());
   }
 
   static setCapabilityLevel(level: CapabilityLevel): void {

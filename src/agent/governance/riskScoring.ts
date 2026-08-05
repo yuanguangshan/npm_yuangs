@@ -91,7 +91,9 @@ const SENSITIVE_PATH_PATTERNS = [
  */
 const HIGH_RISK_TOOLS = [
   'write_file',
+  'append_file',
   'delete_file',
+  'edit_file',
   'execute_shell',
   'modify_system_config',
 ];
@@ -101,8 +103,10 @@ const HIGH_RISK_TOOLS = [
  */
 const MEDIUM_RISK_TOOLS = [
   'search_files',
+  'search_in_files',
   'read_file',
   'list_directory',
+  'list_files',
 ];
 
 /**
@@ -174,7 +178,17 @@ export class RiskScoringModel {
 
     // 确定风险等级和建议操作
     const level = this.determineLevel(finalScore);
-    const suggestedAction = this.determineAction(finalScore, userTrust);
+    let suggestedAction = this.determineAction(finalScore, userTrust);
+
+    // 强制规则：写入类工具始终需要至少 human-review，不论风险分数如何
+    if (action.type === 'tool_call') {
+      const toolParams = action.payload as unknown as ToolCallPayload;
+      const toolName = toolParams.tool_name;
+      const writeTools = ['write_file', 'append_file', 'delete_file', 'edit_file'];
+      if (writeTools.includes(toolName) && suggestedAction === 'auto-allow') {
+        suggestedAction = 'human-review';
+      }
+    }
 
     return {
       score: Math.round(finalScore),
@@ -205,8 +219,14 @@ export class RiskScoringModel {
         score = 0.05;
         reason = '低风险工具调用';
       } else if (HIGH_RISK_TOOLS.includes(toolName)) {
-        score = 0.35;
-        reason = '高风险工具调用';
+        // 写入类工具提高基础风险分数，确保不会 auto-allow
+        if (toolName === 'write_file' || toolName === 'append_file' || toolName === 'delete_file' || toolName === 'edit_file') {
+          score = 0.55;
+          reason = '高风险写入工具调用（强制审批）';
+        } else {
+          score = 0.35;
+          reason = '高风险工具调用';
+        }
       } else if (MEDIUM_RISK_TOOLS.includes(toolName)) {
         score = 0.15;
         reason = '中风险工具调用';

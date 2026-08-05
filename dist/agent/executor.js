@@ -4,6 +4,7 @@ exports.ToolExecutor = void 0;
 const toolCapability_1 = require("./toolCapability");
 const CapabilityLevel_1 = require("../core/capability/CapabilityLevel");
 const commandSemantics_1 = require("./commandSemantics");
+const workdir_1 = require("./workdir");
 const tools_1 = require("./tools");
 // Initialize registry with all built-in tools
 const registry = new tools_1.ToolRegistry();
@@ -33,7 +34,6 @@ registry.registerAll([
 class ToolExecutor {
     static MAX_OUTPUT_LENGTH = 2000;
     static currentCapabilityLevel = CapabilityLevel_1.CapabilityLevel.STRUCTURAL;
-    static allowedCwd = process.cwd();
     /**
      * Expose the registry for external registration of custom tools.
      */
@@ -41,13 +41,13 @@ class ToolExecutor {
         return registry;
     }
     static setAllowedCwd(cwd) {
-        this.allowedCwd = cwd;
+        (0, workdir_1.setAllowedCwd)(cwd);
     }
     static getAllowedCwd() {
-        return this.allowedCwd;
+        return (0, workdir_1.getAllowedCwd)();
     }
     static analyzeCommandSafety(command) {
-        return (0, commandSemantics_1.analyzeCommand)(command, this.allowedCwd);
+        return (0, commandSemantics_1.analyzeCommand)(command, (0, workdir_1.getAllowedCwd)());
     }
     static setCapabilityLevel(level) {
         this.currentCapabilityLevel = level;

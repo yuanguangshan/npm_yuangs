@@ -14,10 +14,14 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.RiskScoringModel = exports.defaultRiskScoringModel = void 0;
 // Original governance module exports
 __exportStar(require("./bridge"), exports);
 __exportStar(require("./core"), exports);
 __exportStar(require("./ledger"), exports);
+var riskScoring_1 = require("./riskScoring");
+Object.defineProperty(exports, "defaultRiskScoringModel", { enumerable: true, get: function () { return riskScoring_1.defaultRiskScoringModel; } });
+Object.defineProperty(exports, "RiskScoringModel", { enumerable: true, get: function () { return riskScoring_1.RiskScoringModel; } });
 // Note: New causal tracking modules are in src/engine/agent/governance/
 // These are imported directly when needed to avoid circular dependencies
 //# sourceMappingURL=index.js.map

@@ -3,7 +3,7 @@ import { Tool, ToolParameter } from './types';
 import { ToolExecutionResult } from '../state';
 import { failResult, successResult, getFriendlyError } from './utils';
 import { resolveAndValidate } from './pathSafety';
-import { ToolExecutor } from '../executor';
+import { getAllowedCwd } from '../workdir';
 
 export class ReadFile implements Tool {
   name = 'read_file';
@@ -14,7 +14,7 @@ export class ReadFile implements Tool {
 
   async execute(params: Record<string, any>): Promise<ToolExecutionResult> {
     try {
-      const safePath = await resolveAndValidate(params.path, ToolExecutor.getAllowedCwd());
+      const safePath = await resolveAndValidate(params.path, getAllowedCwd());
       const content = await fs.readFile(safePath, 'utf-8');
       return successResult(content, [safePath]);
     } catch (error: any) {

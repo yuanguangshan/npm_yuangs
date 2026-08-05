@@ -3,7 +3,7 @@ import { Tool, ToolParameter } from './types';
 import { ToolExecutionResult } from '../state';
 import { failResult, successResult, formatBytes } from './utils';
 import { resolveAndValidate } from './pathSafety';
-import { ToolExecutor } from '../executor';
+import { getAllowedCwd } from '../workdir';
 
 export class FileInfo implements Tool {
   name = 'file_info';
@@ -14,7 +14,7 @@ export class FileInfo implements Tool {
 
   async execute(params: Record<string, any>): Promise<ToolExecutionResult> {
     try {
-      const safePath = await resolveAndValidate(params.path, ToolExecutor.getAllowedCwd());
+      const safePath = await resolveAndValidate(params.path, getAllowedCwd());
       const stat = await fs.stat(safePath);
       const info = {
         path: safePath,

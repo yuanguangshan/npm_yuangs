@@ -3,7 +3,7 @@ import { Tool, ToolParameter } from './types';
 import { ToolExecutionResult } from '../state';
 import { failResult, successResult } from './utils';
 import { resolveAndValidate } from './pathSafety';
-import { ToolExecutor } from '../executor';
+import { getAllowedCwd } from '../workdir';
 
 export class AnalyzeDependencies implements Tool {
   name = 'analyze_dependencies';
@@ -17,7 +17,7 @@ export class AnalyzeDependencies implements Tool {
     const targetPath = params.path;
 
     try {
-      const safePath = await resolveAndValidate(targetPath, ToolExecutor.getAllowedCwd());
+      const safePath = await resolveAndValidate(targetPath, getAllowedCwd());
       const stat = await fs.stat(safePath);
       let files: string[] = [];
 

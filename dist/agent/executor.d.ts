@@ -8,7 +8,6 @@ import { ToolRegistry } from './tools';
 export declare class ToolExecutor {
     private static readonly MAX_OUTPUT_LENGTH;
     private static currentCapabilityLevel;
-    private static allowedCwd;
     /**
      * Expose the registry for external registration of custom tools.
      */

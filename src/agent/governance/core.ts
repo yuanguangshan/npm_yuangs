@@ -12,6 +12,53 @@ export interface RiskEntry {
     actionType: string;
 }
 
+export interface ProtectedPathConfig {
+    /** 受保护路径模式列表（正则） */
+    patterns: string[];
+    /** 保护级别 */
+    level: 'read-only' | 'require-approval' | 'deny';
+    /** 说明 */
+    reason?: string;
+}
+
+/**
+ * 默认受保护路径配置
+ *
+ * 防止 AI agent 意外修改关键文件：
+ *  - package.json / package-lock.json → 依赖管理需人工确认
+ *  - .env / .env.* → 环境变量含敏感信息
+ *  - *.pem / *.key → 证书和私钥
+ *  - .git/ → Git 内部文件
+ *  - node_modules/ → 依赖目录
+ *  - tsconfig.json → TypeScript 配置需人工确认
+ */
+export const DEFAULT_PROTECTED_PATHS: ProtectedPathConfig[] = [
+    { patterns: ['package\\.json$', 'package-lock\\.json$'], level: 'require-approval', reason: '依赖管理文件' },
+    { patterns: ['\\.env$', '\\.env\\..*$'], level: 'deny', reason: '环境变量文件含敏感信息' },
+    { patterns: ['\\.pem$', '\\.key$', '\\.pfx$', '\\.crt$'], level: 'deny', reason: '证书/私钥文件' },
+    { patterns: ['^\\.git/', '/\\.git/'], level: 'deny', reason: 'Git 内部文件' },
+    { patterns: ['^node_modules/', '/node_modules/'], level: 'deny', reason: '依赖目录不应直接修改' },
+    { patterns: ['tsconfig\\.json$'], level: 'require-approval', reason: 'TypeScript 配置文件' },
+    { patterns: ['\\.ssh/'], level: 'deny', reason: 'SSH 密钥目录' },
+];
+
+/**
+ * 检查路径是否受保护
+ */
+export function checkProtectedPath(
+    filePath: string,
+    configs: ProtectedPathConfig[] = DEFAULT_PROTECTED_PATHS
+): { protected: boolean; level?: string; reason?: string } {
+    for (const config of configs) {
+        for (const pattern of config.patterns) {
+            if (new RegExp(pattern).test(filePath)) {
+                return { protected: true, level: config.level, reason: config.reason };
+            }
+        }
+    }
+    return { protected: false };
+}
+
 export function evaluateProposal(
     action: ProposedAction,
     rules: PolicyRule[],
@@ -22,9 +69,27 @@ export function evaluateProposal(
     // 内置低风险工具自动批准规则
     if (action.type === 'tool_call') {
         const toolName = (action.payload as unknown as ToolCallPayload).tool_name;
-        const lowRiskTools = ['read_file', 'list_files', 'web_search'];
+        const lowRiskTools = ['read_file', 'list_files', 'web_search', 'search_in_files'];
         if (lowRiskTools.includes(toolName)) {
             return { effect: 'allow', reason: `Built-in allow for low-risk tool: ${toolName}` };
+        }
+
+        // 写入类工具始终需要审批（即使有用户自定义规则也优先）
+        const writeTools = ['write_file', 'append_file', 'delete_file', 'edit_file'];
+        if (writeTools.includes(toolName)) {
+            // 检查受保护路径
+            const params = (action.payload as unknown as ToolCallPayload).parameters as Record<string, unknown>;
+            const targetPath = (params?.path || params?.file || '') as string;
+            if (targetPath) {
+                const protection = checkProtectedPath(targetPath);
+                if (protection.protected) {
+                    if (protection.level === 'deny') {
+                        return { effect: 'deny', reason: `受保护路径: ${protection.reason}` };
+                    }
+                    return { effect: 'require_approval', reason: `受保护路径需审批: ${protection.reason}` };
+                }
+            }
+            return { effect: 'require_approval', reason: `写入操作需确认: ${toolName}` };
         }
     }
 

@@ -4,7 +4,7 @@ import { Tool, ToolParameter } from './types';
 import { ToolExecutionResult } from '../state';
 import { failResult, successResult } from './utils';
 import { resolveAndValidate } from './pathSafety';
-import { ToolExecutor } from '../executor';
+import { getAllowedCwd } from '../workdir';
 
 const execAsync = promisify(exec);
 
@@ -25,7 +25,7 @@ export class SearchSymbol implements Tool {
     const filePattern = params.file_pattern;
 
     try {
-      const safePath = await resolveAndValidate(searchPath, ToolExecutor.getAllowedCwd());
+      const safePath = await resolveAndValidate(searchPath, getAllowedCwd());
       let pattern = symbol;
       switch (symbolType) {
         case 'function':
