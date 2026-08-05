@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import ora from 'ora';
 import readline from 'readline';
 import { callAI_Stream, getConversationHistory, addToConversationHistory, clearConversationHistory, getUserConfig } from '../ai/client';
+import { extractStreamableContent } from '../agent/llm';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
@@ -254,12 +255,17 @@ async function handleDirectoryReference(input: string): Promise<string> {
     }
 }
 
-export async function handleAIChat(initialQuestion: string | null, model?: string) {
+export async function handleAIChat(initialQuestion: string | null, model?: string, direct: boolean = false) {
     // 初始化 AgentRuntime (v2.0 引擎)
     const { AgentRuntime } = await import('../agent/AgentRuntime');
     const runtime = new AgentRuntime(getConversationHistory());
 
     const processInteraction = async (question: string) => {
+        // --direct: 跳过 agent，直连 callAI_Stream（纯文本，无 JSON 协议/工具）
+        if (direct) {
+            await askOnceStream(question, model);
+            return;
+        }
         const spinner = ora(chalk.cyan('AI 正在思考...')).start();
         const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
 
@@ -687,6 +693,10 @@ ${finalPrompt}
             try {
                 rl.pause();
 
+                if (direct) {
+                    // --direct: 跳过 agent，直连 callAI_Stream（纯文本，无 JSON 协议/工具）
+                    await askOnceStream(finalPrompt, model);
+                } else {
                 // 使用 AgentRuntime 执行提问
                 const spinner = ora(chalk.cyan('AI 正在思考...')).start();
                 const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
@@ -701,6 +711,7 @@ ${finalPrompt}
                 // 同步上下文到全局历史（为了兼容性）
                 addToConversationHistory('user', finalPrompt);
                 addToConversationHistory('assistant', fullResponse);
+                }
             } catch (err: unknown) {
                 const message = err instanceof Error ? err.message : String(err);
                 console.error(chalk.red(`\n[AI execution error]: ${message}`));
@@ -815,17 +826,42 @@ export async function processPipelineSegment(
 }
 
 async function askOnceStream(question: string, model?: string) {
-    const messages = [...getConversationHistory()];
-    messages.push({ role: 'user', content: question });
+    // direct 模式：清理 history 中可能残留的 JSON 信封（旧版 agent 存的 "[opencode] {json}"），
+    // 发纯文本，避免模型延续 JSON 格式输出。
+    const messages = [
+        ...getConversationHistory().map(m => {
+            if (m.role === 'assistant' && m.content) {
+                const extracted = extractStreamableContent(m.content);
+                if (extracted && extracted.length > 0) return { ...m, content: extracted };
+            }
+            return m;
+        }),
+        { role: 'user' as const, content: question }
+    ];
 
     const spinner = ora(chalk.cyan('AI 正在思考...')).start();
-
-    // 初始化渲染器
     const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
+
+    // direct 不注入 chat 协议，但 opencode 后端流式可能仍输出 "[opencode] {json}"，
+    // 这里提取 content 正文（纯文本则直通），避免原始 JSON 打到终端。
+    let raw = '';
+    let emitted = 0;
 
     try {
         await callAI_Stream(messages, model, (chunk) => {
-            renderer.onChunk(chunk);
+            raw += chunk;
+            const head = raw.trimStart();
+            const isJsonEnvelope = head.startsWith('{')
+                || /^\[[^\]]*\]/.test(head)
+                || head.includes('"action_type"')
+                || head.includes('"is_done"');
+            if (!isJsonEnvelope) { renderer.onChunk(chunk); return; }
+            const content = extractStreamableContent(raw);
+            if (content === null) return;
+            if (content.length > emitted) {
+                renderer.onChunk(content.slice(emitted));
+                emitted = content.length;
+            }
         });
 
         const fullResponse = renderer.finish();

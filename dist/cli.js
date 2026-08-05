@@ -145,6 +145,7 @@ program
     .command('ai [question...]')
     .description('向 AI 提问')
     .option('-e, --exec', '生成并执行 Linux 命令')
+    .option('-d, --direct', '直连 AI（跳过 agent 协议，纯文本问答）')
     .option('-m, --model <model>', '指定 AI 模型')
     .option('-p', '使用 Pro 模型')
     .option('-f', '使用 Flash 模型')
@@ -189,7 +190,23 @@ program
         }
     }
     if (!question && !stdinData) {
-        await (0, handleAIChat_1.handleAIChat)(null, model);
+        await (0, handleAIChat_1.handleAIChat)(null, model, options.direct);
+        return;
+    }
+    // --direct: 跳过 agent 引擎直连 AI（纯文本问答，无 JSON 协议/工具/policy）
+    if (options.direct) {
+        const { callAI_Stream, askAI, getConversationHistory } = await Promise.resolve().then(() => __importStar(require('./ai/client')));
+        if (process.stdout.isTTY && !options.exec) {
+            await streamAndPersist(question || '', async (onChunk) => {
+                const messages = [...getConversationHistory(), { role: 'user', content: question || '' }];
+                await callAI_Stream(messages, model, onChunk);
+            });
+        }
+        else {
+            const answer = await askAI(question || '', model);
+            if (answer)
+                console.log(answer);
+        }
         return;
     }
     const isPlannerEnabled = options.planner || (options.noPlanner !== true && PreferencesManager.getPreference('autoConfirm') === false);

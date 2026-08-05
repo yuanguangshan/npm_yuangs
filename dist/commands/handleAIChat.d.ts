@@ -1,6 +1,6 @@
 import readline from 'readline';
 import { ContextStore } from './context';
-export declare function handleAIChat(initialQuestion: string | null, model?: string): Promise<void>;
+export declare function handleAIChat(initialQuestion: string | null, model?: string, direct?: boolean): Promise<void>;
 /**
  * 管道流水线执行核心引擎
  */

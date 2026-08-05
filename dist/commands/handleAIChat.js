@@ -43,6 +43,7 @@ const chalk_1 = __importDefault(require("chalk"));
 const ora_1 = __importDefault(require("ora"));
 const readline_1 = __importDefault(require("readline"));
 const client_1 = require("../ai/client");
+const llm_1 = require("../agent/llm");
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const fileReader_1 = require("../core/fileReader");
@@ -245,11 +246,16 @@ async function handleDirectoryReference(input) {
         return question;
     }
 }
-async function handleAIChat(initialQuestion, model) {
+async function handleAIChat(initialQuestion, model, direct = false) {
     // 初始化 AgentRuntime (v2.0 引擎)
     const { AgentRuntime } = await Promise.resolve().then(() => __importStar(require('../agent/AgentRuntime')));
     const runtime = new AgentRuntime((0, client_1.getConversationHistory)());
     const processInteraction = async (question) => {
+        // --direct: 跳过 agent，直连 callAI_Stream（纯文本，无 JSON 协议/工具）
+        if (direct) {
+            await askOnceStream(question, model);
+            return;
+        }
         const spinner = (0, ora_1.default)(chalk_1.default.cyan('AI 正在思考...')).start();
         const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
         // 带重试的执行
@@ -659,17 +665,23 @@ ${finalPrompt}
             }
             try {
                 rl.pause();
-                // 使用 AgentRuntime 执行提问
-                const spinner = (0, ora_1.default)(chalk_1.default.cyan('AI 正在思考...')).start();
-                const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
-                await runtime.run(finalPrompt, 'chat', (chunk) => {
-                    renderer.onChunk(chunk);
-                }, model, renderer);
-                const fullResponse = renderer.finish();
-                lastAIOutput = fullResponse;
-                // 同步上下文到全局历史（为了兼容性）
-                (0, client_1.addToConversationHistory)('user', finalPrompt);
-                (0, client_1.addToConversationHistory)('assistant', fullResponse);
+                if (direct) {
+                    // --direct: 跳过 agent，直连 callAI_Stream（纯文本，无 JSON 协议/工具）
+                    await askOnceStream(finalPrompt, model);
+                }
+                else {
+                    // 使用 AgentRuntime 执行提问
+                    const spinner = (0, ora_1.default)(chalk_1.default.cyan('AI 正在思考...')).start();
+                    const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
+                    await runtime.run(finalPrompt, 'chat', (chunk) => {
+                        renderer.onChunk(chunk);
+                    }, model, renderer);
+                    const fullResponse = renderer.finish();
+                    lastAIOutput = fullResponse;
+                    // 同步上下文到全局历史（为了兼容性）
+                    (0, client_1.addToConversationHistory)('user', finalPrompt);
+                    (0, client_1.addToConversationHistory)('assistant', fullResponse);
+                }
             }
             catch (err) {
                 const message = err instanceof Error ? err.message : String(err);
@@ -770,14 +782,44 @@ async function processPipelineSegment(segment, upstreamData, isLast, rl, process
     return segment;
 }
 async function askOnceStream(question, model) {
-    const messages = [...(0, client_1.getConversationHistory)()];
-    messages.push({ role: 'user', content: question });
+    // direct 模式：清理 history 中可能残留的 JSON 信封（旧版 agent 存的 "[opencode] {json}"），
+    // 发纯文本，避免模型延续 JSON 格式输出。
+    const messages = [
+        ...(0, client_1.getConversationHistory)().map(m => {
+            if (m.role === 'assistant' && m.content) {
+                const extracted = (0, llm_1.extractStreamableContent)(m.content);
+                if (extracted && extracted.length > 0)
+                    return { ...m, content: extracted };
+            }
+            return m;
+        }),
+        { role: 'user', content: question }
+    ];
     const spinner = (0, ora_1.default)(chalk_1.default.cyan('AI 正在思考...')).start();
-    // 初始化渲染器
     const renderer = new renderer_1.StreamMarkdownRenderer(chalk_1.default.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
+    // direct 不注入 chat 协议，但 opencode 后端流式可能仍输出 "[opencode] {json}"，
+    // 这里提取 content 正文（纯文本则直通），避免原始 JSON 打到终端。
+    let raw = '';
+    let emitted = 0;
     try {
         await (0, client_1.callAI_Stream)(messages, model, (chunk) => {
-            renderer.onChunk(chunk);
+            raw += chunk;
+            const head = raw.trimStart();
+            const isJsonEnvelope = head.startsWith('{')
+                || /^\[[^\]]*\]/.test(head)
+                || head.includes('"action_type"')
+                || head.includes('"is_done"');
+            if (!isJsonEnvelope) {
+                renderer.onChunk(chunk);
+                return;
+            }
+            const content = (0, llm_1.extractStreamableContent)(raw);
+            if (content === null)
+                return;
+            if (content.length > emitted) {
+                renderer.onChunk(content.slice(emitted));
+                emitted = content.length;
+            }
         });
         const fullResponse = renderer.finish();
         lastAIOutput = fullResponse;
