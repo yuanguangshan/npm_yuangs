@@ -52,6 +52,7 @@ const util_1 = require("util");
 const os_1 = __importDefault(require("os"));
 const context_1 = require("./context");
 const contextStorage_1 = require("./contextStorage");
+const Logger_1 = require("../utils/Logger");
 const gitContext_1 = require("./gitContext");
 const shellCompletions_1 = require("./shellCompletions");
 const macros_1 = require("../core/macros");
@@ -247,9 +248,18 @@ async function handleDirectoryReference(input) {
     }
 }
 async function handleAIChat(initialQuestion, model, direct = false) {
-    // 初始化 AgentRuntime (v2.0 引擎)
-    const { AgentRuntime } = await Promise.resolve().then(() => __importStar(require('../agent/AgentRuntime')));
-    const runtime = new AgentRuntime((0, client_1.getConversationHistory)());
+    // 引擎选择：优先 pi 引擎（Route A），失败降级回 AgentRuntime (v2.0)
+    const { createEngineWithFallback, YUANGS_ONLY_TOOL_NAMES } = await Promise.resolve().then(() => __importStar(require('../agent/piSession')));
+    const { ToolExecutor } = await Promise.resolve().then(() => __importStar(require('../agent/executor')));
+    const runtime = await createEngineWithFallback({
+        modelId: model,
+        // 仅保留 pi 没有的 yuangs 工具，其余用 pi 内置
+        yuangsTools: ToolExecutor.getRegistry().all().filter((t) => YUANGS_ONLY_TOOL_NAMES.includes(t.name)),
+        // 审计：pi 会话事件 → debug 日志（后续可接入 better-sqlite3 审计库）
+        auditHook: (event) => {
+            Logger_1.logger.debug('piSession', 'event', { type: event?.type });
+        },
+    });
     const processInteraction = async (question) => {
         // --direct: 跳过 agent，直连 callAI_Stream（纯文本，无 JSON 协议/工具）
         if (direct) {

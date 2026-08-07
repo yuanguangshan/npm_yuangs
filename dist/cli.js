@@ -231,9 +231,12 @@ program
         }
     }
     else {
-        const { AgentRuntime } = await Promise.resolve().then(() => __importStar(require('./agent/AgentRuntime')));
-        const { getConversationHistory } = await Promise.resolve().then(() => __importStar(require('./ai/client')));
-        const runtime = new AgentRuntime(getConversationHistory());
+        const { createEngineWithFallback, YUANGS_ONLY_TOOL_NAMES } = await Promise.resolve().then(() => __importStar(require('./agent/piSession')));
+        const { ToolExecutor } = await Promise.resolve().then(() => __importStar(require('./agent/executor')));
+        const runtime = await createEngineWithFallback({
+            modelId: model,
+            yuangsTools: ToolExecutor.getRegistry().all().filter((t) => YUANGS_ONLY_TOOL_NAMES.includes(t.name)),
+        });
         // TTY 且非 --exec：流式渲染 + 持久化对话历史（跨调用多轮记忆）；否则保持无状态，
         // 避免 ANSI 擦行重绘污染管道输出。
         if (process.stdout.isTTY && !options.exec) {

@@ -212,9 +212,14 @@ program
                 await runtime.run(question || '', undefined, model, options.exec ? 'command' : 'chat');
             }
         } else {
-            const { AgentRuntime } = await import('./agent/AgentRuntime');
-            const { getConversationHistory } = await import('./ai/client');
-            const runtime = new AgentRuntime(getConversationHistory());
+            const { createEngineWithFallback, YUANGS_ONLY_TOOL_NAMES } = await import('./agent/piSession');
+            const { ToolExecutor } = await import('./agent/executor');
+            const runtime = await createEngineWithFallback({
+                modelId: model,
+                yuangsTools: ToolExecutor.getRegistry().all().filter((t) =>
+                    YUANGS_ONLY_TOOL_NAMES.includes(t.name)
+                ),
+            });
 
             // TTY 且非 --exec：流式渲染 + 持久化对话历史（跨调用多轮记忆）；否则保持无状态，
             // 避免 ANSI 擦行重绘污染管道输出。

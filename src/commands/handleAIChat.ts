@@ -13,6 +13,7 @@ import os from 'os';
 import { ContextBuffer } from './contextBuffer';
 import { ContextStore, ContextAssembler, ContextItem } from './context';
 import { loadContext, saveContext, clearContextStorage } from './contextStorage';
+import { logger } from '../utils/Logger';
 import { getGitContext } from './gitContext';
 import {
     Mode,
@@ -256,9 +257,20 @@ async function handleDirectoryReference(input: string): Promise<string> {
 }
 
 export async function handleAIChat(initialQuestion: string | null, model?: string, direct: boolean = false) {
-    // 初始化 AgentRuntime (v2.0 引擎)
-    const { AgentRuntime } = await import('../agent/AgentRuntime');
-    const runtime = new AgentRuntime(getConversationHistory());
+    // 引擎选择：优先 pi 引擎（Route A），失败降级回 AgentRuntime (v2.0)
+    const { createEngineWithFallback, YUANGS_ONLY_TOOL_NAMES } = await import('../agent/piSession');
+    const { ToolExecutor } = await import('../agent/executor');
+    const runtime = await createEngineWithFallback({
+        modelId: model,
+        // 仅保留 pi 没有的 yuangs 工具，其余用 pi 内置
+        yuangsTools: ToolExecutor.getRegistry().all().filter((t) =>
+            YUANGS_ONLY_TOOL_NAMES.includes(t.name)
+        ),
+        // 审计：pi 会话事件 → debug 日志（后续可接入 better-sqlite3 审计库）
+        auditHook: (event) => {
+            logger.debug('piSession', 'event', { type: (event as { type?: string })?.type });
+        },
+    });
 
     const processInteraction = async (question: string) => {
         // --direct: 跳过 agent，直连 callAI_Stream（纯文本，无 JSON 协议/工具）
