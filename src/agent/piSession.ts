@@ -125,6 +125,7 @@ export class PiEngine {
   static async create(options: { modelId?: string; apiKey?: string } = {}): Promise<PiEngine> {
     const sdk = await loadPiSdk();
     const runtime = await sdk.ModelRuntime.create();
+    const svc = getConfigService();
     const useAiProxy = !!process.env.YUANGS_USE_AI_PROXY;
 
     if (useAiProxy) {
@@ -175,7 +176,7 @@ export class PiEngine {
     // 默认：注册 DeepSeek 官方 + opencode 官方双 provider（标准 OpenAI 兼容，pi 内置传输层原生支持 tool_calls）
     const registeredProviders: Array<{ providerId: string; modelIds: string[] }> = [];
 
-    const deepseekKey = options.apiKey ?? process.env.DEEPSEEK_API_KEY;
+    const deepseekKey = options.apiKey ?? process.env.DEEPSEEK_API_KEY ?? svc.get('deepseekApiKey');
     if (deepseekKey) {
       // DeepSeek 官方端点真实模型：deepseek-v4-flash / deepseek-v4-pro
       const deepseekModels = [
@@ -201,7 +202,7 @@ export class PiEngine {
       registeredProviders.push({ providerId: 'deepseek-official', modelIds: deepseekModels.map((m) => m.id) });
     }
 
-    const opencodeKey = process.env.OPENCODE_API_KEY;
+    const opencodeKey = process.env.OPENCODE_API_KEY ?? svc.get('opencodeApiKey');
     if (opencodeKey) {
       // opencode 官方端点自有模型（不含 deepseek-v4-flash/pro，避免与 DeepSeek 官方重名歧义）
       const opencodeModels = [
@@ -234,8 +235,14 @@ export class PiEngine {
       throw new Error('未配置任何模型端点：请设置 DEEPSEEK_API_KEY 或 OPENCODE_API_KEY 环境变量');
     }
 
-    // 解析目标模型：options.modelId 优先（-m 参数），否则默认 deepseek-v4-flash
-    const requested = options.modelId ?? process.env.PI_DEFAULT_MODEL ?? 'deepseek-v4-flash';
+    // 解析目标模型：options.modelId 优先（-m 参数），否则 PI_DEFAULT_MODEL / 配置文件 defaultModel
+    const requested =
+      options.modelId ??
+      process.env.PI_DEFAULT_MODEL ??
+      (svc.get('defaultModel') && !['Assistant', 'free'].includes(svc.get('defaultModel') as string)
+        ? svc.get('defaultModel')
+        : undefined) ??
+      'deepseek-v4-flash';
     let resolved: { providerId: string; modelId: string } | undefined;
     for (const p of registeredProviders) {
       if (p.modelIds.includes(requested)) {
