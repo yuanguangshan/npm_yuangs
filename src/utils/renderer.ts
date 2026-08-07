@@ -490,8 +490,8 @@ export class StreamMarkdownRenderer extends MarkdownRenderer {
 
     const elapsed = (Date.now() - this.startTime) / 1000;
     const separator = '─'.repeat(20);
-    const modelInfo = this.modelUsed ? ` · 模型: ${this.modelUsed}` : '';
-    process.stdout.write(`\n${chalk.gray(separator)} (耗时: ${elapsed.toFixed(2)}s${modelInfo}) ${separator}\n\n`);
+    const modelInfo = this.modelUsed ? `模型：${this.modelUsed}  ` : '';
+    process.stdout.write(`\n${chalk.gray(separator)} ${modelInfo}耗时：${elapsed.toFixed(2)}秒 ${separator}\n\n`);
 
     return this.buffer;
   }

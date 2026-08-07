@@ -388,6 +388,12 @@ class PiSession {
             this.currentOnChunk = onChunk;
         this.start();
         await this.session.prompt(userInput);
+        // 渲染器记录实际使用的模型（模型透明度，finish() 页脚展示）
+        const renderer = _renderer;
+        const modelId = this.session.model?.id;
+        if (renderer?.setModelUsed && modelId) {
+            renderer.setModelUsed(modelId);
+        }
         // 无渲染器（一次性问答 / 管道输出）：把最终回答打到 stdout
         if (!onChunk) {
             const lastText = lastAssistantText(this.session.messages);
