@@ -163,6 +163,8 @@ class PiEngine {
                 cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
                 contextWindow: m.contextWindow ?? 128_000,
                 maxTokens: m.maxTokens ?? 8_192,
+                // provider 级 compat（如 supportsFinishReason:false 兼容无 finish_reason 的免费池上游）
+                ...(provider.compat ? { compat: provider.compat } : {}),
             }));
             if (models.length === 0) {
                 console.warn(`⚠️  跳过 provider "${provider.id}"：models 为空`);

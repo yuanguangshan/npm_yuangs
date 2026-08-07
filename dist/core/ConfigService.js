@@ -18,6 +18,12 @@ const providerConfigSchema = zod_1.z.object({
     name: zod_1.z.string().optional(),
     baseUrl: zod_1.z.string().url().optional(),
     apiKey: zod_1.z.string().optional(),
+    compat: zod_1.z
+        .object({
+        supportsFinishReason: zod_1.z.boolean().optional(),
+    })
+        .passthrough()
+        .optional(),
     models: zod_1.z
         .array(zod_1.z.object({
         id: zod_1.z.string().min(1),

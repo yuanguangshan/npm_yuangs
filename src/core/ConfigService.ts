@@ -14,6 +14,12 @@ const providerConfigSchema = z.object({
   name: z.string().optional(),
   baseUrl: z.string().url().optional(),
   apiKey: z.string().optional(),
+  compat: z
+    .object({
+      supportsFinishReason: z.boolean().optional(),
+    })
+    .passthrough()
+    .optional(),
   models: z
     .array(
       z.object({
