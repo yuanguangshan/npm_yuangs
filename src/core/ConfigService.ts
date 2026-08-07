@@ -9,8 +9,29 @@ import { ConfigError } from './errors';
 // Schema definitions
 // ---------------------------------------------------------------------------
 
+const providerConfigSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().optional(),
+  baseUrl: z.string().url().optional(),
+  apiKey: z.string().optional(),
+  models: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        reasoning: z.boolean().optional(),
+        contextWindow: z.number().optional(),
+        maxTokens: z.number().optional(),
+      }),
+    )
+    .optional(),
+});
+
+export type ProviderConfig = z.infer<typeof providerConfigSchema>;
+
 const userConfigSchema = z.object({
   defaultModel: z.string().optional(),
+  defaultProvider: z.string().optional(),
+  providers: z.array(providerConfigSchema).optional(),
   aiProxyUrl: z.string().url().optional(),
   accountType: z.enum(['free', 'pro', 'paid']).optional(),
   contextWindow: z.number().optional(),

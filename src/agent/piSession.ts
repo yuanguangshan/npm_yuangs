@@ -125,6 +125,8 @@ export class PiEngine {
   static async create(options: { modelId?: string; apiKey?: string } = {}): Promise<PiEngine> {
     const sdk = await loadPiSdk();
     const runtime = await sdk.ModelRuntime.create();
+    // ConfigService.init 是异步的（cli.ts 里 fire-and-forget），这里显式 await 保证配置已加载
+    await getConfigService().init();
     const svc = getConfigService();
     const useAiProxy = !!process.env.YUANGS_USE_AI_PROXY;
 
@@ -173,66 +175,56 @@ export class PiEngine {
       return new PiEngine(runtime, model);
     }
 
-    // 默认：注册 DeepSeek 官方 + opencode 官方双 provider（标准 OpenAI 兼容，pi 内置传输层原生支持 tool_calls）
+    // 从 ~/.yuangs.json 的 providers 配置注册模型端点（标准 OpenAI 兼容，pi 内置传输层原生支持 tool_calls）
+    const providers = (svc.get('providers') as Array<{
+      id: string;
+      name?: string;
+      baseUrl?: string;
+      apiKey?: string;
+      models?: Array<{ id: string; reasoning?: boolean; contextWindow?: number; maxTokens?: number }>;
+    }> | undefined) ?? [];
+
     const registeredProviders: Array<{ providerId: string; modelIds: string[] }> = [];
-
-    const deepseekKey = options.apiKey ?? process.env.DEEPSEEK_API_KEY ?? svc.get('deepseekApiKey');
-    if (deepseekKey) {
-      // DeepSeek 官方端点真实模型：deepseek-v4-flash / deepseek-v4-pro
-      const deepseekModels = [
-        { id: 'deepseek-v4-flash', reasoning: false },
-        { id: 'deepseek-v4-pro', reasoning: true },
-      ];
-      runtime.registerProvider('deepseek-official', {
-        name: 'DeepSeek Official',
+    for (const provider of providers) {
+      if (!provider.id || !provider.baseUrl) {
+        console.warn(`⚠️  跳过无效 provider 配置（缺少 id/baseUrl）: ${JSON.stringify(provider.id ?? provider).slice(0, 60)}`);
+        continue;
+      }
+      // apiKey 支持配置字段或 <ID>_API_KEY 环境变量
+      const apiKey = provider.apiKey ?? process.env[`${provider.id.toUpperCase()}_API_KEY`] ?? options.apiKey;
+      if (!apiKey) {
+        console.warn(`⚠️  跳过 provider "${provider.id}"：缺少 apiKey（配置 providers[].apiKey 或设 ${provider.id.toUpperCase()}_API_KEY）`);
+        continue;
+      }
+      const models = (provider.models ?? []).map((m) => ({
+        id: m.id,
+        name: m.id,
+        reasoning: !!m.reasoning,
+        input: ['text'],
+        output: ['text'],
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        contextWindow: m.contextWindow ?? 128_000,
+        maxTokens: m.maxTokens ?? 8_192,
+      }));
+      if (models.length === 0) {
+        console.warn(`⚠️  跳过 provider "${provider.id}"：models 为空`);
+        continue;
+      }
+      runtime.registerProvider(provider.id, {
+        name: provider.name ?? provider.id,
         api: 'openai-completions',
-        baseUrl: 'https://api.deepseek.com/v1',
-        apiKey: deepseekKey,
-        models: deepseekModels.map((m) => ({
-          id: m.id,
-          name: m.id,
-          reasoning: m.reasoning,
-          input: ['text'],
-          output: ['text'],
-          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-          contextWindow: 128_000,
-          maxTokens: 8_192,
-        })),
+        baseUrl: provider.baseUrl,
+        apiKey,
+        models,
       });
-      registeredProviders.push({ providerId: 'deepseek-official', modelIds: deepseekModels.map((m) => m.id) });
-    }
-
-    const opencodeKey = process.env.OPENCODE_API_KEY ?? svc.get('opencodeApiKey');
-    if (opencodeKey) {
-      // opencode 官方端点自有模型（不含 deepseek-v4-flash/pro，避免与 DeepSeek 官方重名歧义）
-      const opencodeModels = [
-        { id: 'qwen3.7-max', reasoning: false },
-        { id: 'qwen3.8-max', reasoning: false },
-        { id: 'gpt-5.6-luna', reasoning: true },
-        { id: 'minimax-m3', reasoning: false },
-        { id: 'kimi-k3', reasoning: false },
-      ];
-      runtime.registerProvider('opencode-official', {
-        name: 'opencode official',
-        api: 'openai-completions',
-        baseUrl: 'https://opencode.ai/zen/go/v1',
-        apiKey: opencodeKey,
-        models: opencodeModels.map((m) => ({
-          id: m.id,
-          name: m.id,
-          reasoning: m.reasoning,
-          input: ['text'],
-          output: ['text'],
-          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-          contextWindow: 128_000,
-          maxTokens: 8_192,
-        })),
-      });
-      registeredProviders.push({ providerId: 'opencode-official', modelIds: opencodeModels.map((m) => m.id) });
+      registeredProviders.push({ providerId: provider.id, modelIds: models.map((m) => m.id) });
     }
 
     if (registeredProviders.length === 0) {
-      throw new Error('未配置任何模型端点：请设置 DEEPSEEK_API_KEY 或 OPENCODE_API_KEY 环境变量');
+      throw new Error(
+        '未配置任何可用模型端点：请在 ~/.yuangs.json 配置 providers 数组（id/baseUrl/apiKey/models），' +
+          'apiKey 也可用 <ID>_API_KEY 环境变量提供',
+      );
     }
 
     // 解析目标模型：options.modelId 优先（-m 参数），否则 PI_DEFAULT_MODEL / 配置文件 defaultModel
@@ -243,11 +235,21 @@ export class PiEngine {
         ? svc.get('defaultModel')
         : undefined) ??
       'deepseek-v4-flash';
+    // defaultProvider：同模型多端点（如 deepseek-v4-flash 在 DeepSeek 官方和 opencode 都有）时决定默认路由
+    const defaultProvider = svc.get('defaultProvider') as string | undefined;
     let resolved: { providerId: string; modelId: string } | undefined;
-    for (const p of registeredProviders) {
-      if (p.modelIds.includes(requested)) {
-        resolved = { providerId: p.providerId, modelId: requested };
-        break;
+    if (defaultProvider) {
+      const preferred = registeredProviders.find((p) => p.providerId === defaultProvider);
+      if (preferred && preferred.modelIds.includes(requested)) {
+        resolved = { providerId: preferred.providerId, modelId: requested };
+      }
+    }
+    if (!resolved) {
+      for (const p of registeredProviders) {
+        if (p.modelIds.includes(requested)) {
+          resolved = { providerId: p.providerId, modelId: requested };
+          break;
+        }
       }
     }
     if (!resolved) {
