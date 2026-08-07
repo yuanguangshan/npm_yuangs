@@ -61,6 +61,8 @@ const client_1 = require("../ai/client");
 const aiproxyAdapter_1 = require("./aiproxyAdapter");
 const piModelConfig_1 = require("./piModelConfig");
 const chalk_1 = __importDefault(require("chalk"));
+const path_1 = __importDefault(require("path"));
+const os_1 = __importDefault(require("os"));
 // ─── ESM → CJS 桥 ───
 const nativeImport = new Function('specifier', 'return import(specifier)');
 let _piSdk = null;
@@ -225,12 +227,28 @@ class PiEngine {
             customTools.push(await adaptYuangsToolToPi(t));
         }
         const tools = options.tools ?? ['read', 'ls', 'grep', 'find', 'bash', 'edit', 'write'];
+        // ⚠️ 精简系统提示：pi 默认注入约 14KB 的 coding-agent 系统设定 + AGENTS.md/CLAUDE.md/技能上下文。
+        //     对 `yuangs ai` 的普通问答而言这是“很长的系统质量”，应忽略——用一两条精简短句替换它，
+        //     同时关闭上下文文件/技能/模板加载。工具仍通过下方 `tools` 结构化定义传给模型，不影响工具调用。
+        const loader = new sdk.DefaultResourceLoader({
+            cwd: options.cwd ?? process.cwd(),
+            agentDir: path_1.default.join(os_1.default.homedir(), '.pi', 'agent'),
+            systemPromptOverride: () => '你是一个通用的 AI 助手。用中文直接、准确、简洁地回答用户的任何问题；' +
+                '用户明确要求操作本地文件、执行命令或修改代码时才调用工具。',
+            noExtensions: true,
+            noSkills: true,
+            noPromptTemplates: true,
+            noThemes: true,
+            noContextFiles: true,
+        });
+        await loader.reload();
         const { session } = await sdk.createAgentSession({
             cwd: options.cwd ?? process.cwd(),
             modelRuntime: this.runtime,
             model: this.model,
             tools,
             customTools,
+            resourceLoader: loader,
         });
         // 治理：执行前经 GovernanceService.adjudicate 裁决
         session.agent.beforeToolCall = await makeGovernanceHook(options);
