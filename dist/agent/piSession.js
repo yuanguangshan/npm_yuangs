@@ -350,6 +350,8 @@ class PiSession {
     options;
     unsubscribe = null;
     currentOnChunk;
+    /** 已发送文本长度（message_update 携带完整累积文本，只发增量避免重复渲染） */
+    lastEmittedTextLen = 0;
     constructor(session, options) {
         this.session = session;
         this.options = options;
@@ -365,9 +367,17 @@ class PiSession {
             return;
         this.unsubscribe = this.session.subscribe((event) => {
             if (this.currentOnChunk) {
-                const chunk = textFromEvent(event);
-                if (chunk)
-                    this.currentOnChunk(chunk);
+                if (event.type === 'message_start') {
+                    // 新消息开始：重置增量计数
+                    this.lastEmittedTextLen = 0;
+                }
+                else if (event.type === 'message_update') {
+                    const text = assistantText(event.message);
+                    if (text.length > this.lastEmittedTextLen) {
+                        this.currentOnChunk(text.slice(this.lastEmittedTextLen));
+                        this.lastEmittedTextLen = text.length;
+                    }
+                }
             }
             if (this.options.auditHook)
                 void this.options.auditHook(event);
@@ -426,22 +436,17 @@ function lastAssistantText(messages) {
     }
     return undefined;
 }
-/** 从 session 事件中提取 assistant 文本增量（流式渲染用）。 */
-function textFromEvent(event) {
-    if (event.type !== 'message_update')
-        return undefined;
-    const message = event.message;
+/** 从 assistant 消息中提取纯文本（跳过 thinking 块）。 */
+function assistantText(message) {
     if (!message || message.role !== 'assistant')
-        return undefined;
+        return '';
     const content = message.content;
     if (!Array.isArray(content))
-        return undefined;
-    // 只取纯文本块；delta 事件可能携带新增文本
-    const text = content
+        return '';
+    return content
         .filter((b) => b.type === 'text' && typeof b.text === 'string')
         .map((b) => b.text)
         .join('');
-    return stripProxyPrefix(text) || undefined;
 }
 // ─── 5. 顶层便捷函数：一步建会话 ───
 /**
