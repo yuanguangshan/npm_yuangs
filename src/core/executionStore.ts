@@ -2,12 +2,15 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { ExecutionRecord, serializeExecutionRecord, deserializeExecutionRecord } from './executionRecord';
+import { redactSecrets } from '../utils/redact';
 
 const RECORD_DIR = path.join(os.homedir(), '.yuangs', 'executions');
 
 export function ensureRecordDir(): void {
   if (!fs.existsSync(RECORD_DIR)) {
-    fs.mkdirSync(RECORD_DIR, { recursive: true });
+    fs.mkdirSync(RECORD_DIR, { recursive: true, mode: 0o700 });
+  } else {
+    try { fs.chmodSync(RECORD_DIR, 0o700); } catch {}
   }
 }
 
@@ -17,7 +20,10 @@ export function saveExecutionRecord(record: ExecutionRecord): string {
   const filename = `${record.id}.json`;
   const filepath = path.join(RECORD_DIR, filename);
 
-  fs.writeFileSync(filepath, serializeExecutionRecord(record), 'utf8');
+  const serialized = serializeExecutionRecord(record);
+  const redacted = redactSecrets(serialized);
+  fs.writeFileSync(filepath, redacted, { encoding: 'utf8', mode: 0o600 });
+  try { fs.chmodSync(filepath, 0o600); } catch {}
 
   return filepath;
 }

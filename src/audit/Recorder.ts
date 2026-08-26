@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { redactSecrets } from '../utils/redact';
 
 /**
  * 录像帧类型定义
@@ -52,10 +53,12 @@ export class Recorder {
   }) {
     this.startTime = Date.now();
     
-    // 确保审计目录存在
+    // 确保审计目录存在 (700)
     const auditDir = path.join(os.homedir(), '.yuangs', 'audit');
     if (!fs.existsSync(auditDir)) {
-      fs.mkdirSync(auditDir, { recursive: true });
+      fs.mkdirSync(auditDir, { recursive: true, mode: 0o700 });
+    } else {
+      try { fs.chmodSync(auditDir, 0o700); } catch {}
     }
 
     // 生成文件名: 2026-01-25T17-00-00_user@host_abcd.cast
@@ -63,7 +66,7 @@ export class Recorder {
     const filename = `${timestamp}_${options.user}@${options.host}.cast`;
     this.filePath = path.join(auditDir, filename);
 
-    this.stream = fs.createWriteStream(this.filePath, { flags: 'a', encoding: 'utf8' });
+    this.stream = fs.createWriteStream(this.filePath, { flags: 'a', encoding: 'utf8', mode: 0o600 });
 
     // 写入 Header
     const header: CastHeader = {
@@ -107,18 +110,18 @@ export class Recorder {
   }
 
   /**
-   * 记录输出 (Output)
+   * 记录输出 (Output) — 脱敏后落盘
    */
   recordOutput(data: string | Buffer) {
     const text = typeof data === 'string' ? data : data.toString('utf8');
-    this.writeFrame([this.now(), 'o', text]);
+    this.writeFrame([this.now(), 'o', redactSecrets(text)]);
   }
 
   /**
-   * 记录输入 (Input)
+   * 记录输入 (Input) — 脱敏后落盘
    */
   recordInput(data: string, meta?: any) {
-    this.writeFrame([this.now(), 'i', data, meta]);
+    this.writeFrame([this.now(), 'i', redactSecrets(data), meta]);
   }
 
   /**
@@ -129,10 +132,14 @@ export class Recorder {
   }
 
   /**
-   * 记录治理事件 (Governance) - yuangs 扩展
+   * 记录治理事件 (Governance) - yuangs 扩展，details 脱敏
    */
   recordGovernance(event: string, details?: any) {
-    this.writeFrame([this.now(), 'g', event, details]);
+    let redactedDetails = details;
+    try {
+      if (details) redactedDetails = JSON.parse(redactSecrets(JSON.stringify(details)));
+    } catch {}
+    this.writeFrame([this.now(), 'g', event, redactedDetails]);
   }
 
   /**
