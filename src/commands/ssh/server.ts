@@ -1,7 +1,3 @@
-import express from 'express';
-import { createServer } from 'http';
-import { Server, Socket } from 'socket.io';
-import open from 'open';
 import path from 'path';
 import { SSHSession } from '../../ssh/SSHSession';
 import { SSHGovernedExecutor, GovernanceService, ExecDecision } from '../../ssh/GovernedExecutor';
@@ -9,6 +5,12 @@ import { InputBuffer } from '../../ssh/InputBuffer';
 import { checkDangerousCommand } from '../../agent/security/dangerousPatterns';
 
 export async function startWebTerminal(config: any, port: number = 3000) {
+    // 懒加载：仅 --web 时才加载 express/socket.io，避免常规命令启动开销
+    const express = (await import('express')).default;
+    const { createServer } = await import('http');
+    const { Server } = await import('socket.io');
+    type Socket = import('socket.io').Socket;
+
     const app = express();
     const httpServer = createServer(app);
     const io = new Server(httpServer);

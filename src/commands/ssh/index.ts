@@ -6,7 +6,6 @@ import { SSHSession } from '../../ssh/SSHSession';
 import { InputBuffer } from '../../ssh/InputBuffer';
 import { SSHGovernedExecutor, GovernanceService, ExecutionContext, ExecDecision } from '../../ssh/GovernedExecutor';
 import { Recorder } from '../../audit/Recorder';
-import { startWebTerminal } from './server';
 import { checkDangerousCommand } from '../../agent/security/dangerousPatterns';
 
 /**
@@ -283,6 +282,7 @@ export function registerSSHCommand(program: Command): void {
         const config = await prepareSSHConfig(connection, options);
         
         if (options.web) {
+            const { startWebTerminal } = await import('./server');
             await startWebTerminal(config);
         } else {
             await startCommandLineTerminal(connection, config);
