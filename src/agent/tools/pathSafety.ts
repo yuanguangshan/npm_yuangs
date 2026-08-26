@@ -6,9 +6,9 @@ import path from 'path';
  * even if they happen to be under allowedCwd (e.g. via symlink).
  */
 const SYSTEM_PATHS = [
-  '/etc', '/usr', '/var', '/tmp', '/root', '/home',
-  '/System', '/Library', '/Applications',
-  '/dev', '/proc', '/sys', '/boot'
+  '/etc', '/usr', '/var', '/tmp', '/root', '/home', '/Users',
+  '/System', '/Library', '/Applications', '/private',
+  '/dev', '/proc', '/sys', '/boot', '/sbin', '/bin', '/opt', '/usr/local'
 ];
 
 /**

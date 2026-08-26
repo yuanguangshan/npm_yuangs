@@ -60,6 +60,11 @@ export const DANGEROUS_SHELL_PATTERNS: DangerousShellPattern[] = [
 
   // === 辅助：sudo rm（泛指，risk 低于特定路径） ===
   { pattern: /\bsudo\s+rm\b/, name: 'sudo rm', reason: 'sudo 删除操作', risk: 'high' },
+
+  // === P1 新增：更通用的绕过检测 ===
+  { pattern: /\b(bash|sh|zsh)\s+-c\s+.*(rm\s+-rf|dd|mkfs|chmod\s+777)/i, name: 'shell -c dangerous', reason: 'shell -c 包装破坏命令', risk: 'high' },
+  { pattern: /\$\{\s*[a-zA-Z_][a-zA-Z0-9_]*\s*.*rm\s+-rf/i, name: 'variable expansion rm', reason: '变量展开绕过 rm -rf', risk: 'high' },
+  { pattern: /\b(echo|printf)\s+.*\|\s*(sh|bash|zsh)\b/i, name: 'echo | sh', reason: 'echo 管道到 shell', risk: 'high' },
 ];
 
 /**

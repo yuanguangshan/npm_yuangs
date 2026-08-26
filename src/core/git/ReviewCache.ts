@@ -264,36 +264,24 @@ export class ReviewCache {
             const data = await fs.readFile(indexPath, 'utf-8');
             const index = JSON.parse(data);
             
-            // Load recent entries into memory cache
-            const entries = Object.values(index.entries) as CacheEntry[];
+            // index.entries 形如 { "abc123.json": CacheEntry }，key 即文件名，去掉 .json 即真实缓存键
+            const entries = Object.entries(index.entries) as [string, CacheEntry][];
             const sortedEntries = entries
-                .filter(entry => !this.isExpired(entry))
-                .sort((a, b) => b.accessedAt - a.accessedAt)
-                .slice(0, 100); // Keep only 100 most recent entries in memory
+                .filter(([, entry]) => !this.isExpired(entry))
+                .sort((a, b) => b[1].accessedAt - a[1].accessedAt)
+                .slice(0, 100);
 
-            for (const entry of sortedEntries) {
-                // P0: 直接使用文件名作为 key，不重新计算
-                // 文件名格式是 {key}.json，我们去掉 .json 后缀
-                // 但这里我们没有文件名，需要从 index 中获取
-                // 更好的方案是：在 index 中保存完整 key
-                const filePath = entry.key.filePath;
-                const contentHash = entry.key.contentHash;
-                const level = entry.key.level;
-                const key = this.getCacheKey(filePath, '', level); // 这里仍然有问题，但没有原始 content 无法生成正确的 key
-                
-                // P0: 实际上我们应该从磁盘文件名读取 key
-                // 但由于 loadIndex 时只有 index 数据，我们只能接受这个限制
-                // 更好的方案是在 index 中存储完整 key
+            for (const [fileName, entry] of sortedEntries) {
+                const key = fileName.replace(/\.json$/, '');
                 this.memoryCache.set(key, entry);
-                
-                // P0: 重建 pathToKeyMap
+                const filePath = entry.key.filePath;
                 if (!this.pathToKeyMap.has(filePath)) {
                     this.pathToKeyMap.set(filePath, new Set());
                 }
                 this.pathToKeyMap.get(filePath)!.add(key);
             }
-        } catch (error) {
-            // Index doesn't exist or is corrupted, start fresh
+        } catch {
+            // Index 不存在或已损坏，从零开始
         }
     }
 

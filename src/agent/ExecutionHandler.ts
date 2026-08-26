@@ -1,6 +1,5 @@
 import chalk from "chalk";
-import * as marked from "marked";
-import TerminalRenderer from "marked-terminal";
+import { renderMarkdown } from "../utils/renderer";
 import { ProposedAction, AgentThought, ToolCallPayload, ShellCmdPayload, ToolExecutionResult } from "./state";
 import { ToolExecutor } from "./executor";
 import { SmartContextManager } from "./smartContextManager";
@@ -14,9 +13,6 @@ import { ExecutionLearning } from './ExecutionLearning';
 import { ToolCallRecord, WriteModeState } from './ExecutionTypes';
 
 const log = logger.child('ExecutionHandler');
-
-const terminalRenderer = new TerminalRenderer();
-marked.setOptions({ renderer: terminalRenderer });
 
 export type { ToolCallRecord, WriteModeState };
 export { READ_ONLY_TOOLS } from './ExecutionTypes';
@@ -158,7 +154,7 @@ export class ExecutionHandler {
       agentRenderer.onChunk(result.output);
       agentRenderer.finish();
     } else if (!externalRenderer) {
-      const rendered = marked.parse(result.output);
+      const rendered = renderMarkdown(result.output);
       console.log(chalk.green(`\n🤖 AI：\n`) + rendered);
     }
 

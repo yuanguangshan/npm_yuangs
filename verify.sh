@@ -43,9 +43,13 @@ if [ "$NODE_MAJOR" -lt 18 ]; then
     error "Node.js 版本太低 (当前: $(node -v))，必须 >= 18"
 fi
 
-# 3. 安装依赖
+# 3. 安装依赖（优先使用离线缓存与 ci）
 log "3. 检查依赖..."
-npm install
+if [ -f package-lock.json ]; then
+    npm ci --prefer-offline 2>&1 | tail -n 20
+else
+    npm install --prefer-offline 2>&1 | tail -n 20
+fi
 
 # 4. TypeScript 构建
 log "4. 执行构建 (npm run build)..."
