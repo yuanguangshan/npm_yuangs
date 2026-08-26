@@ -40,7 +40,6 @@
   },
   "homepage": "https://github.com/yuanguangshan/npm_yuangs#readme",
   "dependencies": {
-    "@earendil-works/pi-coding-agent": "^0.83.0",
     "axios": "^1.13.2",
     "chalk": "^4.1.2",
     "cli-table3": "^0.6.5",
@@ -80,6 +79,7 @@
     "node": ">=18"
   },
   "optionalDependencies": {
+    "@earendil-works/pi-coding-agent": "^0.83.0",
     "better-sqlite3": "^12.6.2"
   },
   "publishConfig": {
