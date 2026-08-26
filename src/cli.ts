@@ -23,6 +23,7 @@ import { registerSSHCommand } from './commands/ssh';
 import { registerRouterCommands } from './commands/routerCommands';
 import { registerGitCommands } from './commands/gitCommands';
 import { wouldExpandAsGlob } from './utils/globDetector';
+import { confirm } from './utils/confirm';
 import type { StreamMarkdownRenderer } from './utils/renderer';
 
 // Mandatory Node.js version check
@@ -51,11 +52,21 @@ async function readStdin(): Promise<string> {
     if (process.stdin.isTTY) return '';
     return new Promise((resolve) => {
         let data = '';
+        const timeoutMs = parseInt(process.env.YUANGS_STDIN_TIMEOUT || '500', 10);
+        let timer: NodeJS.Timeout | null = setTimeout(() => resolve(data), timeoutMs);
+        const onData = (chunk: string) => { data += chunk; };
+        const onEnd = () => { if (timer) clearTimeout(timer); cleanup(); resolve(data); };
+        const onError = () => { if (timer) clearTimeout(timer); cleanup(); resolve(data); };
+        const cleanup = () => {
+            process.stdin.off('data', onData);
+            process.stdin.off('end', onEnd);
+            process.stdin.off('error', onError);
+        };
         process.stdin.setEncoding('utf8');
-        process.stdin.on('data', chunk => data += chunk);
-        process.stdin.on('end', () => resolve(data));
-        // Simple timeout to avoid hanging if no input
-        setTimeout(() => resolve(data), 2000);
+        process.stdin.on('data', onData);
+        process.stdin.on('end', onEnd);
+        process.stdin.on('error', onError);
+        if ((process.stdin as any).readableEnded) { if (timer) clearTimeout(timer); cleanup(); resolve(data); }
     });
 }
 
@@ -261,14 +272,7 @@ program
             console.log(chalk.white(`${lastItem.command}`));
             console.log(chalk.gray(`问题: ${lastItem.question}\n`));
 
-            const rlLast = require('node:readline/promises').createInterface({
-                input: process.stdin,
-                output: process.stdout
-            });
-            const confirmLast = await rlLast.question(chalk.cyan('确认再次执行? (y/N): '));
-            rlLast.close();
-
-            if (confirmLast.toLowerCase() === 'y' || confirmLast.toLowerCase() === 'yes') {
+            if (await confirm('确认再次执行?')) {
                 const { exec } = require('child_process');
                 console.log(chalk.bold.cyan('执行中...\n'));
                 exec(lastItem.command, (error: any, stdout: string, stderr: string) => {
@@ -302,14 +306,7 @@ program
             if (index >= 0 && index < history.length) {
                 const targetCommand = history[index].command;
                 console.log(chalk.yellow(`\n即将执行: ${targetCommand}\n`));
-                const rlConfirm = require('node:readline/promises').createInterface({
-                    input: process.stdin,
-                    output: process.stdout
-                });
-                const confirm = await rlConfirm.question(chalk.cyan('确认执行? (y/N): '));
-                rlConfirm.close();
-
-                if (confirm.toLowerCase() === 'y' || confirm.toLowerCase() === 'yes') {
+                if (await confirm('确认执行?')) {
                     const { exec } = require('child_process');
                     console.log(chalk.bold.cyan('执行中...\n'));
                     exec(targetCommand, (error: any, stdout: string, stderr: string) => {
