@@ -38,6 +38,8 @@ describe('PlanWorkflow', () => {
       ];
 
       mockGitService.getRecentCommits.mockResolvedValue(mockCommits);
+      mockGitService.getDiff.mockResolvedValue({ files: { staged: [], unstaged: [] }, staged: null, unstaged: null, summary: '' } as any);
+      mockGitService.getDiffNumstat.mockResolvedValue({ added: 0, deleted: 0, files: [] } as any);
 
       const architectDraft = 'Initial plan draft';
       const reviewerComments = 'Some improvements';
@@ -163,7 +165,7 @@ describe('PlanWorkflow', () => {
     it('should detect medium scope for moderate changes', async () => {
       mockGitService.getRecentCommits.mockResolvedValue([]);
       mockGitService.getDiff.mockResolvedValue({
-        files: { staged: Array.from({ length: 5 }, (_, i) => `file${i}.ts`) },
+        files: { staged: Array.from({ length: 5 }, (_, i) => `file${i}.ts`), unstaged: [] },
         summary: ''
       } as any);
 
@@ -187,7 +189,7 @@ describe('PlanWorkflow', () => {
     it('should detect large scope for many files', async () => {
       mockGitService.getRecentCommits.mockResolvedValue([]);
       mockGitService.getDiff.mockResolvedValue({
-        files: { staged: Array.from({ length: 15 }, (_, i) => `file${i}.ts`) },
+        files: { staged: Array.from({ length: 15 }, (_, i) => `file${i}.ts`), unstaged: [] },
         summary: ''
       } as any);
 

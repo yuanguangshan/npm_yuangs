@@ -19,7 +19,7 @@ class WasmGovernanceBridge {
             this.instance = wasmModule.exports;
             return true;
         }
-        catch (e) {
+        catch {
             return false;
         }
     }

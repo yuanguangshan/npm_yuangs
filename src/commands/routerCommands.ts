@@ -62,7 +62,7 @@ export function registerRouterCommands(program: Command): void {
         }
       } catch (error: any) {
         console.error(chalk.red(`错误: ${error.message}`));
-        process.exit(1);
+        throw new Error(error instanceof Error ? error.message : String(error));
       }
     });
 
@@ -92,7 +92,7 @@ export function registerRouterCommands(program: Command): void {
         }
       } catch (error: any) {
         console.error(chalk.red(`错误: ${error.message}`));
-        process.exit(1);
+        throw new Error(error instanceof Error ? error.message : String(error));
       }
     });
 
@@ -108,16 +108,14 @@ export function registerRouterCommands(program: Command): void {
         const adapter = adapters.find((a) => a.name === adapterName);
 
         if (!adapter) {
-          console.error(chalk.red(`找不到适配器: ${adapterName}`));
-          process.exit(1);
+          throw new Error(`找不到适配器: ${adapterName}`);
         }
 
         console.log(chalk.cyan(`正在测试 ${adapter.name}...\n`));
 
         const available = await adapter.healthCheck();
         if (!available) {
-          console.error(chalk.red(`✗ ${adapter.name} 健康检查失败，模型不可用`));
-          process.exit(1);
+          throw new Error(`${adapter.name} 健康检查失败，模型不可用`);
         }
 
         console.log(chalk.green(`✓ ${adapter.name} 健康检查通过\n`));
@@ -137,12 +135,11 @@ export function registerRouterCommands(program: Command): void {
           console.log(result.content);
           console.log(chalk.gray(`\n执行时间: ${result.executionTime}ms`));
         } else {
-          console.error(chalk.red(`\n✗ 测试失败: ${result.error}`));
-          process.exit(1);
+          throw new Error(`测试失败: ${result.error}`);
         }
       } catch (error: any) {
         console.error(chalk.red(`错误: ${error.message}`));
-        process.exit(1);
+        throw new Error(error instanceof Error ? error.message : String(error));
       }
     });
 
@@ -175,7 +172,7 @@ export function registerRouterCommands(program: Command): void {
         }
       } catch (error: any) {
         console.error(chalk.red(`错误: ${error.message}`));
-        process.exit(1);
+        throw new Error(error instanceof Error ? error.message : String(error));
       }
     });
 
@@ -205,15 +202,14 @@ export function registerRouterCommands(program: Command): void {
             strategy = RoutingStrategy.BEST_QUALITY;
             break;
           default:
-            console.error(chalk.red(`未知策略: ${name}`));
-            process.exit(1);
+            throw new Error(`未知策略: ${name}`);
         }
 
         saveConfig({ defaultStrategy: strategy });
         console.log(chalk.green(`✓ 已将默认策略设置为: ${name}`));
       } catch (error: any) {
         console.error(chalk.red(`错误: ${error.message}`));
-        process.exit(1);
+        throw new Error(error instanceof Error ? error.message : String(error));
       }
     });
 
@@ -238,7 +234,7 @@ export function registerRouterCommands(program: Command): void {
         console.log(chalk.green(`✓ 已更新探索配置: 策略=${strategy}, Epsilon=${options.epsilon}`));
       } catch (error: any) {
         console.error(chalk.red(`错误: ${error.message}`));
-        process.exit(1);
+        throw new Error(error instanceof Error ? error.message : String(error));
       }
     });
 
@@ -269,7 +265,7 @@ export function registerRouterCommands(program: Command): void {
         console.log(chalk.gray(`\n配置文件位置: ${getConfigPath()}`));
       } catch (error: any) {
         console.error(chalk.red(`错误: ${error.message}`));
-        process.exit(1);
+        throw new Error(error instanceof Error ? error.message : String(error));
       }
     });
 
@@ -293,7 +289,7 @@ export function registerRouterCommands(program: Command): void {
         console.log(chalk.green(`✓ 已设置 ${key} = ${JSON.stringify(parsedValue)}`));
       } catch (error: any) {
         console.error(chalk.red(`错误: ${error.message}`));
-        process.exit(1);
+        throw new Error(error instanceof Error ? error.message : String(error));
       }
     });
 
@@ -306,7 +302,7 @@ export function registerRouterCommands(program: Command): void {
         console.log(chalk.green('✓ 配置已重置为默认值'));
       } catch (error: any) {
         console.error(chalk.red(`错误: ${error.message}`));
-        process.exit(1);
+        throw new Error(error instanceof Error ? error.message : String(error));
       }
     });
 
@@ -320,7 +316,7 @@ export function registerRouterCommands(program: Command): void {
         console.log(chalk.green(`✓ 已启用适配器: ${adapter}`));
       } catch (error: any) {
         console.error(chalk.red(`错误: ${error.message}`));
-        process.exit(1);
+        throw new Error(error instanceof Error ? error.message : String(error));
       }
     });
 
@@ -333,7 +329,7 @@ export function registerRouterCommands(program: Command): void {
         console.log(chalk.green(`✓ 已禁用适配器: ${adapter}`));
       } catch (error: any) {
         console.error(chalk.red(`错误: ${error.message}`));
-        process.exit(1);
+        throw new Error(error instanceof Error ? error.message : String(error));
       }
     });
 
@@ -347,7 +343,7 @@ export function registerRouterCommands(program: Command): void {
         console.log(chalk.green(`✓ 已将任务类型 ${taskType} 映射到模型 ${modelName}`));
       } catch (error: any) {
         console.error(chalk.red(`错误: ${error.message}`));
-        process.exit(1);
+        throw new Error(error instanceof Error ? error.message : String(error));
       }
     });
 
@@ -360,7 +356,7 @@ export function registerRouterCommands(program: Command): void {
         console.log(chalk.green(`✓ 已移除任务类型 ${taskType} 的映射`));
       } catch (error: any) {
         console.error(chalk.red(`错误: ${error.message}`));
-        process.exit(1);
+        throw new Error(error instanceof Error ? error.message : String(error));
       }
     });
 
@@ -467,12 +463,11 @@ export function registerRouterCommands(program: Command): void {
           console.log(chalk.green(`\n\n✓ 任务执行成功`));
           console.log(chalk.gray(`执行时间: ${result.executionTime}ms`));
         } else {
-          console.error(chalk.red(`\n✗ 任务执行失败: ${result.error}`));
-          process.exit(1);
+          throw new Error(`任务执行失败: ${result.error}`);
         }
       } catch (error: any) {
         console.error(chalk.red(`错误: ${error.message}`));
-        process.exit(1);
+        throw new Error(error instanceof Error ? error.message : String(error));
       }
     });
 }

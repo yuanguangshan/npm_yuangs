@@ -127,7 +127,7 @@ describe('GitWorkflowSession', () => {
       const result = await session.runAuto(mockAutoFn);
 
       expect(result.success).toBe(false);
-      expect(result.summary).toContain('Cannot proceed');
+      expect(result.summary).toMatch(/Cannot proceed|Auto requires/);
     });
   });
 

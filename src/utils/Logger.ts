@@ -23,8 +23,12 @@ type LogLevelName = 'debug' | 'info' | 'warn' | 'error';
 const LOG_DIR = path.join(os.homedir(), '.yuangs', 'logs');
 
 function getLogFilePath(): string {
-    if (!fs.existsSync(LOG_DIR)) {
-        fs.mkdirSync(LOG_DIR, { recursive: true });
+    try {
+        if (!fs.existsSync(LOG_DIR)) {
+            fs.mkdirSync(LOG_DIR, { recursive: true });
+        }
+    } catch {
+        // 测试沙盒或权限受限环境忽略
     }
     const today = new Date().toISOString().slice(0, 10);
     return path.join(LOG_DIR, `${today}.log`);
@@ -96,17 +100,26 @@ export class Logger {
 
     private init(): void {
         const envLevel = getEnvLogLevel();
-        const logStream: DestinationStream = fs.createWriteStream(getLogFilePath(), { flags: 'a' });
+        let logStream: DestinationStream | null = null;
+        try {
+            const ws: any = fs.createWriteStream(getLogFilePath(), { flags: 'a' });
+            // 防止 EPERM 等错误导致进程崩溃（测试沙盒常见）
+            if (ws && typeof ws.on === 'function') ws.on('error', () => { /* 忽略文件日志错误 */ });
+            logStream = ws;
+        } catch {
+            logStream = null;
+        }
+
+        const streams: { stream: DestinationStream; level: string }[] = [];
+        if (logStream) streams.push({ stream: logStream, level: 'trace' });
+        streams.push({ stream: pino.destination({ dest: 1, sync: false }), level: envLevel || 'info' });
 
         this.pino = pino({
             level: envLevel || 'info',
             formatters: {
                 level: (label) => ({ level: label.toUpperCase() }),
             },
-        }, pino.multistream([
-            { stream: logStream, level: 'trace' },
-            { stream: pino.destination({ dest: 1, sync: false }), level: envLevel || 'info' },
-        ]));
+        }, pino.multistream(streams as any));
     }
 
     private flush(): void {

@@ -15,6 +15,14 @@ module.exports = {
         'text',
         'lcov'
     ],
+    coverageThreshold: {
+        global: {
+            branches: 15,
+            functions: 20,
+            lines: 20,
+            statements: 20
+        }
+    },
     moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
     transform: {
         '^.+\\.[tj]sx?$': ['ts-jest', {

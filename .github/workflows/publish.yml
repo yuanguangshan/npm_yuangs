@@ -49,6 +49,7 @@ jobs:
 
       - run: npm ci
       - run: npm run build
+      - run: npm run test:coverage
 
       - name: Publish to npm
         run: npm publish --provenance

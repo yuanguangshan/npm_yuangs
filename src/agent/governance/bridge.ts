@@ -1,8 +1,14 @@
 import fs from 'fs';
 import path from 'path';
 
+export interface GovernanceProposal { id?: string; type?: string; payload?: unknown; [k: string]: unknown; }
+export interface GovernanceRule { id: string; effect: string; reason?: string; [k: string]: unknown; }
+export type GovernanceLedger = unknown[];
+export interface GovernanceResult { effect: string; reason: string; [k: string]: unknown; }
+interface WasmExports { __newString: (s: string) => number; __getString: (ptr: number) => string; evaluate: (a: number, b: number, c: number) => number; }
+
 export class WasmGovernanceBridge {
-    private static instance: any = null;
+    private static instance: WasmExports | null = null;
 
     static async init(): Promise<boolean> {
         try {
@@ -14,14 +20,14 @@ export class WasmGovernanceBridge {
             }
 
             const wasmModule = await loader.instantiate(fs.readFileSync(wasmPath));
-            this.instance = wasmModule.exports;
+            this.instance = wasmModule.exports as unknown as WasmExports;
             return true;
-        } catch (e) {
+        } catch {
             return false;
         }
     }
 
-    static evaluate(proposal: any, rules: any, ledger: any): any {
+    static evaluate(proposal: unknown, rules: unknown, ledger: unknown): GovernanceResult {
         if (!this.instance) return { effect: 'error', reason: 'WASM not initialized' };
 
         const { __newString, __getString, evaluate } = this.instance;

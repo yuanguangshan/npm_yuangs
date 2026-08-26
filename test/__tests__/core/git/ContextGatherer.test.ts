@@ -1,9 +1,11 @@
 import { ContextGatherer } from '../../../../src/core/git/ContextGatherer';
 import { GitService } from '../../../../src/core/git/GitService';
 import fs from 'fs';
+import * as fsPromises from 'fs/promises';
 import { exec } from 'child_process';
 
 jest.mock('fs');
+jest.mock('fs/promises');
 jest.mock('child_process', () => ({
     exec: jest.fn(),
     spawn: jest.fn(),
@@ -11,6 +13,7 @@ jest.mock('child_process', () => ({
 jest.mock('../../../../src/core/git/GitService');
 
 const mockFs = fs as jest.Mocked<typeof fs>;
+const mockFsPromises = fsPromises as jest.Mocked<typeof fsPromises>;
 const mockExec = exec as unknown as jest.Mock;
 
 describe('ContextGatherer', () => {
@@ -26,25 +29,26 @@ describe('ContextGatherer', () => {
     });
 
     test('should gather context correctly', async () => {
-        // Mock getFileTree (git ls-files)
-        mockExec.mockImplementation((cmd, opts, callback) => {
-            if (cmd === 'git ls-files') {
-                callback(null, { stdout: 'src/index.ts\npackage.json\nREADME.md\n' });
-            }
-        });
+        // Mock getFileTree directly to avoid child_process mocking complexity
+        jest.spyOn(gatherer as any, 'getFileTree').mockResolvedValue('src/index.ts\npackage.json\nREADME.md\n');
 
-        // Mock fs for package.json and other files
-        mockFs.existsSync.mockReturnValue(true);
-        mockFs.readFileSync.mockImplementation((path: any) => {
+        // Mock fs for package.json (sync)
+        (mockFs.existsSync as any).mockReturnValue(true);
+        (mockFs.readFileSync as any).mockImplementation((path: any) => {
             if (path.toString().endsWith('package.json')) {
                 return JSON.stringify({ name: 'test-project', dependencies: { 'axios': '^1.0.0' } });
             }
-            if (path.toString().endsWith('src/index.ts')) {
-                return 'console.log("hello");';
-            }
             return '';
         });
-        mockFs.statSync.mockReturnValue({ isFile: () => true } as any);
+
+        // Mock fs/promises for relevant files
+        (mockFsPromises.stat as any).mockResolvedValue({ isFile: () => true } as any);
+        (mockFsPromises.readFile as any).mockImplementation((path: any) => {
+            if (path.toString().endsWith('src/index.ts')) {
+                return Promise.resolve('console.log("hello");');
+            }
+            return Promise.resolve('');
+        });
 
         const context = await gatherer.gather('fix something in src/index.ts');
 
@@ -57,23 +61,21 @@ describe('ContextGatherer', () => {
     });
 
     test('should identify as doc task and filter relevant files', async () => {
-        mockExec.mockImplementation((cmd, opts, callback) => {
-            if (cmd === 'git ls-files') {
-                callback(null, { stdout: 'docs/guide.md\nsrc/index.ts\nREADME.md\n' });
-            }
-        });
+        jest.spyOn(gatherer as any, 'getFileTree').mockResolvedValue('docs/guide.md\nsrc/index.ts\nREADME.md\n');
 
-        mockFs.existsSync.mockReturnValue(true);
-        mockFs.readFileSync.mockImplementation((path: any) => {
+        (mockFs.existsSync as any).mockReturnValue(true);
+        (mockFs.readFileSync as any).mockImplementation(() => '');
+
+        (mockFsPromises.stat as any).mockResolvedValue({ isFile: () => true } as any);
+        (mockFsPromises.readFile as any).mockImplementation((path: any) => {
             if (path.toString().endsWith('docs/guide.md')) {
-                return '# Guide';
+                return Promise.resolve('# Guide');
             }
             if (path.toString().endsWith('README.md')) {
-                return '# README';
+                return Promise.resolve('# README');
             }
-            return '';
+            return Promise.resolve('');
         });
-        mockFs.statSync.mockReturnValue({ isFile: () => true } as any);
 
         const context = await gatherer.gather('update documentation in docs/guide.md');
 

@@ -85,7 +85,7 @@ describe('StreamMarkdownRenderer model footer', () => {
             spy.mockRestore();
         }
         const out = writes.join('');
-        expect(out).toContain('模型: gemini-2.5-flash');
+        expect(out).toContain('模型：gemini-2.5-flash');
         expect(out).toContain('耗时');
     });
 
@@ -99,6 +99,6 @@ describe('StreamMarkdownRenderer model footer', () => {
         } finally {
             spy.mockRestore();
         }
-        expect(writes.join('')).not.toContain('模型:');
+        expect(writes.join('')).not.toContain('模型：');
     });
 });
