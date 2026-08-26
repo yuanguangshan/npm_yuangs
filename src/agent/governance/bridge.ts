@@ -27,6 +27,11 @@ export class WasmGovernanceBridge {
         }
     }
 
+    /** 测试用：重置单例，便于 afterEach 清理 */
+    static resetForTesting(): void {
+        this.instance = null;
+    }
+
     static evaluate(proposal: unknown, rules: unknown, ledger: unknown): GovernanceResult {
         if (!this.instance) return { effect: 'error', reason: 'WASM not initialized' };
 

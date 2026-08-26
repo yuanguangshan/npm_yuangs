@@ -191,4 +191,11 @@ export class GovernanceService {
   static resetUserTrust(userId?: string): void {
     this.riskModel.resetUserTrust(userId);
   }
+
+  /** 测试用：重置治理全局状态 */
+  static resetForTesting(): void {
+    this.ledger.clear();
+    this.initialized = false;
+    this.rules = [];
+  }
 }

@@ -19,4 +19,12 @@ export class RiskLedger {
         const oneHourAgo = Date.now() - 3600000;
         this.entries = this.entries.filter(e => e.ts > oneHourAgo);
     }
+
+    clear(): void {
+        this.entries = [];
+    }
+
+    resetForTesting(): void {
+        this.clear();
+    }
 }

@@ -80,6 +80,15 @@ async function readFileContent(filePath: string): Promise<string> {
     return await fs.promises.readFile(fullPath, 'utf-8');
 }
 
+function printInteractiveHelp() {
+    console.log(chalk.gray('─'.repeat(50)));
+    console.log(chalk.bold('  交互命令速查  ') + chalk.gray('(输入 help/? 查看详情)'));
+    console.log(chalk.cyan('  :ls') + chalk.gray('  列上下文  ') + chalk.cyan(':cat [n]') + chalk.gray(' 看文件  ') + chalk.cyan(':clear') + chalk.gray(' 清上下文'));
+    console.log(chalk.cyan('  :exec <cmd>') + chalk.gray(' 原子执行  ') + chalk.cyan(':plugins') + chalk.gray(' 插件  ') + chalk.cyan('/history') + chalk.gray(' 对话历史'));
+    console.log(chalk.cyan('  /clear') + chalk.gray(' 清历史  ') + chalk.cyan('help/?') + chalk.gray(' 本帮助  ') + chalk.cyan('exit') + chalk.gray(' 退出'));
+    console.log(chalk.gray('─'.repeat(50)) + '\n');
+}
+
 async function showFileSelector(rl: readline.Interface): Promise<string | null> {
     return new Promise((resolve) => {
         try {
@@ -350,7 +359,8 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
         }
     }
 
-    console.log(chalk.bold.cyan('\n🤖 进入 AI 交互模式 (输入 exit 退出)\n'));
+    console.log(chalk.bold.cyan('\n🤖 进入 AI 交互模式 (输入 exit 退出，help/? 查看帮助)\n'));
+    printInteractiveHelp();
 
     const contextStore = new ContextStore();
     const contextAssembler = new ContextAssembler();
@@ -455,6 +465,11 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
                         rl.resume();
                     }
                 }
+                continue;
+            }
+
+            if (['help', '?', ':help', ':?'].includes(trimmed.toLowerCase())) {
+                printInteractiveHelp();
                 continue;
             }
 

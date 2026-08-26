@@ -15,6 +15,7 @@ module.exports = {
         'text',
         'lcov'
     ],
+    setupFilesAfterEnv: ['<rootDir>/test/setupAfterEnv.ts'],
     coverageThreshold: {
         global: {
             branches: 15,
