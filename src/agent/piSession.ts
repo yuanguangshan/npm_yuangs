@@ -40,7 +40,7 @@ interface PiAgentTool {
   name: string;
   label: string;
   description: string;
-  parameters: any; // TypeBox TSchema
+  parameters: any; // JSON Schema (plain object)
   execute(
     toolCallId: string,
     params: Record<string, any>,
@@ -332,29 +332,18 @@ export class PiEngine {
 
 // ─── 2. 工具转换：yuangs Tool → pi ToolDefinition ───
 
-/** ToolParameter → TypeBox schema（需在 yuangs package.json 加 "typebox": "1.3.7" 直接依赖）。 */
-async function paramToTypeBox(param: ToolParameter): Promise<any> {
-  const Type = await requireTypeBox();
-  const base =
+/** ToolParameter → 纯 JSON Schema（0 依赖，替代 TypeBox）。 */
+function paramToJsonSchema(param: ToolParameter): any {
+  const base: any =
     param.type === 'string'
-      ? Type.String()
+      ? { type: 'string' }
       : param.type === 'number'
-        ? Type.Number()
+        ? { type: 'number' }
         : param.type === 'boolean'
-          ? Type.Boolean()
-          : Type.Array(Type.Any());
-  // TypeBox 的描述放在 schema 上
+          ? { type: 'boolean' }
+          : { type: 'array', items: {} };
   if (param.description) base.description = param.description;
   return base;
-}
-
-let _typebox: any = null;
-async function requireTypeBox(): Promise<any> {
-  if (!_typebox) {
-    // typebox 1.x 是 ESM-only，CJS 上下文必须用 nativeImport 加载。
-    _typebox = await nativeImport('typebox');
-  }
-  return _typebox;
 }
 
 /**
@@ -362,14 +351,18 @@ async function requireTypeBox(): Promise<any> {
  * pi execute 返回 AgentToolResult；yuangs 返回 ToolExecutionResult。
  */
 export async function adaptYuangsToolToPi(tool: Tool): Promise<any> {
-  const Type = await requireTypeBox();
   const props: Record<string, any> = {};
   const required: string[] = [];
   for (const p of tool.parameters) {
-    props[p.name] = await paramToTypeBox(p);
+    props[p.name] = paramToJsonSchema(p);
     if (p.required) required.push(p.name);
   }
-  const parameters = Type.Object(props, required.length > 0 ? { additionalProperties: false } : { additionalProperties: false });
+  const parameters = {
+    type: 'object',
+    properties: props,
+    required: required.length > 0 ? required : undefined,
+    additionalProperties: false,
+  };
 
   return {
     name: tool.name,
