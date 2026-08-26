@@ -61,11 +61,12 @@ export async function readFilesContent(
             limit(async () => {
                 try {
                     const fullPath = path.resolve(filePath);
-                    if (!fs.existsSync(fullPath)) {
-                        return null;
+                    let stats: fs.Stats;
+                    try {
+                        stats = await fs.promises.stat(fullPath);
+                    } catch {
+                        return null; // 文件不存在
                     }
-
-                    const stats = fs.statSync(fullPath);
                     if (!stats.isFile()) {
                         return null;
                     }
@@ -76,7 +77,10 @@ export async function readFilesContent(
                         return null;
                     }
 
-                    const content = await fs.promises.readFile(fullPath, encoding);
+                    let content = await fs.promises.readFile(fullPath, encoding);
+                    if (content.length > maxContentLength) {
+                        content = content.substring(0, maxContentLength) + '\n... (内容过长已截断)';
+                    }
                     return { filePath, content };
                 } catch (error) {
                     const errorMsg = error instanceof Error ? error.message : '未知错误';
@@ -112,21 +116,37 @@ export async function readFilesContent(
     return contentMap;
 }
 
+/**
+ * @deprecated 优先使用异步 readFilesContent，避免同步阻塞
+ * 同步版本现增加大小与数量限制，最多处理20个文件且单文件>1MB跳过
+ */
 export function readFilesContentSync(filePaths: string[]): Map<string, string> {
     const contentMap = new Map<string, string>();
-
-    for (const filePath of filePaths) {
+    const MAX_SYNC_FILES = 20;
+    const MAX_SYNC_FILE_SIZE = 1024 * 1024; // 1MB
+    const slice = filePaths.slice(0, MAX_SYNC_FILES);
+    if (filePaths.length > MAX_SYNC_FILES) {
+        console.warn(`readFilesContentSync: 文件数 ${filePaths.length} 超限，仅处理前 ${MAX_SYNC_FILES} 个`);
+    }
+    for (const filePath of slice) {
         try {
             const fullPath = path.resolve(filePath);
-            if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
-                const content = fs.readFileSync(fullPath, 'utf-8');
-                contentMap.set(filePath, content);
+            if (!fs.existsSync(fullPath)) continue;
+            const stats = fs.statSync(fullPath);
+            if (!stats.isFile()) continue;
+            if (stats.size > MAX_SYNC_FILE_SIZE) {
+                console.warn(`readFilesContentSync: 跳过大文件 ${filePath}`);
+                continue;
             }
-        } catch (error) {
+            const content = fs.readFileSync(fullPath, 'utf-8');
+            const truncated = content.length > DEFAULT_MAX_CONTENT_LENGTH
+                ? content.substring(0, DEFAULT_MAX_CONTENT_LENGTH) + '\n... (内容过长已截断)'
+                : content;
+            contentMap.set(filePath, truncated);
+        } catch {
             console.error(`无法读取文件: ${filePath}`);
         }
     }
-
     return contentMap;
 }
 

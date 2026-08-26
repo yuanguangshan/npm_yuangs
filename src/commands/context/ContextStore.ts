@@ -76,29 +76,51 @@ export class ContextStore {
         }
     }
 
+    /** @deprecated 优先使用 detectDriftAsync，避免同步阻塞 */
     detectDrift(): DriftReport[] {
         const reports: DriftReport[] = [];
-
+        let checked = 0;
+        const MAX_SYNC_CHECK = 20; // 同步模式最多检查20个文件，避免阻塞
         for (const item of this.items.values()) {
+            if (checked >= MAX_SYNC_CHECK) break;
             if (item.source !== 'file') continue;
             if (!fs.existsSync(item.path)) continue;
-
             try {
+                const stats = fs.statSync(item.path);
+                if (stats.size > 1024 * 1024) continue; // 跳过 >1MB 文件
                 const currentContent = fs.readFileSync(item.path, 'utf-8');
                 const currentHash = sha256(currentContent);
-
                 if (currentHash !== item.hash) {
-                    reports.push({
-                        id: item.id,
-                        path: item.path,
-                        reason: 'hash_changed'
-                    });
+                    reports.push({ id: item.id, path: item.path, reason: 'hash_changed' });
                 }
-            } catch (e) {
+                checked++;
+            } catch {
                 continue;
             }
         }
+        return reports;
+    }
 
+    async detectDriftAsync(): Promise<DriftReport[]> {
+        const reports: DriftReport[] = [];
+        const fsPromises = await import('fs/promises');
+        const limit = (await import('p-limit')).default(5);
+        const tasks = [...this.items.values()]
+            .filter(i => i.source === 'file')
+            .map(item => limit(async () => {
+                try {
+                    const stats = await fsPromises.stat(item.path);
+                    if (stats.size > 1024 * 1024) return null;
+                    const currentContent = await fsPromises.readFile(item.path, 'utf-8');
+                    const currentHash = sha256(currentContent);
+                    if (currentHash !== item.hash) {
+                        return { id: item.id, path: item.path, reason: 'hash_changed' as const };
+                    }
+                } catch { /* ignore */ }
+                return null;
+            }));
+        const results = await Promise.all(tasks);
+        for (const r of results) if (r) reports.push(r);
         return reports;
     }
 
@@ -113,18 +135,37 @@ export class ContextStore {
     refreshItem(id: string) {
         const item = this.items.get(id);
         if (!item || item.source !== 'file') return;
-
         if (!fs.existsSync(item.path)) return;
+        try {
+            const stats = fs.statSync(item.path);
+            if (stats.size > 1024 * 1024) return;
+            const raw = fs.readFileSync(item.path, 'utf-8');
+            const content = redact(raw).redacted;
+            const hash = sha256(content);
+            item.content = content;
+            item.hash = hash;
+            item.status = 'active';
+            item.drifted = false;
+            item.lastUsedAt = Date.now();
+        } catch { /* ignore */ }
+    }
 
-        const raw = fs.readFileSync(item.path, 'utf-8');
-        const content = redact(raw).redacted;
-        const hash = sha256(content);
-
-        item.content = content;
-        item.hash = hash;
-        item.status = 'active';
-        item.drifted = false;
-        item.lastUsedAt = Date.now();
+    async refreshItemAsync(id: string): Promise<void> {
+        const item = this.items.get(id);
+        if (!item || item.source !== 'file') return;
+        try {
+            const fsPromises = await import('fs/promises');
+            const stats = await fsPromises.stat(item.path);
+            if (stats.size > 1024 * 1024) return;
+            const raw = await fsPromises.readFile(item.path, 'utf-8');
+            const content = redact(raw).redacted;
+            const hash = sha256(content);
+            item.content = content;
+            item.hash = hash;
+            item.status = 'active';
+            item.drifted = false;
+            item.lastUsedAt = Date.now();
+        } catch { /* ignore */ }
     }
 
     export() {

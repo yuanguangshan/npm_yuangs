@@ -155,12 +155,13 @@ export class ContextBuffer {
     }
 
     private trimIfNeeded() {
-        while (this.totalTokens() > this.maxTokens) {
-            const victim = this.items
-                .filter(i => !i.pinned)
-                .sort((a, b) => a.importance - b.importance)[0];
-
-            if (!victim) break;
+        if (this.totalTokens() <= this.maxTokens) return;
+        // 一次排序后批量移除，避免 O(n² log n)
+        const victims = this.items
+            .filter(i => !i.pinned)
+            .sort((a, b) => a.importance - b.importance);
+        for (const victim of victims) {
+            if (this.totalTokens() <= this.maxTokens) break;
             this.items = this.items.filter(i => i !== victim);
         }
     }

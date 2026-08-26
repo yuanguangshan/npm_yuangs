@@ -329,8 +329,6 @@ program
     });
 
 program
-
-program
     .command('macros')
     .description('查看所有快捷指令')
     .action(() => {
@@ -520,7 +518,8 @@ program
 async function main() {
     const args = process.argv.slice(2);
 
-    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities', 'completion', '_complete_subcommand', '_describe', 'registry', 'explain', 'replay', 'skills', 'diff-edit', 'ny', 'ni', 'll', 'gdoc', 'install', 'update', 'ssh', 'router', 'git'];
+    // 动态从 commander 注册表中派生，避免硬编码与注册不一致
+    const knownCommands = program.commands.map(c => c.name());
     const globalFlags = ['-h', '--help', '-V', '--version', '-v'];
     const firstArg = args[0];
     const isKnownCommand = firstArg && knownCommands.includes(firstArg);

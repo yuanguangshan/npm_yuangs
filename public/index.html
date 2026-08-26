@@ -1335,7 +1335,6 @@
             const mobileVisible = window.getComputedStyle(mobilePanel).display !== 'none';
             const isMobile = mobileVisible; // 使用 CSS 控制，而不是 JavaScript 判断
             
-            console.log('🔍 Toggle audit panel - Mobile visible:', mobileVisible, 'Using mobile logic:', isMobile);
             
             if (isMobile) {
                 // 移动端：切换底部面板
@@ -1360,11 +1359,9 @@
                 if (isExpanded) {
                     desktopSidebar.classList.remove('expanded');
                     updateAuditMenuStatus(false);
-                    console.log('✅ Desktop sidebar collapsed');
                 } else {
                     desktopSidebar.classList.add('expanded');
                     updateAuditMenuStatus(true);
-                    console.log('✅ Desktop sidebar expanded');
                 }
 
                 // 重新计算终端大小
@@ -1432,20 +1429,15 @@
         const menuTrigger = document.getElementById('menu-trigger');
         const menuOverlay = document.getElementById('menu-overlay');
         
-        console.log('Menu elements:', { menuTrigger, menuOverlay });
         
         if (menuTrigger && menuOverlay) {
             menuTrigger.addEventListener('click', function(e) {
                 e.stopPropagation();
-                console.log('Menu trigger clicked!');
                 const isVisible = menuOverlay.classList.contains('visible');
-                console.log('Current visible state:', isVisible);
                 menuOverlay.classList.toggle('visible');
-                console.log('New visible state:', menuOverlay.classList.contains('visible'));
                 
                 // 详细的样式调试
                 const styles = window.getComputedStyle(menuOverlay);
-                console.log('Menu overlay computed styles:', {
                     display: styles.display,
                     position: styles.position,
                     top: styles.top,
@@ -1460,7 +1452,6 @@
                 
                 // 获取元素位置
                 const rect = menuOverlay.getBoundingClientRect();
-                console.log('Menu overlay position:', {
                     top: rect.top,
                     left: rect.left,
                     right: rect.right,
@@ -1475,24 +1466,15 @@
 
         // 审计面板菜单项
         const toggleAuditMenuItem = document.getElementById('toggle-audit-menu');
-        console.log('🔍 Toggle audit menu element:', toggleAuditMenuItem);
         
         if (toggleAuditMenuItem) {
             toggleAuditMenuItem.addEventListener('click', function(e) {
                 e.stopPropagation();
-                console.log('🔍 Audit menu item clicked!');
-                console.log('🔍 Window width:', window.innerWidth);
-                console.log('🔍 Is mobile:', window.innerWidth <= 768);
                 
                 const sidebar = document.getElementById('desktop-sidebar');
-                console.log('🔍 Desktop sidebar element:', sidebar);
-                console.log('🔍 Sidebar classes before:', sidebar ? sidebar.className : 'null');
-                console.log('🔍 Sidebar style before:', sidebar ? window.getComputedStyle(sidebar).display : 'null');
                 
                 toggleAuditPanel(e);
                 
-                console.log('🔍 Sidebar classes after:', sidebar ? sidebar.className : 'null');
-                console.log('🔍 Sidebar style after:', sidebar ? window.getComputedStyle(sidebar).display : 'null');
                 
                 // 不要关闭菜单，让用户可以继续操作
             });
