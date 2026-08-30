@@ -393,11 +393,25 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
     };
     process.stdin.on('keypress', onKeypress);
 
+    // Ctrl+C：行内有内容时清空当前输入，空行时优雅退出（等价于输入 exit）
+    rl.on('SIGINT', () => {
+        const line = (rl as unknown as { line?: string }).line ?? '';
+        if (line.length > 0) {
+            rl.write(null, { ctrl: true, name: 'u' });
+            console.log(chalk.gray('\n[已清空输入，再按 Ctrl+C 退出]'));
+            return;
+        }
+        // 关闭 readline → ask() 走 close 分支返回 null → 主循环优雅退出
+        rl.close();
+    });
+
     // Helper to wrap rl.question in a Promise
-    const ask = (query: string): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            const onClose = () => reject(new Error('readline closed'));
-            rl.on('close', onClose);
+    // readline 被关闭（Ctrl+C / Ctrl+D）时 resolve(null)，由主循环当作正常退出处理，
+    // 不再抛异常被上层的 [Critical Loop Error] 捕获显示
+    const ask = (query: string): Promise<string | null> => {
+        return new Promise((resolve) => {
+            const onClose = () => resolve(null);
+            rl.once('close', onClose);
             rl.question(query, (answer) => {
                 rl.removeListener('close', onClose);
                 resolve(answer);
@@ -408,6 +422,13 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
     try {
         while (true) {
             const input = await ask(chalk.green('你：'));
+
+            // readline 已关闭（Ctrl+C / Ctrl+D）：正常退出，不再报错
+            if (input === null) {
+                console.log(chalk.cyan('\n👋 再见！'));
+                break;
+            }
+
             const trimmed = input.trim();
 
             if (!trimmed) continue;
@@ -752,7 +773,10 @@ ${finalPrompt}
         }
     } catch (criticalErr: unknown) {
         const message = criticalErr instanceof Error ? criticalErr.message : String(criticalErr);
-        console.error(chalk.red(`\n[Critical Loop Error]: ${message}`));
+        // readline 关闭属于用户主动退出（Ctrl+C / Ctrl+D），不是致命错误，静默处理
+        if (message !== 'readline closed') {
+            console.error(chalk.red(`\n[Critical Loop Error]: ${message}`));
+        }
     } finally {
         process.stdin.removeListener('keypress', onKeypress);
         rl.close();
