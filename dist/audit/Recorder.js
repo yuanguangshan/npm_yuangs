@@ -37,6 +37,7 @@ exports.Recorder = void 0;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const os = __importStar(require("os"));
+const redact_1 = require("../utils/redact");
 /**
  * 录像机
  *
@@ -53,16 +54,22 @@ class Recorder {
     draining = false;
     constructor(options) {
         this.startTime = Date.now();
-        // 确保审计目录存在
+        // 确保审计目录存在 (700)
         const auditDir = path.join(os.homedir(), '.yuangs', 'audit');
         if (!fs.existsSync(auditDir)) {
-            fs.mkdirSync(auditDir, { recursive: true });
+            fs.mkdirSync(auditDir, { recursive: true, mode: 0o700 });
+        }
+        else {
+            try {
+                fs.chmodSync(auditDir, 0o700);
+            }
+            catch { }
         }
         // 生成文件名: 2026-01-25T17-00-00_user@host_abcd.cast
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const filename = `${timestamp}_${options.user}@${options.host}.cast`;
         this.filePath = path.join(auditDir, filename);
-        this.stream = fs.createWriteStream(this.filePath, { flags: 'a', encoding: 'utf8' });
+        this.stream = fs.createWriteStream(this.filePath, { flags: 'a', encoding: 'utf8', mode: 0o600 });
         // 写入 Header
         const header = {
             version: 2,
@@ -100,17 +107,17 @@ class Recorder {
         }
     }
     /**
-     * 记录输出 (Output)
+     * 记录输出 (Output) — 脱敏后落盘
      */
     recordOutput(data) {
         const text = typeof data === 'string' ? data : data.toString('utf8');
-        this.writeFrame([this.now(), 'o', text]);
+        this.writeFrame([this.now(), 'o', (0, redact_1.redactSecrets)(text)]);
     }
     /**
-     * 记录输入 (Input)
+     * 记录输入 (Input) — 脱敏后落盘
      */
     recordInput(data, meta) {
-        this.writeFrame([this.now(), 'i', data, meta]);
+        this.writeFrame([this.now(), 'i', (0, redact_1.redactSecrets)(data), meta]);
     }
     /**
      * 记录窗口调整 (Resize)
@@ -119,10 +126,16 @@ class Recorder {
         this.writeFrame([this.now(), 'r', JSON.stringify({ w: cols, h: rows })]);
     }
     /**
-     * 记录治理事件 (Governance) - yuangs 扩展
+     * 记录治理事件 (Governance) - yuangs 扩展，details 脱敏
      */
     recordGovernance(event, details) {
-        this.writeFrame([this.now(), 'g', event, details]);
+        let redactedDetails = details;
+        try {
+            if (details)
+                redactedDetails = JSON.parse((0, redact_1.redactSecrets)(JSON.stringify(details)));
+        }
+        catch { }
+        this.writeFrame([this.now(), 'g', event, redactedDetails]);
     }
     /**
      * 结束录制

@@ -271,43 +271,37 @@ class PiEngine {
 }
 exports.PiEngine = PiEngine;
 // ─── 2. 工具转换：yuangs Tool → pi ToolDefinition ───
-/** ToolParameter → TypeBox schema（需在 yuangs package.json 加 "typebox": "1.3.7" 直接依赖）。 */
-async function paramToTypeBox(param) {
-    const Type = await requireTypeBox();
+/** ToolParameter → 纯 JSON Schema（0 依赖，替代 TypeBox）。 */
+function paramToJsonSchema(param) {
     const base = param.type === 'string'
-        ? Type.String()
+        ? { type: 'string' }
         : param.type === 'number'
-            ? Type.Number()
+            ? { type: 'number' }
             : param.type === 'boolean'
-                ? Type.Boolean()
-                : Type.Array(Type.Any());
-    // TypeBox 的描述放在 schema 上
+                ? { type: 'boolean' }
+                : { type: 'array', items: {} };
     if (param.description)
         base.description = param.description;
     return base;
-}
-let _typebox = null;
-async function requireTypeBox() {
-    if (!_typebox) {
-        // typebox 1.x 是 ESM-only，CJS 上下文必须用 nativeImport 加载。
-        _typebox = await nativeImport('typebox');
-    }
-    return _typebox;
 }
 /**
  * 将 yuangs 的 Tool 转为 pi 的 ToolDefinition（piAdapter 的逆向）。
  * pi execute 返回 AgentToolResult；yuangs 返回 ToolExecutionResult。
  */
 async function adaptYuangsToolToPi(tool) {
-    const Type = await requireTypeBox();
     const props = {};
     const required = [];
     for (const p of tool.parameters) {
-        props[p.name] = await paramToTypeBox(p);
+        props[p.name] = paramToJsonSchema(p);
         if (p.required)
             required.push(p.name);
     }
-    const parameters = Type.Object(props, required.length > 0 ? { additionalProperties: false } : { additionalProperties: false });
+    const parameters = {
+        type: 'object',
+        properties: props,
+        required: required.length > 0 ? required : undefined,
+        additionalProperties: false,
+    };
     return {
         name: tool.name,
         label: tool.name,

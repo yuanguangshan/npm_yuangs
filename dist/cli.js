@@ -61,6 +61,7 @@ const ssh_1 = require("./commands/ssh");
 const routerCommands_1 = require("./commands/routerCommands");
 const gitCommands_1 = require("./commands/gitCommands");
 const globDetector_1 = require("./utils/globDetector");
+const confirm_1 = require("./utils/confirm");
 // Mandatory Node.js version check
 const majorVersion = Number(process.versions.node.split('.')[0]);
 if (majorVersion < 18) {
@@ -82,11 +83,28 @@ async function readStdin() {
         return '';
     return new Promise((resolve) => {
         let data = '';
+        const timeoutMs = parseInt(process.env.YUANGS_STDIN_TIMEOUT || '500', 10);
+        let timer = setTimeout(() => resolve(data), timeoutMs);
+        const onData = (chunk) => { data += chunk; };
+        const onEnd = () => { if (timer)
+            clearTimeout(timer); cleanup(); resolve(data); };
+        const onError = () => { if (timer)
+            clearTimeout(timer); cleanup(); resolve(data); };
+        const cleanup = () => {
+            process.stdin.off('data', onData);
+            process.stdin.off('end', onEnd);
+            process.stdin.off('error', onError);
+        };
         process.stdin.setEncoding('utf8');
-        process.stdin.on('data', chunk => data += chunk);
-        process.stdin.on('end', () => resolve(data));
-        // Simple timeout to avoid hanging if no input
-        setTimeout(() => resolve(data), 2000);
+        process.stdin.on('data', onData);
+        process.stdin.on('end', onEnd);
+        process.stdin.on('error', onError);
+        if (process.stdin.readableEnded) {
+            if (timer)
+                clearTimeout(timer);
+            cleanup();
+            resolve(data);
+        }
     });
 }
 function parseOptionsFromArgs(args) {
@@ -273,13 +291,7 @@ program
         console.log(chalk_1.default.bold.cyan('\n📋 上一次执行的命令:\n'));
         console.log(chalk_1.default.white(`${lastItem.command}`));
         console.log(chalk_1.default.gray(`问题: ${lastItem.question}\n`));
-        const rlLast = require('node:readline/promises').createInterface({
-            input: process.stdin,
-            output: process.stdout
-        });
-        const confirmLast = await rlLast.question(chalk_1.default.cyan('确认再次执行? (y/N): '));
-        rlLast.close();
-        if (confirmLast.toLowerCase() === 'y' || confirmLast.toLowerCase() === 'yes') {
+        if (await (0, confirm_1.confirm)('确认再次执行?')) {
             const { exec } = require('child_process');
             console.log(chalk_1.default.bold.cyan('执行中...\n'));
             exec(lastItem.command, (error, stdout, stderr) => {
@@ -314,13 +326,7 @@ program
         if (index >= 0 && index < history.length) {
             const targetCommand = history[index].command;
             console.log(chalk_1.default.yellow(`\n即将执行: ${targetCommand}\n`));
-            const rlConfirm = require('node:readline/promises').createInterface({
-                input: process.stdin,
-                output: process.stdout
-            });
-            const confirm = await rlConfirm.question(chalk_1.default.cyan('确认执行? (y/N): '));
-            rlConfirm.close();
-            if (confirm.toLowerCase() === 'y' || confirm.toLowerCase() === 'yes') {
+            if (await (0, confirm_1.confirm)('确认执行?')) {
                 const { exec } = require('child_process');
                 console.log(chalk_1.default.bold.cyan('执行中...\n'));
                 exec(targetCommand, (error, stdout, stderr) => {
@@ -343,7 +349,6 @@ program
         }
     }
 });
-program;
 program
     .command('macros')
     .description('查看所有快捷指令')
@@ -518,7 +523,8 @@ program
 });
 async function main() {
     const args = process.argv.slice(2);
-    const knownCommands = ['ai', 'list', 'history', 'config', 'macros', 'save', 'run', 'help', 'shici', 'dict', 'pong', 'capabilities', 'completion', '_complete_subcommand', '_describe', 'registry', 'explain', 'replay', 'skills', 'diff-edit', 'ny', 'ni', 'll', 'gdoc', 'install', 'update', 'ssh', 'router', 'git'];
+    // 动态从 commander 注册表中派生，避免硬编码与注册不一致
+    const knownCommands = program.commands.map(c => c.name());
     const globalFlags = ['-h', '--help', '-V', '--version', '-v'];
     const firstArg = args[0];
     const isKnownCommand = firstArg && knownCommands.includes(firstArg);

@@ -13,6 +13,8 @@ class WasmGovernanceBridge {
             const loader = require('@assemblyscript/loader');
             const wasmPath = path_1.default.join(process.cwd(), 'build', 'release.wasm');
             if (!fs_1.default.existsSync(wasmPath)) {
+                // P2 清理：显式降级——WASM 沙箱产物未构建时回退到逻辑层策略，不再静默忽略
+                console.log('📋 WASM 治理沙箱未启用（build/release.wasm 缺失），回退到逻辑层策略');
                 return false;
             }
             const wasmModule = await loader.instantiate(fs_1.default.readFileSync(wasmPath));
@@ -22,6 +24,10 @@ class WasmGovernanceBridge {
         catch {
             return false;
         }
+    }
+    /** 测试用：重置单例，便于 afterEach 清理 */
+    static resetForTesting() {
+        this.instance = null;
     }
     static evaluate(proposal, rules, ledger) {
         if (!this.instance)

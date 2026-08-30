@@ -16,6 +16,8 @@ export class WasmGovernanceBridge {
             const wasmPath = path.join(process.cwd(), 'build', 'release.wasm');
 
             if (!fs.existsSync(wasmPath)) {
+                // P2 清理：显式降级——WASM 沙箱产物未构建时回退到逻辑层策略，不再静默忽略
+                console.log('📋 WASM 治理沙箱未启用（build/release.wasm 缺失），回退到逻辑层策略');
                 return false;
             }
 

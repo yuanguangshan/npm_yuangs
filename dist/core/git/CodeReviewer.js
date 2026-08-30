@@ -48,7 +48,7 @@ class CodeReviewer {
     /**
      * 构建审查提示词
      */
-    buildReviewPrompt(diff, level, capabilityLevel) {
+    buildReviewPrompt(diff, level, capabilityLevel, chunkInfo) {
         const levelInstructions = {
             [ReviewLevel.QUICK]: '快速扫描,只关注明显的 bug、安全问题和严重的代码异味',
             [ReviewLevel.STANDARD]: '进行标准的代码审查,包括代码质量、最佳实践、潜在问题',
@@ -63,10 +63,10 @@ class CodeReviewer {
         };
         return `你是一位资深的代码审查专家。请对以下代码变更进行${levelInstructions[level]}。
 当前能力等级: ${capabilityInstructions[capabilityLevel]}
-
+${chunkInfo ? `\n注意：本次仅提交第 ${chunkInfo.index + 1}/${chunkInfo.total} 个差异分块，请只评审本块内容，无需汇总全局。\n` : ''}
 ## 代码变更
 \`\`\`diff
-${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断)' : ''}
+${diff}
 \`\`\`
 
 ## 审查要点
@@ -174,6 +174,104 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
         };
     }
     /**
+     * 将 diff 按行切分为多个不超过 maxChunk 字符的分块。
+     * 始终按整行切分，避免中途截断导致一行代码残缺（解决旧版 substring(0,15000) 硬截断丢内容的问题）。
+     */
+    splitDiffIntoChunks(diff, maxChunk = 14000) {
+        if (diff.length <= maxChunk)
+            return [diff];
+        const chunks = [];
+        let current = '';
+        for (const line of diff.split('\n')) {
+            const withNl = line + '\n';
+            if (current.length + withNl.length > maxChunk && current.length > 0) {
+                chunks.push(current);
+                current = '';
+            }
+            current += withNl;
+        }
+        if (current.length > 0)
+            chunks.push(current);
+        return chunks;
+    }
+    /**
+     * 聚合多块审查结果：评分取均值，置信度取最低，问题合并，优点/建议去重。
+     */
+    aggregateReviewResults(results) {
+        if (results.length === 1)
+            return results[0];
+        let totalScore = 0;
+        const issues = [];
+        const strengths = new Set();
+        const recommendations = new Set();
+        let minConfidence = 1;
+        let degradation;
+        for (const r of results) {
+            totalScore += r.score;
+            minConfidence = Math.min(minConfidence, r.confidence);
+            issues.push(...r.issues);
+            r.strengths.forEach(s => strengths.add(s));
+            r.recommendations.forEach(s => recommendations.add(s));
+            if (r.degradation?.applied)
+                degradation = r.degradation;
+        }
+        return {
+            score: Math.round(totalScore / results.length),
+            summary: `（分 ${results.length} 块审查）` + results.map((r, i) => `[块${i + 1}] ${r.summary}`).join(' '),
+            issues,
+            strengths: [...strengths],
+            recommendations: [...recommendations],
+            filesReviewed: results.reduce((acc, r) => acc + r.filesReviewed, 0),
+            confidence: minConfidence,
+            degradation,
+        };
+    }
+    /**
+     * 执行一次 AI 审查调用（单块），包含路由、降级决策与结果解析。
+     * review / reviewFile / reviewCommit 共用，避免三处重复逻辑。
+     */
+    async reviewOnce(diff, level, minCapability, chunkInfo) {
+        const taskConfig = {
+            type: types_1.TaskType.CODE_REVIEW,
+            description: 'Review code changes',
+        };
+        const routingConfig = { strategy: 'auto' };
+        const routingResult = await this.router.route(taskConfig, routingConfig);
+        console.log(chalk_1.default.cyan(`🤖 使用模型: ${routingResult.adapter.name}`));
+        console.log(chalk_1.default.gray(`📋 理由: ${routingResult.reason}\n`));
+        const prompt = this.buildReviewPrompt(diff, level, minCapability.minCapability, chunkInfo);
+        const execution = await this.router.executeTask(routingResult.adapter, prompt, taskConfig);
+        if (!execution.success || !execution.content) {
+            throw new Error('Failed to perform code review');
+        }
+        const parsed = this.parseReviewResult(execution.content);
+        const confidence = parsed.confidence ?? 0.8;
+        const decisionInput = { timeElapsed: 0, confidence };
+        const degradationDecision = this.degradationPolicy.decide(decisionInput, minCapability);
+        let degradationApplied = false;
+        let degradationReason = '';
+        if (degradationDecision.shouldDegrade && minCapability.minCapability !== degradationDecision.targetLevel) {
+            degradationApplied = true;
+            degradationReason = degradationDecision.reason;
+            console.log(chalk_1.default.yellow(`⚠️  降级触发: ${degradationReason}`));
+        }
+        return {
+            score: parsed.score || 70,
+            summary: parsed.summary || '审查完成',
+            issues: parsed.issues || [],
+            strengths: parsed.strengths || [],
+            recommendations: parsed.recommendations || [],
+            filesReviewed: 1,
+            confidence,
+            degradation: degradationApplied ? {
+                applied: true,
+                originalLevel: minCapability.minCapability,
+                targetLevel: degradationDecision.targetLevel,
+                reason: degradationReason,
+            } : undefined,
+        };
+    }
+    /**
      * 执行代码审查
      */
     async review(level = ReviewLevel.STANDARD, staged = true) {
@@ -190,58 +288,35 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
         if (!this.router) {
             throw new Error('AI code review requires model configuration. Please configure AI models using: yuangs config');
         }
+        // P1: 整体审查接入缓存（此前仅 reviewFile 会命中缓存，review() 每次都重新调用模型）
+        const cacheKey = staged ? '__staged_diff__' : '__unstaged_diff__';
+        const cached = await this.cache.get(cacheKey, diffContent, level, CodeReviewer.VERSION);
+        if (cached) {
+            console.log(chalk_1.default.gray('💾 从缓存加载审查结果 (整体审查)'));
+            return cached;
+        }
         const minCapability = {
             minCapability: CapabilityLevel_1.CapabilityLevel.SEMANTIC,
             fallbackChain: [CapabilityLevel_1.CapabilityLevel.STRUCTURAL, CapabilityLevel_1.CapabilityLevel.LINE, CapabilityLevel_1.CapabilityLevel.TEXT, CapabilityLevel_1.CapabilityLevel.NONE],
         };
-        let currentCapability = minCapability.minCapability;
-        let confidence = 1.0;
-        let degradationApplied = false;
-        let degradationReason = '';
-        const startTime = Date.now();
-        const taskConfig = {
-            type: types_1.TaskType.CODE_REVIEW,
-            description: 'Review code changes',
-        };
-        const routingConfig = {
-            strategy: 'auto',
-        };
-        const routingResult = await this.router.route(taskConfig, routingConfig);
-        console.log(chalk_1.default.cyan(`🤖 使用模型: ${routingResult.adapter.name}`));
-        console.log(chalk_1.default.gray(`📋 理由: ${routingResult.reason}\n`));
-        const prompt = this.buildReviewPrompt(diffContent, level, currentCapability);
-        const execution = await this.router.executeTask(routingResult.adapter, prompt, taskConfig);
-        if (!execution.success || !execution.content) {
-            throw new Error('Failed to perform code review');
+        // P1: 按行分块，避免硬截断导致大 diff 内容丢失；单块时行为与旧版一致。
+        const chunks = this.splitDiffIntoChunks(diffContent);
+        let result;
+        if (chunks.length === 1) {
+            result = await this.reviewOnce(chunks[0], level, minCapability);
         }
-        const timeElapsed = Date.now() - startTime;
-        const parsed = this.parseReviewResult(execution.content);
-        confidence = parsed.confidence ?? 0.8;
-        const decisionInput = {
-            timeElapsed,
-            confidence,
-        };
-        const degradationDecision = this.degradationPolicy.decide(decisionInput, minCapability);
-        if (degradationDecision.shouldDegrade && currentCapability !== degradationDecision.targetLevel) {
-            degradationApplied = true;
-            degradationReason = degradationDecision.reason;
-            console.log(chalk_1.default.yellow(`⚠️  降级触发: ${degradationReason}`));
+        else {
+            console.log(chalk_1.default.gray(`📦 差异较大，分 ${chunks.length} 块审查...`));
+            const partials = [];
+            for (let i = 0; i < chunks.length; i++) {
+                partials.push(await this.reviewOnce(chunks[i], level, minCapability, { index: i, total: chunks.length }));
+            }
+            result = this.aggregateReviewResults(partials);
         }
-        return {
-            score: parsed.score || 70,
-            summary: parsed.summary || '审查完成',
-            issues: parsed.issues || [],
-            strengths: parsed.strengths || [],
-            recommendations: parsed.recommendations || [],
-            filesReviewed: files.length,
-            confidence,
-            degradation: degradationApplied ? {
-                applied: true,
-                originalLevel: minCapability.minCapability,
-                targetLevel: degradationDecision.targetLevel,
-                reason: degradationReason,
-            } : undefined,
-        };
+        // 真实审查文件数（分块聚合后回填，避免被低估为分块数）
+        result.filesReviewed = files.length;
+        await this.cache.set(cacheKey, diffContent, level, result, CodeReviewer.VERSION);
+        return result;
     }
     /**
      * 审查特定文件
@@ -265,54 +340,21 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
             minCapability: CapabilityLevel_1.CapabilityLevel.SEMANTIC,
             fallbackChain: [CapabilityLevel_1.CapabilityLevel.STRUCTURAL, CapabilityLevel_1.CapabilityLevel.LINE, CapabilityLevel_1.CapabilityLevel.TEXT, CapabilityLevel_1.CapabilityLevel.NONE],
         };
-        let currentCapability = minCapability.minCapability;
-        let confidence = 1.0;
-        let degradationApplied = false;
-        let degradationReason = '';
-        const startTime = Date.now();
-        const taskConfig = {
-            type: types_1.TaskType.CODE_REVIEW,
-            description: `Review file: ${filePath}`,
-        };
-        const routingConfig = {
-            strategy: 'auto',
-        };
-        const routingResult = await this.router.route(taskConfig, routingConfig);
-        console.log(chalk_1.default.cyan(`🤖 使用模型: ${routingResult.adapter.name}`));
-        console.log(chalk_1.default.gray(`📋 理由: ${routingResult.reason}\n`));
-        const prompt = this.buildReviewPrompt(diff, level, currentCapability);
-        const execution = await this.router.executeTask(routingResult.adapter, prompt, taskConfig);
-        if (!execution.success || !execution.content) {
-            throw new Error('Failed to perform code review');
+        // P1: 单文件差异过大时分块审查后聚合，避免 substring 硬截断丢内容
+        const chunks = this.splitDiffIntoChunks(diff);
+        let result;
+        if (chunks.length === 1) {
+            result = await this.reviewOnce(chunks[0], level, minCapability);
         }
-        const timeElapsed = Date.now() - startTime;
-        const parsed = this.parseReviewResult(execution.content);
-        confidence = parsed.confidence ?? 0.8;
-        const decisionInput = {
-            timeElapsed,
-            confidence,
-        };
-        const degradationDecision = this.degradationPolicy.decide(decisionInput, minCapability);
-        if (degradationDecision.shouldDegrade && currentCapability !== degradationDecision.targetLevel) {
-            degradationApplied = true;
-            degradationReason = degradationDecision.reason;
-            console.log(chalk_1.default.yellow(`⚠️  降级触发: ${degradationReason}`));
+        else {
+            console.log(chalk_1.default.gray(`📦 文件差异较大，分 ${chunks.length} 块审查: ${filePath}`));
+            const partials = [];
+            for (let i = 0; i < chunks.length; i++) {
+                partials.push(await this.reviewOnce(chunks[i], level, minCapability, { index: i, total: chunks.length }));
+            }
+            result = this.aggregateReviewResults(partials);
         }
-        const result = {
-            score: parsed.score || 70,
-            summary: parsed.summary || '审查完成',
-            issues: parsed.issues || [],
-            strengths: parsed.strengths || [],
-            recommendations: parsed.recommendations || [],
-            filesReviewed: 1,
-            confidence,
-            degradation: degradationApplied ? {
-                applied: true,
-                originalLevel: minCapability.minCapability,
-                targetLevel: degradationDecision.targetLevel,
-                reason: degradationReason,
-            } : undefined,
-        };
+        result.filesReviewed = 1;
         // Cache the result (P1: 传递版本号)
         await this.cache.set(filePath, diff, level, result, CodeReviewer.VERSION);
         return result;
@@ -335,54 +377,22 @@ ${diff.substring(0, 15000)}${diff.length > 15000 ? '\n... (diff 过长,已截断
             minCapability: CapabilityLevel_1.CapabilityLevel.SEMANTIC,
             fallbackChain: [CapabilityLevel_1.CapabilityLevel.STRUCTURAL, CapabilityLevel_1.CapabilityLevel.LINE, CapabilityLevel_1.CapabilityLevel.TEXT, CapabilityLevel_1.CapabilityLevel.NONE],
         };
-        let currentCapability = minCapability.minCapability;
-        let confidence = 1.0;
-        let degradationApplied = false;
-        let degradationReason = '';
-        const startTime = Date.now();
-        const taskConfig = {
-            type: types_1.TaskType.CODE_REVIEW,
-            description: `Review commit: ${commitHash}`,
-        };
-        const routingConfig = {
-            strategy: 'auto',
-        };
-        const routingResult = await this.router.route(taskConfig, routingConfig);
-        console.log(chalk_1.default.cyan(`🤖 使用模型: ${routingResult.adapter.name}`));
-        console.log(chalk_1.default.gray(`📋 理由: ${routingResult.reason}\n`));
-        const prompt = this.buildReviewPrompt(diff, level, currentCapability);
-        const execution = await this.router.executeTask(routingResult.adapter, prompt, taskConfig);
-        if (!execution.success || !execution.content) {
-            throw new Error('Failed to perform code review');
+        // P1: commit 差异过大时分块审查后聚合，避免 substring 硬截断丢内容
+        const chunks = this.splitDiffIntoChunks(diff);
+        let result;
+        if (chunks.length === 1) {
+            result = await this.reviewOnce(chunks[0], level, minCapability);
         }
-        const timeElapsed = Date.now() - startTime;
-        const parsed = this.parseReviewResult(execution.content);
-        confidence = parsed.confidence ?? 0.8;
-        const decisionInput = {
-            timeElapsed,
-            confidence,
-        };
-        const degradationDecision = this.degradationPolicy.decide(decisionInput, minCapability);
-        if (degradationDecision.shouldDegrade && currentCapability !== degradationDecision.targetLevel) {
-            degradationApplied = true;
-            degradationReason = degradationDecision.reason;
-            console.log(chalk_1.default.yellow(`⚠️  降级触发: ${degradationReason}`));
+        else {
+            console.log(chalk_1.default.gray(`📦 Commit 差异较大，分 ${chunks.length} 块审查: ${commitHash}`));
+            const partials = [];
+            for (let i = 0; i < chunks.length; i++) {
+                partials.push(await this.reviewOnce(chunks[i], level, minCapability, { index: i, total: chunks.length }));
+            }
+            result = this.aggregateReviewResults(partials);
         }
-        return {
-            score: parsed.score || 70,
-            summary: parsed.summary || '审查完成',
-            issues: parsed.issues || [],
-            strengths: parsed.strengths || [],
-            recommendations: parsed.recommendations || [],
-            filesReviewed: files.length,
-            confidence,
-            degradation: degradationApplied ? {
-                applied: true,
-                originalLevel: minCapability.minCapability,
-                targetLevel: degradationDecision.targetLevel,
-                reason: degradationReason,
-            } : undefined,
-        };
+        result.filesReviewed = files.length;
+        return result;
     }
 }
 exports.CodeReviewer = CodeReviewer;

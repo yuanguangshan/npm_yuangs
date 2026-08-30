@@ -28,6 +28,20 @@ jest.mock('../../../src/agent/executor', () => ({
   }
 }));
 
+// P0 回归：计划执行路径现已接入 GovernanceService.adjudicate，
+// 默认放行（low-risk 自动批准），由单个用例临时改为 rejected 验证拦截。
+jest.mock('../../../src/agent/governance', () => ({
+  GovernanceService: {
+    adjudicate: jest.fn().mockResolvedValue({
+      status: 'approved',
+      by: 'policy',
+      timestamp: Date.now(),
+      riskScore: 5
+    }),
+    getPolicyManual: jest.fn(() => '')
+  }
+}));
+
 jest.mock('../../../src/agent/skills', () => ({
   learnSkillFromRecord: jest.fn(),
   getAllSkills: jest.fn(() => []),
@@ -92,6 +106,15 @@ describe('DualAgentRuntime', () => {
     // 让后续 planner 用例全部误走 quick path（planner 根本不触发）。
     const { getUserConfig } = require('../../../src/ai/client');
     (getUserConfig as jest.Mock).mockReturnValue({});
+
+    // 重置 governance 默认行为为放行，避免 "rejected" 用例的实现泄漏到后续用例。
+    const { GovernanceService } = require('../../../src/agent/governance');
+    (GovernanceService.adjudicate as jest.Mock).mockResolvedValue({
+      status: 'approved',
+      by: 'policy',
+      timestamp: Date.now(),
+      riskScore: 5
+    });
 
     // Mock readline for askUser
     mockReadlineInterface = require('readline').createInterface();
@@ -552,6 +575,77 @@ describe('DualAgentRuntime', () => {
       const state = runtime.getExecutionState();
       expect(state.steps).toHaveLength(1);
       expect(state.currentIndex).toBe(0); // Reset after plan rejection
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('Governance integration (P0)', () => {
+    const singleStepPlan = {
+      plan: 'Test plan',
+      steps: [
+        {
+          id: 'step1',
+          description: 'Execute echo',
+          type: 'shell_cmd',
+          command: 'echo "governed"',
+          risk_level: 'low',
+          dependencies: []
+        }
+      ],
+      estimated_time: '1 minute'
+    };
+
+    it('should block a planned step when governance rejects it', async () => {
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+      const { askAI } = require('../../../src/ai/client');
+      const { ToolExecutor } = require('../../../src/agent/executor');
+      const { GovernanceService } = require('../../../src/agent/governance');
+
+      (askAI as jest.Mock).mockResolvedValue('```json\n' + JSON.stringify(singleStepPlan) + '\n```');
+      (GovernanceService.adjudicate as jest.Mock).mockResolvedValue({
+        status: 'rejected',
+        by: 'policy',
+        reason: 'Dangerous command blocked by policy',
+        riskScore: 95,
+        timestamp: Date.now()
+      });
+      (ToolExecutor.execute as jest.Mock).mockResolvedValue({ success: true, output: 'should not run' });
+
+      // 第一次询问放行计划，第二次（步骤失败后）停止，避免误报全部完成。
+      mockReadlineInterface.question = jest.fn()
+        .mockImplementationOnce((question: string, callback: any) => callback('y'))
+        .mockImplementationOnce((question: string, callback: any) => callback('n'));
+
+      await runtime.run('Refactor the dangerous code', undefined, 'test-model');
+
+      expect(GovernanceService.adjudicate).toHaveBeenCalled();
+      expect(ToolExecutor.execute).not.toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Step failed'));
+      consoleSpy.mockRestore();
+    });
+
+    it('should pass governanceApproved flag to executor on approval', async () => {
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+      const { askAI } = require('../../../src/ai/client');
+      const { ToolExecutor } = require('../../../src/agent/executor');
+      const { GovernanceService } = require('../../../src/agent/governance');
+
+      (askAI as jest.Mock).mockResolvedValue('```json\n' + JSON.stringify(singleStepPlan) + '\n```');
+      (GovernanceService.adjudicate as jest.Mock).mockResolvedValue({
+        status: 'approved',
+        by: 'policy',
+        timestamp: Date.now(),
+        riskScore: 5
+      });
+
+      await runtime.run('Refactor the safe code', undefined, 'test-model');
+
+      expect(GovernanceService.adjudicate).toHaveBeenCalled();
+      expect(ToolExecutor.execute).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'shell_cmd' }),
+        { governanceApproved: true }
+      );
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('✅ Step completed'));
       consoleSpy.mockRestore();
     });
   });

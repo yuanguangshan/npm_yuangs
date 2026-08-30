@@ -45,9 +45,14 @@ export class GovernanceService {
         const content = fs.readFileSync(policyPath, 'utf8');
         const config = jsyaml.load(content) as any;
         this.rules = config.rules || [];
+        console.log(chalk.gray(`📋 已加载自定义治理策略: ${policyPath} (${this.rules.length} 条规则)`));
+      } else {
+        // P2 清理：显式降级——无 policy.yaml 时回退到内置默认策略，不再静默忽略
+        console.log(chalk.gray('📋 未找到 policy.yaml，使用内置默认治理策略（无自定义规则）'));
       }
     } catch (e) {
       this.rules = [];
+      console.warn('⚠️ 加载 policy.yaml 失败，回退到内置默认策略:', (e as Error).message);
     }
   }
 

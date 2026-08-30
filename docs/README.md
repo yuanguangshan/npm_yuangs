@@ -17,7 +17,7 @@
 | [Git 集成](user-guide/git-integration.md) | Git 集成细节 |
 | [上下文管理](user-guide/context-management.md) | 上下文管理详解 |
 | [上下文持久化](user-guide/context-persistence.md) | 跨会话持久化 |
-| [AI 交互](user-guide/ai-interaction.md) | AI 交互模式 |
+| [AI 交互](user-guide/overview.md) | AI 交互模式（详见功能概览） |
 
 ## 开发者 / 架构
 

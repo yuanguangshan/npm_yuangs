@@ -46,10 +46,16 @@ class GovernanceService {
                 const content = fs_1.default.readFileSync(policyPath, 'utf8');
                 const config = js_yaml_1.default.load(content);
                 this.rules = config.rules || [];
+                console.log(chalk_1.default.gray(`📋 已加载自定义治理策略: ${policyPath} (${this.rules.length} 条规则)`));
+            }
+            else {
+                // P2 清理：显式降级——无 policy.yaml 时回退到内置默认策略，不再静默忽略
+                console.log(chalk_1.default.gray('📋 未找到 policy.yaml，使用内置默认治理策略（无自定义规则）'));
             }
         }
         catch (e) {
             this.rules = [];
+            console.warn('⚠️ 加载 policy.yaml 失败，回退到内置默认策略:', e.message);
         }
     }
     static getRules() {
@@ -169,6 +175,12 @@ class GovernanceService {
      */
     static resetUserTrust(userId) {
         this.riskModel.resetUserTrust(userId);
+    }
+    /** 测试用：重置治理全局状态 */
+    static resetForTesting() {
+        this.ledger.clear();
+        this.initialized = false;
+        this.rules = [];
     }
 }
 exports.GovernanceService = GovernanceService;

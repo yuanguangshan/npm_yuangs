@@ -4,4 +4,6 @@ export declare class RiskLedger {
     record(actionType: string): void;
     getSnapshot(): RiskEntry[];
     private cleanup;
+    clear(): void;
+    resetForTesting(): void;
 }

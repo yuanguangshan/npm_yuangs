@@ -40,6 +40,7 @@ exports.DualAgentRuntime = void 0;
 const chalk_1 = __importDefault(require("chalk"));
 const crypto_1 = require("crypto");
 const executor_1 = require("./executor");
+const governance_1 = require("./governance");
 const contextManager_1 = require("./contextManager");
 const client_1 = require("../ai/client");
 const modelRouterIntegration_1 = require("./modelRouterIntegration");
@@ -275,7 +276,27 @@ ${context ? `Context:\n${context}\n` : ''}
             riskLevel: step.risk_level,
             reasoning: `Executing planned step: ${step.description}`
         };
-        const result = await executor_1.ToolExecutor.execute(action);
+        // P0 修复：计划执行路径此前直接调用 ToolExecutor.execute，绕过了
+        // PreFlightChecker / GovernanceService 的治理裁决，导致命中"重构/批量/
+        // 多步骤"关键词的写入操作在无风险评估的情况下被执行。
+        // 现在统一接入与 AgentRuntime 一致的 GovernanceService.adjudicate：
+        // 风险打分 + 逻辑层 policy + 人工确认兜底。被拒绝的步骤返回失败，
+        // 由 runPlannedPath 的既有逻辑询问用户是否继续。
+        const decision = await governance_1.GovernanceService.adjudicate(action);
+        if (decision.status === 'rejected') {
+            const reason = decision.reason || 'Governed execution rejected';
+            log.warn('Planned step blocked by governance', {
+                by: decision.by,
+                riskScore: decision.riskScore,
+                reason
+            });
+            return {
+                success: false,
+                output: '',
+                error: `执行被治理层拒绝（${decision.by}）：${reason}`
+            };
+        }
+        const result = await executor_1.ToolExecutor.execute(action, { governanceApproved: true });
         if (result.success) {
             this.context.addToolResult(step.type, result.output);
             try {

@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -68,28 +101,59 @@ class ContextStore {
             }
         }
     }
+    /** @deprecated 优先使用 detectDriftAsync，避免同步阻塞 */
     detectDrift() {
         const reports = [];
+        let checked = 0;
+        const MAX_SYNC_CHECK = 20; // 同步模式最多检查20个文件，避免阻塞
         for (const item of this.items.values()) {
+            if (checked >= MAX_SYNC_CHECK)
+                break;
             if (item.source !== 'file')
                 continue;
             if (!fs_1.default.existsSync(item.path))
                 continue;
             try {
+                const stats = fs_1.default.statSync(item.path);
+                if (stats.size > 1024 * 1024)
+                    continue; // 跳过 >1MB 文件
                 const currentContent = fs_1.default.readFileSync(item.path, 'utf-8');
                 const currentHash = sha256(currentContent);
                 if (currentHash !== item.hash) {
-                    reports.push({
-                        id: item.id,
-                        path: item.path,
-                        reason: 'hash_changed'
-                    });
+                    reports.push({ id: item.id, path: item.path, reason: 'hash_changed' });
                 }
+                checked++;
             }
-            catch (e) {
+            catch {
                 continue;
             }
         }
+        return reports;
+    }
+    async detectDriftAsync() {
+        const reports = [];
+        const fsPromises = await Promise.resolve().then(() => __importStar(require('fs/promises')));
+        const limit = (await Promise.resolve().then(() => __importStar(require('p-limit')))).default(5);
+        const tasks = [...this.items.values()]
+            .filter(i => i.source === 'file')
+            .map(item => limit(async () => {
+            try {
+                const stats = await fsPromises.stat(item.path);
+                if (stats.size > 1024 * 1024)
+                    return null;
+                const currentContent = await fsPromises.readFile(item.path, 'utf-8');
+                const currentHash = sha256(currentContent);
+                if (currentHash !== item.hash) {
+                    return { id: item.id, path: item.path, reason: 'hash_changed' };
+                }
+            }
+            catch { /* ignore */ }
+            return null;
+        }));
+        const results = await Promise.all(tasks);
+        for (const r of results)
+            if (r)
+                reports.push(r);
         return reports;
     }
     markAsDrifted(id) {
@@ -105,14 +169,40 @@ class ContextStore {
             return;
         if (!fs_1.default.existsSync(item.path))
             return;
-        const raw = fs_1.default.readFileSync(item.path, 'utf-8');
-        const content = redact(raw).redacted;
-        const hash = sha256(content);
-        item.content = content;
-        item.hash = hash;
-        item.status = 'active';
-        item.drifted = false;
-        item.lastUsedAt = Date.now();
+        try {
+            const stats = fs_1.default.statSync(item.path);
+            if (stats.size > 1024 * 1024)
+                return;
+            const raw = fs_1.default.readFileSync(item.path, 'utf-8');
+            const content = redact(raw).redacted;
+            const hash = sha256(content);
+            item.content = content;
+            item.hash = hash;
+            item.status = 'active';
+            item.drifted = false;
+            item.lastUsedAt = Date.now();
+        }
+        catch { /* ignore */ }
+    }
+    async refreshItemAsync(id) {
+        const item = this.items.get(id);
+        if (!item || item.source !== 'file')
+            return;
+        try {
+            const fsPromises = await Promise.resolve().then(() => __importStar(require('fs/promises')));
+            const stats = await fsPromises.stat(item.path);
+            if (stats.size > 1024 * 1024)
+                return;
+            const raw = await fsPromises.readFile(item.path, 'utf-8');
+            const content = redact(raw).redacted;
+            const hash = sha256(content);
+            item.content = content;
+            item.hash = hash;
+            item.status = 'active';
+            item.drifted = false;
+            item.lastUsedAt = Date.now();
+        }
+        catch { /* ignore */ }
     }
     export() {
         return this.all();

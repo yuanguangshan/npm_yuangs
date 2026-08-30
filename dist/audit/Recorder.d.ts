@@ -48,11 +48,11 @@ export declare class Recorder {
      */
     private writeFrame;
     /**
-     * 记录输出 (Output)
+     * 记录输出 (Output) — 脱敏后落盘
      */
     recordOutput(data: string | Buffer): void;
     /**
-     * 记录输入 (Input)
+     * 记录输入 (Input) — 脱敏后落盘
      */
     recordInput(data: string, meta?: any): void;
     /**
@@ -60,7 +60,7 @@ export declare class Recorder {
      */
     recordResize(cols: number, rows: number): void;
     /**
-     * 记录治理事件 (Governance) - yuangs 扩展
+     * 记录治理事件 (Governance) - yuangs 扩展，details 脱敏
      */
     recordGovernance(event: string, details?: any): void;
     /**

@@ -41,7 +41,6 @@ const SSHSession_1 = require("../../ssh/SSHSession");
 const InputBuffer_1 = require("../../ssh/InputBuffer");
 const GovernedExecutor_1 = require("../../ssh/GovernedExecutor");
 const Recorder_1 = require("../../audit/Recorder");
-const server_1 = require("./server");
 const dangerousPatterns_1 = require("../../agent/security/dangerousPatterns");
 /**
  * 简单的治理服务实现 (MVP)
@@ -272,7 +271,8 @@ function registerSSHCommand(program) {
         try {
             const config = await prepareSSHConfig(connection, options);
             if (options.web) {
-                await (0, server_1.startWebTerminal)(config);
+                const { startWebTerminal } = await Promise.resolve().then(() => __importStar(require('./server')));
+                await startWebTerminal(config);
             }
             else {
                 await startCommandLineTerminal(connection, config);

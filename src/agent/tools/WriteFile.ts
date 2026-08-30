@@ -17,7 +17,11 @@ import { resolveAndValidate } from './pathSafety';
 import { getAllowedCwd } from '../workdir';
 import { isGovernanceApproved, clearGovernanceApproved } from '../approval';
 import { BackupManager, previewDiffAndConfirm, getPiTools } from './piAdapter';
+import { PostCheckVerifier } from '../../core/kernel/PostCheckVerifier';
 import chalk from 'chalk';
+
+// 写入后类型检查开关（默认关闭，避免每次写文件都跑 tsc 拖慢生成；开启后非致命，仅提示）
+const POST_TYPECHECK = process.env.YUANGS_POST_TYPECHECK === '1';
 
 // 环境变量控制是否跳过确认（用于自动化测试/CI）
 const SKIP_CONFIRM = process.env.YUANGS_SKIP_WRITE_CONFIRM === '1';
@@ -30,6 +34,28 @@ export class WriteFile implements Tool {
     { name: 'content', type: 'string', required: true, description: '文件内容' },
     { name: 'skip_diff', type: 'boolean', required: false, description: '跳过 diff 预览（不推荐，仅用于大文件）' }
   ];
+
+  /**
+   * 写入后可选类型检查（P1 Kernel 接线）。
+   * 仅当 YUANGS_POST_TYPECHECK=1 且目标为 TS/JS 文件时触发；非致命，
+   * 失败只给出提示，不影响写入结果。复用 core/kernel 的 PostCheckVerifier。
+   */
+  private async postWriteVerify(safePath: string): Promise<void> {
+    if (!POST_TYPECHECK) return;
+    if (!/\.(ts|tsx|js|jsx|mjs|cjs)$/.test(safePath)) return;
+    try {
+      const verifier = new PostCheckVerifier({ cwd: getAllowedCwd() });
+      const res = await verifier.verifyTypeCheck();
+      if (res.passed) {
+        console.log(chalk.green('✅ 写入后类型检查通过'));
+      } else {
+        console.log(chalk.yellow('⚠️ 写入后类型检查发现问题（非致命，仅提示）:'));
+        console.log(chalk.gray((res.stderr || res.error || '').split('\n').slice(0, 15).join('\n')));
+      }
+    } catch (e: any) {
+      console.log(chalk.gray(`类型检查跳过: ${e.message}`));
+    }
+  }
 
   async execute(params: Record<string, any>): Promise<ToolExecutionResult> {
     try {
@@ -100,6 +126,8 @@ export class WriteFile implements Tool {
           // 写入成功，清除备份
           BackupManager.clearBackup(safePath);
 
+          await this.postWriteVerify(safePath);
+
           const action = isExistingFile ? '覆盖' : '创建';
           return successResult(
             `✅ ${action}文件成功: ${safePath}\n${textParts.join('\n')}`,
@@ -112,6 +140,7 @@ export class WriteFile implements Tool {
           await fs.writeFile(safePath, newContent, 'utf-8');
 
           BackupManager.clearBackup(safePath);
+          await this.postWriteVerify(safePath);
           const action = isExistingFile ? '覆盖' : '创建';
           return successResult(`✅ ${action}文件成功: ${safePath} (基础模式)`, [safePath]);
         }

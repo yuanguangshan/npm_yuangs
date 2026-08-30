@@ -13,17 +13,30 @@ const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const os_1 = __importDefault(require("os"));
 const executionRecord_1 = require("./executionRecord");
+const redact_1 = require("../utils/redact");
 const RECORD_DIR = path_1.default.join(os_1.default.homedir(), '.yuangs', 'executions');
 function ensureRecordDir() {
     if (!fs_1.default.existsSync(RECORD_DIR)) {
-        fs_1.default.mkdirSync(RECORD_DIR, { recursive: true });
+        fs_1.default.mkdirSync(RECORD_DIR, { recursive: true, mode: 0o700 });
+    }
+    else {
+        try {
+            fs_1.default.chmodSync(RECORD_DIR, 0o700);
+        }
+        catch { }
     }
 }
 function saveExecutionRecord(record) {
     ensureRecordDir();
     const filename = `${record.id}.json`;
     const filepath = path_1.default.join(RECORD_DIR, filename);
-    fs_1.default.writeFileSync(filepath, (0, executionRecord_1.serializeExecutionRecord)(record), 'utf8');
+    const serialized = (0, executionRecord_1.serializeExecutionRecord)(record);
+    const redacted = (0, redact_1.redactSecrets)(serialized);
+    fs_1.default.writeFileSync(filepath, redacted, { encoding: 'utf8', mode: 0o600 });
+    try {
+        fs_1.default.chmodSync(filepath, 0o600);
+    }
+    catch { }
     return filepath;
 }
 function loadExecutionRecord(id) {

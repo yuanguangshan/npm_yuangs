@@ -109,6 +109,14 @@ async function readFileContent(filePath) {
     const fullPath = path_1.default.resolve(filePath);
     return await fs_1.default.promises.readFile(fullPath, 'utf-8');
 }
+function printInteractiveHelp() {
+    console.log(chalk_1.default.gray('─'.repeat(50)));
+    console.log(chalk_1.default.bold('  交互命令速查  ') + chalk_1.default.gray('(输入 help/? 查看详情)'));
+    console.log(chalk_1.default.cyan('  :ls') + chalk_1.default.gray('  列上下文  ') + chalk_1.default.cyan(':cat [n]') + chalk_1.default.gray(' 看文件  ') + chalk_1.default.cyan(':clear') + chalk_1.default.gray(' 清上下文'));
+    console.log(chalk_1.default.cyan('  :exec <cmd>') + chalk_1.default.gray(' 原子执行  ') + chalk_1.default.cyan(':plugins') + chalk_1.default.gray(' 插件  ') + chalk_1.default.cyan('/history') + chalk_1.default.gray(' 对话历史'));
+    console.log(chalk_1.default.cyan('  /clear') + chalk_1.default.gray(' 清历史  ') + chalk_1.default.cyan('help/?') + chalk_1.default.gray(' 本帮助  ') + chalk_1.default.cyan('exit') + chalk_1.default.gray(' 退出'));
+    console.log(chalk_1.default.gray('─'.repeat(50)) + '\n');
+}
 async function showFileSelector(rl) {
     return new Promise((resolve) => {
         try {
@@ -337,7 +345,8 @@ async function handleAIChat(initialQuestion, model, direct = false) {
             await processInteraction(initialQuestion);
         }
     }
-    console.log(chalk_1.default.bold.cyan('\n🤖 进入 AI 交互模式 (输入 exit 退出)\n'));
+    console.log(chalk_1.default.bold.cyan('\n🤖 进入 AI 交互模式 (输入 exit 退出，help/? 查看帮助)\n'));
+    printInteractiveHelp();
     const contextStore = new context_1.ContextStore();
     const contextAssembler = new context_1.ContextAssembler();
     const persisted = await (0, contextStorage_1.loadContext)();
@@ -437,6 +446,10 @@ async function handleAIChat(initialQuestion, model, direct = false) {
                         rl.resume();
                     }
                 }
+                continue;
+            }
+            if (['help', '?', ':help', ':?'].includes(trimmed.toLowerCase())) {
+                printInteractiveHelp();
                 continue;
             }
             if (['exit', 'quit', 'bye'].includes(trimmed.toLowerCase())) {

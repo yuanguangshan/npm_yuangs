@@ -24,9 +24,12 @@ export declare class ContextStore {
     totalTokens(): number;
     enforceTTL(now?: number): void;
     gc(): void;
+    /** @deprecated 优先使用 detectDriftAsync，避免同步阻塞 */
     detectDrift(): DriftReport[];
+    detectDriftAsync(): Promise<DriftReport[]>;
     markAsDrifted(id: string): void;
     refreshItem(id: string): void;
+    refreshItemAsync(id: string): Promise<void>;
     export(): ContextItem[];
     import(items: any[]): void;
 }

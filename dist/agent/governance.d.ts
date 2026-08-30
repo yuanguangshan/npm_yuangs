@@ -36,4 +36,6 @@ export declare class GovernanceService {
      * 重置用户信任度
      */
     static resetUserTrust(userId?: string): void;
+    /** 测试用：重置治理全局状态 */
+    static resetForTesting(): void;
 }

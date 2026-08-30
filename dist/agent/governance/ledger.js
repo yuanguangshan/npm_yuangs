@@ -17,6 +17,12 @@ class RiskLedger {
         const oneHourAgo = Date.now() - 3600000;
         this.entries = this.entries.filter(e => e.ts > oneHourAgo);
     }
+    clear() {
+        this.entries = [];
+    }
+    resetForTesting() {
+        this.clear();
+    }
 }
 exports.RiskLedger = RiskLedger;
 //# sourceMappingURL=ledger.js.map

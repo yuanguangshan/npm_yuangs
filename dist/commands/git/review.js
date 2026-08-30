@@ -46,48 +46,7 @@ async function handleCommitReview(options, gitService, spinner) {
     try {
         const result = await reviewer.reviewCommit(options.commit, level);
         spinner.succeed('代码审查完成');
-        console.log(chalk_1.default.bold.cyan('\n🔍 代码审查报告\n'));
-        const scoreColor = getScoreColor(result.score);
-        console.log(chalk_1.default.bold('评分: ') + scoreColor(result.score.toString()) + chalk_1.default.bold('/100'));
-        console.log(chalk_1.default.gray(`审查文件: ${result.filesReviewed} 个`));
-        console.log(chalk_1.default.gray(`置信度: ${(result.confidence * 100).toFixed(1)}%`));
-        if (result.degradation?.applied) {
-            console.log(chalk_1.default.yellow(`降级: ${result.degradation.originalLevel} → ${result.degradation.targetLevel}`));
-            console.log(chalk_1.default.gray(`原因: ${result.degradation.reason}`));
-        }
-        console.log();
-        console.log(chalk_1.default.bold('📋 总体评价:'));
-        console.log(chalk_1.default.white(`  ${result.summary}\n`));
-        if (result.issues.length > 0) {
-            console.log(chalk_1.default.bold.red(`⚠️  发现 ${result.issues.length} 个问题:\n`));
-            for (const issue of result.issues) {
-                const icon = getSeverityIcon(issue.severity);
-                const color = getSeverityColor(issue.severity);
-                console.log(color(`  ${icon} [${issue.severity.toUpperCase()}] ${issue.file}${issue.line ? `:${issue.line}` : ''}`));
-                console.log(color(`     ${issue.message}`));
-                if (issue.suggestion) {
-                    console.log(chalk_1.default.gray(`     💡 ${issue.suggestion}`));
-                }
-                console.log();
-            }
-        }
-        else {
-            console.log(chalk_1.default.green('✅ 未发现明显问题\n'));
-        }
-        if (result.strengths.length > 0) {
-            console.log(chalk_1.default.bold.green('👍 优点:\n'));
-            for (const strength of result.strengths) {
-                console.log(chalk_1.default.green(`  ✓ ${strength}`));
-            }
-            console.log();
-        }
-        if (result.recommendations.length > 0) {
-            console.log(chalk_1.default.bold.yellow('💡 建议:\n'));
-            for (const rec of result.recommendations) {
-                console.log(chalk_1.default.yellow(`  • ${rec}`));
-            }
-            console.log();
-        }
+        renderReviewReport(result);
         // 保存审查结果
         if (options.save !== false) {
             await saveCommitReviewToFile(result, level, options, gitService, commitInfo);
@@ -163,48 +122,7 @@ function registerReviewCommand(gitCmd) {
                 result = await reviewer.review(level, !options.unstaged);
             }
             spinner.succeed('代码审查完成');
-            console.log(chalk_1.default.bold.cyan('\n🔍 代码审查报告\n'));
-            const scoreColor = getScoreColor(result.score);
-            console.log(chalk_1.default.bold('评分: ') + scoreColor(result.score.toString()) + chalk_1.default.bold('/100'));
-            console.log(chalk_1.default.gray(`审查文件: ${result.filesReviewed} 个`));
-            console.log(chalk_1.default.gray(`置信度: ${(result.confidence * 100).toFixed(1)}%`));
-            if (result.degradation?.applied) {
-                console.log(chalk_1.default.yellow(`降级: ${result.degradation.originalLevel} → ${result.degradation.targetLevel}`));
-                console.log(chalk_1.default.gray(`原因: ${result.degradation.reason}`));
-            }
-            console.log();
-            console.log(chalk_1.default.bold('📋 总体评价:'));
-            console.log(chalk_1.default.white(`  ${result.summary}\n`));
-            if (result.issues.length > 0) {
-                console.log(chalk_1.default.bold.red(`⚠️  发现 ${result.issues.length} 个问题:\n`));
-                for (const issue of result.issues) {
-                    const icon = getSeverityIcon(issue.severity);
-                    const color = getSeverityColor(issue.severity);
-                    console.log(color(`  ${icon} [${issue.severity.toUpperCase()}] ${issue.file}${issue.line ? `:${issue.line}` : ''}`));
-                    console.log(color(`     ${issue.message}`));
-                    if (issue.suggestion) {
-                        console.log(chalk_1.default.gray(`     💡 ${issue.suggestion}`));
-                    }
-                    console.log();
-                }
-            }
-            else {
-                console.log(chalk_1.default.green('✅ 未发现明显问题\n'));
-            }
-            if (result.strengths.length > 0) {
-                console.log(chalk_1.default.bold.green('👍 优点:\n'));
-                for (const strength of result.strengths) {
-                    console.log(chalk_1.default.green(`  ✓ ${strength}`));
-                }
-                console.log();
-            }
-            if (result.recommendations.length > 0) {
-                console.log(chalk_1.default.bold.yellow('💡 建议:\n'));
-                for (const rec of result.recommendations) {
-                    console.log(chalk_1.default.yellow(`  • ${rec}`));
-                }
-                console.log();
-            }
+            renderReviewReport(result);
             // 保存审查结果到 git_reviews.md
             if (options.save !== false) {
                 await saveReviewToFile(result, level, options, gitService);
@@ -267,17 +185,71 @@ function getSeverityColor(severity) {
     };
     return colors[severity] || chalk_1.default.white;
 }
+function renderReviewReport(result) {
+    console.log(chalk_1.default.bold.cyan('\n🔍 代码审查报告\n'));
+    const scoreColor = getScoreColor(result.score);
+    console.log(chalk_1.default.bold('评分: ') + scoreColor(result.score.toString()) + chalk_1.default.bold('/100'));
+    console.log(chalk_1.default.gray(`审查文件: ${result.filesReviewed} 个`));
+    console.log(chalk_1.default.gray(`置信度: ${(result.confidence * 100).toFixed(1)}%`));
+    if (result.degradation?.applied) {
+        console.log(chalk_1.default.yellow(`降级: ${result.degradation.originalLevel} → ${result.degradation.targetLevel}`));
+        console.log(chalk_1.default.gray(`原因: ${result.degradation.reason}`));
+    }
+    console.log();
+    console.log(chalk_1.default.bold('📋 总体评价:'));
+    console.log(chalk_1.default.white(`  ${result.summary}\n`));
+    if (result.issues.length > 0) {
+        console.log(chalk_1.default.bold.red(`⚠️  发现 ${result.issues.length} 个问题:\n`));
+        for (const issue of result.issues) {
+            const icon = getSeverityIcon(issue.severity);
+            const color = getSeverityColor(issue.severity);
+            console.log(color(`  ${icon} [${issue.severity.toUpperCase()}] ${issue.file}${issue.line ? `:${issue.line}` : ''}`));
+            console.log(color(`     ${issue.message}`));
+            if (issue.suggestion) {
+                console.log(chalk_1.default.gray(`     💡 ${issue.suggestion}`));
+            }
+            console.log();
+        }
+    }
+    else {
+        console.log(chalk_1.default.green('✅ 未发现明显问题\n'));
+    }
+    if (result.strengths.length > 0) {
+        console.log(chalk_1.default.bold.green('👍 优点:\n'));
+        for (const strength of result.strengths) {
+            console.log(chalk_1.default.green(`  ✓ ${strength}`));
+        }
+        console.log();
+    }
+    if (result.recommendations.length > 0) {
+        console.log(chalk_1.default.bold.yellow('💡 建议:\n'));
+        for (const rec of result.recommendations) {
+            console.log(chalk_1.default.yellow(`  • ${rec}`));
+        }
+        console.log();
+    }
+}
 /**
  * 保存审查结果到 git_reviews.md
  */
-async function saveReviewToFile(result, level, options, gitService) {
+async function appendReviewHistory(markdown) {
     const filePath = path_1.default.join(process.cwd(), 'git_reviews.md');
+    let existingContent = '';
+    try {
+        existingContent = fs_1.default.readFileSync(filePath, 'utf-8');
+    }
+    catch {
+        existingContent = `> 📝 Git Code Review History\n> Generated by Yuangs CLI\n\n`;
+    }
+    const newContent = existingContent + '\n---\n\n' + markdown;
+    fs_1.default.writeFileSync(filePath, newContent);
+    console.log(chalk_1.default.gray(`\n💾 审查结果已保存到: ${path_1.default.relative(process.cwd(), filePath)}`));
+}
+async function saveReviewToFile(result, level, options, gitService) {
     const timestamp = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
     try {
-        // 获取分支信息
         const branchInfo = await gitService.getBranchInfo();
         const currentCommit = await gitService.getCurrentCommitHash().catch(() => 'N/A');
-        // 构建 Markdown 内容
         const markdownContent = formatReviewAsMarkdown({
             timestamp,
             level,
@@ -291,21 +263,7 @@ async function saveReviewToFile(result, level, options, gitService) {
             strengths: result.strengths,
             recommendations: result.recommendations
         });
-        // 读取现有文件内容（如果存在）
-        let existingContent = '';
-        try {
-            existingContent = fs_1.default.readFileSync(filePath, 'utf-8');
-        }
-        catch (e) {
-            // 文件不存在，创建新文件
-            existingContent = `> 📝 Git Code Review History\n> Generated by Yuangs CLI\n\n`;
-        }
-        // 添加新的审查记录
-        const separator = '\n---\n\n';
-        const newContent = existingContent + separator + markdownContent;
-        // 写入文件
-        fs_1.default.writeFileSync(filePath, newContent);
-        console.log(chalk_1.default.gray(`\n💾 审查结果已保存到: ${path_1.default.relative(process.cwd(), filePath)}`));
+        await appendReviewHistory(markdownContent);
     }
     catch (error) {
         console.warn(chalk_1.default.yellow(`\n⚠️  保存审查结果失败: ${error.message}`));
@@ -448,10 +406,8 @@ async function performSecurityScan(gitService, securityScanner, files, options) 
  * 保存 commit 审查结果到 git_reviews.md
  */
 async function saveCommitReviewToFile(result, level, options, gitService, commitInfo) {
-    const filePath = path_1.default.join(process.cwd(), 'git_reviews.md');
     const timestamp = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
     try {
-        // 构建 Markdown 内容
         const markdownContent = formatReviewAsMarkdown({
             timestamp,
             level,
@@ -463,21 +419,7 @@ async function saveCommitReviewToFile(result, level, options, gitService, commit
             strengths: result.strengths,
             recommendations: result.recommendations
         });
-        // 读取现有文件内容（如果存在）
-        let existingContent = '';
-        try {
-            existingContent = fs_1.default.readFileSync(filePath, 'utf-8');
-        }
-        catch (e) {
-            // 文件不存在，创建新文件
-            existingContent = `> 📝 Git Code Review History\n> Generated by Yuangs CLI\n\n`;
-        }
-        // 添加新的审查记录
-        const separator = '\n---\n\n';
-        const newContent = existingContent + separator + markdownContent;
-        // 写入文件
-        fs_1.default.writeFileSync(filePath, newContent);
-        console.log(chalk_1.default.gray(`\n💾 审查结果已保存到: ${path_1.default.relative(process.cwd(), filePath)}`));
+        await appendReviewHistory(markdownContent);
     }
     catch (error) {
         console.warn(chalk_1.default.yellow(`\n⚠️  保存审查结果失败: ${error.message}`));

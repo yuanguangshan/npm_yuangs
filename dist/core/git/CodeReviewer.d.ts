@@ -87,6 +87,20 @@ export declare class CodeReviewer {
      */
     private parseTextReview;
     /**
+     * 将 diff 按行切分为多个不超过 maxChunk 字符的分块。
+     * 始终按整行切分，避免中途截断导致一行代码残缺（解决旧版 substring(0,15000) 硬截断丢内容的问题）。
+     */
+    private splitDiffIntoChunks;
+    /**
+     * 聚合多块审查结果：评分取均值，置信度取最低，问题合并，优点/建议去重。
+     */
+    private aggregateReviewResults;
+    /**
+     * 执行一次 AI 审查调用（单块），包含路由、降级决策与结果解析。
+     * review / reviewFile / reviewCommit 共用，避免三处重复逻辑。
+     */
+    private reviewOnce;
+    /**
      * 执行代码审查
      */
     review(level?: ReviewLevel, staged?: boolean): Promise<ReviewResult>;

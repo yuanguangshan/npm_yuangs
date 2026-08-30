@@ -97,7 +97,7 @@ ${userPrompt}
       prompt: { messages: draftPrompt },
       model: model,
       stream: false,
-      bypassRouter: true
+      bypassRouter: false
     });
 
     return draftRes.rawText;
@@ -130,7 +130,7 @@ ${currentPlan}
       prompt: { messages: reviewPrompt },
       model: model,
       stream: false,
-      bypassRouter: true
+      bypassRouter: false
     });
 
     return reviewRes.rawText;
@@ -163,7 +163,7 @@ ${reviewComments}
       prompt: { messages: refinePrompt },
       model: model,
       stream: false,
-      bypassRouter: true
+      bypassRouter: false
     });
 
     return refineRes.rawText;
@@ -224,7 +224,7 @@ ${reviewComments}
       prompt: { messages: finalPrompt },
       model: 'Assistant',
       stream: false,
-      bypassRouter: true
+      bypassRouter: false
     });
 
     console.error('[DEBUG PlanWorkflow] Raw LLM output length:', finalResponse.rawText.length);
