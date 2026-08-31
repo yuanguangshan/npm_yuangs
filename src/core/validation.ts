@@ -3,6 +3,7 @@ import { z } from 'zod';
 export type UserConfig = {
     defaultModel?: string;
     aiProxyUrl?: string;
+    apiKey?: string;
     accountType?: 'free' | 'pro' | 'paid';
     contextWindow?: number;
     maxFileTokens?: number;

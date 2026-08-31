@@ -70,6 +70,7 @@ function getUserConfig(): any {
         aiProxyUrl: svc.getAiProxyUrl(),
         defaultModel: svc.getDefaultModel(),
         accountType: svc.getAccountType(),
+        apiKey: svc.getApiKey(),
     };
 }
 
@@ -229,7 +230,8 @@ export async function runLLM({
         'Referer': 'https://cli.want.biz/',
         'account': config.accountType,
         'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1',
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        ...(config.apiKey ? { 'Authorization': `Bearer ${config.apiKey}` } : {})
     };
 
     // Native Structured Output: Check if model supports it and we're in Agent mode

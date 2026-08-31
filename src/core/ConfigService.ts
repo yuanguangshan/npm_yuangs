@@ -39,6 +39,7 @@ const userConfigSchema = z.object({
   defaultProvider: z.string().optional(),
   providers: z.array(providerConfigSchema).optional(),
   aiProxyUrl: z.string().url().optional(),
+  apiKey: z.string().optional(),
   accountType: z.enum(['free', 'pro', 'paid']).optional(),
   contextWindow: z.number().optional(),
   maxFileTokens: z.number().optional(),
@@ -91,6 +92,7 @@ export interface ConfigFieldSource<T = unknown> {
 const DEFAULT_CONFIG: MergedConfig = {
   defaultModel: '',                            // 默认禁止内置模型：须由用户配置 providers 或隐藏开关 YUANGS_UNLOCK 解锁
   aiProxyUrl: '',                              // 默认不指向任何后端
+  apiKey: '',                                  // 用户自配端点的鉴权 token（如 wx.want.biz/weclaw 需要）
   accountType: 'free',
   git: {
     auto: {
@@ -279,6 +281,13 @@ export class ConfigService {
    */
   getAccountType(): 'free' | 'pro' | 'paid' {
     return this.get<'free' | 'pro' | 'paid'>('accountType') ?? 'free';
+  }
+
+  /**
+   * Convenience: get API key for user-configured endpoint.
+   */
+  getApiKey(): string {
+    return this.get<string>('apiKey') ?? DEFAULT_CONFIG.apiKey!;
   }
 
   // --- Private helpers ---

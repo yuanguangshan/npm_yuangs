@@ -9,6 +9,7 @@ export function getUserConfig(): UserConfig {
         aiProxyUrl: svc.getAiProxyUrl(),
         defaultModel: svc.getDefaultModel(),
         accountType: svc.getAccountType(),
+        apiKey: svc.getApiKey(),
     };
 }
 
@@ -40,15 +41,16 @@ export async function askAI(prompt: string, model?: string): Promise<string> {
       );
     }
 
-    const headers = {
+    const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         'X-Client-ID': 'npm_yuangs',
         'Origin': 'https://cli.want.biz',
         'Referer': 'https://cli.want.biz/',
-        'account': config.accountType,
+        'account': config.accountType ?? 'free',
         'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1',
         'Accept': 'application/json'
     };
+    if (config.apiKey) headers['Authorization'] = `Bearer ${config.apiKey}`;
 
     const data = {
         model: model || config.defaultModel,
@@ -110,7 +112,8 @@ export async function callAI_Stream(messages: AIRequestMessage[], model: string 
             'Referer': 'https://cli.want.biz/',
             'account': config.accountType,
             'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1',
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            ...(config.apiKey ? { 'Authorization': `Bearer ${config.apiKey}` } : {})
         }
     });
 
