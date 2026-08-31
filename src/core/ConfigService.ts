@@ -342,7 +342,14 @@ export class ConfigService {
     // 默认（不设）则禁止内置模型，用户须自行配置 providers。
     // 只注入顶层字段（fallback 路径用）；不注入 providers，避免覆盖用户 ~/.yuangs.json 的配置。
     // 该字符串对源码阅读者可见但无文档；改名只需改这一处。
-    if (process.env.YUANGS_UNLOCK) {
+    // 仅当值为 1 / true / yes / on 时启用；空字符串、"0"、未设置均视为关闭
+    // （防止 shell 中 YUANGS_UNLOCK=0 被 JS 当作真值，导致开关关不掉）。
+    const unlockOn =
+      process.env.YUANGS_UNLOCK === '1' ||
+      process.env.YUANGS_UNLOCK === 'true' ||
+      process.env.YUANGS_UNLOCK === 'yes' ||
+      process.env.YUANGS_UNLOCK === 'on';
+    if (unlockOn) {
       env.aiProxyUrl   = process.env.YUANGS_UNLOCK_URL   || 'https://aiproxy.want.biz/v1/chat/completions';
       env.defaultModel = process.env.YUANGS_UNLOCK_MODEL || 'Assistant';
       env.accountType  = 'free';
