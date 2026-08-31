@@ -34,6 +34,11 @@ export function getConversationHistory() {
 export async function askAI(prompt: string, model?: string): Promise<string> {
     const config = getUserConfig();
     const url = config.aiProxyUrl!;
+    if (!url) {
+      throw new Error(
+        '未配置 AI 模型端点：默认不允许使用内置模型。请在 ~/.yuangs.json 配置 providers，或设置 YUANGS_LOCAL=1 解锁内置模型。'
+      );
+    }
 
     const headers = {
         'Content-Type': 'application/json',
@@ -83,6 +88,11 @@ export async function askAI(prompt: string, model?: string): Promise<string> {
 export async function callAI_Stream(messages: AIRequestMessage[], model: string | undefined, onChunk: (content: string) => void): Promise<void> {
     const config = getUserConfig();
     const url = config.aiProxyUrl!;
+    if (!url) {
+      throw new Error(
+        '未配置 AI 模型端点：默认不允许使用内置模型。请在 ~/.yuangs.json 配置 providers，或设置 YUANGS_LOCAL=1 解锁内置模型。'
+      );
+    }
 
     const response = await axios({
         method: 'post',

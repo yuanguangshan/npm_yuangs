@@ -89,8 +89,8 @@ export interface ConfigFieldSource<T = unknown> {
 // ---------------------------------------------------------------------------
 
 const DEFAULT_CONFIG: MergedConfig = {
-  defaultModel: 'Assistant',
-  aiProxyUrl: 'https://aiproxy.want.biz/v1/chat/completions',
+  defaultModel: '',                            // 默认禁止内置模型：须由用户配置 providers 或隐藏开关 YUANGS_UNLOCK 解锁
+  aiProxyUrl: '',                              // 默认不指向任何后端
   accountType: 'free',
   git: {
     auto: {
@@ -335,6 +335,17 @@ export class ConfigService {
     if (process.env.YUANGS_ACCOUNT_TYPE) {
       const t = process.env.YUANGS_ACCOUNT_TYPE as 'free' | 'pro' | 'paid';
       if (['free', 'pro', 'paid'].includes(t)) env.accountType = t;
+    }
+
+    // --- 隐藏开关：解锁内置免费模型（仅作者自用，不写文档 / 不进 --help / 不进 config model list）---
+    // 设 YUANGS_UNLOCK=1 时允许使用内置免费模型（aiproxy.want.biz 的 Assistant 档）。
+    // 默认（不设）则禁止内置模型，用户须自行配置 providers。
+    // 只注入顶层字段（fallback 路径用）；不注入 providers，避免覆盖用户 ~/.yuangs.json 的配置。
+    // 该字符串对源码阅读者可见但无文档；改名只需改这一处。
+    if (process.env.YUANGS_UNLOCK) {
+      env.aiProxyUrl   = process.env.YUANGS_UNLOCK_URL   || 'https://aiproxy.want.biz/v1/chat/completions';
+      env.defaultModel = process.env.YUANGS_UNLOCK_MODEL || 'Assistant';
+      env.accountType  = 'free';
     }
 
     return env;
