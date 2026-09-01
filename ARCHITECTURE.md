@@ -12,7 +12,7 @@ yuangs 是个人 CLI 工具集，核心是**终端里的 AI 助手**（`yuangs a
 |---|---|
 | 源码规模 | `src/` 约 **44,700 行** TypeScript |
 | 发布范围 | `files: ["dist", "public"]`——**`src/` 不进 npm 包**（解包后约 4.45 MB） |
-| 运行要求 | `engines.node >= 18`；完整 agent 能力需 **Node ≥ 22.19**（见「四」） |
+| 运行要求 | **`engines.node >= 22.19`**（v8.1.0 起收紧，此前为 `>= 18`）；agent 能力还需装 pi（见「四」） |
 
 ## 二、分层架构
 
@@ -67,9 +67,12 @@ v8.0.1 时曾**四套运行时并存**：`AgentRuntime`、`DualAgentRuntime`、`
 
 `cli.ts` 的单次问答分支同样处理，抽出 `runDirectOnce()` 供 `--direct` 与降级路径复用。
 
-> ⚠️ **依赖矩阵**：`engines` 声明 `node >= 18`，但 pi 引擎要求 **≥ 22.19**。
-> Node 18 ~ 22.18 环境可正常安装并使用 direct 模式；完整 agent 能力需升级 Node 并
-> `npm i -g @earendil-works/pi-coding-agent`。
+> ⚠️ **依赖矩阵**（v8.1.0 起）：`engines` 已收紧为 **`node >= 22.19`**，与 pi 引擎要求对齐，
+> 低于该版本的 Node 将无法安装。Node 满足要求后，完整 agent 能力还需
+> `npm i -g @earendil-works/pi-coding-agent`；未安装时 `yuangs ai` 会降级为 direct 纯文本模式。
+>
+> 历史背景：v8.0.11 及更早 `engines` 声明 `>= 18`，但 pi 要求 `>= 22.19`，
+> 导致 Node 18 ~ 22.18 用户虽能安装、却只能静默使用无工具的 direct 模式。收紧 engines 后该落差消失。
 
 ## 五、direct 通道的请求弹性（v8.0.10 ~ v8.0.11）
 
@@ -141,7 +144,8 @@ defaults < project < user (~/.yuangs.json) < env (process.env) < overrides
 
 1. **pi 为可选依赖**：默认 `npm i -g yuangs` 不会安装 pi，主功能会降级为 direct（无工具能力）。
    若希望默认即完整体验，需权衡是否将 pi 改为常规依赖（代价：包体积与 Node 版本门槛上升）。
-2. **Node 版本门槛不一致**：`engines` 声明 `>= 18`，但 agent 能力需 `>= 22.19`，
-   目前靠降级机制兜底，需在提示文案中让用户感知到差异。
+2. **pi 仍为可选依赖**：即便 Node 满足 `>= 22.19`，默认 `npm i -g yuangs` 也不会安装 pi，
+   `yuangs ai` 会降级为 direct（无工具能力）。若希望开箱即完整体验，需将 pi 改为常规依赖
+   （代价：包体积上升）。降级时的提示文案已说明如何启用。
 3. **502 未根治**：客户端弹性仅为兜底，代理侧的上下文 / 请求体上限待结合日志确认。
 4. **`modelRouter/` 规模偏大**（3,569 行）：适配器数量多，可考虑按 provider 进一步拆分。

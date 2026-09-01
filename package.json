@@ -1,6 +1,6 @@
 {
   "name": "yuangs",
-  "version": "8.0.11",
+  "version": "8.1.0",
   "description": "苑广山的个人应用集合 CLI（彩色版）",
   "author": "苑广山",
   "license": "ISC",
@@ -76,7 +76,7 @@
     "ts-node": "^10.9.2"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22.19"
   },
   "optionalDependencies": {
     "@earendil-works/pi-coding-agent": "^0.83.0",
