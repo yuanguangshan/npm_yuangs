@@ -6,35 +6,16 @@ import { setAllowedCwd, getAllowedCwd } from './workdir';
 import { setGovernanceApproved } from './approval';
 import {
   ToolRegistry,
-  ReadFile, ReadFileLines, ReadFileLinesFromEnd,
-  WriteFile, AppendFile, FileInfo, ContinueReading,
-  ListFiles, ListDirectoryTree,
-  SearchInFiles, SearchSymbol, AnalyzeDependencies,
-  GitStatus, GitDiff, GitLog,
-  ShellCmd, CodeDiff,
+  AnalyzeDependencies,
   maybeTruncateOutput, getFriendlyError
 } from './tools';
 
 // Initialize registry with all built-in tools
+// 注：read/ls/grep/edit/bash 等文件类工具现由 pi-coding-agent 内置提供，
+// yuangs 侧仅保留 pi 没有的 analyze_dependencies。
 const registry = new ToolRegistry();
 registry.registerAll([
-  new ReadFile(),
-  new ReadFileLines(),
-  new ReadFileLinesFromEnd(),
-  new WriteFile(),
-  new AppendFile(),
-  new FileInfo(),
-  new ContinueReading(),
-  new ListFiles(),
-  new ListDirectoryTree(),
-  new SearchInFiles(),
-  new SearchSymbol(),
   new AnalyzeDependencies(),
-  new GitStatus(),
-  new GitDiff(),
-  new GitLog(),
-  new ShellCmd(),
-  new CodeDiff(),
 ]);
 
 /**

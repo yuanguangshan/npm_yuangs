@@ -605,7 +605,8 @@ export type EngineRun = (
 ) => Promise<void>;
 
 /**
- * 引擎工厂：优先 pi 引擎（Route A），失败回退 AgentRuntime。
+ * 引擎工厂：创建 pi 引擎（唯一生产引擎）。
+ * pi 未安装 / Node 版本不足 / 配置无法解析时抛出清晰指引，不再回退到已废弃的 AgentRuntime。
  * 供 handleAIChat / cli.ts 一次性问答共用。
  */
 export async function createEngineWithFallback(
@@ -615,19 +616,11 @@ export async function createEngineWithFallback(
     return await createPiSession(options);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes('pi SDK 加载失败')) {
-      console.log(
-        chalk.yellow(
-          `\n⚠️  pi 引擎未启用（${msg}）。` +
-            `\n    启用方式：npm i -g @earendil-works/pi-coding-agent（需 Node >= 22.19）。` +
-            `\n    当前回退到内置 AgentRuntime。`,
-        ),
-      );
-    } else {
-      console.log(chalk.yellow(`\n⚠️  pi 引擎不可用 (${msg})，回退 AgentRuntime`));
-    }
-    const { AgentRuntime } = await import('./AgentRuntime');
-    const { getConversationHistory } = await import('../ai/client');
-    return new AgentRuntime(getConversationHistory());
+    throw new Error(
+      `pi 引擎启动失败 (${msg})。\n` +
+        `  yuangs 的 AI agent 现由 pi-coding-agent 驱动，请确认：\n` +
+        `  1) 已安装增强引擎：npm i -g @earendil-works/pi-coding-agent\n` +
+        `  2) Node 版本 >= 22.19（当前 ${process.version}）`
+    );
   }
 }

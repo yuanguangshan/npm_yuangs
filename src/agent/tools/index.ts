@@ -12,23 +12,6 @@ export {
   successResult
 } from './utils';
 
-export { ReadFile } from './ReadFile';
-export { ReadFileLines } from './ReadFileLines';
-export { ReadFileLinesFromEnd } from './ReadFileLinesFromEnd';
-export { WriteFile } from './WriteFile';
-export { AppendFile } from './AppendFile';
-export { FileInfo } from './FileInfo';
-export { ContinueReading } from './ContinueReading';
-export { ListFiles } from './ListFiles';
-export { ListDirectoryTree } from './ListDirectoryTree';
-export { SearchInFiles } from './SearchInFiles';
-export { SearchSymbol } from './SearchSymbol';
+// 文件类工具（read/ls/grep/edit/bash 等）现由 pi-coding-agent 内置提供，
+// yuangs 侧仅保留 pi 没有的 analyze_dependencies。
 export { AnalyzeDependencies } from './AnalyzeDependencies';
-export { GitStatus } from './GitStatus';
-export { GitDiff } from './GitDiff';
-export { GitLog } from './GitLog';
-export { ShellCmd } from './ShellCmd';
-export { CodeDiff } from './CodeDiff';
-
-// pi-coding-agent 适配层
-export { BackupManager, previewDiffAndConfirm, getPiTools, getPiEditDiff, adaptPiTool } from './piAdapter';

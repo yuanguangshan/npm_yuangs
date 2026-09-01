@@ -142,8 +142,6 @@ program
     .option('-l', '使用 Lite 模型')
     .option('-w, --with-content', '在管道模式下读取文件内容')
     .option('--verbose', '详细输出（显示 Capability 匹配详情）')
-    .option('--planner', '启用双Agent模式（Planner + Executor）')
-    .option('--no-planner', '禁用双Agent模式')
     .option('--show-context-relevance', '显示上下文相关性评分')
     .option('--context-strategy <strategy>', '上下文策略: smart/minimal/full')
     .action(async (questionArgs, options) => {
@@ -203,44 +201,29 @@ program
             return;
         }
 
-        const isPlannerEnabled = options.planner || (options.noPlanner !== true && PreferencesManager.getPreference('autoConfirm') === false);
-
         (global as any).yuangsOptions = {
             showContextRelevance: options.showContextRelevance
         };
 
-        if (isPlannerEnabled) {
-            const { DualAgentRuntime } = await import('./agent/DualAgentRuntime');
-            console.log(chalk.magenta('--- RUNNING WITH DUAL AGENT ENGINE (PLANNER + EXECUTOR) ---'));
-            const { getConversationHistory } = await import('./ai/client');
-            const runtime = new DualAgentRuntime(getConversationHistory());
+        // 统一经 pi 引擎：原生 tool_calls（read/ls/grep/edit/bash 等由 pi 内置提供），
+        // 比旧双 Agent 的「文本抠 JSON 协议」更稳定；仅 analyze_dependencies 用 yuangs 自有工具。
+        const { createEngineWithFallback, YUANGS_ONLY_TOOL_NAMES } = await import('./agent/piSession');
+        const { ToolExecutor } = await import('./agent/executor');
+        const runtime = await createEngineWithFallback({
+            modelId: model,
+            yuangsTools: ToolExecutor.getRegistry().all().filter((t) =>
+                YUANGS_ONLY_TOOL_NAMES.includes(t.name)
+            ),
+        });
 
-            // TTY 且非 --exec：流式渲染 + 持久化对话历史（跨调用多轮记忆）；否则保持无状态。
-            if (process.stdout.isTTY && !options.exec) {
-                await streamAndPersist(question || '', (onChunk, renderer) =>
-                    runtime.run(question || '', onChunk, model, 'chat', renderer));
-            } else {
-                await runtime.run(question || '', undefined, model, options.exec ? 'command' : 'chat');
-            }
+        // TTY 且非 --exec：流式渲染 + 持久化对话历史（跨调用多轮记忆）；否则保持无状态，
+        // 避免 ANSI 擦行重绘污染管道输出。
+        if (process.stdout.isTTY && !options.exec) {
+            await streamAndPersist(question || '', (onChunk, renderer) =>
+                runtime.run(question || '', 'chat', onChunk, model, renderer));
         } else {
-            const { createEngineWithFallback, YUANGS_ONLY_TOOL_NAMES } = await import('./agent/piSession');
-            const { ToolExecutor } = await import('./agent/executor');
-            const runtime = await createEngineWithFallback({
-                modelId: model,
-                yuangsTools: ToolExecutor.getRegistry().all().filter((t) =>
-                    YUANGS_ONLY_TOOL_NAMES.includes(t.name)
-                ),
-            });
-
-            // TTY 且非 --exec：流式渲染 + 持久化对话历史（跨调用多轮记忆）；否则保持无状态，
-            // 避免 ANSI 擦行重绘污染管道输出。
-            if (process.stdout.isTTY && !options.exec) {
-                await streamAndPersist(question || '', (onChunk, renderer) =>
-                    runtime.run(question || '', 'chat', onChunk, model, renderer));
-            } else {
-                console.log(chalk.magenta('--- RUNNING WITH NEW AGENT ENGINE ---'));
-                await runtime.run(question || '', options.exec ? 'command' : 'chat', undefined, model);
-            }
+            console.log(chalk.magenta('--- RUNNING WITH PI ENGINE ---'));
+            await runtime.run(question || '', options.exec ? 'command' : 'chat', undefined, model);
         }
     });
 
@@ -672,11 +655,15 @@ async function main() {
 
             let model = options.model;
             if (options.exec) {
-                // 统一使用 AgentRuntime 执行命令模式，与 `yuangs ai -e` 保持一致
-                const { AgentRuntime } = await import('./agent/AgentRuntime');
-                console.log(chalk.magenta('--- RUNNING WITH AGENT ENGINE (COMMAND MODE) ---'));
-                const { getConversationHistory } = await import('./ai/client');
-                const runtime = new AgentRuntime(getConversationHistory());
+                // 经 pi 引擎执行命令模式（与 `yuangs ai -e` 一致，原生 tool_calls）
+                const { createEngineWithFallback, YUANGS_ONLY_TOOL_NAMES } = await import('./agent/piSession');
+                const { ToolExecutor } = await import('./agent/executor');
+                const runtime = await createEngineWithFallback({
+                    modelId: model,
+                    yuangsTools: ToolExecutor.getRegistry().all().filter((t) =>
+                        YUANGS_ONLY_TOOL_NAMES.includes(t.name)
+                    ),
+                });
                 await runtime.run(question || '', 'command', undefined, model);
             } else {
                 await handleAIChat(question || null, model);
