@@ -99,6 +99,35 @@ async function loadPiSdk(): Promise<PiSdk> {
 
 // ─── 1. 模型运行时：aiProxyUrl → pi provider ───
 
+/**
+ * 当 providers[] 为空但用户已显式配置顶层 aiProxyUrl + apiKey 时，
+ * 自动合成一个 provider，让已有的 ~/.yuangs.json 顶层配置无需迁移即可驱动 pi。
+ * 仅对「用户自建的非内置端点」生效；内置 aiproxy 仍走 useAiProxy 分支。
+ */
+type BridgeProvider = {
+  id: string;
+  name?: string;
+  baseUrl?: string;
+  apiKey?: string;
+  models?: Array<{ id: string; reasoning?: boolean; contextWindow?: number; maxTokens?: number }>;
+};
+function deriveProviderFromTopLevelConfig(svc: ReturnType<typeof getConfigService>): BridgeProvider | null {
+  const aiProxyUrl = svc.getAiProxyUrl();
+  const apiKey = svc.getApiKey();
+  const defaultModel = svc.getDefaultModel();
+  if (!aiProxyUrl || !apiKey) return null;
+  if (aiProxyUrl.includes('aiproxy.want.biz')) return null; // 内置端点走 useAiProxy 分支
+  const baseUrl = extractBaseUrl(aiProxyUrl);
+  const modelId = defaultModel || 'default';
+  return {
+    id: 'yuangs-user-endpoint',
+    name: 'User Endpoint',
+    baseUrl,
+    apiKey,
+    models: [{ id: modelId, reasoning: false, contextWindow: 128_000, maxTokens: 8_192 }],
+  };
+}
+
 export interface PiEngineOptions {
   cwd?: string;
   /**
@@ -182,13 +211,18 @@ export class PiEngine {
     }
 
     // 从 ~/.yuangs.json 的 providers 配置注册模型端点（标准 OpenAI 兼容，pi 内置传输层原生支持 tool_calls）
-    const providers = (svc.get('providers') as Array<{
+    let providers = (svc.get('providers') as Array<{
       id: string;
       name?: string;
       baseUrl?: string;
       apiKey?: string;
       models?: Array<{ id: string; reasoning?: boolean; contextWindow?: number; maxTokens?: number }>;
     }> | undefined) ?? [];
+    // 桥接：用户没配 providers[] 但配了顶层 aiProxyUrl + apiKey 时，自动合成 provider
+    if (providers.length === 0) {
+      const derived = deriveProviderFromTopLevelConfig(svc);
+      if (derived) providers = [derived as any];
+    }
 
     const registeredProviders: Array<{ providerId: string; modelIds: string[] }> = [];
     for (const provider of providers) {
@@ -581,7 +615,17 @@ export async function createEngineWithFallback(
     return await createPiSession(options);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.log(chalk.yellow(`\n⚠️  pi 引擎不可用 (${msg})，回退 AgentRuntime`));
+    if (msg.includes('pi SDK 加载失败')) {
+      console.log(
+        chalk.yellow(
+          `\n⚠️  pi 引擎未启用（${msg}）。` +
+            `\n    启用方式：npm i -g @earendil-works/pi-coding-agent（需 Node >= 22.19）。` +
+            `\n    当前回退到内置 AgentRuntime。`,
+        ),
+      );
+    } else {
+      console.log(chalk.yellow(`\n⚠️  pi 引擎不可用 (${msg})，回退 AgentRuntime`));
+    }
     const { AgentRuntime } = await import('./AgentRuntime');
     const { getConversationHistory } = await import('../ai/client');
     return new AgentRuntime(getConversationHistory());
