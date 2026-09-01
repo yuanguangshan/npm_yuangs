@@ -36,12 +36,16 @@ class LLMAdapter {
         };
         const config = (0, client_1.getUserConfig)();
         const finalModel = model || config.defaultModel || 'Assistant';
+        // 用户自配了私有端点（非内置 aiproxy）时，绕过模型路由器直连，
+        // 这样 `yuangs config set aiProxyUrl/defaultModel` 真正生效，且显示的是用户模型而非内部适配器名。
+        const userOwnsEndpoint = !!config.aiProxyUrl &&
+            !config.aiProxyUrl.includes('aiproxy.want.biz');
         const result = await (0, llm_1.runLLM)({
             prompt,
             model: finalModel,
             stream: !!onChunk,
             onChunk,
-            bypassRouter: !!model // Explicitly requested model bypasses routing
+            bypassRouter: !!model || userOwnsEndpoint // 显式 -m 或自配端点均绕过路由
         });
         const thought = this.parseThought(result.rawText);
         thought.modelName = result.modelName || finalModel;

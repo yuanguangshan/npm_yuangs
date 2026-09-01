@@ -1,5 +1,3 @@
-export { AgentRuntime } from './AgentRuntime';
-export { DualAgentRuntime } from './DualAgentRuntime';
 export { SmartContextManager } from './smartContextManager';
 export * from './state';
 export { LLMAdapter } from './llmAdapter';

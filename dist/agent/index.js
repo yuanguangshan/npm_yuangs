@@ -14,11 +14,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ContextManager = exports.ToolExecutor = exports.GovernanceService = exports.LLMAdapter = exports.SmartContextManager = exports.DualAgentRuntime = exports.AgentRuntime = void 0;
-var AgentRuntime_1 = require("./AgentRuntime");
-Object.defineProperty(exports, "AgentRuntime", { enumerable: true, get: function () { return AgentRuntime_1.AgentRuntime; } });
-var DualAgentRuntime_1 = require("./DualAgentRuntime");
-Object.defineProperty(exports, "DualAgentRuntime", { enumerable: true, get: function () { return DualAgentRuntime_1.DualAgentRuntime; } });
+exports.ContextManager = exports.ToolExecutor = exports.GovernanceService = exports.LLMAdapter = exports.SmartContextManager = void 0;
 var smartContextManager_1 = require("./smartContextManager");
 Object.defineProperty(exports, "SmartContextManager", { enumerable: true, get: function () { return smartContextManager_1.SmartContextManager; } });
 __exportStar(require("./state"), exports);

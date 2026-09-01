@@ -14,39 +14,6 @@
  *
  * pi 是 ESM-only，yuangs 是 CommonJS：用 nativeImport 动态加载（与 piAdapter 相同手法）。
  */
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -80,6 +47,24 @@ async function loadPiSdk() {
         _piLoadError = err?.message || String(err);
         throw new Error(`pi SDK 加载失败: ${_piLoadError}（需 Node >= 22.19，且已安装 @earendil-works/pi-coding-agent）`);
     }
+}
+function deriveProviderFromTopLevelConfig(svc) {
+    const aiProxyUrl = svc.getAiProxyUrl();
+    const apiKey = svc.getApiKey();
+    const defaultModel = svc.getDefaultModel();
+    if (!aiProxyUrl || !apiKey)
+        return null;
+    if (aiProxyUrl.includes('aiproxy.want.biz'))
+        return null; // 内置端点走 useAiProxy 分支
+    const baseUrl = (0, piModelConfig_1.extractBaseUrl)(aiProxyUrl);
+    const modelId = defaultModel || 'default';
+    return {
+        id: 'yuangs-user-endpoint',
+        name: 'User Endpoint',
+        baseUrl,
+        apiKey,
+        models: [{ id: modelId, reasoning: false, contextWindow: 128_000, maxTokens: 8_192 }],
+    };
 }
 class PiEngine {
     runtime;
@@ -143,7 +128,13 @@ class PiEngine {
             return new PiEngine(runtime, model);
         }
         // 从 ~/.yuangs.json 的 providers 配置注册模型端点（标准 OpenAI 兼容，pi 内置传输层原生支持 tool_calls）
-        const providers = svc.get('providers') ?? [];
+        let providers = svc.get('providers') ?? [];
+        // 桥接：用户没配 providers[] 但配了顶层 aiProxyUrl + apiKey 时，自动合成 provider
+        if (providers.length === 0) {
+            const derived = deriveProviderFromTopLevelConfig(svc);
+            if (derived)
+                providers = [derived];
+        }
         const registeredProviders = [];
         for (const provider of providers) {
             if (!provider.id || !provider.baseUrl) {
@@ -480,7 +471,8 @@ async function createPiSession(options) {
     return engine.createSession(options);
 }
 /**
- * 引擎工厂：优先 pi 引擎（Route A），失败回退 AgentRuntime。
+ * 引擎工厂：创建 pi 引擎（唯一生产引擎）。
+ * pi 未安装 / Node 版本不足 / 配置无法解析时抛出清晰指引，不再回退到已废弃的 AgentRuntime。
  * 供 handleAIChat / cli.ts 一次性问答共用。
  */
 async function createEngineWithFallback(options) {
@@ -489,10 +481,10 @@ async function createEngineWithFallback(options) {
     }
     catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.log(chalk_1.default.yellow(`\n⚠️  pi 引擎不可用 (${msg})，回退 AgentRuntime`));
-        const { AgentRuntime } = await Promise.resolve().then(() => __importStar(require('./AgentRuntime')));
-        const { getConversationHistory } = await Promise.resolve().then(() => __importStar(require('../ai/client')));
-        return new AgentRuntime(getConversationHistory());
+        throw new Error(`pi 引擎启动失败 (${msg})。\n` +
+            `  yuangs 的 AI agent 现由 pi-coding-agent 驱动，请确认：\n` +
+            `  1) 已安装增强引擎：npm i -g @earendil-works/pi-coding-agent\n` +
+            `  2) Node 版本 >= 22.19（当前 ${process.version}）`);
     }
 }
 //# sourceMappingURL=piSession.js.map

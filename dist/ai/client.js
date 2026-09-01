@@ -18,6 +18,7 @@ function getUserConfig() {
         aiProxyUrl: svc.getAiProxyUrl(),
         defaultModel: svc.getDefaultModel(),
         accountType: svc.getAccountType(),
+        apiKey: svc.getApiKey(),
     };
 }
 let conversationHistory = (0, db_1.getRecentMessagesFromDB)(20);
@@ -38,15 +39,20 @@ function getConversationHistory() {
 async function askAI(prompt, model) {
     const config = getUserConfig();
     const url = config.aiProxyUrl;
+    if (!url) {
+        throw new Error('未配置 AI 模型端点：默认不允许使用内置模型。请在 ~/.yuangs.json 配置 providers，或设置 YUANGS_LOCAL=1 解锁内置模型。');
+    }
     const headers = {
         'Content-Type': 'application/json',
         'X-Client-ID': 'npm_yuangs',
         'Origin': 'https://cli.want.biz',
         'Referer': 'https://cli.want.biz/',
-        'account': config.accountType,
+        'account': config.accountType ?? 'free',
         'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1',
         'Accept': 'application/json'
     };
+    if (config.apiKey)
+        headers['Authorization'] = `Bearer ${config.apiKey}`;
     const data = {
         model: model || config.defaultModel,
         messages: [{ role: 'user', content: prompt }],
@@ -83,6 +89,9 @@ async function askAI(prompt, model) {
 async function callAI_Stream(messages, model, onChunk) {
     const config = getUserConfig();
     const url = config.aiProxyUrl;
+    if (!url) {
+        throw new Error('未配置 AI 模型端点：默认不允许使用内置模型。请在 ~/.yuangs.json 配置 providers，或设置 YUANGS_LOCAL=1 解锁内置模型。');
+    }
     const response = await (0, axios_1.default)({
         method: 'post',
         url: url,
@@ -99,7 +108,8 @@ async function callAI_Stream(messages, model, onChunk) {
             'Referer': 'https://cli.want.biz/',
             'account': config.accountType,
             'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1',
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            ...(config.apiKey ? { 'Authorization': `Bearer ${config.apiKey}` } : {})
         }
     });
     return new Promise((resolve, reject) => {

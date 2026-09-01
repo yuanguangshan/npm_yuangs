@@ -3,6 +3,7 @@ import ora from 'ora';
 import readline from 'readline';
 import { callAI_Stream, askAI, getConversationHistory, addToConversationHistory, clearConversationHistory, getUserConfig } from '../ai/client';
 import { extractStreamableContent } from '../agent/llm';
+import { type AIRequestMessage } from '../core/validation';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
@@ -883,7 +884,7 @@ export async function processPipelineSegment(
 async function askOnceStream(question: string, model?: string) {
     // direct 模式：清理 history 中可能残留的 JSON 信封（旧版 agent 存的 "[opencode] {json}"），
     // 发纯文本，避免模型延续 JSON 格式输出。
-    const messages = [
+    const fullMessages: AIRequestMessage[] = [
         ...getConversationHistory().map(m => {
             if (m.role === 'assistant' && m.content) {
                 const extracted = extractStreamableContent(m.content);
@@ -902,8 +903,41 @@ async function askOnceStream(question: string, model?: string) {
     let raw = '';
     let emitted = 0;
 
-    try {
-        await callAI_Stream(messages, model, (chunk) => {
+    // —— 上下文预算裁剪 ——
+    // 根因：direct 模式每轮把完整历史（含上一轮超长回复 + 底部引用列表）原样回传。
+    // 首轮回复很长时，第二轮请求体暴涨；一旦上游代理（wx.want.biz 等）对上下文长度/上限/
+    // 限流返回 5xx，整轮直接失败。这里在发送前按预算裁剪，避免请求无限膨胀，并作为 5xx
+    // 重试的兜底手段（精简后通常能落到代理的可接受区间内）。
+    const estimateChars = (msgs: AIRequestMessage[]): number =>
+        msgs.reduce((sum, m) => sum + (typeof m.content === 'string' ? m.content.length : 0), 0);
+
+    const buildSendMessages = (aggressive: boolean): AIRequestMessage[] => {
+        const perMsgCap = aggressive ? 2000 : 4000;
+        const totalBudget = aggressive ? 6000 : 18000;
+        let msgs = fullMessages.map(m => {
+            if (typeof m.content === 'string' && m.content.length > perMsgCap) {
+                return { ...m, content: m.content.slice(0, perMsgCap) + '\n\n[... 上下文过长已截断 ...]' };
+            }
+            return { ...m };
+        });
+        // 从最旧的消息开始丢弃，直到满足总预算（至少保留最后一条 user）
+        while (estimateChars(msgs) > totalBudget && msgs.length > 1) {
+            msgs.shift();
+        }
+        return msgs;
+    };
+
+    const isServerError = (e: unknown): boolean => {
+        const err = e as { response?: { status?: number }; message?: string };
+        if (err?.response?.status && err.response.status >= 500) return true;
+        if (typeof err?.message === 'string' && /status code 5\d\d/.test(err.message)) return true;
+        return false;
+    };
+
+    const runStream = async (sendMsgs: AIRequestMessage[]): Promise<string> => {
+        raw = '';
+        emitted = 0;
+        await callAI_Stream(sendMsgs, model, (chunk) => {
             raw += chunk;
             // 剥离 opencode 后端注入的 "[opencode] " 前缀（累积 replace，跨 chunk 安全）
             const cleaned = raw.replace(/^\[opencode\]\s*/, '');
@@ -935,22 +969,55 @@ async function askOnceStream(question: string, model?: string) {
         // （agent 路径已有，direct 路径补齐），避免 -d 模式偶发"不回复"。
         if (!raw.trim()) {
             try {
-                const singlePrompt = messages.map(m => `[${m.role}] ${m.content}`).join('\n\n');
+                const singlePrompt = sendMsgs.map(m => `[${m.role}] ${m.content}`).join('\n\n');
                 const fallback = await askAI(singlePrompt, model);
                 if (fallback && fallback.trim()) {
                     console.log(chalk.gray(' ↺ 流式响应为空，已自动降级非流式重试'));
                     renderer.onChunk(fallback);
+                    raw = fallback;
                 }
             } catch {
                 // 降级也失败则保持空
+            }
+        }
+        return raw;
+    };
+
+    try {
+        const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+        try {
+            await runStream(buildSendMessages(false));
+        } catch (err) {
+            // 上游 5xx（含 Bad Gateway 502）：退避后精简上下文自动重试一次，
+            // 避免单轮代理抖动/限流直接打断会话。
+            if (isServerError(err) && fullMessages.length > 1) {
+                console.log(chalk.yellow('⚠️ 上游返回 5xx（代理未到达模型后端），1.5s 后已自动精简上下文重试'));
+                await sleep(1500);
+                try {
+                    await runStream(buildSendMessages(true));
+                } catch (retryErr) {
+                    throw new Error(
+                        `上游代理持续返回 5xx（请求未到达模型后端）。请检查代理的上下文长度 / 请求体大小限制，` +
+                        `或临时用短对话规避。原始错误：${(retryErr as Error)?.message ?? String(retryErr)}`
+                    );
+                }
+            } else {
+                throw err;
             }
         }
 
         const fullResponse = renderer.finish();
         lastAIOutput = fullResponse;
 
+        // 存入历史的 assistant 内容做硬截断：避免把整段超长回复（如带长引用列表的评测文）
+        // 原样回传到下一轮，导致请求体暴涨、触发上游代理 502「未到达模型后端」。
+        // 终端展示仍是完整内容，仅上下文记忆被压缩。
+        const MAX_ASSISTANT_STORE = 4000;
+        const storedAssistant = fullResponse.length > MAX_ASSISTANT_STORE
+            ? fullResponse.slice(0, MAX_ASSISTANT_STORE) + '\n\n[... 上文过长已在上下文中省略 ...]'
+            : fullResponse;
         addToConversationHistory('user', question);
-        addToConversationHistory('assistant', fullResponse);
+        addToConversationHistory('assistant', storedAssistant);
     } catch (error: any) {
         if (spinner.isSpinning) {
             spinner.stop();

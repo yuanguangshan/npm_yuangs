@@ -8,25 +8,11 @@ const workdir_1 = require("./workdir");
 const approval_1 = require("./approval");
 const tools_1 = require("./tools");
 // Initialize registry with all built-in tools
+// 注：read/ls/grep/edit/bash 等文件类工具现由 pi-coding-agent 内置提供，
+// yuangs 侧仅保留 pi 没有的 analyze_dependencies。
 const registry = new tools_1.ToolRegistry();
 registry.registerAll([
-    new tools_1.ReadFile(),
-    new tools_1.ReadFileLines(),
-    new tools_1.ReadFileLinesFromEnd(),
-    new tools_1.WriteFile(),
-    new tools_1.AppendFile(),
-    new tools_1.FileInfo(),
-    new tools_1.ContinueReading(),
-    new tools_1.ListFiles(),
-    new tools_1.ListDirectoryTree(),
-    new tools_1.SearchInFiles(),
-    new tools_1.SearchSymbol(),
     new tools_1.AnalyzeDependencies(),
-    new tools_1.GitStatus(),
-    new tools_1.GitDiff(),
-    new tools_1.GitLog(),
-    new tools_1.ShellCmd(),
-    new tools_1.CodeDiff(),
 ]);
 /**
  * ToolExecutor — thin facade over ToolRegistry.

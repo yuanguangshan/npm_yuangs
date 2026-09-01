@@ -38,6 +38,7 @@ const userConfigSchema = zod_1.z.object({
     defaultProvider: zod_1.z.string().optional(),
     providers: zod_1.z.array(providerConfigSchema).optional(),
     aiProxyUrl: zod_1.z.string().url().optional(),
+    apiKey: zod_1.z.string().optional(),
     accountType: zod_1.z.enum(['free', 'pro', 'paid']).optional(),
     contextWindow: zod_1.z.number().optional(),
     maxFileTokens: zod_1.z.number().optional(),
@@ -71,8 +72,9 @@ exports.mergedConfigSchema = userConfigSchema.merge(projectConfigSchema);
 // Defaults
 // ---------------------------------------------------------------------------
 const DEFAULT_CONFIG = {
-    defaultModel: 'Assistant',
-    aiProxyUrl: 'https://aiproxy.want.biz/v1/chat/completions',
+    defaultModel: '', // 默认禁止内置模型：须由用户配置 providers 或隐藏开关 YUANGS_UNLOCK 解锁
+    aiProxyUrl: '', // 默认不指向任何后端
+    apiKey: '', // 用户自配端点的鉴权 token（如 wx.want.biz/weclaw 需要）
     accountType: 'free',
     git: {
         auto: {
@@ -155,7 +157,7 @@ class ConfigService {
                 });
             });
         }
-        const envConfig = this.loadEnvConfig();
+        const envConfig = this.loadEnvConfig(userConfig, projectConfig);
         if (Object.keys(envConfig).length > 0) {
             Object.keys(envConfig).forEach(key => {
                 this.sourceMap.set(key, {
@@ -235,6 +237,12 @@ class ConfigService {
     getAccountType() {
         return this.get('accountType') ?? 'free';
     }
+    /**
+     * Convenience: get API key for user-configured endpoint.
+     */
+    getApiKey() {
+        return this.get('apiKey') ?? DEFAULT_CONFIG.apiKey;
+    }
     // --- Private helpers ---
     loadProjectConfig() {
         const configPath = this.findProjectConfigFile();
@@ -275,7 +283,7 @@ class ConfigService {
             return {};
         }
     }
-    loadEnvConfig() {
+    loadEnvConfig(userConfig = {}, projectConfig = {}) {
         const env = {};
         if (process.env.YUANGS_AI_PROXY_URL) {
             env.aiProxyUrl = process.env.YUANGS_AI_PROXY_URL;
@@ -287,6 +295,33 @@ class ConfigService {
             const t = process.env.YUANGS_ACCOUNT_TYPE;
             if (['free', 'pro', 'paid'].includes(t))
                 env.accountType = t;
+        }
+        // --- 隐藏开关：解锁内置免费模型（仅作者自用，不写文档 / 不进 --help / 不进 config model list）---
+        // 设 YUANGS_UNLOCK=1 时允许使用内置免费模型（aiproxy.want.biz 的 Assistant 档）。
+        // 默认（不设）则禁止内置模型，用户须自行配置 providers。
+        // 只注入顶层字段（fallback 路径用）；不注入 providers，避免覆盖用户 ~/.yuangs.json 的配置。
+        // 该字符串对源码阅读者可见但无文档；改名只需改这一处。
+        // 仅当值为 1 / true / yes / on 时启用；空字符串、"0"、未设置均视为关闭
+        // （防止 shell 中 YUANGS_UNLOCK=0 被 JS 当作真值，导致开关关不掉）。
+        // 关键：当用户「已显式配置」端点/模型（env 显式变量、或 ~/.yuangs.json、或项目配置）时，
+        // unlock 不再覆盖，避免隐藏开关静默劫持用户自建端点导致 401。
+        const unlockOn = process.env.YUANGS_UNLOCK === '1' ||
+            process.env.YUANGS_UNLOCK === 'true' ||
+            process.env.YUANGS_UNLOCK === 'yes' ||
+            process.env.YUANGS_UNLOCK === 'on';
+        if (unlockOn) {
+            const userHasProxy = !!(env.aiProxyUrl || userConfig.aiProxyUrl || projectConfig.aiProxyUrl);
+            const userHasModel = !!(env.defaultModel || userConfig.defaultModel || projectConfig.defaultModel);
+            if (!userHasProxy) {
+                env.aiProxyUrl = process.env.YUANGS_UNLOCK_URL || 'https://aiproxy.want.biz/v1/chat/completions';
+            }
+            if (!userHasModel) {
+                env.defaultModel = process.env.YUANGS_UNLOCK_MODEL || 'Assistant';
+            }
+            // 用户未显式设定 accountType 时才回落免费档
+            if (!env.accountType) {
+                env.accountType = 'free';
+            }
         }
         return env;
     }
