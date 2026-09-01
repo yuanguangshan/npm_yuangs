@@ -182,8 +182,9 @@ program
             return;
         }
 
-        // --direct: 跳过 agent 引擎直连 AI（纯文本问答，无 JSON 协议/工具/policy）
-        if (options.direct) {
+        // 直连通道（纯文本问答，无 JSON 协议/工具/policy）：
+        // 既服务于 --direct，也作为 pi 引擎不可用时的降级路径，保证主功能永远可用。
+        const runDirectOnce = async () => {
             const { callAI_Stream, askAI, getConversationHistory } = await import('./ai/client');
             if (process.stdout.isTTY && !options.exec) {
                 await streamAndPersist(question || '', async (onChunk) => {
@@ -198,6 +199,11 @@ program
                 const answer = raw.trim();
                 if (answer) console.log(answer);
             }
+        };
+
+        // --direct: 跳过 agent 引擎直连 AI（完全不加载 pi）
+        if (options.direct) {
+            await runDirectOnce();
             return;
         }
 
@@ -207,14 +213,25 @@ program
 
         // 统一经 pi 引擎：原生 tool_calls（read/ls/grep/edit/bash 等由 pi 内置提供），
         // 比旧双 Agent 的「文本抠 JSON 协议」更稳定；仅 analyze_dependencies 用 yuangs 自有工具。
-        const { createEngineWithFallback, YUANGS_ONLY_TOOL_NAMES } = await import('./agent/piSession');
-        const { ToolExecutor } = await import('./agent/executor');
-        const runtime = await createEngineWithFallback({
-            modelId: model,
-            yuangsTools: ToolExecutor.getRegistry().all().filter((t) =>
-                YUANGS_ONLY_TOOL_NAMES.includes(t.name)
-            ),
-        });
+        // pi 不可用（SDK 未安装 / Node < 22.19 / 启动失败）时降级直连，而非抛错终止。
+        let runtime: Awaited<ReturnType<(typeof import('./agent/piSession'))['createEngineWithFallback']>>;
+        try {
+            const { createEngineWithFallback, YUANGS_ONLY_TOOL_NAMES } = await import('./agent/piSession');
+            const { ToolExecutor } = await import('./agent/executor');
+            runtime = await createEngineWithFallback({
+                modelId: model,
+                yuangsTools: ToolExecutor.getRegistry().all().filter((t) =>
+                    YUANGS_ONLY_TOOL_NAMES.includes(t.name)
+                ),
+            });
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.log(chalk.yellow('⚠️  增强引擎（pi）不可用，已自动降级为纯文本直连模式'));
+            console.log(chalk.gray(`   ${msg.split('\n')[0]}`));
+            console.log(chalk.gray('   如需完整 agent 能力：npm i -g @earendil-works/pi-coding-agent（需 Node >= 22.19）'));
+            await runDirectOnce();
+            return;
+        }
 
         // TTY 且非 --exec：流式渲染 + 持久化对话历史（跨调用多轮记忆）；否则保持无状态，
         // 避免 ANSI 擦行重绘污染管道输出。

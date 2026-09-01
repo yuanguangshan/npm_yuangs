@@ -266,25 +266,47 @@ async function handleDirectoryReference(input: string): Promise<string> {
     }
 }
 
+type PiRuntime = Awaited<ReturnType<(typeof import('../agent/piSession'))['createEngineWithFallback']>>;
+
 export async function handleAIChat(initialQuestion: string | null, model?: string, direct: boolean = false) {
-    // 引擎选择：优先 pi 引擎（Route A），失败降级回 AgentRuntime (v2.0)
-    const { createEngineWithFallback, YUANGS_ONLY_TOOL_NAMES } = await import('../agent/piSession');
-    const { ToolExecutor } = await import('../agent/executor');
-    const runtime = await createEngineWithFallback({
-        modelId: model,
-        // 仅保留 pi 没有的 yuangs 工具，其余用 pi 内置
-        yuangsTools: ToolExecutor.getRegistry().all().filter((t) =>
-            YUANGS_ONLY_TOOL_NAMES.includes(t.name)
-        ),
-        // 审计：pi 会话事件 → debug 日志（后续可接入 better-sqlite3 审计库）
-        auditHook: (event) => {
-            logger.debug('piSession', 'event', { type: (event as { type?: string })?.type });
-        },
-    });
+    // 引擎选择（惰性/条件创建）：
+    // - direct 模式语义就是"跳过 agent 引擎直连 AI"，因此完全不加载 pi，
+    //   避免未安装 pi 时连 -d 都不可用（此前无条件创建，违背该语义）。
+    // - 非 direct 模式尝试 pi；pi 不可用（SDK 未安装 / Node < 22.19 / 启动失败）时
+    //   自动降级为 direct 纯文本直连，保证主功能永远可用，而不是直接抛错终止。
+    // 不变式：effectiveDirect === false ⇒ runtime !== null（pi 创建成功）。
+    // 因此下方 else 分支里用 runtime! 非空断言是安全的。
+    let runtime: PiRuntime | null = null;
+    let effectiveDirect = direct;
+
+    if (!direct) {
+        try {
+            const { createEngineWithFallback, YUANGS_ONLY_TOOL_NAMES } = await import('../agent/piSession');
+            const { ToolExecutor } = await import('../agent/executor');
+            runtime = await createEngineWithFallback({
+                modelId: model,
+                // 仅保留 pi 没有的 yuangs 工具，其余用 pi 内置
+                yuangsTools: ToolExecutor.getRegistry().all().filter((t) =>
+                    YUANGS_ONLY_TOOL_NAMES.includes(t.name)
+                ),
+                // 审计：pi 会话事件 → debug 日志（后续可接入 better-sqlite3 审计库）
+                auditHook: (event) => {
+                    logger.debug('piSession', 'event', { type: (event as { type?: string })?.type });
+                },
+            });
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.log(chalk.yellow('⚠️  增强引擎（pi）不可用，已自动降级为纯文本直连模式'));
+            console.log(chalk.gray(`   ${msg.split('\n')[0]}`));
+            console.log(chalk.gray('   如需完整 agent 能力：npm i -g @earendil-works/pi-coding-agent（需 Node >= 22.19）'));
+            runtime = null;
+            effectiveDirect = true;
+        }
+    }
 
     const processInteraction = async (question: string) => {
-        // --direct: 跳过 agent，直连 callAI_Stream（纯文本，无 JSON 协议/工具）
-        if (direct) {
+        // direct（含 pi 不可用降级而来）：跳过 agent，直连 callAI_Stream（纯文本，无 JSON 协议/工具）
+        if (effectiveDirect) {
             await askOnceStream(question, model);
             return;
         }
@@ -296,7 +318,7 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
         let attempt = 0;
         while (attempt <= maxRetries) {
             try {
-                await runtime.run(question, 'chat' as any, (chunk) => {
+                await runtime!.run(question, 'chat' as any, (chunk) => {
                     renderer.onChunk(chunk);
                 }, model, renderer);
 
@@ -629,7 +651,7 @@ export async function handleAIChat(initialQuestion: string | null, model?: strin
                     const spinner = ora(chalk.cyan('AI 正在思考...')).start();
                     const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
 
-                    await runtime.run(finalPrompt, 'chat' as any, (chunk) => {
+                    await runtime!.run(finalPrompt, 'chat' as any, (chunk) => {
                         renderer.onChunk(chunk);
                     }, model, renderer);
 
@@ -746,7 +768,7 @@ ${finalPrompt}
             try {
                 rl.pause();
 
-                if (direct) {
+                if (effectiveDirect) {
                     // --direct: 跳过 agent，直连 callAI_Stream（纯文本，无 JSON 协议/工具）
                     await askOnceStream(finalPrompt, model);
                 } else {
@@ -754,7 +776,7 @@ ${finalPrompt}
                 const spinner = ora(chalk.cyan('AI 正在思考...')).start();
                 const renderer = new StreamMarkdownRenderer(chalk.bgHex('#3b82f6').white.bold(' 🤖 AI ') + ' ', spinner, true);
 
-                await runtime.run(finalPrompt, 'chat' as any, (chunk) => {
+                await runtime!.run(finalPrompt, 'chat' as any, (chunk) => {
                     renderer.onChunk(chunk);
                 }, model, renderer);
 
@@ -881,6 +903,65 @@ export async function processPipelineSegment(
     return segment;
 }
 
+/**
+ * direct 通道上下文预算（字符数）。
+ * normal = 首次发送；aggressive = 上游 5xx 重试时的精简档。
+ * 背景：首轮回复很长时，第二轮把整段历史原样回传会让请求体暴涨，
+ * 上游代理（wx.want.biz 等）在转发前就可能返回 502（请求未到达模型后端）。
+ */
+export const CONTEXT_BUDGET = {
+    normal: { perMsgCap: 4000, totalBudget: 18000 },
+    aggressive: { perMsgCap: 2000, totalBudget: 6000 },
+} as const;
+
+/** 单条 assistant 回复写入对话历史的字符上限（超出截断；终端展示仍完整，仅压缩记忆）。 */
+export const MAX_ASSISTANT_STORE = 4000;
+
+/** 估算消息数组的总字符数（用于预算裁剪）。 */
+export function estimateChars(msgs: AIRequestMessage[]): number {
+    return msgs.reduce((sum, m) => sum + (typeof m.content === 'string' ? m.content.length : 0), 0);
+}
+
+/**
+ * 5xx 判定：上游代理/网关错误（含 Bad Gateway 502）。
+ * 同时识别 axios 的 response.status 与 "Request failed with status code 5xx" 文本形式。
+ */
+export function isServerError(e: unknown): boolean {
+    const err = e as { response?: { status?: number }; message?: string };
+    if (err?.response?.status && err.response.status >= 500) return true;
+    if (typeof err?.message === 'string' && /status code 5\d\d/.test(err.message)) return true;
+    return false;
+}
+
+/**
+ * 按预算裁剪待发送消息：先对超长单条截断，再从最旧消息开始丢弃，
+ * 直到总字符数落入预算（始终至少保留最后一条 user）。
+ */
+export function buildSendMessages(
+    fullMessages: AIRequestMessage[],
+    aggressive: boolean = false
+): AIRequestMessage[] {
+    const { perMsgCap, totalBudget } = aggressive ? CONTEXT_BUDGET.aggressive : CONTEXT_BUDGET.normal;
+    const msgs = fullMessages.map(m => {
+        if (typeof m.content === 'string' && m.content.length > perMsgCap) {
+            return { ...m, content: m.content.slice(0, perMsgCap) + '\n\n[... 上下文过长已截断 ...]' };
+        }
+        return { ...m };
+    });
+    // 从最旧的消息开始丢弃，直到满足总预算（至少保留最后一条 user）
+    while (estimateChars(msgs) > totalBudget && msgs.length > 1) {
+        msgs.shift();
+    }
+    return msgs;
+}
+
+/** 写入对话历史前对 assistant 内容做硬截断，避免长文原样回传撑爆下一轮请求体。 */
+export function truncateForStore(text: string): string {
+    return text.length > MAX_ASSISTANT_STORE
+        ? text.slice(0, MAX_ASSISTANT_STORE) + '\n\n[... 上文过长已在上下文中省略 ...]'
+        : text;
+}
+
 async function askOnceStream(question: string, model?: string) {
     // direct 模式：清理 history 中可能残留的 JSON 信封（旧版 agent 存的 "[opencode] {json}"），
     // 发纯文本，避免模型延续 JSON 格式输出。
@@ -908,31 +989,7 @@ async function askOnceStream(question: string, model?: string) {
     // 首轮回复很长时，第二轮请求体暴涨；一旦上游代理（wx.want.biz 等）对上下文长度/上限/
     // 限流返回 5xx，整轮直接失败。这里在发送前按预算裁剪，避免请求无限膨胀，并作为 5xx
     // 重试的兜底手段（精简后通常能落到代理的可接受区间内）。
-    const estimateChars = (msgs: AIRequestMessage[]): number =>
-        msgs.reduce((sum, m) => sum + (typeof m.content === 'string' ? m.content.length : 0), 0);
-
-    const buildSendMessages = (aggressive: boolean): AIRequestMessage[] => {
-        const perMsgCap = aggressive ? 2000 : 4000;
-        const totalBudget = aggressive ? 6000 : 18000;
-        let msgs = fullMessages.map(m => {
-            if (typeof m.content === 'string' && m.content.length > perMsgCap) {
-                return { ...m, content: m.content.slice(0, perMsgCap) + '\n\n[... 上下文过长已截断 ...]' };
-            }
-            return { ...m };
-        });
-        // 从最旧的消息开始丢弃，直到满足总预算（至少保留最后一条 user）
-        while (estimateChars(msgs) > totalBudget && msgs.length > 1) {
-            msgs.shift();
-        }
-        return msgs;
-    };
-
-    const isServerError = (e: unknown): boolean => {
-        const err = e as { response?: { status?: number }; message?: string };
-        if (err?.response?.status && err.response.status >= 500) return true;
-        if (typeof err?.message === 'string' && /status code 5\d\d/.test(err.message)) return true;
-        return false;
-    };
+    // 上下文预算裁剪 / 5xx 判定 / 历史截断均已抽为模块级导出函数（见上方），便于单测覆盖。
 
     const runStream = async (sendMsgs: AIRequestMessage[]): Promise<string> => {
         raw = '';
@@ -986,7 +1043,7 @@ async function askOnceStream(question: string, model?: string) {
     try {
         const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
         try {
-            await runStream(buildSendMessages(false));
+            await runStream(buildSendMessages(fullMessages, false));
         } catch (err) {
             // 上游 5xx（含 Bad Gateway 502）：退避后精简上下文自动重试一次，
             // 避免单轮代理抖动/限流直接打断会话。
@@ -994,7 +1051,7 @@ async function askOnceStream(question: string, model?: string) {
                 console.log(chalk.yellow('⚠️ 上游返回 5xx（代理未到达模型后端），1.5s 后已自动精简上下文重试'));
                 await sleep(1500);
                 try {
-                    await runStream(buildSendMessages(true));
+                    await runStream(buildSendMessages(fullMessages, true));
                 } catch (retryErr) {
                     throw new Error(
                         `上游代理持续返回 5xx（请求未到达模型后端）。请检查代理的上下文长度 / 请求体大小限制，` +
@@ -1012,12 +1069,8 @@ async function askOnceStream(question: string, model?: string) {
         // 存入历史的 assistant 内容做硬截断：避免把整段超长回复（如带长引用列表的评测文）
         // 原样回传到下一轮，导致请求体暴涨、触发上游代理 502「未到达模型后端」。
         // 终端展示仍是完整内容，仅上下文记忆被压缩。
-        const MAX_ASSISTANT_STORE = 4000;
-        const storedAssistant = fullResponse.length > MAX_ASSISTANT_STORE
-            ? fullResponse.slice(0, MAX_ASSISTANT_STORE) + '\n\n[... 上文过长已在上下文中省略 ...]'
-            : fullResponse;
         addToConversationHistory('user', question);
-        addToConversationHistory('assistant', storedAssistant);
+        addToConversationHistory('assistant', truncateForStore(fullResponse));
     } catch (error: any) {
         if (spinner.isSpinning) {
             spinner.stop();
